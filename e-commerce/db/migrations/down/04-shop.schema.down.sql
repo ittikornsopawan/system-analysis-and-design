@@ -1,5 +1,7 @@
 -- Rollback of 04-shop.schema.up.sql (tables dropped in reverse dependency order)
 
+DROP TABLE IF EXISTS shop.t_shop_user;
+
 DROP TABLE IF EXISTS shop.t_shop_product_review;
 
 DROP TABLE IF EXISTS shop.t_shop_product_sku;

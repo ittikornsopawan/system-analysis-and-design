@@ -62,6 +62,7 @@
 | ----- | ---- | ------: | --: |
 | [m_shop_type](shop/m_shop_type.md) | Master | 8 | 0 |
 | [m_shop](shop/m_shop.md) | Master | 11 | 1 |
+| [t_shop_user](shop/t_shop_user.md) | Transaction | 9 | 2 |
 | [m_shop_image](shop/m_shop_image.md) | Master | 10 | 1 |
 | [t_shop_product](shop/t_shop_product.md) | Transaction | 9 | 2 |
 | [t_shop_product_sku](shop/t_shop_product_sku.md) | Transaction | 17 | 2 |
