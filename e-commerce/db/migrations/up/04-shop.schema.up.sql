@@ -1,7 +1,7 @@
-CREATE SCHEMA IF NOT EXISTS authen;
+CREATE SCHEMA IF NOT EXISTS shop;
 
 CREATE TABLE
-    IF NOT EXISTS authen.m_user (
+    IF NOT EXISTS shop.m_shop_type (
         id UUID NOT NULL DEFAULT GEN_RANDOM_UUID () PRIMARY KEY,
         created_by VARCHAR(64) NOT NULL,
         created_at TIMESTAMP WITHOUT TIME ZONE NOT NULL DEFAULT NOW (),
@@ -16,16 +16,12 @@ CREATE TABLE
                 'ARCHIVED'
             )
         ),
-        username BYTEA NOT NULL UNIQUE,
-        email_address BYTEA NOT NULL UNIQUE,
-        first_name BYTEA NOT NULL,
-        last_name BYTEA NOT NULL,
-        display_name VARCHAR(128) NOT NULL,
-        profile_picture_path TEXT
+        name VARCHAR(128) NOT NULL UNIQUE,
+        description VARCHAR(256) NOT NULL
     );
 
 CREATE TABLE
-    IF NOT EXISTS authen.m_user_password (
+    IF NOT EXISTS shop.m_shop (
         id UUID NOT NULL DEFAULT GEN_RANDOM_UUID () PRIMARY KEY,
         created_by VARCHAR(64) NOT NULL,
         created_at TIMESTAMP WITHOUT TIME ZONE NOT NULL DEFAULT NOW (),
@@ -40,14 +36,21 @@ CREATE TABLE
                 'ARCHIVED'
             )
         ),
-        row_type VARCHAR(32) NOT NULL DEFAULT 'PASSWORD' CHECK (row_type IN ('PASSWORD', 'TEMPORARY_PASSWORD')),
-        user_id UUID NOT NULL REFERENCES authen.m_user (id) ON DELETE CASCADE,
-        password BYTEA NOT NULL,
-        password_salt BYTEA NOT NULL
+        type_id UUID NOT NULL REFERENCES shop.m_shop_type (id) ON DELETE CASCADE,
+        name VARCHAR(128) NOT NULL UNIQUE,
+        description VARCHAR(256) NOT NULL,
+        platform_margin_rate NUMERIC(8, 2) NOT NULL DEFAULT 0.00 CHECK (
+            platform_margin_rate >= 0.00
+            AND platform_margin_rate <= 100.00
+        ),
+        shop_margin_rate NUMERIC(8, 2) NOT NULL DEFAULT 0.00 CHECK (
+            shop_margin_rate >= 0.00
+            AND shop_margin_rate <= 100.00
+        ),
     );
 
 CREATE TABLE
-    IF NOT EXISTS authen.t_user_reset_password (
+    IF NOT EXISTS shop.m_shop_image (
         id UUID NOT NULL DEFAULT GEN_RANDOM_UUID () PRIMARY KEY,
         created_by VARCHAR(64) NOT NULL,
         created_at TIMESTAMP WITHOUT TIME ZONE NOT NULL DEFAULT NOW (),
@@ -62,22 +65,14 @@ CREATE TABLE
                 'ARCHIVED'
             )
         ),
-        user_id UUID NOT NULL REFERENCES authen.m_user (id) ON DELETE CASCADE,
-        reset_token BYTEA NOT NULL UNIQUE,
-        expired_at TIMESTAMP WITHOUT TIME ZONE NOT NULL
+        shop_id UUID NOT NULL REFERENCES shop.m_shop (id) ON DELETE CASCADE,
+        type VARCHAR(32) NOT NULL DEFAULT 'LOGO' CHECK (type IN ('LOGO', 'BANNER', 'WALLPAPER')),
+        seq INT NOT NULL DEFAULT 0,
+        image_path TEXT NOT NULL
     );
 
 CREATE TABLE
-    IF NOT EXISTS authen.l_user_referral (
-        id UUID NOT NULL DEFAULT GEN_RANDOM_UUID () PRIMARY KEY,
-        created_by VARCHAR(64) NOT NULL,
-        created_at TIMESTAMP WITHOUT TIME ZONE NOT NULL DEFAULT NOW (),
-        user_id UUID NOT NULL REFERENCES authen.m_user (id) ON DELETE CASCADE,
-        referrer_id UUID REFERENCES authen.m_user (id) ON DELETE SET NULL
-    );
-
-CREATE TABLE
-    IF NOT EXISTS authen.m_user_information (
+    IF NOT EXISTS shop.t_shop_product (
         id UUID NOT NULL DEFAULT GEN_RANDOM_UUID () PRIMARY KEY,
         created_by VARCHAR(64) NOT NULL,
         created_at TIMESTAMP WITHOUT TIME ZONE NOT NULL DEFAULT NOW (),
@@ -92,15 +87,14 @@ CREATE TABLE
                 'ARCHIVED'
             )
         ),
-        user_id UUID NOT NULL REFERENCES authen.m_user (id) ON DELETE CASCADE,
-        phone_number BYTEA,
-        address BYTEA,
-        date_of_birth DATE,
-        gender VARCHAR(16) CHECK (gender IN ('MALE', 'FEMALE', '', 'OTHER'))
+        shop_id UUID NOT NULL REFERENCES shop.m_shop (id) ON DELETE CASCADE,
+        product_id UUID NOT NULL REFERENCES product.m_product (id) ON DELETE CASCADE,
+        quantity INT NOT NULL DEFAULT 0 CHECK (quantity >= 0),
+        UNIQUE (shop_id, product_id)
     );
 
 CREATE TABLE
-    IF NOT EXISTS authen.t_user_address (
+    IF NOT EXISTS shop.t_shop_product_sku (
         id UUID NOT NULL DEFAULT GEN_RANDOM_UUID () PRIMARY KEY,
         created_by VARCHAR(64) NOT NULL,
         created_at TIMESTAMP WITHOUT TIME ZONE NOT NULL DEFAULT NOW (),
@@ -115,18 +109,22 @@ CREATE TABLE
                 'ARCHIVED'
             )
         ),
-        user_id UUID NOT NULL REFERENCES authen.m_user (id) ON DELETE CASCADE,
-        title VARCHAR(128) NOT NULL,
-        is_default BOOLEAN NOT NULL DEFAULT FALSE,
-        address BYTEA NOT NULL,
-        city BYTEA NOT NULL,
-        state BYTEA NOT NULL,
-        postal_code BYTEA NOT NULL,
-        country BYTEA NOT NULL
+        shop_product_id UUID NOT NULL REFERENCES shop.t_shop_product (id) ON DELETE CASCADE,
+        sku_id UUID NOT NULL REFERENCES product.m_product_sku (id) ON DELETE CASCADE,
+        code VARCHAR(64) NOT NULL,
+        name VARCHAR(128) NOT NULL,
+        description VARCHAR(256) NOT NULL,
+        cost_price NUMERIC(16, 2) NOT NULL,
+        selling_price NUMERIC(16, 2) NOT NULL,
+        gross_margin NUMERIC(16, 2),
+        share_margin NUMERIC(16, 2),
+        platform_margin NUMERIC(16, 2),
+        quantity INT NOT NULL DEFAULT 0 CHECK (quantity >= 0),
+        UNIQUE (shop_product_id, sku_id)
     );
 
 CREATE TABLE
-    IF NOT EXISTS authen.t_user_access_token (
+    IF NOT EXISTS shop.t_shop_product_review (
         id UUID NOT NULL DEFAULT GEN_RANDOM_UUID () PRIMARY KEY,
         created_by VARCHAR(64) NOT NULL,
         created_at TIMESTAMP WITHOUT TIME ZONE NOT NULL DEFAULT NOW (),
@@ -141,28 +139,11 @@ CREATE TABLE
                 'ARCHIVED'
             )
         ),
+        shop_product_id UUID NOT NULL REFERENCES shop.t_shop_product (id) ON DELETE CASCADE,
         user_id UUID NOT NULL REFERENCES authen.m_user (id) ON DELETE CASCADE,
-        access_token BYTEA NOT NULL UNIQUE,
-        expired_at TIMESTAMP WITHOUT TIME ZONE NOT NULL
-    );
-
-CREATE TABLE
-    IF NOT EXISTS authen.t_user_refresh_token (
-        id UUID NOT NULL DEFAULT GEN_RANDOM_UUID () PRIMARY KEY,
-        created_by VARCHAR(64) NOT NULL,
-        created_at TIMESTAMP WITHOUT TIME ZONE NOT NULL DEFAULT NOW (),
-        updated_by VARCHAR(64),
-        updated_at TIMESTAMP WITHOUT TIME ZONE,
-        row_status VARCHAR(32) NOT NULL DEFAULT 'ACTIVE' CHECK (
-            row_status IN (
-                'ACTIVE',
-                'INACTIVE',
-                'DELETED',
-                'LOCKED',
-                'ARCHIVED'
-            )
+        rating INT NOT NULL CHECK (
+            rating >= 1
+            AND rating <= 5
         ),
-        user_id UUID NOT NULL REFERENCES authen.m_user (id) ON DELETE CASCADE,
-        refresh_token BYTEA NOT NULL UNIQUE,
-        expired_at TIMESTAMP WITHOUT TIME ZONE NOT NULL
+        comment TEXT
     );

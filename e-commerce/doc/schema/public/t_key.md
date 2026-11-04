@@ -1,0 +1,53 @@
+# Table: public.t_key
+
+Description: Transaction table of the `public` schema (defined in `db/migrations/up/00-common.schema.up.sql`).
+
+## Columns
+
+| Key | Reference | Column Name  | Data Type | Length | Is Nullable | Description                                                                       | Example           |
+| --- | --------- | ------------ | --------- | ------ | ----------- | --------------------------------------------------------------------------------- | ----------------- |
+| PK  |           | id           | UUID      |        | FALSE       | Primary key                                                                       | gen_random_uuid() |
+|     |           | created_by   | VARCHAR   | 64     | FALSE       | User or service that created the row                                              |                   |
+|     |           | created_at   | TIMESTAMP |        | FALSE       | Timestamp when the row was created                                                |                   |
+|     |           | updated_by   | VARCHAR   | 64     | TRUE        | User or service that last updated the row                                         |                   |
+|     |           | updated_at   | TIMESTAMP |        | TRUE        | Timestamp when the row was last updated                                           |                   |
+|     |           | row_status   | VARCHAR   | 32     | FALSE       | Lifecycle status of the row: ACTIVE, INACTIVE, DELETED, LOCKED, ARCHIVED, EXPIRED | ACTIVE            |
+|     |           | effective_at | TIMESTAMP |        | FALSE       | Defaults to `now()`                                                               |                   |
+|     |           | expired_at   | TIMESTAMP |        | TRUE        |                                                                                   |                   |
+| UQ  |           | key_name     | VARCHAR   | 128    | FALSE       | Unique                                                                            |                   |
+|     |           | key_value    | BYTEA     |        | FALSE       |                                                                                   |                   |
+
+## Constain
+
+| Key Name            | Column Name | Description                                                                              |
+| ------------------- | ----------- | ---------------------------------------------------------------------------------------- |
+| pk_t_key_id         | id          | Primary key                                                                              |
+| uq_t_key_key_name   | key_name    | Unique                                                                                   |
+| ck_t_key_row_status | row_status  | CHECK (row_status IN ('ACTIVE', 'INACTIVE', 'DELETED', 'LOCKED', 'ARCHIVED', 'EXPIRED')) |
+
+---
+
+```SQL
+CREATE TABLE
+    IF NOT EXISTS public.t_key (
+        id UUID NOT NULL DEFAULT GEN_RANDOM_UUID () PRIMARY KEY,
+        created_by VARCHAR(64) NOT NULL,
+        created_at TIMESTAMP WITHOUT TIME ZONE NOT NULL DEFAULT NOW (),
+        updated_by VARCHAR(64),
+        updated_at TIMESTAMP WITHOUT TIME ZONE,
+        row_status VARCHAR(32) NOT NULL DEFAULT 'ACTIVE' CHECK (
+            row_status IN (
+                'ACTIVE',
+                'INACTIVE',
+                'DELETED',
+                'LOCKED',
+                'ARCHIVED',
+                'EXPIRED'
+            )
+        ),
+        effective_at TIMESTAMP WITHOUT TIME ZONE NOT NULL DEFAULT NOW (),
+        expired_at TIMESTAMP WITHOUT TIME ZONE,
+        key_name VARCHAR(128) NOT NULL UNIQUE,
+        key_value BYTEA NOT NULL
+    );
+```
