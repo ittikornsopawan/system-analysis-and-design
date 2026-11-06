@@ -63,6 +63,7 @@
 - On `payment_intent.succeeded` the payment gets `transaction_code` (the charge id), `transaction_at` (the time of the event, UTC) and `payment_name` (a label such as `Visa 4242` or `PromptPay`), and the order is changed with a guarded update (`AND status = 'WAIT_PAYMENT'`). The order is accepted even when `expires_at` has passed as long as the order is still `WAIT_PAYMENT`, because the stock is still held.
 - **Late payment:** when the guarded update of the order changes no row (the order was cancelled or expired first), or the payment is already FAILED or CANCELLED, the money must not stay with the platform. The system asks Stripe for a full refund (`Idempotency-Key` = `refund-` + payment id) and sets the payment to REFUNDED directly with `refund_reason` = `Late payment: the order is not waiting for payment`. The order is not changed and the stock is not given back again.
 - On `charge.refunded` (a refund made in the Stripe dashboard or by the refund API) a COMPLETED payment becomes REFUNDED. When the order is `PAYMENT_CONFIRMED` it becomes `REFUNDED` and the quantity of every item goes back to its lot, otherwise (the order has started to ship) only the payment changes and the event is written to the log for a person to handle.
+- When `charge.refunded` turns a COMPLETED payment into REFUNDED the budget that the order took from a campaign goes back in the same transaction as the stock (`docs/superpowers/specs/2026-11-06-campaign-design.md`, C7 and C9, approved by the product owner on 2026-11-06), with the same `RELEASE` ledger rows as the refund API. A refund that arrives after the order was already cancelled (the late payment rule above) does not touch the budget, it went back when the order was cancelled.
 - The whole event is one transaction. The response never contains the secret or the signature.
 
 #### Example Body Parameters
@@ -444,4 +445,49 @@ SET
     quantity = quantity + '<sequence.quantity>' -- the lot may be DELETED or ARCHIVED, it still gets the quantity back
 WHERE id = '<sequence.lotId>'
 RETURNING id as lot_id, quantity
+```
+
+### Table: [campaign.m_campaign_budget_ledger](../../../schema/campaign/m_campaign_budget_ledger.md)
+
+#### QUERY - Get the budget that the order took
+
+```SQL
+SELECT
+    l.campaign_budget_id,
+    l.campaign_id,
+    l.usage,
+    l.reference
+FROM campaign.m_campaign_budget_ledger l
+WHERE l.order_id = '<sequence.orderId>'
+AND l.entry_type = 'RESERVE'
+AND NOT EXISTS (
+    SELECT 1
+    FROM campaign.m_campaign_budget_ledger r
+    WHERE r.order_id = l.order_id
+    AND r.campaign_budget_id = l.campaign_budget_id
+    AND r.entry_type = 'RELEASE'
+) -- a budget that was already given back is skipped, so nothing goes back twice
+ORDER BY l.campaign_budget_id
+```
+
+#### INSERT - Write the release in the ledger
+
+```SQL
+INSERT INTO campaign.m_campaign_budget_ledger (created_by, campaign_budget_id, campaign_id, order_id, entry_type, reference, usage, remaining)
+VALUES ('<sequence.userId>', '<sequence.campaignBudgetId>', '<sequence.campaignId>', '<sequence.orderId>', 'RELEASE', '<sequence.reference>', '<sequence.usage>', '<sequence.remaining>')
+RETURNING id as ledger_id
+```
+
+### Table: [campaign.m_campaign_budget](../../../schema/campaign/m_campaign_budget.md)
+
+#### UPDATE - Give the budget back
+
+```SQL
+UPDATE campaign.m_campaign_budget
+SET
+    updated_by = '<sequence.userId>',
+    updated_at = NOW() AT TIME ZONE 'UTC',
+    remaining = remaining + '<sequence.usage>' -- the budget may be INACTIVE, LOCKED or ARCHIVED by now, it still gets the amount back
+WHERE id = '<sequence.campaignBudgetId>'
+RETURNING id as budget_id, remaining
 ```

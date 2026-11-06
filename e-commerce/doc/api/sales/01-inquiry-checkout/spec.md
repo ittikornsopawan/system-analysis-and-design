@@ -43,7 +43,12 @@
 - A line can be ordered only when it is AVAILABLE as the cart defines it: the shop, the product, the shop product, the shop product SKU and the product SKU are ACTIVE, one lot is on sale and the quantity of the line is not larger than the remaining quantity of that lot. One line that is not AVAILABLE rejects the whole request with 409 (E10007), nothing is created, the message names the line (`cartId`) and the reason (QUANTITY_EXCEEDS_STOCK, OUT_OF_STOCK or UNAVAILABLE).
 - One order is created for each shop of the selected lines, so a cart with lines of two shops makes two orders. All orders are created in one transaction, either every order is created or none.
 - The price of an item is the selling price of the lot that is on sale at the moment of the request and the item keeps that lot (`lot_id`), the price never changes afterwards. The profit of an item is the margin of that lot multiplied by the quantity (`gross_profit`, `shop_profit`, `platform_profit`).
-- `totalDiscount`, `totalTax` and `totalShipping` are 0.00 for now (the campaign discount and the tax are not defined yet, and the shipping fee is set by the payment API when the customer starts to pay) and `totalAmount = totalPrice - totalDiscount + totalTax + totalShipping`, the database enforces this formula (`ck_t_order_total_amount_sum`) so the calculation can be added later without changing the tables.
+- `totalTax` and `totalShipping` are 0.00 for now (the tax is not defined and the shipping fee is set by the payment API when the customer starts to pay).
+- `totalDiscount` is the sum of the campaign discounts of the items of the shop and is 0.00 when no campaign applies, `totalAmount = totalPrice - totalDiscount + totalTax + totalShipping`, the database enforces this formula (`ck_t_order_total_amount_sum`). The `price` and the `total_price` of an item never change, the discount is kept in `discount` of the item.
+- Discount rules: a campaign applies to an item only when the campaign is ACTIVE, `start_at <= now < end_at` (UTC), the shop of the item is in a live `campaign.t_campaign_shop` row (or the campaign has no live shop row, it is for every shop), the product of the item is in a live `campaign.t_campaign_product` row by `product_id` or by `product_category_id` equal to the category of the product, that category only (or the campaign has no live product row), and the campaign has a live discount and a live budget.
+- One campaign for each item: when several campaigns apply, the one with the largest discount for that item wins, a tie goes to the smaller campaign `id`, discounts are never stacked and there is no fallback to another campaign when the budget of the winner is short. `PERCENTAGE`: `ROUND(price x quantity x discount_value / 100, 2)` (half up, for each item). `FIXED_AMOUNT`: `discount_value x quantity` (baht per unit). The discount of an item is never more than `(selling_price - cost_price) x quantity` of its lot, so an item is never sold below its cost, the part above that is dropped.
+- The preview only reads the budget: when the remaining amount of a campaign is less than the discounts the campaign gives to one shop order, every cart line of that order that uses the campaign is returned in `problems` with the reason `DISCOUNT_BUDGET_EXHAUSTED` (`maxOrderQuantity` is the remaining quantity of the lot, the stock itself is fine) and `canCheckout` is false. Nothing is reserved here.
+- This follows the campaign design (`docs/superpowers/specs/2026-11-06-campaign-design.md`, C2 to C9, approved by the product owner on 2026-11-06).
 
 - The response lists the lines that can be ordered in `shops` (AVAILABLE lines only) and the lines that cannot in `problems`. `canCheckout` is true only when `problems` is empty and `shops` is not empty, it is the same test that the create order API applies. The stock can still change between the preview and the order, the order API checks again.
 
@@ -108,16 +113,16 @@ curl --location --request GET 'https://www.domain.com/api-dev/v1/checkout?addres
 
 #### Shop Object
 
-|     | Parameter Name | Data Type                     | M/O       | Source           | Field                      | Description                                           | Example                              |
-| --- | -------------- | ----------------------------- | --------- | ---------------- | -------------------------- | ----------------------------------------------------- | ------------------------------------ |
-| 1   | shopId         | String: UUID                  | MANDATORY | Sequence Diagram | data.shops[].shopId        | Shop Id                                               | 5a1b2c3d-4e5f-4a6b-8c7d-9e0f1a2b3c4d |
-| 2   | shopName       | String                        | MANDATORY | Sequence Diagram | data.shops[].shopName      | Shop Name                                             | Acme Store                           |
-| 3   | items          | [Array of Item](#item-object) | MANDATORY | Sequence Diagram | data.shops[].items         | Lines of the shop that can be ordered                 |                                      |
-| 4   | totalPrice     | Numeric                       | MANDATORY | Sequence Diagram | data.shops[].totalPrice    | Sum of lineTotal of the items                         | 617.00                               |
-| 5   | totalDiscount  | Numeric                       | MANDATORY | Sequence Diagram | data.shops[].totalDiscount | Discount, 0.00 for now                                | 0.00                                 |
-| 6   | totalTax       | Numeric                       | MANDATORY | Sequence Diagram | data.shops[].totalTax      | Tax, 0.00 for now                                     | 0.00                                 |
-| 7   | totalShipping  | Numeric                       | MANDATORY | Sequence Diagram | data.shops[].totalShipping | Shipping fee, 0.00 until the payment starts           | 0.00                                 |
-| 8   | totalAmount    | Numeric                       | MANDATORY | Sequence Diagram | data.shops[].totalAmount   | totalPrice - totalDiscount + totalTax + totalShipping | 617.00                               |
+|     | Parameter Name | Data Type                     | M/O       | Source           | Field                      | Description                                             | Example                              |
+| --- | -------------- | ----------------------------- | --------- | ---------------- | -------------------------- | ------------------------------------------------------- | ------------------------------------ |
+| 1   | shopId         | String: UUID                  | MANDATORY | Sequence Diagram | data.shops[].shopId        | Shop Id                                                 | 5a1b2c3d-4e5f-4a6b-8c7d-9e0f1a2b3c4d |
+| 2   | shopName       | String                        | MANDATORY | Sequence Diagram | data.shops[].shopName      | Shop Name                                               | Acme Store                           |
+| 3   | items          | [Array of Item](#item-object) | MANDATORY | Sequence Diagram | data.shops[].items         | Lines of the shop that can be ordered                   |                                      |
+| 4   | totalPrice     | Numeric                       | MANDATORY | Sequence Diagram | data.shops[].totalPrice    | Sum of lineTotal of the items                           | 617.00                               |
+| 5   | totalDiscount  | Numeric                       | MANDATORY | Sequence Diagram | data.shops[].totalDiscount | Discount of the campaign, 0.00 when no campaign applies | 0.00                                 |
+| 6   | totalTax       | Numeric                       | MANDATORY | Sequence Diagram | data.shops[].totalTax      | Tax, 0.00 for now                                       | 0.00                                 |
+| 7   | totalShipping  | Numeric                       | MANDATORY | Sequence Diagram | data.shops[].totalShipping | Shipping fee, 0.00 until the payment starts             | 0.00                                 |
+| 8   | totalAmount    | Numeric                       | MANDATORY | Sequence Diagram | data.shops[].totalAmount   | totalPrice - totalDiscount + totalTax + totalShipping   | 617.00                               |
 
 #### Item Object
 
@@ -153,12 +158,12 @@ curl --location --request GET 'https://www.domain.com/api-dev/v1/checkout?addres
 
 #### Problem Object
 
-|     | Parameter Name   | Data Type    | M/O       | Source           | Field                            | Description                                                                                        | Example                              |
-| --- | ---------------- | ------------ | --------- | ---------------- | -------------------------------- | -------------------------------------------------------------------------------------------------- | ------------------------------------ |
-| 1   | cartId           | String: UUID | MANDATORY | Sequence Diagram | data.problems[].cartId           | Cart line Id that cannot be ordered                                                                | c2b1c3d4-e5f6-4071-9b82-c3d4e5f60718 |
-| 2   | reason           | String       | MANDATORY | Sequence Diagram | data.problems[].reason           | QUANTITY_EXCEEDS_STOCK, OUT_OF_STOCK or UNAVAILABLE (same meaning as the availability of the cart) | QUANTITY_EXCEEDS_STOCK               |
-| 3   | quantity         | Numeric      | MANDATORY | Sequence Diagram | data.problems[].quantity         | Quantity in the cart                                                                               | 10                                   |
-| 4   | maxOrderQuantity | Numeric      | MANDATORY | Sequence Diagram | data.problems[].maxOrderQuantity | Remaining quantity of the lot that is on sale, 0 when OUT_OF_STOCK or UNAVAILABLE                  | 5                                    |
+|     | Parameter Name   | Data Type    | M/O       | Source           | Field                            | Description                                                                                                                                                                                       | Example                              |
+| --- | ---------------- | ------------ | --------- | ---------------- | -------------------------------- | ------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------- | ------------------------------------ |
+| 1   | cartId           | String: UUID | MANDATORY | Sequence Diagram | data.problems[].cartId           | Cart line Id that cannot be ordered                                                                                                                                                               | c2b1c3d4-e5f6-4071-9b82-c3d4e5f60718 |
+| 2   | reason           | String       | MANDATORY | Sequence Diagram | data.problems[].reason           | QUANTITY_EXCEEDS_STOCK, OUT_OF_STOCK or UNAVAILABLE (same meaning as the availability of the cart) or DISCOUNT_BUDGET_EXHAUSTED (the budget of a campaign cannot cover the discount of the order) | QUANTITY_EXCEEDS_STOCK               |
+| 3   | quantity         | Numeric      | MANDATORY | Sequence Diagram | data.problems[].quantity         | Quantity in the cart                                                                                                                                                                              | 10                                   |
+| 4   | maxOrderQuantity | Numeric      | MANDATORY | Sequence Diagram | data.problems[].maxOrderQuantity | Remaining quantity of the lot that is on sale, 0 when OUT_OF_STOCK or UNAVAILABLE                                                                                                                 | 5                                    |
 
 ### Example Response Parameters
 
@@ -266,6 +271,117 @@ curl --location --request GET 'https://www.domain.com/api-dev/v1/checkout?addres
             "itemCount": 3,
             "totalQuantity": 4,
             "totalAmount": 1137.0
+        },
+        "problems": [],
+        "canCheckout": true
+    }
+}
+```
+
+#### Success - With Campaign
+
+```JSON
+{
+    "status": {
+        "code": 200,
+        "message": "Ok",
+        "bizCode": "S10000",
+        "bizMessage": "Inquiry Checkout Success",
+        "requestId": "req-9c8d4e6f-7a0b-4b1c-d3e5-6f7a8b9c0d1e",
+        "timestamp": "2026-11-06T09:00:00.123Z",
+        "status": "SUCCESS"
+    },
+    "data": {
+        "address": {
+            "addressId": "a1d2e3f4-0b1c-4d2e-8f3a-4b5c6d7e8f90",
+            "title": "Home"
+        },
+        "shops": [
+            {
+                "shopId": "5a1b2c3d-4e5f-4a6b-8c7d-9e0f1a2b3c4d",
+                "shopName": "Acme Store",
+                "items": [
+                    {
+                        "cartId": "c1a0b2c3-d4e5-4f60-8a71-b2c3d4e5f607",
+                        "productId": "e1a2b3c4-d5e6-4f7a-8b9c-0d1e2f3a4b5c",
+                        "productName": "Cotton Shirt",
+                        "skuId": "7b8c9d0e-1f2a-4b3c-9d4e-5f6a7b8c9d0e",
+                        "shopProductSkuId": "9c0d1e2f-3a4b-4c5d-8e6f-7a8b9c0d1e2f",
+                        "skuName": "A / S",
+                        "optionValues": [
+                            {
+                                "optionName": "Pattern",
+                                "value": "A"
+                            },
+                            {
+                                "optionName": "Size",
+                                "value": "S"
+                            }
+                        ],
+                        "imagePath": "/products/shirt/a.png",
+                        "quantity": 2,
+                        "sellingPrice": 199.0,
+                        "lineTotal": 398.0
+                    },
+                    {
+                        "cartId": "c2b1c3d4-e5f6-4071-9b82-c3d4e5f60718",
+                        "productId": "f2b3c4d5-e6f7-4a8b-9c0d-1e2f3a4b5c6d",
+                        "productName": "Wireless Mouse",
+                        "skuId": "8c9d0e1f-2a3b-4c4d-8e5f-6a7b8c9d0e1f",
+                        "shopProductSkuId": "ad1e2f3a-4b5c-4d6e-9f7a-8b9c0d1e2f3a",
+                        "skuName": "Wireless Mouse",
+                        "optionValues": [],
+                        "imagePath": "/products/wireless-mouse/1.png",
+                        "quantity": 1,
+                        "sellingPrice": 219.0,
+                        "lineTotal": 219.0
+                    }
+                ],
+                "totalPrice": 617.0,
+                "totalDiscount": 61.7,
+                "totalTax": 0.0,
+                "totalShipping": 0.0,
+                "totalAmount": 555.3
+            },
+            {
+                "shopId": "6b2c3d4e-5f60-4b7c-9d8e-0f1a2b3c4d5e",
+                "shopName": "Beta Shop",
+                "items": [
+                    {
+                        "cartId": "c3c2d4e5-f607-4182-8c93-d4e5f6071829",
+                        "productId": "e1a2b3c4-d5e6-4f7a-8b9c-0d1e2f3a4b5c",
+                        "productName": "Cotton Shirt",
+                        "skuId": "9d0e1f2a-3b4c-4d5e-9f6a-7b8c9d0e1f2a",
+                        "shopProductSkuId": "be2f3a4b-5c6d-4e7f-8a8b-9c0d1e2f3a4b",
+                        "skuName": "B / M",
+                        "optionValues": [
+                            {
+                                "optionName": "Pattern",
+                                "value": "B"
+                            },
+                            {
+                                "optionName": "Size",
+                                "value": "M"
+                            }
+                        ],
+                        "imagePath": "/products/shirt/main.png",
+                        "quantity": 1,
+                        "sellingPrice": 520.0,
+                        "lineTotal": 520.0
+                    }
+                ],
+                "totalPrice": 520.0,
+                "totalDiscount": 0.0,
+                "totalTax": 0.0,
+                "totalShipping": 0.0,
+                "totalAmount": 520.0
+            }
+        ],
+        "summary": {
+            "shopCount": 2,
+            "itemCount": 3,
+            "totalQuantity": 4,
+            "totalAmount": 1075.3
         },
         "problems": [],
         "canCheckout": true
@@ -505,4 +621,60 @@ FROM authen.t_user_address ua
 WHERE ua.id = '<sequence.addressId>'
 AND ua.user_id = '<sequence.userId>'
 AND ua.row_status = 'ACTIVE'
+```
+
+### Table: [campaign.m_campaign](../../../schema/campaign/m_campaign.md)
+
+#### QUERY - Get the campaigns that apply to the shop
+
+```SQL
+SELECT
+    c.id as campaign_id,
+    c.name,
+    d.discount_type,
+    d.discount_value,
+    b.id as budget_id,
+    b.remaining
+FROM campaign.m_campaign c
+INNER JOIN campaign.t_campaign_discount d
+    ON d.campaign_id = c.id
+    AND d.row_status = 'ACTIVE'
+INNER JOIN campaign.m_campaign_budget b
+    ON b.campaign_id = c.id
+    AND b.row_status = 'ACTIVE'
+WHERE c.row_status = 'ACTIVE'
+AND c.start_at <= NOW() AT TIME ZONE 'UTC'
+AND NOW() AT TIME ZONE 'UTC' < c.end_at
+AND (EXISTS (
+        SELECT 1
+        FROM campaign.t_campaign_shop cs
+        WHERE cs.campaign_id = c.id
+        AND cs.shop_id = '<sequence.shopId>'
+        AND cs.row_status = 'ACTIVE'
+    ) OR NOT EXISTS (
+        SELECT 1
+        FROM campaign.t_campaign_shop cs
+        WHERE cs.campaign_id = c.id
+        AND cs.row_status = 'ACTIVE'
+    ))
+ORDER BY c.id
+```
+
+### Table: [campaign.t_campaign_product](../../../schema/campaign/t_campaign_product.md)
+
+#### QUERY - Get the products and categories of the campaigns
+
+```SQL
+SELECT
+    cp.campaign_id,
+    cp.product_id,
+    cp.product_category_id,
+    p.id as matched_product_id
+FROM campaign.t_campaign_product cp
+LEFT JOIN product.m_product p
+    ON p.id = cp.product_id
+    OR p.category_id = cp.product_category_id
+WHERE cp.campaign_id IN ('<sequence.campaignIds>')
+AND cp.row_status = 'ACTIVE'
+AND p.id IN ('<sequence.productIds>') -- a campaign without a live product row is for every product
 ```

@@ -17,12 +17,13 @@ Description: Transaction table of the `campaign` schema (defined in `db/migratio
 
 ## Constain
 
-| Key Name                       | Column Name | Description                                                                   |
-| ------------------------------ | ----------- | ----------------------------------------------------------------------------- |
-| pk_t_campaign_shop_id          | id          | Primary key                                                                   |
-| fk_t_campaign_shop_campaign_id | campaign_id | References campaign.m_campaign(id), ON DELETE CASCADE                         |
-| fk_t_campaign_shop_shop_id     | shop_id     | References shop.m_shop(id), ON DELETE CASCADE                                 |
-| ck_t_campaign_shop_row_status  | row_status  | CHECK (row_status IN ('ACTIVE', 'INACTIVE', 'DELETED', 'LOCKED', 'ARCHIVED')) |
+| Key Name                               | Column Name          | Description                                                                    |
+| -------------------------------------- | -------------------- | ------------------------------------------------------------------------------ |
+| pk_t_campaign_shop_id                  | id                   | Primary key                                                                    |
+| fk_t_campaign_shop_campaign_id         | campaign_id          | References campaign.m_campaign(id), ON DELETE CASCADE                          |
+| fk_t_campaign_shop_shop_id             | shop_id              | References shop.m_shop(id), ON DELETE CASCADE                                  |
+| ck_t_campaign_shop_row_status          | row_status           | CHECK (row_status IN ('ACTIVE', 'INACTIVE', 'DELETED', 'LOCKED', 'ARCHIVED'))  |
+| uq_t_campaign_shop_campaign_id_shop_id | campaign_id, shop_id | Unique among rows where row_status <> 'DELETED' (a shop joins a campaign once) |
 
 ---
 
@@ -46,4 +47,8 @@ CREATE TABLE
         campaign_id UUID NOT NULL REFERENCES campaign.m_campaign (id) ON DELETE CASCADE,
         shop_id UUID NOT NULL REFERENCES shop.m_shop (id) ON DELETE CASCADE
     );
+
+CREATE UNIQUE INDEX IF NOT EXISTS uq_t_campaign_shop_campaign_id_shop_id ON campaign.t_campaign_shop (campaign_id, shop_id)
+WHERE
+    row_status <> 'DELETED';
 ```

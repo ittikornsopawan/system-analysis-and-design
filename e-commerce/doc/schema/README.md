@@ -104,8 +104,8 @@
 
 | Table | Type | Columns | FKs |
 | ----- | ---- | ------: | --: |
-| [m_campaign_budget](campaign/m_campaign_budget.md) | Master | 8 | 1 |
-| [m_campaign_budget_ledger](campaign/m_campaign_budget_ledger.md) | Master | 11 | 2 |
+| [m_campaign_budget](campaign/m_campaign_budget.md) | Master | 9 | 1 |
+| [m_campaign_budget_ledger](campaign/m_campaign_budget_ledger.md) | Master | 13 | 3 |
 | [m_campaign](campaign/m_campaign.md) | Master | 10 | 0 |
 | [t_campaign_product](campaign/t_campaign_product.md) | Transaction | 9 | 3 |
 | [t_campaign_shop](campaign/t_campaign_shop.md) | Transaction | 8 | 2 |

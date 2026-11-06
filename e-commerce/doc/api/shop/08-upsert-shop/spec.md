@@ -65,6 +65,7 @@
 - A shop cannot be deleted while it has a product (`shop.t_shop_product` that is not DELETED) or an order (`sales.t_order` that is not DELETED), 409 (E10006). Deleting a shop deletes (soft) all of its images. Archiving is always allowed and keeps everything.
 - Images follow the rule of the nested lists of the project: an image without `id` is inserted, an image with `id` is updated, `rowStatus` DELETED deletes it and images that are not in the list are kept. An `id` that does not belong to the shop is rejected with 404 (E10004), `id` must not be duplicated in the request, `type` and `imagePath` are required (400, E10001), and the id of a DELETED image counts as not found.
 - Images of the same type: after the request is applied the shop can have at most 1 LOGO image and 1 WALLPAPER image that are not DELETED. INACTIVE, LOCKED and ARCHIVED images still hold the place. To replace the logo, update the existing image (send its `id`) or delete it in the same request. Sending a new LOGO or WALLPAPER image without `id` while the shop has one that stays is rejected with 409 (E10003) and a message with the type. Two images of the LOGO or WALLPAPER type that are not DELETED in the same request are rejected with 400 (E10001). The shop can have at most 10 BANNER images that are not DELETED (the maximum is configurable), otherwise 400 (E10001). The `type` of an existing image can be changed when the result follows these rules.
+- A shop cannot be deleted while it is in a campaign that is not DELETED and has not ended (a live `campaign.t_campaign_shop` row of a campaign whose `end_at` is after now), 409 (E10006) with the campaign name in the message. Take it out of the campaign first with the upsert campaign API (a campaign that ended or was deleted does not block). Archiving is always allowed. (`docs/superpowers/specs/2026-11-06-campaign-design.md`, C13, approved by the product owner on 2026-11-06)
 - Execution order: validate the request (400) -> existence checks (404) -> permission (403) -> duplicate name check (409, E10003) -> in-use check (409, E10006, only when `rowStatus` is DELETED) -> write the shop, the images and, for an insert, the ADMIN row.
 - HTTP status of the single upsert: Insert 201 Created, Update 200 Ok, Delete 204 No Content (no response body), Archive 200 Ok.
 
@@ -567,6 +568,22 @@ HTTP/1.1 204 No Content
 }
 ```
 
+#### Fail - Conflict Campaign In Use
+
+```JSON
+{
+    "status": {
+        "code": 409,
+        "message": "Conflict",
+        "bizCode": "E10006",
+        "bizMessage": "The shop is in a campaign that has not ended (Black Friday 2026) and cannot be deleted.",
+        "requestId": "req-470a1b2c-3d4e-5f6a-7b8c-9d0e1f2a3b4c",
+        "timestamp": "2026-11-06T09:47:29.123Z",
+        "status": "ERROR"
+    }
+}
+```
+
 #### Fail - Request Timeout
 
 ```JSON
@@ -832,4 +849,22 @@ SET
     row_status = 'DELETED'
 WHERE shop_id = '<sequence.id>' -- only when rowStatus is DELETED
 AND row_status <> 'DELETED'
+```
+
+### Table: [campaign.t_campaign_shop](../../../schema/campaign/t_campaign_shop.md)
+
+#### QUERY - Check shop campaigns in use
+
+```SQL
+SELECT
+    cs.id as campaign_shop_id,
+    c.name
+FROM campaign.t_campaign_shop cs
+INNER JOIN campaign.m_campaign c
+    ON c.id = cs.campaign_id
+WHERE cs.shop_id = '<sequence.id>'
+AND cs.row_status <> 'DELETED'
+AND c.row_status <> 'DELETED'
+AND c.end_at > NOW() AT TIME ZONE 'UTC' -- a campaign that ended or was deleted does not block, answer 409 (E10006) when a row is found
+LIMIT 1
 ```

@@ -111,3 +111,45 @@ Status: Complete, reviewed by the lead SA (gate 1, gate 2 and one re-check), wai
 - [x] Run every checker, the audit and the database tests after rebasing on `origin/main`.
 
 Verification: see the pull request. The authen checkers caught 120 of 120 deliberate faults and the migration 10 of 10 according to the author; the lead did not rerun them. Tests 2 to 6 of the SQL file were not seen failing before the migration change (the script stops at the first error of a file); their sharpness was shown by deliberate migration faults. Nothing was run against a backend or a real database; the existing backend differs from the specs in endpoint paths and token lifetime, as written in the design document.
+
+## e-commerce: Shipping domain (WP3)
+
+Status: Complete (PR #10 merged into `main` at `85e64de` on 2026-11-06); S3 was answered by the product owner (7 days, reported by the lead SA) and is written up in WP3b below
+
+- [x] Read the shop-domain hand-off, roadmap WP3, order design R38–R50, migrations 06 and 08, schema docs, sales specs, and the data-modeling and api-contract-design skills.
+- [x] Ask the product owner the business questions and agree the payment contract with the lead SA.
+- [x] Write `docs/superpowers/specs/2026-11-06-shipping-design.md` (round 1) and get the product owner's approval.
+- [x] Round 2: `08-shipping.test.sql` red then green, migration 08, schema docs, README, ER diagram pages 6 and 8 rendered and viewed.
+- [x] Round 2: six specs in `e-commerce/doc/api/shipping/` and the `shipping-schema` and `shipping-spec` checkers, mutation-tested.
+- [x] Rebase onto `main` after the payment work, pass the lead SA's gate 2, commit and open the PR with the `commit-and-pr` skill.
+- [x] S17 to S22 (decisions added during round 2) decided by the lead SA on 2026-11-06 (technical details, not an owner approval).
+- [x] Product owner answers S3: an order completes by itself 7 days after `shipped_at` when the customer does not confirm (config, reported by the lead SA on 2026-11-06).
+
+Verification: `check_docs.py` 26/26 OK, `audit_all.py` 52 tables 0 findings, `run_db_tests.sh` ALL PASSED. Checkers were mutation-tested on a copy of the merged tree: spec 58/58, schema doc, README and ER 8/8, migration 10/10 through the checker and 10/10 through `run_db_tests.sh`, audit 8/8 (the audit run was before the last rebase). No backend was run against the specs.
+
+## e-commerce: Campaign and discount (WP7)
+
+Status: Round 2 done, reported to the lead SA for gate 2 (round 1 approved by the product owner on 2026-11-06 at 13:00:05Z); not committed
+
+- [x] Round 1: `docs/superpowers/specs/2026-11-06-campaign-design.md` with decisions C1 to C16 and proposals E1 to E8.
+- [x] `09-campaign.test.sql` extended to tests 1 to 11 and red before the migration change (`column "remaining" ... does not exist`), green after.
+- [x] Migration 09 edited in place (period check, unique name, `remaining`, ledger `entry_type` and `order_id`, product target check, partial unique indexes, discount checks); schema docs, README counts, ER pages 7 and 8 rendered and viewed.
+- [x] Three specs in `e-commerce/doc/api/campaign/`: upsert campaign, inquiry campaign, inquiry campaign ledger.
+- [x] `campaign-schema` and `campaign-spec` checkers added before `def main` in `check_docs.py`.
+- [x] E1 to E7 in the delivered specs: `sales/01`, `sales/02` (discount rules, budget reservation, lot order by `id`, campaign examples), `sales/05`, `payment/05`, `payment/02` (budget release), `shop/08–09`, `product/01`, `03`, `04`, `06` (delete blocked while in a running campaign); `order-spec` changed on purpose for the discount examples.
+- [x] Mutation-test the new and the changed checkers with deliberate mistakes (campaign-schema, campaign-spec, order-spec): spec 48/48 (includes the delivered-spec effects and 5 order-spec cases), doc, README, ER and test file 8/8, migration through the checker 11/11 and through `run_db_tests.sh` 11/11 (10/11 first, SQL test 6 was tightened for an INACTIVE budget), audit 10/11 (the miss is an audit limitation, covered by a needle).
+- [x] Full run after the mutation work: every `check_docs.py` sub-command OK, `audit_all.py` 0 findings, `run_db_tests.sh` ALL PASSED (preflight with `--run-checks`); the ER file did not change after it was rendered and viewed.
+- [x] Report gate 2 to the lead SA (new WP7 files separate from the delivered files that were edited).
+- [x] Gate 2 result: passed with one fix (an example where the cap cuts a `FIXED_AMOUNT` discount): `sales/02` now has the Discount Example table and `Success - With Capped Discount`, `campaign-spec` checks the cap and the profits, 8/8 deliberate mistakes caught.
+- [ ] Wait for the lead SA to say that PR #12 is merged, then fetch and rebase once (no rebase before that), and wait for the owner's order to commit.
+
+Verification: `preflight.py --base main --run-checks`: `check_docs.py` 28/28 OK, `audit_all.py` 52 tables 0 findings, `run_db_tests.sh` ALL PASSED (tests 1 to 11 of `09-campaign.test.sql`), no blockers. No backend was run against the specs.
+
+## e-commerce: Shipping automatic completion (WP3b)
+
+Status: Not started (starts after WP7 round 2, no hurry; the lead SA asked for it on 2026-11-06 after the owner answered S3)
+
+- [ ] Write an appendix to `docs/superpowers/specs/2026-11-06-shipping-design.md` with decisions S23 and up: which orders qualify (PROCESSING, every item allocated in shippings that are SHIPPED or DELIVERED, no PENDING shipping left, latest `shipped_at` older than 7 days) and the stuck case of a partial shipment.
+- [ ] Decide the effect on the shipping rows (the system sets SHIPPED to DELIVERED as `system`, or a separate state) with the cost if wrong.
+- [ ] Decide the lock order (order row first), the clash with refund and with S9, and where the rule is written (spec 06 or a new job section, not an endpoint) as a proposal to the lead SA because spec 06 is already merged.
+- [ ] Send the document to the lead SA for gate 1 before any change to a spec, schema or checker.

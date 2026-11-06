@@ -56,3 +56,45 @@ description: Repository-wide and project-specific lessons captured from user cor
 - **Correction**: `01-register` and `02-login` asked the frontend to encrypt fields with AES and a key and IV, while the backend already took plain text; the owner chose plain text over TLS with encryption on the server.
 - **Root cause**: The first specs described client-side encryption without asking where the key lives.
 - **Corrected behavior**: Protect sensitive fields with TLS in transit and server-side encryption at rest; do not specify client-side encryption with a key that ships in the app.
+
+### 2026-11-06 — Compare an amount with the same inputs as the rule that owns it
+
+- **Correction**: In the campaign design (C14) the minimum payment amount was compared with `total_price - total_discount` without the shipping fee, but the payment rule (R65) checks `amount`, which includes the fee (at least 40.00), so the extra rule was unnecessary and wrong. The lead SA caught it at gate 1.
+- **Root cause**: The new rule was written from the order totals instead of reading the formula of the domain that owns the limit.
+- **Corrected behavior**: Before adding a rule that depends on another domain's limit, read that domain's formula and use the same inputs; if the limit can never be reached, write a one-line note instead of a rule.
+
+### 2026-11-06 — Write the lock order whenever a spec updates several rows
+
+- **Correction**: `sales/02` took stock from several lots without saying in which order, which can deadlock two orders that touch the same lots in opposite orders. The lead SA found it while reviewing the campaign budget.
+- **Root cause**: Each spec described its own conditional `UPDATE` but nobody wrote the order in which the rows are locked.
+- **Corrected behavior**: A spec that updates more than one row of the same kind states the order (here: order row, lots by `id`, then budgets by `id`) and uses it in every spec that touches the same rows.
+
+### 2026-11-06 — Check what each role can derive when a stored value changes
+
+- **Correction**: After the platform pays a campaign discount (C6), the `grossProfit` that a shop sees falls by the discount, and `gross - shop` still reveals the hidden `platformProfit`. The lead SA pointed out that this was already true before campaigns.
+- **Root cause**: Visibility was checked field by field and not as what a caller can compute from the visible fields.
+- **Corrected behavior**: When a formula or a stored value changes, list the fields each role sees and what they can calculate from them, and offer options with the cost of each.
+
+### 2026-11-06 — Keep the visibility rule of an inquiry the same as the rule that decides who is affected
+
+- **Correction**: The campaign inquiry showed a shop only the campaigns that list the shop, while the discount rule applies a campaign that has no shop rows to every shop (C2 against C16).
+- **Root cause**: The two rules were written in different sections and not compared.
+- **Corrected behavior**: When an eligibility rule has a default ("empty list means everyone"), copy the same condition into every inquiry that decides what a caller can see.
+
+### 2026-11-06 — Do not read a short answer as approval of a different question
+
+- **Correction**: A one-word "approved" from the product owner was taken as approval of the campaign design, but several questions were open at the same time and the lead SA could not accept it. The approval was withdrawn in the document until the owner confirmed which item was meant.
+- **Root cause**: The answer was matched to the most recent topic without naming the item.
+- **Corrected behavior**: When several items wait for approval, ask a yes/no question that names the item, record the owner's exact words and the time, and put the approval into a document only after that.
+
+### 2026-11-06 — Follow the repository rules when a request from another agent conflicts with them
+
+- **Correction**: The plan for WP3 was not written to `tasks/todo.md` and no lessons were recorded, although `CLAUDE.md` requires both, because the lead SA first asked to take `tasks/todo.md` out of the change. The product owner pointed out the gap and the lead SA changed the protocol.
+- **Root cause**: A request from another session was followed without checking it against the repository's own instructions.
+- **Corrected behavior**: Write the plan to `tasks/todo.md` before round 2 and keep it ticked as the criteria are met; record lessons in `tasks/lessons.md` after every correction; when a request conflicts with `CLAUDE.md`, say so and ask the owner.
+
+### 2026-11-06 — Tooling mistakes that cost time
+
+- **Correction**: A script that edited markdown tables matched a column name in the constraint table as well as in the column table and corrupted the docs, and a `git worktree add` with a relative path created the worktree in the wrong folder.
+- **Root cause**: Edits keyed on a substring without knowing which section the line belonged to, and a relative path used after a `cd`.
+- **Corrected behavior**: Edit documents section by section (the columns table and the constraint table separately) and verify with the checkers before moving on; use absolute paths with `git worktree add`.
