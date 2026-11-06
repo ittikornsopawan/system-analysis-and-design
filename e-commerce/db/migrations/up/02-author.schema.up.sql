@@ -16,9 +16,13 @@ CREATE TABLE
                 'ARCHIVED'
             )
         ),
-        name VARCHAR(64) NOT NULL UNIQUE,
+        name VARCHAR(64) NOT NULL,
         description VARCHAR(256) NOT NULL
     );
+
+CREATE UNIQUE INDEX IF NOT EXISTS uq_m_role_name ON author.m_role (name)
+WHERE
+    row_status <> 'DELETED';
 
 CREATE TABLE
     IF NOT EXISTS author.m_permission (
@@ -36,9 +40,13 @@ CREATE TABLE
                 'ARCHIVED'
             )
         ),
-        name VARCHAR(64) NOT NULL UNIQUE,
+        name VARCHAR(64) NOT NULL,
         description VARCHAR(256) NOT NULL
     );
+
+CREATE UNIQUE INDEX IF NOT EXISTS uq_m_permission_name ON author.m_permission (name)
+WHERE
+    row_status <> 'DELETED';
 
 CREATE TABLE
     IF NOT EXISTS author.m_scope (
@@ -56,10 +64,14 @@ CREATE TABLE
                 'ARCHIVED'
             )
         ),
-        scope VARCHAR(64) NOT NULL UNIQUE,
+        scope VARCHAR(64) NOT NULL,
         name VARCHAR(64) NOT NULL,
         description VARCHAR(256) NOT NULL
     );
+
+CREATE UNIQUE INDEX IF NOT EXISTS uq_m_scope_scope ON author.m_scope (scope)
+WHERE
+    row_status <> 'DELETED';
 
 CREATE TABLE
     IF NOT EXISTS author.t_permission_scope (
@@ -77,10 +89,13 @@ CREATE TABLE
                 'ARCHIVED'
             )
         ),
-        permission_id UUID NOT NULL REFERENCES author.m_permission (id) ON DELETE CASCADE,
-        scope_id UUID NOT NULL REFERENCES author.m_scope (id) ON DELETE CASCADE,
-        UNIQUE (permission_id, scope_id)
+        permission_id UUID NOT NULL REFERENCES author.m_permission (id) ON DELETE RESTRICT,
+        scope_id UUID NOT NULL REFERENCES author.m_scope (id) ON DELETE RESTRICT
     );
+
+CREATE UNIQUE INDEX IF NOT EXISTS uq_t_permission_scope_permission_id_scope_id ON author.t_permission_scope (permission_id, scope_id)
+WHERE
+    row_status <> 'DELETED';
 
 CREATE TABLE
     IF NOT EXISTS author.t_role_permission (
@@ -98,10 +113,13 @@ CREATE TABLE
                 'ARCHIVED'
             )
         ),
-        role_id UUID NOT NULL REFERENCES author.m_role (id) ON DELETE CASCADE,
-        permission_id UUID NOT NULL REFERENCES author.m_permission (id) ON DELETE CASCADE,
-        UNIQUE (role_id, permission_id)
+        role_id UUID NOT NULL REFERENCES author.m_role (id) ON DELETE RESTRICT,
+        permission_id UUID NOT NULL REFERENCES author.m_permission (id) ON DELETE RESTRICT
     );
+
+CREATE UNIQUE INDEX IF NOT EXISTS uq_t_role_permission_role_id_permission_id ON author.t_role_permission (role_id, permission_id)
+WHERE
+    row_status <> 'DELETED';
 
 CREATE TABLE
     IF NOT EXISTS author.t_role_permission_scope (
@@ -120,9 +138,12 @@ CREATE TABLE
             )
         ),
         role_permission_id UUID NOT NULL REFERENCES author.t_role_permission (id) ON DELETE CASCADE,
-        permission_scope_id UUID NOT NULL REFERENCES author.m_scope (id) ON DELETE CASCADE,
-        UNIQUE (role_permission_id, permission_scope_id)
+        permission_scope_id UUID NOT NULL REFERENCES author.t_permission_scope (id) ON DELETE RESTRICT
     );
+
+CREATE UNIQUE INDEX IF NOT EXISTS uq_t_role_permission_scope_role_permission_scope ON author.t_role_permission_scope (role_permission_id, permission_scope_id)
+WHERE
+    row_status <> 'DELETED';
 
 CREATE TABLE
     IF NOT EXISTS author.t_user_role (
@@ -141,9 +162,12 @@ CREATE TABLE
             )
         ),
         user_id UUID NOT NULL REFERENCES authen.m_user (id) ON DELETE CASCADE,
-        role_id UUID NOT NULL REFERENCES author.m_role (id) ON DELETE CASCADE,
-        UNIQUE (user_id, role_id)
+        role_id UUID NOT NULL REFERENCES author.m_role (id) ON DELETE RESTRICT
     );
+
+CREATE UNIQUE INDEX IF NOT EXISTS uq_t_user_role_user_id_role_id ON author.t_user_role (user_id, role_id)
+WHERE
+    row_status <> 'DELETED';
 
 CREATE TABLE
     IF NOT EXISTS author.t_user_permission (
@@ -162,6 +186,16 @@ CREATE TABLE
             )
         ),
         user_id UUID NOT NULL REFERENCES authen.m_user (id) ON DELETE CASCADE,
-        permission_id UUID NOT NULL REFERENCES author.m_permission (id) ON DELETE CASCADE,
-        UNIQUE (user_id, permission_id)
+        permission_id UUID NOT NULL REFERENCES author.m_permission (id) ON DELETE RESTRICT,
+        permission_scope_id UUID REFERENCES author.t_permission_scope (id) ON DELETE RESTRICT
     );
+
+CREATE UNIQUE INDEX IF NOT EXISTS uq_t_user_permission_user_id_permission_id ON author.t_user_permission (user_id, permission_id)
+WHERE
+    permission_scope_id IS NULL
+    AND row_status <> 'DELETED';
+
+CREATE UNIQUE INDEX IF NOT EXISTS uq_t_user_permission_user_id_permission_scope ON author.t_user_permission (user_id, permission_id, permission_scope_id)
+WHERE
+    permission_scope_id IS NOT NULL
+    AND row_status <> 'DELETED';

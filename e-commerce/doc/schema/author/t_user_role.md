@@ -21,8 +21,8 @@ Description: Transaction table of the `author` schema (defined in `db/migrations
 | ------------------------------ | ---------------- | ----------------------------------------------------------------------------- |
 | pk_t_user_role_id              | id               | Primary key                                                                   |
 | fk_t_user_role_user_id         | user_id          | References authen.m_user(id), ON DELETE CASCADE                               |
-| fk_t_user_role_role_id         | role_id          | References author.m_role(id), ON DELETE CASCADE                               |
-| uq_t_user_role_user_id_role_id | user_id, role_id | Unique combination                                                            |
+| fk_t_user_role_role_id         | role_id          | References author.m_role(id), ON DELETE RESTRICT                              |
+| uq_t_user_role_user_id_role_id | user_id, role_id | Unique among rows where row_status <> 'DELETED'                               |
 | ck_t_user_role_row_status      | row_status       | CHECK (row_status IN ('ACTIVE', 'INACTIVE', 'DELETED', 'LOCKED', 'ARCHIVED')) |
 
 ---
@@ -45,7 +45,10 @@ CREATE TABLE
             )
         ),
         user_id UUID NOT NULL REFERENCES authen.m_user (id) ON DELETE CASCADE,
-        role_id UUID NOT NULL REFERENCES author.m_role (id) ON DELETE CASCADE,
-        UNIQUE (user_id, role_id)
+        role_id UUID NOT NULL REFERENCES author.m_role (id) ON DELETE RESTRICT
     );
+
+CREATE UNIQUE INDEX IF NOT EXISTS uq_t_user_role_user_id_role_id ON author.t_user_role (user_id, role_id)
+WHERE
+    row_status <> 'DELETED';
 ```

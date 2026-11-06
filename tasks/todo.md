@@ -167,3 +167,39 @@ Status: Complete
 - [x] Record verification evidence and mark this task complete.
 
 Verification: `python3 -B -m unittest discover -s .agents/skills/agent-workspace/tests -v` passed all 12 tests, covering registry authority from `origin/main`, scope-bound delivery preflight, cleared-marker bypass prevention, symlink and linked-worktree rejection, execution locking, baseline contamination, open PRs on any base, cross-repository PR rejection, clone preparation, and squash-merge parking while preserving the remote branch. Independent forward review found no remaining P1/P2 issues. Team registry YAML, 11 modified Markdown frontmatters, and `AGENTS.md`/`CLAUDE.md` parity passed. `git diff --check` passed. The bundled `quick_validate.py` could not start because PyYAML is not installed; an equivalent Ruby YAML fallback passed its frontmatter, allowed-key, naming, description, and unfinished-placeholder checks.
+
+## e-commerce: WP5 author permissions (5a, 5b, 5c)
+
+Status: 5a complete and rebased on the current `main`, waiting for gate 2 of the lead SA; 5b is deferred and 5c is planned (the product owner told the lead SA to stop after 5a until he gives the next order)
+
+Governing spec: `docs/superpowers/specs/2026-11-06-author-design.md` (approved by the product owner through the lead SA, 2026-11-06). Worktree `.claude/worktrees/author`, branch `feat/author-permissions`.
+
+5a (now): role, permission, scope, user role, me, seed
+
+- [x] Write `db/tests/02-author.test.sql` and `db/tests/02-author-seed.test.sql`, run them against the old migration and see them fail.
+- [x] Change `02-author.schema.up.sql` (partial unique names and pairs, role scope points at the permission scope, `t_user_permission.permission_scope_id`, `RESTRICT` to the master tables) until `run_db_tests.sh` prints `ALL PASSED`.
+- [x] Write `e-commerce/db/seed/author.seed.sql` (role `PLATFORM_ADMIN`, scopes, permission list; idempotent, creates no user) and `grant-platform-admin.sql` (first administrator by `userId`, only when no ACTIVE holder exists).
+- [x] Update the 8 schema docs, the README (`t_user_permission` 9 columns and 3 foreign keys), the ER diagram (rendered and looked at), and record the `seed` folder in `e-commerce/doc/schema/README.md`.
+- [x] Write specs `author/01`–`12` (role, permission, scope: upsert, batch, inquiry; user role: upsert, inquiry; me).
+- [x] Add `author-spec` and `author-schema` to `check_docs.py` before `def main` and mutation-test them (every deliberate mistake caught).
+- [x] Run every `check_docs.py` sub-command, `audit_all.py` (0 findings) and `run_db_tests.sh`; send the gate 2 report to the lead SA.
+
+Verification: on `main` at 553c8f4 plus this change: all 34 `check_docs.py` sub-commands OK, `audit_all.py` 53 tables 0 findings, `run_db_tests.sh` ALL PASSED (including `02-author` 6 tests and `02-author-seed` 4 tests). Deliberate mistakes: 142 of 142 caught by the two new checkers (including the grant-only ACTIVE rule of the user role spec), 15 of 15 caught through the SQL tests (migration, seed and grant script). The first administrator command was tested one after another, not with two sessions at the same time.
+
+## e-commerce: WP5b author permission assignment (deferred)
+
+Status: Deferred until an API enforces permissions (product owner chose the small scope, 2026-11-06)
+
+- [ ] Specs `13`–`17`: role permission (upsert, inquiry), user permission (upsert, inquiry), check. The schema of these tables is already changed in 5a.
+
+Verification: not started
+
+## e-commerce: WP5c admin-only writes for delivered master data APIs
+
+Status: Planned (starts after 5a passes gate 2 and the seed and the first administrator procedure are ready)
+
+- [ ] Add the `PLATFORM_ADMIN` rule, the 403 example and the two permission queries to `shop/05`, `06`, `product/01`, `03`, `04`, `06`, `07`, `09` and `consent/02`.
+- [ ] Adjust the checkers that cover those specs and mutation-test every change.
+- [ ] Run every checker, `audit_all.py` and `run_db_tests.sh`; send the gate 2 report.
+
+Verification: not started

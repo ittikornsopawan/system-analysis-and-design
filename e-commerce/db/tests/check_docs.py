@@ -4293,6 +4293,426 @@ def check_campaign_spec() -> int:
 COMMANDS["campaign-spec"] = check_campaign_spec
 
 
+
+# ---------------------------------------------------------------- author (WP5a): role, permission, scope, user role, me
+AUTHOR_DIR = "e-commerce/doc/api/author"
+AUTHOR_SPECS = {
+    "01": "01-upsert-role", "02": "02-upsert-role-batch", "03": "03-inquiry-role", "04": "04-upsert-permission", "05": "05-upsert-permission-batch",
+    "06": "06-inquiry-permission", "07": "07-upsert-scope", "08": "08-upsert-scope-batch", "09": "09-inquiry-scope", "10": "10-upsert-user-role",
+    "11": "11-inquiry-user-role", "12": "12-me",
+}
+AUTHOR_MASTERS = {  # key: (upsert, batch, inquiry, path, Title, lower, camel, alias, unique column, id field, regex of a valid code, in-use message)
+    "role": ("01", "02", "03", "role", "Role", "role", "role", "r", "name", "roleId", r"^[A-Z][A-Z0-9_]{0,63}$", "Role is assigned to users or has permissions."),
+    "permission": ("04", "05", "06", "permission", "Permission", "permission", "permission", "p", "name", "permissionId", r"^[a-z][a-z0-9_]*(\.[a-z0-9_]+)+$", "Permission is used by roles or users."),
+    "scope": ("07", "08", "09", "scope", "Scope", "scope", "scope", "s", "scope", "scopeId", r"^[A-Z][A-Z0-9_]{0,63}$", "Scope is used by permissions."),
+}
+SINGLE_UPSERT_SPECS.extend(f"{AUTHOR_DIR}/{AUTHOR_SPECS[k]}/spec.md" for k in ("01", "04", "07", "10"))
+BATCH_UPSERT_SPECS.extend(f"{AUTHOR_DIR}/{AUTHOR_SPECS[k]}/spec.md" for k in ("02", "05", "08"))
+AUTHOR_ADMIN = ["#### QUERY - Get the platform administrator role", "#### QUERY - Check platform administrator", "WHERE r.name = 'PLATFORM_ADMIN'", "AND r.row_status = 'ACTIVE'",
+                "AND ur.role_id = '<sequence.roleId>'", "AND ur.row_status = 'ACTIVE'", "(../../../schema/author/m_role.md)", "(../../../schema/author/t_user_role.md)", "Approved by the product owner"]
+AUTHOR_USER_ROLE = "5e6f7a8b-9c0d-4e1f-8a2b-3c4d5e6f7a8b"
+AUTHOR_FORBIDDEN_TEXT = {"10": ["The user must be ACTIVE and the role must be ACTIVE, otherwise 404"]}
+
+
+def author_json(md: str, heading: str):
+    match = re.search(rf"^#### {re.escape(heading)}\n\n(?:Request: [^\n]*\n\n)?```JSON\n(.*?)```", md, re.MULTILINE | re.DOTALL)
+    return json.loads(match.group(1)) if match else None
+
+
+def author_status(md: str, title: str, code: int, biz: str, message: str | None = None) -> list[str]:
+    body = author_json(md, title)
+    if body is None:
+        return [f"no JSON in '{title}'"]
+    status = body["status"]
+    errors = []
+    if status["code"] != code or status["bizCode"] != biz:
+        errors.append(f"'{title}' must be {code} {biz}")
+    if message is not None and status["bizMessage"] != message:
+        errors.append(f"'{title}' must say {message!r}")
+    return errors
+
+
+def author_needles(key: str):
+    kind = {"01": "upsert", "04": "upsert", "07": "upsert", "02": "batch", "05": "batch", "08": "batch", "03": "inquiry", "06": "inquiry", "09": "inquiry"}[key]
+    m = next(v for v in AUTHOR_MASTERS.values() if key in v[:3])
+    _, _, _, path, title, lower, camel, alias, ucol, idname, _, use_msg = m
+    base = [*AUTHOR_ADMIN, "E10009", "#### Fail - Forbidden", f"You do not have permission to {'read' if kind == 'inquiry' else 'manage'} {lower}s."]
+    if kind in ("upsert", "batch"):
+        base.append("Permission: only a platform administrator (a user with an ACTIVE `author.t_user_role` row for the ACTIVE role `PLATFORM_ADMIN`) can call this API")
+    if kind == "upsert":
+        need = [f"# [POST]: v1/author/{path}/upsert", f"### {title} Rules", "-> permission (403, E10009) ->", f"{title} not found.", use_msg, f"{title} {ucol} already exists.",
+                f"Row status must not be DELETED when inserting a {lower}.", f"The value of a DELETED {lower} can be used again.", "Delete 204 No Content", "Archive when rowStatus is ARCHIVED",
+                f"AND {alias}.row_status <> 'DELETED' -- the id of a DELETED {lower} counts as not found", f"AND {alias}.row_status <> 'DELETED'\nAND {alias}.id <> '<sequence.id>'",
+                "Insert " + title + " Success", "Archive " + title + " Success", "E10003", "E10004", "E10006", "E90001"]
+        if lower == "role":
+            need += ["is the system role", "#### Fail - Conflict System Role", "#### QUERY - Check system role", f"AND {alias}.name = 'PLATFORM_ADMIN'", "System role cannot be changed."]
+        if lower == "permission":
+            need += ["#### Scope Object", "#### QUERY - Check scope", "#### QUERY - Check role permission scope in use", "#### QUERY - Check user permission scope in use", "Scope is used by roles or users.",
+                     "#### Fail - Not Found Scope", "Scopes that are not listed are kept."]
+        return base + need
+    if kind == "batch":
+        need = [f"# [POST]: v1/author/{path}/upsert/batch", f"### {title} Rules (same as the single upsert, applied per {lower})", f"{camel}s[2]: Id is duplicated with {camel}s[1].", f"{camel}s[2]: {ucol.capitalize()} is duplicated with {camel}s[0].",
+                f"{title}s must contain 1 to 100 items.", "The 403 message has no item position", "always HTTP 200", "ARCHIVE)", f"{camel}s[0]: {title} {ucol} already exists.", f"{camel}s[2]: {use_msg}",
+                f"{camel}s[1]: {title} not found.", "Batch Upsert " + title + " Success"]
+        if lower == "role":
+            need += [f"{camel}s[1]: System role cannot be changed.", "#### QUERY - Check system role"]
+        if lower == "permission":
+            need += ["#### Scope Object", "#### QUERY - Check scope", f"{camel}s[0]: Scope not found."]
+        return base + need
+    need = [f"# [GET]: v1/author/{path}", f"### {title} Inquiry Rules", f"ORDER BY {alias}.{ucol}, {alias}.id", f"Request: `GET v1/author/{path}?id=", "Row status must be one of ACTIVE, INACTIVE, LOCKED, ARCHIVED.",
+            "Page Index and Page Size must be greater than 0", "Only a platform administrator can read", f"Inquiry {title} Success", f"WHERE {alias}.row_status <> 'DELETED'"]
+    if lower == "permission":
+        need += ["#### Scope Object", "#### QUERY - Get the scopes of the permissions", "#### QUERY - Get scope"]
+    return base + need
+
+
+def author_counted(key: str):
+    m = next((v for v in AUTHOR_MASTERS.values() if key in v[:3]), None)
+    if m and key == m[2]:
+        alias, ucol = m[7], m[8]
+        return [(f"AND ({alias}.{ucol} ILIKE '%<sequence.search>%' OR {alias}.description ILIKE '%<sequence.search>%') -- only when search is specified", 2),
+                (f"AND {alias}.row_status = '<sequence.rowStatus>' -- only when rowStatus is specified", 2)]
+    if key == "10":
+        return [("-- only when the request gives the role (an insert, or opening a row that is not ACTIVE)", 2)]
+    if key == "11":
+        return [("AND ur.row_status = '<sequence.rowStatus>' -- only when rowStatus is specified", 2), ("AND ur.role_id = '<sequence.filterRoleId>' -- only when roleId is specified", 2)]
+    return []
+
+
+AUTHOR_OTHER_NEEDLES = {
+    "10": ["# [POST]: v1/author/user/role/upsert", "### User Role Rules", "**The platform keeps at least one administrator.**", "Lock order:", "FOR UPDATE -- the target users, in ascending id order, before any role row",
+           "FOR UPDATE -- only when the request touches the PLATFORM_ADMIN assignment", "#### QUERY - Count the platform administrators after the write", "#### Fail - Conflict Last Administrator",
+           "The platform must keep at least one administrator.", "The user already has this role.", "User Id and Role Id cannot be changed.", "-> permission (403, E10009) -> duplicate check (409, E10003) -> write -> last administrator rule",
+           "AND ur.row_status = 'ACTIVE' -- the request is rolled back (409) when the count is 0", "        AND u.row_status = 'ACTIVE'\nWHERE ur.role_id = '<sequence.platformAdminRoleId>'", "INNER JOIN authen.m_user u", "Delete 204 No Content", "Archive when rowStatus is ARCHIVED", "User or role not found or not ACTIVE.", *AUTHOR_ADMIN,
+           "**The user and the role must be ACTIVE only when the request gives the role**",
+           "Taking the role away (`rowStatus` DELETED, ARCHIVED, INACTIVE or LOCKED) works whatever the status of the user and of the role is",
+           "The last administrator rule below still applies in full.", "existence checks (404, the row of `id`, and the user and the role only when the request gives the role)"],
+    "11": ["# [GET]: v1/author/user/role", "### User Role Inquiry Rules", "ORDER BY r.name, u.display_name, ur.id", f"Request: `GET v1/author/user/role?id={AUTHOR_USER_ROLE}`", "Only a platform administrator can read the roles of users",
+           "#### Fail - Forbidden", "E10009", *AUTHOR_ADMIN],
+    "12": ["# [GET]: v1/author/me", "### Me Rules", "not stored in the access token", "ORDER BY r.name, r.id", "AND r.row_status = 'ACTIVE'", "AND ur.row_status = 'ACTIVE'", "Any caller with a valid access token can call this API",
+           "Success - Platform Administrator", "Success - No Role"],
+}
+
+
+def author_upsert_errors(m, md: str, batch: bool) -> list[str]:
+    _, _, _, path, title, lower, camel, alias, ucol, idname, regex, use_msg = m
+    errors = []
+    if batch:
+        request = json.loads(re.search(r"#### Example Body Parameters\n\n```JSON\n(.*?)```", md, re.DOTALL).group(1))
+        items = request[f"{camel}s"]
+        result = author_json(md, "Success")["data"][f"{camel}s"]
+        if len(result) != len(items):
+            errors.append(f"{len(result)} results for {len(items)} items")
+        ids = [i["id"] for i in items if "id" in i]
+        values = [i[ucol] for i in items if i.get("rowStatus") != "DELETED"]
+        if len(ids) != len(set(ids)) or len(values) != len(set(values)):
+            errors.append("the request repeats an id or a " + ucol)
+        for position, (item, res) in enumerate(zip(items, result)):
+            action = {"DELETED": "DELETE", "ARCHIVED": "ARCHIVE"}.get(item.get("rowStatus"), "UPDATE" if "id" in item else "INSERT")
+            if res["index"] != position or res["action"] != action:
+                errors.append(f"result {position} should be index {position} and action {action}")
+            if "id" in item and res[idname] != item["id"]:
+                errors.append(f"result {position} answers another {idname}")
+            if "id" not in item and item.get("rowStatus") == "DELETED":
+                errors.append(f"item {position} deletes without an id")
+            if not re.match(regex, item[ucol]) or len(item[ucol]) > 64:
+                errors.append(f"item {position} has an invalid {ucol} {item[ucol]!r}")
+            if item.get(ucol) == "PLATFORM_ADMIN":
+                errors.append("an example changes PLATFORM_ADMIN")
+        for forbidden in ("Fail - Forbidden", "Fail - Unauthorized", "Fail - Request Timeout", "Fail - Bad Request Item Count"):
+            body = author_json(md, forbidden)
+            if body and "[" in body["status"]["bizMessage"]:
+                errors.append(f"'{forbidden}' must have no item position")
+        for t in ("Fail - Bad Request", "Fail - Not Found", "Fail - Conflict", "Fail - Conflict In Use", "Fail - Bad Request Name", "Fail - Bad Request Row Status", "Fail - Bad Request Duplicate Id", "Fail - Bad Request Duplicate Name"):
+            body = author_json(md, t)
+            if not body or not body["status"]["bizMessage"].startswith(f"{camel}s["):
+                errors.append(f"'{t}' must start with the position {camel}s[i]")
+    else:
+        bodies = {t: json.loads(re.search(rf"##### {t}\n\n```JSON\n(.*?)```", md, re.DOTALL).group(1)) for t in ("Insert", "Update", "Delete")}
+        if "id" in bodies["Insert"]:
+            errors.append("the Insert example must not have an id")
+        rid = bodies["Update"]["id"]
+        if bodies["Delete"]["id"] != rid:
+            errors.append("the Update and Delete examples must use the same id")
+        if bodies["Delete"]["rowStatus"] != "DELETED" or bodies["Insert"]["rowStatus"] == "DELETED":
+            errors.append("Delete must be DELETED and Insert must not be")
+        for label, body in bodies.items():
+            if not re.match(regex, body[ucol]):
+                errors.append(f"the {label} example has an invalid {ucol} {body[ucol]!r}")
+            if body[ucol] == "PLATFORM_ADMIN":
+                errors.append(f"the {label} example changes PLATFORM_ADMIN")
+            seen = [s["scopeId"] for s in body.get("scopes", []) if s.get("rowStatus") != "DELETED"]
+            if len(seen) != len(set(seen)):
+                errors.append(f"the {label} example lists a scope twice")
+        for t in ("Success - Insert", "Success - Update", "Success - Archive"):
+            body = author_json(md, t)
+            if body is None or body["data"][idname] != rid:
+                errors.append(f"'{t}' must answer the id of the Update example")
+        if success_codes(md) != {"Success - Insert": 201, "Success - Update": 200, "Success - Delete": 204, "Success - Archive": 200}:
+            errors.append(f"wrong success codes {success_codes(md)}")
+        for t, code, biz in (("Fail - Bad Request", 400, "E10001"), ("Fail - Bad Request Name", 400, "E10001"), ("Fail - Unauthorized", 401, "E10002"), ("Fail - Forbidden", 403, "E10009"),
+                             ("Fail - Not Found", 404, "E10004"), ("Fail - Conflict", 409, "E10003"), ("Fail - Conflict In Use", 409, "E10006"), ("Fail - Request Timeout", 408, "E90001")):
+            errors += author_status(md, t, code, biz)
+    errors += author_status(md, "Fail - Conflict In Use", 409, "E10006")
+    if batch and set(success_codes(md).values()) != {200}:
+        errors.append("every success example of a batch must answer 200")
+    return errors
+
+
+def author_inquiry_errors(m, md: str) -> list[str]:
+    _, _, _, path, title, lower, camel, alias, ucol, idname, regex, _ = m
+    errors = []
+    by_id = re.search(r"Request: `GET v1/author/[^`]*\?id=([0-9a-f-]{36})`", md).group(1)
+    for t in ("Success", "Success - By Id", "Success - Not Found"):
+        data = author_json(md, t)["data"]
+        if data["totalItems"] != len(data["items"]):
+            errors.append(f"'{t}' totalItems differs from the number of items")
+        if data["totalPages"] != (0 if data["totalItems"] == 0 else -(-data["totalItems"] // data["pageSize"])):
+            errors.append(f"'{t}' has a wrong totalPages")
+        ids = [i[idname] for i in data["items"]]
+        if len(ids) != len(set(ids)) or any(i["rowStatus"] == "DELETED" for i in data["items"]):
+            errors.append(f"'{t}' repeats an id or lists a DELETED row")
+        values = [i[ucol] for i in data["items"]]
+        if values != sorted(values):
+            errors.append(f"'{t}' must be sorted by {ucol}")
+        for item in data["items"]:
+            if not re.match(regex, item[ucol]):
+                errors.append(f"'{t}' has an invalid {ucol} {item[ucol]!r}")
+            for scope in item.get("scopes", []):
+                if set(scope) != {"permissionScopeId", "scopeId", "scope", "scopeName", "rowStatus"}:
+                    errors.append(f"'{t}' has a scope with the wrong keys")
+                if scope["rowStatus"] == "DELETED":
+                    errors.append(f"'{t}' lists a DELETED scope of a permission")
+        if t == "Success - By Id" and ids != [by_id]:
+            errors.append("the By Id example must list only its id")
+        if t == "Success - Not Found" and data["items"]:
+            errors.append("the Not Found example must have no items")
+    for t, code, biz in (("Fail - Bad Request", 400, "E10001"), ("Fail - Unauthorized", 401, "E10002"), ("Fail - Forbidden", 403, "E10009"), ("Fail - Request Timeout", 408, "E90001")):
+        errors += author_status(md, t, code, biz)
+    return errors
+
+
+def author_example_errors(key: str, md: str) -> list[str]:
+    errors = []
+    masters = {v[0]: (v, False) for v in AUTHOR_MASTERS.values()}
+    masters.update({v[1]: (v, True) for v in AUTHOR_MASTERS.values()})
+    inquiry = {v[2]: v for v in AUTHOR_MASTERS.values()}
+    if key in masters:
+        errors += author_upsert_errors(masters[key][0], md, masters[key][1])
+    elif key in inquiry:
+        errors += author_inquiry_errors(inquiry[key], md)
+    elif key == "10":
+        bodies = {t: json.loads(re.search(rf"##### {t}\n\n```JSON\n(.*?)```", md, re.DOTALL).group(1)) for t in ("Insert", "Update", "Delete")}
+        if "id" in bodies["Insert"] or bodies["Update"]["id"] != AUTHOR_USER_ROLE or bodies["Delete"]["id"] != AUTHOR_USER_ROLE:
+            errors.append("Insert has no id, Update and Delete use the user role id")
+        if len({(b["userId"], b["roleId"]) for b in bodies.values()}) != 1:
+            errors.append("the three examples must use the same user and role")
+        if bodies["Delete"]["rowStatus"] != "DELETED" or bodies["Insert"]["rowStatus"] == "DELETED":
+            errors.append("Delete must be DELETED and Insert must not be")
+        if success_codes(md) != {"Success - Insert": 201, "Success - Update": 200, "Success - Delete": 204, "Success - Archive": 200}:
+            errors.append(f"wrong success codes {success_codes(md)}")
+        for t, code, biz in (("Fail - Bad Request", 400, "E10001"), ("Fail - Bad Request User And Role Changed", 400, "E10001"), ("Fail - Unauthorized", 401, "E10002"), ("Fail - Forbidden", 403, "E10009"),
+                             ("Fail - Not Found", 404, "E10004"), ("Fail - Not Found User Or Role", 404, "E10005"), ("Fail - Conflict", 409, "E10003"), ("Fail - Conflict Last Administrator", 409, "E10006"), ("Fail - Request Timeout", 408, "E90001")):
+            errors += author_status(md, t, code, biz)
+        errors += author_status(md, "Fail - Not Found User Or Role", 404, "E10005", "User or role not found or not ACTIVE.")
+        if bodies["Update"]["rowStatus"] == "ACTIVE":
+            errors.append("the Update example must show taking the role away (a row status that is not ACTIVE)")
+    elif key == "11":
+        for t in ("Success", "Success - By Id", "Success - Not Found"):
+            data = author_json(md, t)["data"]
+            if data["totalItems"] != len(data["items"]) or data["totalPages"] != (0 if not data["items"] else 1):
+                errors.append(f"'{t}' has wrong totals")
+            keys = [(i["roleName"], i["userDisplayName"], i["userRoleId"]) for i in data["items"]]
+            if keys != sorted(keys):
+                errors.append(f"'{t}' must be sorted by role name, user display name and id")
+            if any(i["rowStatus"] == "DELETED" for i in data["items"]):
+                errors.append(f"'{t}' lists a DELETED row")
+        for t, code, biz in (("Fail - Bad Request", 400, "E10001"), ("Fail - Unauthorized", 401, "E10002"), ("Fail - Forbidden", 403, "E10009"), ("Fail - Request Timeout", 408, "E90001")):
+            errors += author_status(md, t, code, biz)
+    elif key == "12":
+        for t in ("Success", "Success - Platform Administrator", "Success - No Role"):
+            data = author_json(md, t)["data"]
+            names = [r["name"] for r in data["roles"]]
+            if data["isPlatformAdmin"] != ("PLATFORM_ADMIN" in names):
+                errors.append(f"'{t}': isPlatformAdmin must be true exactly when PLATFORM_ADMIN is a role")
+            if names != sorted(names):
+                errors.append(f"'{t}': roles must be sorted by name")
+        if author_json(md, "Success - No Role")["data"]["roles"] != []:
+            errors.append("the No Role example must have an empty list")
+        for t, code, biz in (("Fail - Unauthorized", 401, "E10002"), ("Fail - Request Timeout", 408, "E90001")):
+            errors += author_status(md, t, code, biz)
+        if "Fail - Forbidden" in md:
+            errors.append("the me API has no 403")
+    return errors
+
+
+def check_author_spec() -> int:
+    errors, mds = [], {}
+    for key, folder in AUTHOR_SPECS.items():
+        path = f"{AUTHOR_DIR}/{folder}/spec.md"
+        try:
+            mds[key] = read(path)
+        except FileNotFoundError:
+            errors.append(f"{path} does not exist")
+            continue
+        md = mds[key]
+        for bad in table_lines_aligned(md):
+            errors.append(f"{path} misaligned table: {bad[:40]}")
+        for bad in json_blocks_parse(md):
+            errors.append(f"{path} invalid JSON block: {bad[:40]}")
+        for link in relative_links_exist(path, md):
+            errors.append(f"{path} broken link {link}")
+        if "ALTER TABLE" in md:
+            errors.append(f"{path} contains ALTER TABLE")
+        if not re.search(r"^\| \d+ +\| authorization +\|", md, re.MULTILINE):
+            errors.append(f"{path} needs the authorization header (every author API is private)")
+        if not (ROOT / path).with_name("sequence.wsd").exists():
+            errors.append(f"{path} has no sequence.wsd beside it")
+        need = author_needles(key) if key in ("01", "02", "03", "04", "05", "06", "07", "08", "09") else AUTHOR_OTHER_NEEDLES[key]
+        for missing in missing_needles(md, need):
+            errors.append(f"{path} missing: {missing!r}")
+        for forbidden in AUTHOR_FORBIDDEN_TEXT.get(key, []):
+            if forbidden in md:
+                errors.append(f"{path} must not contain {forbidden!r}")
+        for text, times in author_counted(key):
+            if md.count(text) != times:
+                errors.append(f"{path}: {text!r} must appear {times} time(s), found {md.count(text)}")
+    if errors:
+        return fail("; ".join(errors))
+    for key, md in mds.items():
+        try:
+            errors.extend(f"{AUTHOR_SPECS[key]}: {e}" for e in author_example_errors(key, md))
+        except (KeyError, TypeError, AttributeError, ValueError, IndexError) as exc:
+            errors.append(f"{AUTHOR_SPECS[key]}: an example does not have the expected shape: {exc!r}")
+    if errors:
+        return fail("; ".join(errors))
+    print("OK: author-spec")
+    return 0
+
+
+COMMANDS["author-spec"] = check_author_spec
+
+AUTHOR_NAME_INDEXES = {
+    "m_role": "CREATE UNIQUE INDEX IF NOT EXISTS uq_m_role_name ON author.m_role (name) WHERE row_status <> 'DELETED'",
+    "m_permission": "CREATE UNIQUE INDEX IF NOT EXISTS uq_m_permission_name ON author.m_permission (name) WHERE row_status <> 'DELETED'",
+    "m_scope": "CREATE UNIQUE INDEX IF NOT EXISTS uq_m_scope_scope ON author.m_scope (scope) WHERE row_status <> 'DELETED'",
+}
+AUTHOR_PAIR_INDEXES = {
+    "t_permission_scope": ["CREATE UNIQUE INDEX IF NOT EXISTS uq_t_permission_scope_permission_id_scope_id ON author.t_permission_scope (permission_id, scope_id) WHERE row_status <> 'DELETED'"],
+    "t_role_permission": ["CREATE UNIQUE INDEX IF NOT EXISTS uq_t_role_permission_role_id_permission_id ON author.t_role_permission (role_id, permission_id) WHERE row_status <> 'DELETED'"],
+    "t_role_permission_scope": ["CREATE UNIQUE INDEX IF NOT EXISTS uq_t_role_permission_scope_role_permission_scope ON author.t_role_permission_scope (role_permission_id, permission_scope_id) WHERE row_status <> 'DELETED'"],
+    "t_user_role": ["CREATE UNIQUE INDEX IF NOT EXISTS uq_t_user_role_user_id_role_id ON author.t_user_role (user_id, role_id) WHERE row_status <> 'DELETED'"],
+    "t_user_permission": ["CREATE UNIQUE INDEX IF NOT EXISTS uq_t_user_permission_user_id_permission_id ON author.t_user_permission (user_id, permission_id) WHERE permission_scope_id IS NULL AND row_status <> 'DELETED'",
+                          "CREATE UNIQUE INDEX IF NOT EXISTS uq_t_user_permission_user_id_permission_scope ON author.t_user_permission (user_id, permission_id, permission_scope_id) WHERE permission_scope_id IS NOT NULL AND row_status <> 'DELETED'"],
+}
+AUTHOR_FKS = {  # table: [(column, target, action)]
+    "t_permission_scope": [("permission_id", "author.m_permission", "RESTRICT"), ("scope_id", "author.m_scope", "RESTRICT")],
+    "t_role_permission": [("role_id", "author.m_role", "RESTRICT"), ("permission_id", "author.m_permission", "RESTRICT")],
+    "t_role_permission_scope": [("role_permission_id", "author.t_role_permission", "CASCADE"), ("permission_scope_id", "author.t_permission_scope", "RESTRICT")],
+    "t_user_role": [("user_id", "authen.m_user", "CASCADE"), ("role_id", "author.m_role", "RESTRICT")],
+    "t_user_permission": [("user_id", "authen.m_user", "CASCADE"), ("permission_id", "author.m_permission", "RESTRICT"), ("permission_scope_id", "author.t_permission_scope", "RESTRICT")],
+}
+
+
+def author_er_rows(table: str) -> list[str]:
+    import xml.etree.ElementTree as ET
+
+    root = ET.fromstring(read("e-commerce/db/er-diagram.drawio"))
+    cells = list(root.iter("mxCell"))
+    rows = []
+    for cell in cells:
+        if cell.get("value") == table:
+            rows.extend(child.get("value") or "" for child in cells if child.get("parent") == cell.get("id"))
+    return rows
+
+
+def check_author_schema() -> int:
+    """WP5a: partial unique names and pairs, role scope points at the permission scope, user permission scope, seed (migration, docs, README, ER, tests)."""
+    errors = []
+    sql = read("e-commerce/db/migrations/up/02-author.schema.up.sql")
+    for table, index in AUTHOR_NAME_INDEXES.items():
+        st = schema_statements(sql, "author", table)
+        create = [s for s in st if s.startswith("CREATE TABLE")]
+        if len(create) != 1 or "UNIQUE" in create[0]:
+            errors.append(f"migration 02: {table} must be created without an inline UNIQUE")
+        if index not in st:
+            errors.append(f"migration 02: missing or different: {index[:90]}")
+    for table, indexes in AUTHOR_PAIR_INDEXES.items():
+        st = schema_statements(sql, "author", table)
+        create = [s for s in st if s.startswith("CREATE TABLE")]
+        if len(create) != 1 or "UNIQUE" in create[0]:
+            errors.append(f"migration 02: {table} must be created without UNIQUE (...)")
+        for index in indexes:
+            if index not in st:
+                errors.append(f"migration 02: missing or different: {index[:90]}")
+        for column, target, action in AUTHOR_FKS.get(table, []):
+            optional = "" if column != "permission_scope_id" or table != "t_user_permission" else ""
+            fk = f"{column} UUID {'NOT NULL ' if not (table == 't_user_permission' and column == 'permission_scope_id') else ''}REFERENCES {target} (id) ON DELETE {action}"
+            if not create or fk not in create[0]:
+                errors.append(f"migration 02: {table} needs '{fk}'")
+    docs = list(AUTHOR_NAME_INDEXES) + list(AUTHOR_PAIR_INDEXES)
+    for table in docs:
+        path = f"e-commerce/doc/schema/author/{table}.md"
+        md = read(path)
+        for bad in table_lines_aligned(md):
+            errors.append(f"{path} misaligned table: {bad[:40]}")
+        st = schema_statements(sql, "author", table)
+        if schema_statements(" ".join(SQL_BLOCK.findall(md)), "author", table) != st:
+            errors.append(f"{path} SQL differs from the migration")
+        if re.search(r"^\| UQ\s+\|", md, re.MULTILINE):
+            errors.append(f"{path} still marks a column as UQ")
+        constraint = md.split("## Constain")[1].split("\n---\n")[0]
+        for index in [i for i in st if i.startswith("CREATE UNIQUE INDEX")]:
+            name = re.search(r"INDEX IF NOT EXISTS (\S+) ON", index).group(1)
+            if name not in constraint:
+                errors.append(f"{path}: the constraint table must list {name}")
+        for column, target, action in AUTHOR_FKS.get(table, []):
+            if f"References {target}(id), ON DELETE {action}" not in constraint:
+                errors.append(f"{path}: the constraint table must say ON DELETE {action} for {column}")
+    if "[author.t_permission_scope.id](t_permission_scope.md)" not in read("e-commerce/doc/schema/author/t_role_permission_scope.md"):
+        errors.append("t_role_permission_scope.md must reference author.t_permission_scope")
+    if not re.search(r"\| permission_scope_id +\| UUID +\| +\| TRUE", read("e-commerce/doc/schema/author/t_user_permission.md")):
+        errors.append("t_user_permission.md must list the nullable permission_scope_id")
+    readme = read("e-commerce/doc/schema/README.md")
+    if "| [t_user_permission](author/t_user_permission.md) | Transaction | 9 | 3 |" not in readme:
+        errors.append("README: t_user_permission must have 9 columns and 3 foreign keys")
+    if "[`db/seed/`](../../db/seed/author.seed.sql)" not in readme or "[`grant-platform-admin.sql`](../../db/seed/grant-platform-admin.sql)" not in readme:
+        errors.append("README must record the db/seed folder and grant-platform-admin.sql")
+    for table in ("m_role", "m_permission", "m_scope"):
+        rows = author_er_rows(f"author.{table}")
+        if len(rows) == 0 or any(r.startswith("UK") for r in rows):
+            errors.append(f"ER diagram: author.{table} must be drawn without the UK marker")
+    for table in AUTHOR_PAIR_INDEXES:
+        if any(r.startswith("UNIQUE") for r in author_er_rows(f"author.{table}")):
+            errors.append(f"ER diagram: author.{table} must not draw UNIQUE (...) (the unique rules are partial)")
+    rows = author_er_rows("author.t_user_permission")
+    if sum("permission_scope_id : uuid ?" in r for r in rows) < 2 or len(rows) < 8:
+        errors.append("ER diagram: author.t_user_permission must draw permission_scope_id : uuid ?")
+    for name in ("02-author.test.sql", "02-author-seed.test.sql"):
+        if not (ROOT / "e-commerce/db/tests" / name).exists():
+            errors.append(f"db/tests/{name} does not exist")
+    seed = read("e-commerce/db/seed/author.seed.sql")
+    for needle in ("'PLATFORM_ADMIN'", "('system', 'ALL', 'All'"):
+        if needle not in seed:
+            errors.append(f"seed missing: {needle}")
+    for needle, times in (("ON CONFLICT (name)", 2), ("ON CONFLICT (scope)", 1), ("ON CONFLICT (permission_id, scope_id)", 1)):
+        if seed.count(needle) != times:
+            errors.append(f"seed: {needle!r} must appear {times} time(s), found {seed.count(needle)}")
+    if re.search(r"INSERT\s+INTO\s+(authen\.|author\.t_(user|role)_)", seed):
+        errors.append("the seed must not create a user or a grant")
+    grant = read("e-commerce/db/seed/grant-platform-admin.sql")
+    for needle in ("FOR UPDATE", "u.id = :'user_id'", "NOT EXISTS", "holder.row_status = 'ACTIVE'", "u.row_status = 'ACTIVE'", "DO UPDATE", "--single-transaction"):
+        if needle not in grant:
+            errors.append(f"grant-platform-admin.sql missing: {needle}")
+    if errors:
+        return fail("; ".join(errors))
+    print("OK: author-schema")
+    return 0
+
+
+COMMANDS["author-schema"] = check_author_schema
+
+
 def main(argv: list[str]) -> int:
     if len(argv) < 2:
         print("usage: check_docs.py <subcommand>")

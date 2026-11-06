@@ -24,8 +24,10 @@ for f in $(ls "$MIG"/down/*.sql | sort -r); do run_file "$f" "down $(basename "$
 for f in $(ls "$MIG"/up/*.sql | sort); do run_file "$f" "up again $(basename "$f")"; done
 for t in "$HERE"/*.test.sql; do
   echo "--- $(basename "$t")"
-  out="$(SQL -f "$t" 2>&1)"
+  out="$(SQL -f "$t" 2>&1)"; code=$?
   echo "$out" | grep -E "PASS|FAIL|ERROR" | sed -E 's#^psql:[^ ]*/##'
+  # a psql failure that prints no ERROR line (a missing \ir file, a bad meta command) must fail the run too
+  if [ $code -ne 0 ]; then echo "FAIL $(basename "$t"): psql exited with code $code: $(echo "$out" | grep -v NOTICE | head -1)"; rc=1; fi
   if echo "$out" | grep -qE "FAIL|ERROR"; then rc=1; fi
 done
 [ $rc -eq 0 ] && echo "ALL PASSED" || echo "SOME FAILED"
