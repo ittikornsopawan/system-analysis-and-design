@@ -25,9 +25,9 @@ Description: Master table of the `product` schema (defined in `db/migrations/up/
 | Key Name                 | Column Name | Description                                                                   |
 | ------------------------ | ----------- | ----------------------------------------------------------------------------- |
 | pk_m_product_id          | id          | Primary key                                                                   |
-| fk_m_product_type_id     | type_id     | References product.m_product_type(id), ON DELETE CASCADE                      |
+| fk_m_product_type_id     | type_id     | References product.m_product_type(id), ON DELETE RESTRICT                     |
 | fk_m_product_category_id | category_id | References product.m_product_category(id), ON DELETE CASCADE                  |
-| fk_m_product_brand_id    | brand_id    | References product.m_product_brand(id), ON DELETE CASCADE                     |
+| fk_m_product_brand_id    | brand_id    | References product.m_product_brand(id), ON DELETE RESTRICT                    |
 | ck_m_product_row_status  | row_status  | CHECK (row_status IN ('ACTIVE', 'INACTIVE', 'DELETED', 'LOCKED', 'ARCHIVED')) |
 
 ---
@@ -49,9 +49,9 @@ CREATE TABLE
                 'ARCHIVED'
             )
         ),
-        type_id UUID NOT NULL REFERENCES product.m_product_type (id) ON DELETE CASCADE,
+        type_id UUID NOT NULL REFERENCES product.m_product_type (id) ON DELETE RESTRICT,
         category_id UUID NOT NULL REFERENCES product.m_product_category (id) ON DELETE CASCADE,
-        brand_id UUID NOT NULL REFERENCES product.m_product_brand (id) ON DELETE CASCADE,
+        brand_id UUID NOT NULL REFERENCES product.m_product_brand (id) ON DELETE RESTRICT,
         name VARCHAR(128) NOT NULL,
         description VARCHAR(256) NOT NULL,
         body TEXT NOT NULL,
