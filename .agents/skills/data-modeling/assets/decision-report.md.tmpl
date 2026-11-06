@@ -1,0 +1,31 @@
+# Report: <task name>
+
+## 1. Files added or changed
+
+- <path> — <what changed, one line>
+
+## 2. Results (paste the real output)
+
+- check_docs.py: <every sub-command and OK / FAIL>
+- audit_all.py: <e.g. "52 tables audited, 0 findings">
+- run_db_tests.sh: <e.g. ALL PASSED, and which test files ran>
+- SQL tests RED before the change: <the failing line>; GREEN after: <the passing lines>
+- Mutation tests of the checker: <caught / total>; what slipped through first and how the checker was fixed
+
+## 3. Decisions I made myself
+
+One entry per decision, three parts each:
+
+- **D1 <decision in one line>** — Why: <the reason> — If wrong: <what it costs to change, which files>
+- **D2 …**
+
+Mark each entry as "decided by the lead SA, pending product owner confirmation" until the owner answers,
+then "approved by the product owner".
+
+## 4. Open questions for the owner
+
+1. <question that changes behaviour or data> (recommended answer: <...>)
+
+## 5. Not verified / out of scope
+
+- <what could not be run and why; problems found in someone else's work, reported, not fixed silently>

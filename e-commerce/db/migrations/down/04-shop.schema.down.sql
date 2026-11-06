@@ -4,6 +4,8 @@ DROP TABLE IF EXISTS shop.t_shop_user;
 
 DROP TABLE IF EXISTS shop.t_shop_product_review;
 
+DROP TABLE IF EXISTS shop.t_shop_product_sku_lot;
+
 DROP TABLE IF EXISTS shop.t_shop_product_sku;
 
 DROP TABLE IF EXISTS shop.t_shop_product;

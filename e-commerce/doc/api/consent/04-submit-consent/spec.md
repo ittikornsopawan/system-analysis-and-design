@@ -1,0 +1,349 @@
+# [POST]: v1/consent/submit
+
+| Title       | Description                                                                                                                    |
+| ----------- | ------------------------------------------------------------------------------------------------------------------------------ |
+| Name        | Submit Consent API                                                                                                             |
+| Method      | POST                                                                                                                           |
+| Endpoint    | v{version}/consent/submit                                                                                                      |
+| Version     | 1                                                                                                                              |
+| Description | Submit multiple consents of the user at the same time, Result can be omitted to only update that the user has read the consent |
+
+## Domain
+
+| Environment    | Url                                 |
+| -------------- | ----------------------------------- |
+| DEV            | https://www.domain.com/api-dev      |
+| QA             | https://www.domain.com/api-qa       |
+| UAT            | https://www.domain.com/api-uat      |
+| PRE-PRODUCTION | https://www.domain.com/api-pre-prod |
+| PRODUCTION     | https://www.domain.com/api          |
+
+---
+
+## Request Parameters
+
+### Header Parameters
+
+|     | Parameter Name | Data Type | M/O       | Description                                                            | Example                                        |
+| --- | -------------- | --------- | --------- | ---------------------------------------------------------------------- | ---------------------------------------------- |
+| 1   | content-type   | String    | MANDATORY | Content type of the request                                            | application/json                               |
+| 2   | authorization  | String    | MANDATORY | Access token with token type, User is identified from the access token | Bearer eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9... |
+| 3   | timestamp      | DateTime  | MANDATORY | Request timestamp                                                      | 2026-11-05T12:42:00.123Z                       |
+| 4   | requestId      | String    | OPTIONAL  | API Request Id                                                         | req-9b1deb4d-3b7d-4bad-9bdd-2b0d7b3dcb6d       |
+
+### Body Parameters
+
+|     | Parameter Name | Data Type                           | M/O       | Description        | Example |
+| --- | -------------- | ----------------------------------- | --------- | ------------------ | ------- |
+| 1   | consents       | [Array of Consent](#consent-object) | MANDATORY | Consents to submit |         |
+
+#### Consent Object
+
+|     | Parameter Name | Data Type    | M/O       | Description                                                                                                   | Example                              |
+| --- | -------------- | ------------ | --------- | ------------------------------------------------------------------------------------------------------------- | ------------------------------------ |
+| 1   | consentId      | String: UUID | MANDATORY | Consent Id                                                                                                    | c1a2b3d4-e5f6-4a7b-8c9d-0e1f2a3b4c5d |
+| 2   | consentVersion | String       | MANDATORY | Consent Version that the user has read, Must be the current version of the consent                            | 1.1.0                                |
+| 3   | isRead         | Boolean      | MANDATORY | User has read the consent                                                                                     | true                                 |
+| 4   | result         | Boolean      | OPTIONAL  | Consent result (Accept, Reject), Keep the current result when not specified, Defaults to FALSE when inserting | true                                 |
+
+#### Example Body Parameters
+
+```JSON
+{
+    "consents": [
+        {
+            "consentId": "c1a2b3d4-e5f6-4a7b-8c9d-0e1f2a3b4c5d",
+            "consentVersion": "1.1.0",
+            "isRead": true,
+            "result": true
+        },
+        {
+            "consentId": "d2b3c4e5-f6a7-4b8c-9d0e-1f2a3b4c5d6e",
+            "consentVersion": "1.0.0",
+            "isRead": true
+        }
+    ]
+}
+```
+
+## Example Request
+
+### HTTP Request
+
+```HTTP
+POST /api-dev/v1/consent/submit HTTP/1.1
+Host: www.domain.com
+content-type: application/json
+authorization: Bearer eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9...
+timestamp: 2026-11-05T12:42:00.123Z
+requestId: req-9b1deb4d-3b7d-4bad-9bdd-2b0d7b3dcb6d
+
+{
+    "consents": [
+        {
+            "consentId": "c1a2b3d4-e5f6-4a7b-8c9d-0e1f2a3b4c5d",
+            "consentVersion": "1.1.0",
+            "isRead": true,
+            "result": true
+        },
+        {
+            "consentId": "d2b3c4e5-f6a7-4b8c-9d0e-1f2a3b4c5d6e",
+            "consentVersion": "1.0.0",
+            "isRead": true
+        }
+    ]
+}
+```
+
+### cUrl Request
+
+```JSON
+curl --location --request POST 'https://www.domain.com/api-dev/v1/consent/submit' \
+--header 'content-type: application/json' \
+--header 'authorization: Bearer eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9...' \
+--header 'timestamp: 2026-11-05T12:42:00.123Z' \
+--header 'requestId: req-9b1deb4d-3b7d-4bad-9bdd-2b0d7b3dcb6d' \
+--data-raw '{
+    "consents": [
+        {
+            "consentId": "c1a2b3d4-e5f6-4a7b-8c9d-0e1f2a3b4c5d",
+            "consentVersion": "1.1.0",
+            "isRead": true,
+            "result": true
+        },
+        {
+            "consentId": "d2b3c4e5-f6a7-4b8c-9d0e-1f2a3b4c5d6e",
+            "consentVersion": "1.0.0",
+            "isRead": true
+        }
+    ]
+}'
+```
+
+---
+
+## Response Parameters
+
+|     | Parameter Name | Data Type                          | M/O       | Source           | Field           | Description     | Example |
+| --- | -------------- | ---------------------------------- | --------- | ---------------- | --------------- | --------------- | ------- |
+| 1   | status         | [Object of Status](#status-object) | MANDATORY | Sequence Diagram | response.status | Response Status |         |
+| 2   | data           | [Data of Status](#data-object)     | OPTIONAL  | Sequence Diagram | response.data   | Response Data   |         |
+
+### Status Object
+
+|     | Parameter Name | Data Type         | M/O       | Source           | Field                      | Description                                   | Example                                  |
+| --- | -------------- | ----------------- | --------- | ---------------- | -------------------------- | --------------------------------------------- | ---------------------------------------- |
+| 1   | code           | Numeric           | MANDATORY | Sequence Diagram | response.status.code       | HTTP Status Code                              | 200                                      |
+| 2   | message        | String            | MANDATORY | Sequence Diagram | response.status.message    | HTTP Status Message                           | Ok                                       |
+| 3   | bizCode        | String            | OPTIONAL  | Sequence Diagram | response.status.bizCode    | Business Code Success or Fail                 | S10000                                   |
+| 4   | bizMessage     | String            | OPTIONAL  | Sequence Diagram | response.status.bizMessage | Business Message Success or Fail              | Success                                  |
+| 5   | requestId      | String            | MANDATORY | Sequence Diagram | response.status.requestId  | API Request Id                                | req-9b1deb4d-3b7d-4bad-9bdd-2b0d7b3dcb6d |
+| 6   | timestamp      | String: TIMESTAMP | MANDATORY | Sequence Diagram | response.status.timestamp  | API Request Timestamp (Without time zone UTC) | 2026-11-05T12:42:00.123Z                 |
+| 7   | status         | String            | MANDATORY | Sequence Diagram | response.status.status     | API Request Status (SUCCESS, ERROR)           | SUCCESS                                  |
+
+### Data Object
+
+|     | Parameter Name | Data Type                                               | M/O       | Source           | Field         | Description        | Example |
+| --- | -------------- | ------------------------------------------------------- | --------- | ---------------- | ------------- | ------------------ | ------- |
+| 1   | consents       | [Array of Submitted Consent](#submitted-consent-object) | MANDATORY | Sequence Diagram | data.consents | Submitted consents |         |
+
+#### Submitted Consent Object
+
+|     | Parameter Name | Data Type         | M/O       | Source           | Field                          | Description                                                      | Example                              |
+| --- | -------------- | ----------------- | --------- | ---------------- | ------------------------------ | ---------------------------------------------------------------- | ------------------------------------ |
+| 1   | consentId      | String: UUID      | MANDATORY | Sequence Diagram | data.consents[].consentId      | Consent Id                                                       | c1a2b3d4-e5f6-4a7b-8c9d-0e1f2a3b4c5d |
+| 2   | consentVersion | String            | MANDATORY | Sequence Diagram | data.consents[].consentVersion | Consent Version                                                  | 1.1.0                                |
+| 3   | isRead         | Boolean           | MANDATORY | Sequence Diagram | data.consents[].isRead         | User has read the consent                                        | true                                 |
+| 4   | readAt         | String: TIMESTAMP | OPTIONAL  | Sequence Diagram | data.consents[].readAt         | Timestamp when the user read the consent (Without time zone UTC) | 2026-11-05T12:42:00.123Z             |
+| 5   | result         | Boolean           | MANDATORY | Sequence Diagram | data.consents[].result         | Consent result (Accept, Reject)                                  | true                                 |
+
+### Example Response Parameters
+
+#### Success
+
+```JSON
+{
+    "status": {
+        "code": 200,
+        "message": "Ok",
+        "bizCode": "S10000",
+        "bizMessage": "Submit Consent Success",
+        "requestId": "req-9b1deb4d-3b7d-4bad-9bdd-2b0d7b3dcb6d",
+        "timestamp": "2026-11-05T12:42:00.123Z",
+        "status": "SUCCESS"
+    },
+    "data": {
+        "consents": [
+            {
+                "consentId": "c1a2b3d4-e5f6-4a7b-8c9d-0e1f2a3b4c5d",
+                "consentVersion": "1.1.0",
+                "isRead": true,
+                "readAt": "2026-11-05T12:42:00.123Z",
+                "result": true
+            },
+            {
+                "consentId": "d2b3c4e5-f6a7-4b8c-9d0e-1f2a3b4c5d6e",
+                "consentVersion": "1.0.0",
+                "isRead": true,
+                "readAt": "2026-11-05T12:42:00.123Z",
+                "result": false
+            }
+        ]
+    }
+}
+```
+
+#### Fail - Bad Request
+
+```JSON
+{
+    "status": {
+        "code": 400,
+        "message": "Bad Request",
+        "bizCode": "E10001",
+        "bizMessage": "Consent Id, Consent Version and Is Read are required fields.",
+        "requestId": "req-400a1b2c-3d4e-5f6a-7b8c-9d0e1f2a3b4c",
+        "timestamp": "2026-11-05T12:43:45.123Z",
+        "status": "ERROR"
+    }
+}
+```
+
+#### Fail - Unauthorized
+
+```JSON
+{
+    "status": {
+        "code": 401,
+        "message": "Unauthorized",
+        "bizCode": "E10002",
+        "bizMessage": "Invalid or expired access token.",
+        "requestId": "req-7a2cba3e-1b2d-4caf-8cce-3b1d7b3dcb6d",
+        "timestamp": "2026-11-05T12:43:10.456Z",
+        "status": "ERROR"
+    }
+}
+```
+
+#### Fail - Not Found
+
+```JSON
+{
+    "status": {
+        "code": 404,
+        "message": "Not Found",
+        "bizCode": "E10004",
+        "bizMessage": "Consent not found.",
+        "requestId": "req-404a1b2c-3d4e-5f6a-7b8c-9d0e1f2a3b4c",
+        "timestamp": "2026-11-05T12:44:05.321Z",
+        "status": "ERROR"
+    }
+}
+```
+
+#### Fail - Conflict
+
+```JSON
+{
+    "status": {
+        "code": 409,
+        "message": "Conflict",
+        "bizCode": "E10003",
+        "bizMessage": "Consent version is not the current version.",
+        "requestId": "req-409a1b2c-3d4e-5f6a-7b8c-9d0e1f2a3b4c",
+        "timestamp": "2026-11-05T12:44:20.789Z",
+        "status": "ERROR"
+    }
+}
+```
+
+#### Fail - Request Timeout
+
+```JSON
+{
+    "status": {
+        "code": 408,
+        "message": "Request Timeout",
+        "bizCode": "E90001",
+        "bizMessage": "The server timed out waiting for the request.",
+        "requestId": "req-408a1b2c-3d4e-5f6a-7b8c-9d0e1f2a3b4c",
+        "timestamp": "2026-11-05T12:45:30.123Z",
+        "status": "ERROR"
+    }
+}
+```
+
+---
+
+## Database Relations
+
+### Table: [consent.t_consent](../../../schema/consent/t_consent.md)
+
+#### QUERY - Get active consents
+
+```SQL
+SELECT
+    c.id as consent_id,
+    c.consent_version
+FROM consent.t_consent c
+WHERE c.id IN ('<sequence.consentIds>')
+AND c.row_status = 'ACTIVE'
+AND c.effective_at <= NOW() AT TIME ZONE 'UTC'
+AND (c.expired_at IS NULL OR c.expired_at > NOW() AT TIME ZONE 'UTC')
+```
+
+### Table: [authen.t_user_consent](../../../schema/authen/t_user_consent.md)
+
+#### QUERY - Get existing user consent
+
+```SQL
+SELECT
+    uc.id as user_consent_id,
+    uc.consent_id,
+    uc.consent_version,
+    uc.result,
+    uc.is_read
+FROM authen.t_user_consent uc
+WHERE uc.user_id = '<sequence.userId>'
+AND uc.consent_id = '<sequence.consents.consentId>'
+AND uc.consent_version = '<sequence.consents.consentVersion>'
+AND uc.row_status = 'ACTIVE'
+```
+
+#### INSERT - Create user consent
+
+```SQL
+INSERT INTO authen.t_user_consent (
+    created_by,
+    user_id,
+    consent_id,
+    consent_version,
+    result,
+    is_read,
+    read_at
+)
+VALUES (
+    '<sequence.createdBy>',
+    '<sequence.userId>',
+    '<sequence.consents.consentId>',
+    '<sequence.consents.consentVersion>',
+    '<sequence.consents.result>', -- only when result is specified
+    '<sequence.consents.isRead>',
+    NOW() AT TIME ZONE 'UTC' -- only when isRead is true
+)
+RETURNING id as user_consent_id
+```
+
+#### UPDATE - Update user consent
+
+```SQL
+UPDATE authen.t_user_consent
+SET
+    updated_by = '<sequence.updatedBy>',
+    updated_at = NOW() AT TIME ZONE 'UTC',
+    result = '<sequence.consents.result>', -- only when result is specified
+    is_read = '<sequence.consents.isRead>',
+    read_at = NOW() AT TIME ZONE 'UTC' -- only when isRead is true
+WHERE id = '<sequence.userConsentId>'
+RETURNING id as user_consent_id
+```

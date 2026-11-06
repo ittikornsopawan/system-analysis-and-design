@@ -19,7 +19,10 @@ CREATE TABLE
         user_id UUID NOT NULL REFERENCES authen.m_user (id) ON DELETE CASCADE,
         shop_id UUID NOT NULL REFERENCES shop.m_shop (id) ON DELETE CASCADE,
         product_id UUID NOT NULL REFERENCES product.m_product (id) ON DELETE CASCADE,
-        sku_id UUID REFERENCES product.m_product_sku (id) ON DELETE CASCADE,
-        quantity INT NOT NULL DEFAULT 1 CHECK (quantity > 0),
-        UNIQUE (user_id, shop_id, product_id, sku_id)
+        sku_id UUID NOT NULL REFERENCES product.m_product_sku (id) ON DELETE CASCADE,
+        quantity INT NOT NULL DEFAULT 1 CHECK (quantity > 0)
     );
+
+CREATE UNIQUE INDEX IF NOT EXISTS uq_t_cart_user_id_shop_id_product_id_sku_id ON cart.t_cart (user_id, shop_id, product_id, sku_id)
+WHERE
+    row_status <> 'DELETED';

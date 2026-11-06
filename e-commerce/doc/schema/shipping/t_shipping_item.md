@@ -13,7 +13,7 @@ Description: Transaction table of the `shipping` schema (defined in `db/migratio
 |     |                                                   | updated_at    | TIMESTAMP |        | TRUE        | Timestamp when the row was last updated                                  |                   |
 |     |                                                   | row_status    | VARCHAR   | 32     | FALSE       | Lifecycle status of the row: ACTIVE, INACTIVE, DELETED, LOCKED, ARCHIVED | ACTIVE            |
 | FK  | [shipping.t_shipping.id](t_shipping.md)           | shipping_id   | UUID      |        | FALSE       | Reference to `shipping.t_shipping.id`                                    |                   |
-| FK  | [order.t_order_item.id](../order/t_order_item.md) | order_item_id | UUID      |        | FALSE       | Reference to `order.t_order_item.id`                                     |                   |
+| FK  | [sales.t_order_item.id](../sales/t_order_item.md) | order_item_id | UUID      |        | FALSE       | Reference to `sales.t_order_item.id`                                     |                   |
 |     |                                                   | quantity      | INT       |        | FALSE       | Must satisfy `quantity > 0`. Defaults to `1`                             | 1                 |
 
 ## Constain
@@ -22,7 +22,7 @@ Description: Transaction table of the `shipping` schema (defined in `db/migratio
 | -------------------------------- | ------------- | ----------------------------------------------------------------------------- |
 | pk_t_shipping_item_id            | id            | Primary key                                                                   |
 | fk_t_shipping_item_shipping_id   | shipping_id   | References shipping.t_shipping(id), ON DELETE CASCADE                         |
-| fk_t_shipping_item_order_item_id | order_item_id | References order.t_order_item(id), ON DELETE CASCADE                          |
+| fk_t_shipping_item_order_item_id | order_item_id | References sales.t_order_item(id), ON DELETE CASCADE                          |
 | ck_t_shipping_item_row_status    | row_status    | CHECK (row_status IN ('ACTIVE', 'INACTIVE', 'DELETED', 'LOCKED', 'ARCHIVED')) |
 | ck_t_shipping_item_quantity      | quantity      | CHECK (quantity > 0)                                                          |
 
@@ -46,7 +46,7 @@ CREATE TABLE
             )
         ),
         shipping_id UUID NOT NULL REFERENCES shipping.t_shipping (id) ON DELETE CASCADE,
-        order_item_id UUID NOT NULL REFERENCES order.t_order_item (id) ON DELETE CASCADE,
+        order_item_id UUID NOT NULL REFERENCES sales.t_order_item (id) ON DELETE CASCADE,
         quantity INT NOT NULL DEFAULT 1 CHECK (quantity > 0)
     );
 ```

@@ -12,7 +12,7 @@ Description: Transaction table of the `shipping` schema (defined in `db/migratio
 |     |                                         | updated_by      | VARCHAR   | 64     | TRUE        | User or service that last updated the row                                |                   |
 |     |                                         | updated_at      | TIMESTAMP |        | TRUE        | Timestamp when the row was last updated                                  |                   |
 |     |                                         | row_status      | VARCHAR   | 32     | FALSE       | Lifecycle status of the row: ACTIVE, INACTIVE, DELETED, LOCKED, ARCHIVED | ACTIVE            |
-| FK  | [order.t_order.id](../order/t_order.md) | order_id        | UUID      |        | FALSE       | Reference to `order.t_order.id`                                          |                   |
+| FK  | [sales.t_order.id](../sales/t_order.md) | order_id        | UUID      |        | FALSE       | Reference to `sales.t_order.id`                                          |                   |
 |     |                                         | shipping_method | VARCHAR   | 32     | FALSE       | One of: STANDARD, EXPRESS, SAME_DAY                                      | STANDARD          |
 |     |                                         | status          | VARCHAR   | 32     | FALSE       | One of: PENDING, SHIPPED, DELIVERED, CANCELLED, RETURNED                 | PENDING           |
 | UQ  |                                         | tracking_number | VARCHAR   | 64     | TRUE        | Unique                                                                   |                   |
@@ -24,7 +24,7 @@ Description: Transaction table of the `shipping` schema (defined in `db/migratio
 | Key Name                      | Column Name     | Description                                                                    |
 | ----------------------------- | --------------- | ------------------------------------------------------------------------------ |
 | pk_t_shipping_id              | id              | Primary key                                                                    |
-| fk_t_shipping_order_id        | order_id        | References order.t_order(id), ON DELETE CASCADE                                |
+| fk_t_shipping_order_id        | order_id        | References sales.t_order(id), ON DELETE CASCADE                                |
 | uq_t_shipping_tracking_number | tracking_number | Unique                                                                         |
 | ck_t_shipping_row_status      | row_status      | CHECK (row_status IN ('ACTIVE', 'INACTIVE', 'DELETED', 'LOCKED', 'ARCHIVED'))  |
 | ck_t_shipping_shipping_method | shipping_method | CHECK (shipping_method IN ('STANDARD', 'EXPRESS', 'SAME_DAY'))                 |
@@ -49,7 +49,7 @@ CREATE TABLE
                 'ARCHIVED'
             )
         ),
-        order_id UUID NOT NULL REFERENCES order.t_order (id) ON DELETE CASCADE,
+        order_id UUID NOT NULL REFERENCES sales.t_order (id) ON DELETE CASCADE,
         shipping_method VARCHAR(32) NOT NULL CHECK (
             shipping_method IN ('STANDARD', 'EXPRESS', 'SAME_DAY')
         ),

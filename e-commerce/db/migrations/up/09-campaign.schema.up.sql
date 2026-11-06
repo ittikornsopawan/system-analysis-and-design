@@ -1,6 +1,28 @@
 CREATE SCHEMA IF NOT EXISTS campaign;
 
 CREATE TABLE
+    IF NOT EXISTS campaign.m_campaign (
+        id UUID NOT NULL DEFAULT GEN_RANDOM_UUID () PRIMARY KEY,
+        created_by VARCHAR(64) NOT NULL,
+        created_at TIMESTAMP WITHOUT TIME ZONE NOT NULL DEFAULT NOW (),
+        updated_by VARCHAR(64),
+        updated_at TIMESTAMP WITHOUT TIME ZONE,
+        row_status VARCHAR(32) NOT NULL DEFAULT 'ACTIVE' CHECK (
+            row_status IN (
+                'ACTIVE',
+                'INACTIVE',
+                'DELETED',
+                'LOCKED',
+                'ARCHIVED'
+            )
+        ),
+        name VARCHAR(128) NOT NULL,
+        description TEXT,
+        start_at TIMESTAMP WITHOUT TIME ZONE NOT NULL,
+        end_at TIMESTAMP WITHOUT TIME ZONE NOT NULL
+    );
+
+CREATE TABLE
     IF NOT EXISTS campaign.m_campaign_budget (
         id UUID NOT NULL DEFAULT GEN_RANDOM_UUID () PRIMARY KEY,
         created_by VARCHAR(64) NOT NULL,
@@ -41,29 +63,6 @@ CREATE TABLE
         reference JSONB NOT NULL,
         usage NUMERIC(16, 2) NOT NULL CHECK (usage >= 0),
         remaining NUMERIC(16, 2) NOT NULL CHECK (remaining >= 0)
-    );
-
-CREATE TABLE
-    IF NOT EXISTS campaign.m_campaign (
-        id UUID NOT NULL DEFAULT GEN_RANDOM_UUID () PRIMARY KEY,
-        created_by VARCHAR(64) NOT NULL,
-        created_at TIMESTAMP WITHOUT TIME ZONE NOT NULL DEFAULT NOW (),
-        updated_by VARCHAR(64),
-        updated_at TIMESTAMP WITHOUT TIME ZONE,
-        row_status VARCHAR(32) NOT NULL DEFAULT 'ACTIVE' CHECK (
-            row_status IN (
-                'ACTIVE',
-                'INACTIVE',
-                'DELETED',
-                'LOCKED',
-                'ARCHIVED'
-            )
-        ),
-        budget_id UUID NOT NULL REFERENCES campaign.m_campaign_budget (id) ON DELETE CASCADE,
-        name VARCHAR(128) NOT NULL,
-        description TEXT,
-        start_at TIMESTAMP WITHOUT TIME ZONE NOT NULL,
-        end_at TIMESTAMP WITHOUT TIME ZONE NOT NULL
     );
 
 CREATE TABLE

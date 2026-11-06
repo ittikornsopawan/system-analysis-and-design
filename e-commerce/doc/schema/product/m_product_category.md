@@ -15,6 +15,7 @@ Description: Master table of the `product` schema (defined in `db/migrations/up/
 | FK  | [product.m_product_category.id](m_product_category.md) | parent_id   | UUID      |        | TRUE        | Reference to `product.m_product_category.id` (optional)                  |                   |
 | UQ  |                                                        | name        | VARCHAR   | 128    | FALSE       | Unique                                                                   |                   |
 |     |                                                        | description | VARCHAR   | 256    | FALSE       |                                                                          |                   |
+|     |                                                        | slug        | VARCHAR   | 128    | FALSE       | URL friendly name used in the web URL, /{id}/{slug}                      | wireless-mouse    |
 
 ## Constain
 
@@ -46,6 +47,7 @@ CREATE TABLE
         ),
         parent_id UUID REFERENCES product.m_product_category (id) ON DELETE CASCADE,
         name VARCHAR(128) NOT NULL UNIQUE,
-        description VARCHAR(256) NOT NULL
+        description VARCHAR(256) NOT NULL,
+        slug VARCHAR(128) NOT NULL
     );
 ```

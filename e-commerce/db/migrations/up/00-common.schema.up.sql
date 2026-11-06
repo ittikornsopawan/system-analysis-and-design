@@ -43,7 +43,7 @@ CREATE TABLE
         ),
         name VARCHAR(128) NOT NULL UNIQUE,
         description TEXT,
-        is_required BOOLEAN NOT NULL DEFAULT FALSE,
+        is_required BOOLEAN NOT NULL DEFAULT FALSE
     );
 
 CREATE TABLE

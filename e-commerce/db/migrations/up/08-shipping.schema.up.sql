@@ -16,7 +16,7 @@ CREATE TABLE
                 'ARCHIVED'
             )
         ),
-        order_id UUID NOT NULL REFERENCES order.t_order (id) ON DELETE CASCADE,
+        order_id UUID NOT NULL REFERENCES sales.t_order (id) ON DELETE CASCADE,
         shipping_method VARCHAR(32) NOT NULL CHECK (
             shipping_method IN ('STANDARD', 'EXPRESS', 'SAME_DAY')
         ),
@@ -51,7 +51,7 @@ CREATE TABLE
             )
         ),
         shipping_id UUID NOT NULL REFERENCES shipping.t_shipping (id) ON DELETE CASCADE,
-        order_item_id UUID NOT NULL REFERENCES order.t_order_item (id) ON DELETE CASCADE,
+        order_item_id UUID NOT NULL REFERENCES sales.t_order_item (id) ON DELETE CASCADE,
         quantity INT NOT NULL DEFAULT 1 CHECK (quantity > 0)
     );
 

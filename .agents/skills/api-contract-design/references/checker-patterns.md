@@ -1,0 +1,30 @@
+---
+name: Checker Patterns
+description: How to add a spec-group checker to e-commerce/db/tests/check_docs.py and test it with deliberate mistakes. Read when a new API group or a new rule needs automatic checking.
+---
+
+# Writing the checker for a spec group
+
+`e-commerce/db/tests/check_docs.py` is a single file of checks, each registered as a sub-command (`COMMANDS["<name>"] = function`). Look at `check_order_spec`, `check_shop_profile_spec` or `check_cart_spec` and copy their shape. Helper functions you can reuse: `read`, `table_lines_aligned`, `json_blocks_parse`, `relative_links_exist`, `missing_needles`, `success_codes`, `fail`.
+
+## What one checker contains
+
+1. **The file list** of the group (a dict from number to path) and a failure when a file is missing.
+2. **Generic checks per file**: tables aligned, JSON parses, relative links resolve.
+3. **Needles**: for each file the headings and sentences that must exist (the rule section, each SQL block title, the key guard such as `AND quantity >= '<sequence.quantity>'`, the approval sentence, the error code). Make a needle as specific as the thing it protects; a broad text such as `Authorization` matches a header and hides a deleted rule.
+4. **Success codes**: `success_codes(md)` must equal the expected map (`{"Success - Insert": 201, ...}`).
+5. **Example arithmetic**: parse the success examples and recompute totals, counts, paging, ordering and tie-breaks; compare with what the example says.
+6. **Forbidden words** for public or limited APIs (`authorization`, `costPrice`, `email`, `userId` in a request).
+7. **Cross-file agreement** where two specs describe the same thing (the shop name in a shop list and a shop page; a price in a list and on the product page).
+
+Register the new endpoints in `status-codes` (single and batch lists) only when they have the full insert/update/delete/archive set; a different set gets its own checks. `biz-codes` scans every spec automatically.
+
+## Test the checker
+
+Build a list of deliberate mistakes (a JSON file for `mutation_harness.py`) and run it; every case must be caught. Cases that matter: change a number in an example, remove each rule sentence, remove each guard in the SQL, change a column name in a query, flip an HTTP code, expose a hidden field, break the sort order, remove the approval sentence, put a forbidden word back. When a case is missed, the checker (not the case) is wrong. Report `caught / total` and mention what slipped through first.
+
+## Common mistakes
+
+- Saving `check_docs.py` from an old copy and erasing another person's sub-command: read the file again right before editing.
+- A needle that also appears in another place and therefore never fails.
+- A check on example arithmetic that skips examples with empty lists; check them too.

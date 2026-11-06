@@ -17,12 +17,6 @@ Description: Transaction table of the `shop` schema (defined in `db/migrations/u
 |     |                                                         | code            | VARCHAR   | 64     | FALSE       |                                                                          |                   |
 |     |                                                         | name            | VARCHAR   | 128    | FALSE       |                                                                          |                   |
 |     |                                                         | description     | VARCHAR   | 256    | FALSE       |                                                                          |                   |
-|     |                                                         | cost_price      | NUMERIC   | 16,2   | FALSE       |                                                                          |                   |
-|     |                                                         | selling_price   | NUMERIC   | 16,2   | FALSE       |                                                                          |                   |
-|     |                                                         | gross_margin    | NUMERIC   | 16,2   | TRUE        |                                                                          |                   |
-|     |                                                         | share_margin    | NUMERIC   | 16,2   | TRUE        |                                                                          |                   |
-|     |                                                         | platform_margin | NUMERIC   | 16,2   | TRUE        |                                                                          |                   |
-|     |                                                         | quantity        | INT       |        | FALSE       | Must satisfy `quantity >= 0`. Defaults to `0`                            | 0                 |
 
 ## Constain
 
@@ -33,7 +27,6 @@ Description: Transaction table of the `shop` schema (defined in `db/migrations/u
 | fk_t_shop_product_sku_sku_id                 | sku_id                  | References product.m_product_sku(id), ON DELETE CASCADE                       |
 | uq_t_shop_product_sku_shop_product_id_sku_id | shop_product_id, sku_id | Unique combination                                                            |
 | ck_t_shop_product_sku_row_status             | row_status              | CHECK (row_status IN ('ACTIVE', 'INACTIVE', 'DELETED', 'LOCKED', 'ARCHIVED')) |
-| ck_t_shop_product_sku_quantity               | quantity                | CHECK (quantity >= 0)                                                         |
 
 ---
 
@@ -59,12 +52,6 @@ CREATE TABLE
         code VARCHAR(64) NOT NULL,
         name VARCHAR(128) NOT NULL,
         description VARCHAR(256) NOT NULL,
-        cost_price NUMERIC(16, 2) NOT NULL,
-        selling_price NUMERIC(16, 2) NOT NULL,
-        gross_margin NUMERIC(16, 2),
-        share_margin NUMERIC(16, 2),
-        platform_margin NUMERIC(16, 2),
-        quantity INT NOT NULL DEFAULT 0 CHECK (quantity >= 0),
         UNIQUE (shop_product_id, sku_id)
     );
 ```
