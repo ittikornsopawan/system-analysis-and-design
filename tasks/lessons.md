@@ -7,6 +7,12 @@ description: Repository-wide and project-specific lessons captured from user cor
 
 ## Repository-wide
 
+### 2026-11-06 — Keep agent reviews within the requested adaptation scope
+
+- **Correction**: A review of an existing agent expanded into redesigning the role, creating a separate skill, and changing the resource registry when the user only wanted the current agent adapted to the desired .NET backend role.
+- **Root cause**: The review optimized for the repository's ideal resource architecture instead of separating necessary changes from optional future improvements.
+- **Corrected behavior**: Preserve the existing resource and structure when it can meet the request; recommend only changes required by the stated goal, and label broader redesigns or new roles as optional rather than necessary.
+
 ### 2026-11-06 — Preserve explicit workflow artifacts
 
 - **Correction**: The adapted Workflow Orchestration omitted the explicit `tasks/todo.md` and `tasks/lessons.md` references shown in the approved source.

@@ -70,6 +70,34 @@ Status: Complete, reviewed by the lead SA (gates 1 and 2), waiting for the produ
 
 Verification: `check_docs.py` 30 sub-commands OK, `audit_all.py` 52 tables 0 findings, `run_db_tests.sh` ALL PASSED. The new checkers caught 105 of 105 deliberate faults after the first run missed 6 and was tightened; the migrations caught 9 of 9. Tests 4 of the product file and 5 of the consent file were not seen failing before the migration change (the script stops at the first error of a file); their sharpness was shown by restoring `CASCADE`. ER pages Overview and All Tables were not looked at as pictures by the author; the lead looked at the Product page. Nothing was run against a real database beyond the throw-away test cluster.
 
+## repository-wide: Select the minimum SDD agent set
+
+Status: Complete
+
+- [x] Map the roles and phase responsibilities required by `.agents/workflows/spec-driven-development.md`.
+- [x] Inventory relevant candidates in `awesome-claude-code-subagents/categories`.
+- [x] Compare the minimum candidate agents with the repository's existing agent files and terminology.
+- [x] Present the recommended initial agent set, gaps, and decisions for user confirmation.
+- [x] After confirmation, identify the exact content to adapt from each selected source file.
+- [x] Adapt the six canonical SDD agent roles with `model: inherit` and explicit boundaries and handoffs.
+- [x] Build the System Analyst as the specification, traceability, and SQL-analysis lead.
+- [x] Add Security Auditor as an optional specialist for security-sensitive work.
+- [x] Register the seven roles and document the optional security-review trigger in the SDD workflow.
+- [x] Verify frontmatter, registry consistency, role boundaries, source-specific boilerplate removal, and clean Markdown diffs.
+
+Verification: all seven selected agent files have valid YAML frontmatter, matching path/name, explicit tools, and `model: inherit`; every selected role is registered `ready`; imported context-manager protocols, fixed models, arbitrary thresholds, fake delivery metrics, and unselected agent dependencies are absent; the System Analyst includes project-backed PostgreSQL, transaction, constraint, index, and query-specification expertise while excluding DBA operations; `git diff --check` passes. The pre-existing unregistered agent copies were left untouched, and no build or runtime test was required for this documentation-only change.
+
+## repository-wide: Add the pre-implementation OpenAPI role
+
+Status: Complete
+
+- [x] Remove unregistered agent copies that are outside the approved SDD team.
+- [x] Adapt API Documenter to publish OpenAPI 3.1 from Approved API Specs into the project API contract.
+- [x] Insert API Documenter between architecture approval and backend implementation.
+- [x] Register API Documenter as ready and align System Analyst, Backend Developer, and Code Reviewer handoffs.
+- [x] Verify frontmatter, registry and workflow consistency, JSON validity, preserved unrelated work, and clean Markdown diffs.
+
+Verification: the eight selected Agent Roles have valid frontmatter, matching names and paths, `model: inherit`, and `ready` registry rows; the SDD workflow has nine sequential phases with API Documenter publishing the contract before implementation; System Analyst, Solution Architect, Backend Developer, and Code Reviewer handoffs reference OpenAPI consistently; `e-commerce/api/api-contract.json` parses as JSON; `git diff --check` passes. No semantic OpenAPI validator is configured in the repository, so the role reports semantic validation as unverified until a validator is available.
 ## e-commerce: Authentication WP4 (tokens, refresh, logout, reset password, profile, address)
 
 Status: Complete, reviewed by the lead SA (gate 1, gate 2 and one re-check), waiting for the product owner to merge the pull request
