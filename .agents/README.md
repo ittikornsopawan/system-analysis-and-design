@@ -40,12 +40,14 @@ This directory is the source of truth for repository-specific agent resources. R
 
 | Resource | Status | Intended phase |
 | --- | --- | --- |
-| `agents/product-owner.md` | placeholder | Product goals, value, priority, and acceptance outcomes |
-| `agents/business-analyst.md` | placeholder | Stakeholder needs, processes, business rules, and requirements |
-| `agents/system-analyst.md` | placeholder | System specifications and functional or non-functional requirements |
-| `agents/solution-architect.md` | placeholder | Architecture, boundaries, dependencies, and technical decisions |
-| `agents/backend-developer.md` | placeholder | C# backend implementation and automated tests |
-| `agents/code-reviewer.md` | placeholder | Spec compliance and code quality review |
+| `agents/product-owner.md` | ready | Product goals, value, priority, scope, and acceptance outcomes |
+| `agents/business-analyst.md` | ready | Stakeholder needs, processes, business rules, and Requirements |
+| `agents/system-analyst.md` | ready | Specification completeness, system behavior, SQL analysis, traceability, and approval readiness |
+| `agents/solution-architect.md` | ready | Architecture, boundaries, dependencies, integrations, and technical decisions |
+| `agents/api-documenter.md` | ready | Pre-implementation OpenAPI 3.1 publication and validation from Approved API Specs |
+| `agents/backend-developer.md` | ready | Version-aware C# and .NET implementation with traceable automated tests |
+| `agents/code-reviewer.md` | ready | Independent Spec compliance and engineering-quality review |
+| `agents/security-auditor.md` | ready | Optional security review for identity, cryptography, tokens, payments, sensitive data, and trust boundaries |
 
 ## Skills
 

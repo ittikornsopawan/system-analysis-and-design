@@ -35,6 +35,10 @@ _Avoid_: requirement, code
 A Spec explicitly accepted by an authorized user and carrying durable approval evidence.
 _Avoid_: final draft, completed document
 
+**OpenAPI Contract**:
+The machine-readable OpenAPI 3.1 artifact published from Approved API Specs before backend implementation and used to align tooling, implementation, and review.
+_Avoid_: source specification, generated implementation behavior
+
 **Governing Spec**:
 The Approved Spec that authorizes and constrains a particular implementation change.
 _Avoid_: related document, reference note
@@ -74,6 +78,14 @@ _Avoid_: checklist, rule
 **Agent Role**:
 A bounded set of responsibilities and decisions used as an analytical perspective or, when ready, an executable agent definition.
 _Avoid_: skill, subagent
+
+**System Analyst**:
+The Agent Role that owns Specification completeness, observable system behavior, cross-artifact consistency, SQL analysis, traceability, and approval readiness from approved Requirements through implementation handoff.
+_Avoid_: super-agent, approver, developer
+
+**Optional Specialist**:
+An Agent Role invoked only when a defined subject or risk trigger applies rather than appearing as a mandatory phase in every Workflow.
+_Avoid_: default phase, implicit dependency
 
 **Skill**:
 A reusable task method with a trigger, required inputs, ordered instructions, outputs, and completion criteria.
