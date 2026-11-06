@@ -18,9 +18,9 @@ CREATE TABLE
         ),
         username BYTEA NOT NULL UNIQUE,
         email_address BYTEA NOT NULL UNIQUE,
-        first_name BYTEA NOT NULL,
-        last_name BYTEA NOT NULL,
-        display_name VARCHAR(128) NOT NULL,
+        first_name BYTEA,
+        last_name BYTEA,
+        display_name VARCHAR(128),
         profile_picture_path TEXT
     );
 
@@ -43,7 +43,9 @@ CREATE TABLE
         user_id UUID NOT NULL REFERENCES authen.m_user (id) ON DELETE CASCADE,
         consent_id UUID NOT NULL REFERENCES consent.t_consent (id) ON DELETE CASCADE,
         consent_version VARCHAR(8) NOT NULL DEFAULT '1.0.0',
-        result BOOLEAN NOT NULL DEFAULT FALSE
+        result BOOLEAN NOT NULL DEFAULT FALSE,
+        is_read BOOLEAN NOT NULL DEFAULT FALSE,
+        read_at TIMESTAMP WITHOUT TIME ZONE
     );
 
 CREATE TABLE

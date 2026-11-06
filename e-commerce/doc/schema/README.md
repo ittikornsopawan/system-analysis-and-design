@@ -1,6 +1,6 @@
 # Database schema
 
-47 tables in 11 schemas, generated from `db/migrations/up/*.sql` using [`template.md`](template.md). ER diagram: [`er-diagram.drawio`](../../db/er-diagram.drawio).
+52 tables in 11 schemas, generated from `db/migrations/up/*.sql` using [`template.md`](template.md). ER diagram: [`er-diagram.drawio`](../../db/er-diagram.drawio).
 
 
 ## public
@@ -21,7 +21,7 @@
 | Table | Type | Columns | FKs |
 | ----- | ---- | ------: | --: |
 | [m_user](authen/m_user.md) | Master | 12 | 0 |
-| [t_user_consent](authen/t_user_consent.md) | Transaction | 10 | 2 |
+| [t_user_consent](authen/t_user_consent.md) | Transaction | 12 | 2 |
 | [m_user_password](authen/m_user_password.md) | Master | 10 | 1 |
 | [t_user_reset_password](authen/t_user_reset_password.md) | Transaction | 9 | 1 |
 | [l_user_referral](authen/l_user_referral.md) | Log | 5 | 2 |
@@ -48,13 +48,16 @@
 | Table | Type | Columns | FKs |
 | ----- | ---- | ------: | --: |
 | [m_product_type](product/m_product_type.md) | Master | 8 | 0 |
-| [m_product_category](product/m_product_category.md) | Master | 9 | 1 |
+| [m_product_category](product/m_product_category.md) | Master | 10 | 1 |
 | [m_product_category_attribute](product/m_product_category_attribute.md) | Master | 9 | 1 |
 | [m_product_brand](product/m_product_brand.md) | Master | 8 | 0 |
-| [m_product](product/m_product.md) | Master | 12 | 3 |
+| [m_product](product/m_product.md) | Master | 13 | 3 |
 | [m_product_attribute](product/m_product_attribute.md) | Master | 9 | 2 |
-| [m_product_image](product/m_product_image.md) | Master | 8 | 1 |
-| [m_product_sku](product/m_product_sku.md) | Master | 9 | 1 |
+| [m_product_image](product/m_product_image.md) | Master | 9 | 2 |
+| [m_product_sku](product/m_product_sku.md) | Master | 10 | 1 |
+| [m_product_option](product/m_product_option.md) | Master | 9 | 1 |
+| [m_product_option_value](product/m_product_option_value.md) | Master | 9 | 1 |
+| [m_product_sku_option_value](product/m_product_sku_option_value.md) | Master | 8 | 2 |
 
 ## shop
 
@@ -64,8 +67,9 @@
 | [m_shop](shop/m_shop.md) | Master | 11 | 1 |
 | [t_shop_user](shop/t_shop_user.md) | Transaction | 9 | 2 |
 | [m_shop_image](shop/m_shop_image.md) | Master | 10 | 1 |
-| [t_shop_product](shop/t_shop_product.md) | Transaction | 9 | 2 |
-| [t_shop_product_sku](shop/t_shop_product_sku.md) | Transaction | 17 | 2 |
+| [t_shop_product](shop/t_shop_product.md) | Transaction | 8 | 2 |
+| [t_shop_product_sku](shop/t_shop_product_sku.md) | Transaction | 11 | 2 |
+| [t_shop_product_sku_lot](shop/t_shop_product_sku_lot.md) | Transaction | 15 | 1 |
 | [t_shop_product_review](shop/t_shop_product_review.md) | Transaction | 10 | 2 |
 
 ## cart
@@ -74,12 +78,12 @@
 | ----- | ---- | ------: | --: |
 | [t_cart](cart/t_cart.md) | Transaction | 11 | 4 |
 
-## order
+## sales
 
 | Table | Type | Columns | FKs |
 | ----- | ---- | ------: | --: |
-| [t_order](order/t_order.md) | Transaction | 16 | 3 |
-| [t_order_item](order/t_order_item.md) | Transaction | 17 | 4 |
+| [t_order](sales/t_order.md) | Transaction | 23 | 3 |
+| [t_order_item](sales/t_order_item.md) | Transaction | 18 | 5 |
 
 ## payment
 
@@ -101,7 +105,7 @@
 | ----- | ---- | ------: | --: |
 | [m_campaign_budget](campaign/m_campaign_budget.md) | Master | 8 | 1 |
 | [m_campaign_budget_ledger](campaign/m_campaign_budget_ledger.md) | Master | 11 | 2 |
-| [m_campaign](campaign/m_campaign.md) | Master | 11 | 1 |
+| [m_campaign](campaign/m_campaign.md) | Master | 10 | 0 |
 | [t_campaign_product](campaign/t_campaign_product.md) | Transaction | 9 | 3 |
 | [t_campaign_shop](campaign/t_campaign_shop.md) | Transaction | 8 | 2 |
 | [t_campaign_discount](campaign/t_campaign_discount.md) | Transaction | 9 | 1 |

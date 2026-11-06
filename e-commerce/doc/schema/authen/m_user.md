@@ -14,9 +14,9 @@ Description: Master table of the `authen` schema (defined in `db/migrations/up/0
 |     |           | row_status           | VARCHAR   | 32     | FALSE       | Lifecycle status of the row: ACTIVE, INACTIVE, DELETED, LOCKED, ARCHIVED | ACTIVE            |
 | UQ  |           | username             | BYTEA     |        | FALSE       | Unique                                                                   |                   |
 | UQ  |           | email_address        | BYTEA     |        | FALSE       | Unique                                                                   |                   |
-|     |           | first_name           | BYTEA     |        | FALSE       |                                                                          |                   |
-|     |           | last_name            | BYTEA     |        | FALSE       |                                                                          |                   |
-|     |           | display_name         | VARCHAR   | 128    | FALSE       |                                                                          |                   |
+|     |           | first_name           | BYTEA     |        | TRUE        |                                                                          |                   |
+|     |           | last_name            | BYTEA     |        | TRUE        |                                                                          |                   |
+|     |           | display_name         | VARCHAR   | 128    | TRUE        |                                                                          |                   |
 |     |           | profile_picture_path | TEXT      |        | TRUE        |                                                                          |                   |
 
 ## Constain
@@ -49,9 +49,9 @@ CREATE TABLE
         ),
         username BYTEA NOT NULL UNIQUE,
         email_address BYTEA NOT NULL UNIQUE,
-        first_name BYTEA NOT NULL,
-        last_name BYTEA NOT NULL,
-        display_name VARCHAR(128) NOT NULL,
+        first_name BYTEA,
+        last_name BYTEA,
+        display_name VARCHAR(128),
         profile_picture_path TEXT
     );
 ```

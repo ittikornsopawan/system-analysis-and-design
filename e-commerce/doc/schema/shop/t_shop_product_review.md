@@ -19,13 +19,14 @@ Description: Transaction table of the `shop` schema (defined in `db/migrations/u
 
 ## Constain
 
-| Key Name                                 | Column Name     | Description                                                                   |
-| ---------------------------------------- | --------------- | ----------------------------------------------------------------------------- |
-| pk_t_shop_product_review_id              | id              | Primary key                                                                   |
-| fk_t_shop_product_review_shop_product_id | shop_product_id | References shop.t_shop_product(id), ON DELETE CASCADE                         |
-| fk_t_shop_product_review_user_id         | user_id         | References authen.m_user(id), ON DELETE CASCADE                               |
-| ck_t_shop_product_review_row_status      | row_status      | CHECK (row_status IN ('ACTIVE', 'INACTIVE', 'DELETED', 'LOCKED', 'ARCHIVED')) |
-| ck_t_shop_product_review_rating          | rating          | CHECK (rating >= 1 AND rating <= 5)                                           |
+| Key Name                                         | Column Name              | Description                                                                            |
+| ------------------------------------------------ | ------------------------ | -------------------------------------------------------------------------------------- |
+| pk_t_shop_product_review_id                      | id                       | Primary key                                                                            |
+| fk_t_shop_product_review_shop_product_id         | shop_product_id          | References shop.t_shop_product(id), ON DELETE CASCADE                                  |
+| fk_t_shop_product_review_user_id                 | user_id                  | References authen.m_user(id), ON DELETE CASCADE                                        |
+| ck_t_shop_product_review_row_status              | row_status               | CHECK (row_status IN ('ACTIVE', 'INACTIVE', 'DELETED', 'LOCKED', 'ARCHIVED'))          |
+| uq_t_shop_product_review_shop_product_id_user_id | shop_product_id, user_id | Unique among rows where row_status <> 'DELETED' (one review per user and shop product) |
+| ck_t_shop_product_review_rating                  | rating                   | CHECK (rating >= 1 AND rating <= 5)                                                    |
 
 ---
 
@@ -54,4 +55,8 @@ CREATE TABLE
         ),
         comment TEXT
     );
+
+CREATE UNIQUE INDEX IF NOT EXISTS uq_t_shop_product_review_shop_product_id_user_id ON shop.t_shop_product_review (shop_product_id, user_id)
+WHERE
+    row_status <> 'DELETED';
 ```

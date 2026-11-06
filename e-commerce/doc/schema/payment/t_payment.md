@@ -12,7 +12,7 @@ Description: Transaction table of the `payment` schema (defined in `db/migration
 |     |                                         | updated_by       | VARCHAR   | 64     | TRUE        | User or service that last updated the row                                |                   |
 |     |                                         | updated_at       | TIMESTAMP |        | TRUE        | Timestamp when the row was last updated                                  |                   |
 |     |                                         | row_status       | VARCHAR   | 32     | FALSE       | Lifecycle status of the row: ACTIVE, INACTIVE, DELETED, LOCKED, ARCHIVED | ACTIVE            |
-| FK  | [order.t_order.id](../order/t_order.md) | order_id         | UUID      |        | FALSE       | Reference to `order.t_order.id`                                          |                   |
+| FK  | [sales.t_order.id](../sales/t_order.md) | order_id         | UUID      |        | FALSE       | Reference to `sales.t_order.id`                                          |                   |
 |     |                                         | amount           | NUMERIC   | 16,2   | FALSE       | Must satisfy `amount >= 0`                                               |                   |
 |     |                                         | status           | VARCHAR   | 32     | FALSE       | One of: PENDING, PROCESSING, COMPLETED, FAILED, CANCELLED, REFUNDED      | PENDING           |
 |     |                                         | payment_method   | VARCHAR   | 32     | FALSE       | One of: CREDIT_CARD, PAYPAL, BANK_TRANSFER, CASH_ON_DELIVERY, THAI_QR    | CREDIT_CARD       |
@@ -25,7 +25,7 @@ Description: Transaction table of the `payment` schema (defined in `db/migration
 | Key Name                      | Column Name      | Description                                                                                         |
 | ----------------------------- | ---------------- | --------------------------------------------------------------------------------------------------- |
 | pk_t_payment_id               | id               | Primary key                                                                                         |
-| fk_t_payment_order_id         | order_id         | References order.t_order(id), ON DELETE CASCADE                                                     |
+| fk_t_payment_order_id         | order_id         | References sales.t_order(id), ON DELETE CASCADE                                                     |
 | uq_t_payment_transaction_code | transaction_code | Unique                                                                                              |
 | ck_t_payment_row_status       | row_status       | CHECK (row_status IN ('ACTIVE', 'INACTIVE', 'DELETED', 'LOCKED', 'ARCHIVED'))                       |
 | ck_t_payment_amount           | amount           | CHECK (amount >= 0)                                                                                 |
@@ -51,7 +51,7 @@ CREATE TABLE
                 'ARCHIVED'
             )
         ),
-        order_id UUID NOT NULL REFERENCES order.t_order (id) ON DELETE CASCADE,
+        order_id UUID NOT NULL REFERENCES sales.t_order (id) ON DELETE CASCADE,
         amount NUMERIC(16, 2) NOT NULL CHECK (amount >= 0),
         status VARCHAR(32) NOT NULL DEFAULT 'PENDING' CHECK (
             status IN (

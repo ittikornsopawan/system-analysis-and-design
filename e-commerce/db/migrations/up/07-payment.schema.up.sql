@@ -16,7 +16,7 @@ CREATE TABLE
                 'ARCHIVED'
             )
         ),
-        order_id UUID NOT NULL REFERENCES order.t_order (id) ON DELETE CASCADE,
+        order_id UUID NOT NULL REFERENCES sales.t_order (id) ON DELETE CASCADE,
         amount NUMERIC(16, 2) NOT NULL CHECK (amount >= 0),
         status VARCHAR(32) NOT NULL DEFAULT 'PENDING' CHECK (
             status IN (

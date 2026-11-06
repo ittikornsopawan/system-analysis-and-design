@@ -16,6 +16,8 @@ Description: Transaction table of the `authen` schema (defined in `db/migrations
 | FK  | [consent.t_consent.id](../consent/t_consent.md) | consent_id      | UUID      |        | FALSE       | Reference to `consent.t_consent.id`                                      |                   |
 |     |                                                 | consent_version | VARCHAR   | 8      | FALSE       | Defaults to `'1.0.0'`                                                    | 1.0.0             |
 |     |                                                 | result          | BOOLEAN   |        | FALSE       | Defaults to `FALSE`                                                      | FALSE             |
+|     |                                                 | is_read         | BOOLEAN   |        | FALSE       | Defaults to `FALSE`                                                      | FALSE             |
+|     |                                                 | read_at         | TIMESTAMP |        | TRUE        | Timestamp when the user read the consent                                 |                   |
 
 ## Constain
 
@@ -48,6 +50,8 @@ CREATE TABLE
         user_id UUID NOT NULL REFERENCES authen.m_user (id) ON DELETE CASCADE,
         consent_id UUID NOT NULL REFERENCES consent.t_consent (id) ON DELETE CASCADE,
         consent_version VARCHAR(8) NOT NULL DEFAULT '1.0.0',
-        result BOOLEAN NOT NULL DEFAULT FALSE
+        result BOOLEAN NOT NULL DEFAULT FALSE,
+        is_read BOOLEAN NOT NULL DEFAULT FALSE,
+        read_at TIMESTAMP WITHOUT TIME ZONE
     );
 ```
