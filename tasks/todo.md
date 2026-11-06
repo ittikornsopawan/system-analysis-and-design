@@ -229,3 +229,17 @@ Status: In progress. Merged after the lead's review: WP3 shipping (pull request 
 - [ ] Backlog for the owner's order: merge the two `er_name_rows` helpers of `check_docs.py`, extend `audit_all.py` to a column without an alias in the `WHERE` of an `UPDATE`, retrofit the plain `UNIQUE` and `CASCADE` of the older master tables, decide the 409 of `01-register`, decide whether the login sequence diagram keeps permission claims in the JWT (A16 says no), name who runs `grant-platform-admin.sql` at the first deployment, rewrite the team protocol in `docs/handoff/` to match the named-agent rule.
 
 Verification: each gate was checked by running every `check_docs.py` sub-command, `audit_all.py` and `run_db_tests.sh` in the analyst's tree and by reading the changed specs. The analysts' own mutation tests were not rerun by the lead.
+
+
+## repository-wide: Register Peter for the e-commerce API review
+
+Status: Registration verified and ready for delivery; requested directly by Ittikorn on 2026-11-07. API mutation work waits for registration to merge into origin/main. The existing named-agent lifecycle governs this assignment.
+
+- [x] Read the bootstrap, global rules, team registry, named-agent workspace design, lessons, and delivery skill.
+- [x] Confirm the owner chose to register Peter and retain the existing lifecycle rather than allow concurrent API pull requests.
+- [x] Register Peter as an enabled System Analyst with the same repository-wide registry scope as the existing team, reporting to Josh, without delegation capabilities; bound actual assignments to e-commerce and required task bookkeeping.
+- [x] Validate registry parsing and role/scope consistency, run the existing workspace tests and delivery preflight, and review the exact diff.
+- [x] Prepare the commit and registration PR package using commit-and-pr; keep API changes out of this prerequisite PR.
+- [ ] After the owner merges registration into origin/main, create Peter's managed workspace with agent-workspace and record the bounded first-API assignment before edits.
+
+Verification: The canonical registry test failed before adding Peter (expected four entries, found three). After registration, `python3 -B -m unittest discover -s .agents/skills/agent-workspace/tests -v` passed all 12 tests, including Peter's direct-user delivery authorization and inability to delegate. `preflight.py --base main` reported three in-scope files and no blockers; `git diff --check` passed. API/database tests were not rerun for this registry-only change. Registration takes effect only after merge into origin/main. Peter may hold one active API task or pull request; while it is open, the next API can be examined read-only from the primary checkout. Each API delivery will contain its spec.md and complete sequence.wsd, with the verification changes required for that API.
