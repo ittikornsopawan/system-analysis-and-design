@@ -1153,7 +1153,7 @@ def check_shop_type_spec() -> int:
             errors.append(f"{path} invalid JSON block: {bad[:40]}")
         for link in relative_links_exist(path, md):
             errors.append(f"{path} broken link {link}")
-        for leftover in re.findall(r"(?i)categor\w*|parent\w*|slug|product(?!ion)\w*", md):
+        for leftover in re.findall(r"(?i)categor\w*|parent\w*|slug|product(?!ion)(?! owner)\w*", md):
             errors.append(f"{path} still mentions '{leftover}' (copied from the product category spec)")
         if not (ROOT / path).with_name("sequence.wsd").exists():
             errors.append(f"{path} has no sequence.wsd beside it")
@@ -4711,6 +4711,103 @@ def check_author_schema() -> int:
 
 
 COMMANDS["author-schema"] = check_author_schema
+
+
+# ---------------------------------------------------------------- WP5c: delivered write APIs are for platform administrators only
+ADMIN_WRITE_SPECS = {  # folder: (the thing it manages, batch)
+    "shop/05-upsert-shop-type": ("shop types", False),
+    "shop/06-upsert-shop-type-batch": ("shop types", True),
+    "product/01-upsert-product": ("products", False),
+    "product/03-upsert-product-batch": ("products", True),
+    "product/04-upsert-product-category": ("product categories", False),
+    "product/06-upsert-product-category-batch": ("product categories", True),
+    "product/07-upsert-product-category-attribute": ("product category attributes", False),
+    "product/09-upsert-product-category-attribute-batch": ("product category attributes", True),
+    "consent/02-upsert-consent": ("consents", False),
+}
+ADMIN_WRITE_REFERENCE = "e-commerce/doc/api/sales/05-cancel-order/spec.md"
+ADMIN_WRITE_APPROVED = "Approved by the product owner (answered through the lead SA, 2026-11-06)."
+ADMIN_WRITE_RULE_BATCH = ("Permission: the same as the single upsert, only a platform administrator (a user with an ACTIVE `author.t_user_role` row for the ACTIVE role `PLATFORM_ADMIN`) "
+                          "can call this API, any other caller gets 403 (E10009)")
+ADMIN_WRITE_RULE = ("Permission: only a platform administrator (a user with an ACTIVE `author.t_user_role` row for the ACTIVE role `PLATFORM_ADMIN`) "
+                    "can call this API, any other caller gets 403 (E10009)")
+
+
+def admin_write_reference_queries() -> list[str]:
+    """The two named queries of sales/05 (the text every spec must copy)."""
+    md = read(ADMIN_WRITE_REFERENCE)
+    found = []
+    for title in ("QUERY - Get the platform administrator role", "QUERY - Check platform administrator"):
+        match = re.search(rf"#### {re.escape(title)}\n\n```SQL\n(.*?)```", md, re.DOTALL)
+        found.append(match.group(1) if match else "")
+    return found
+
+
+def check_admin_write_spec() -> int:
+    errors = []
+    queries = admin_write_reference_queries()
+    if not all(queries):
+        errors.append(f"{ADMIN_WRITE_REFERENCE} has no platform administrator queries to copy")
+    for folder, (thing, batch) in ADMIN_WRITE_SPECS.items():
+        path = f"e-commerce/doc/api/{folder}/spec.md"
+        try:
+            md = read(path)
+        except FileNotFoundError:
+            errors.append(f"{path} does not exist")
+            continue
+        for bad in table_lines_aligned(md):
+            errors.append(f"{path} misaligned table: {bad[:40]}")
+        for bad in json_blocks_parse(md):
+            errors.append(f"{path} invalid JSON block: {bad[:40]}")
+        for link in relative_links_exist(path, md):
+            errors.append(f"{path} broken link {link}")
+        if "ALTER TABLE" in md:
+            errors.append(f"{path} contains ALTER TABLE")
+        description = next((line for line in md.split("\n") if line.startswith("| Description |")), "")
+        if "only a platform administrator can call it" not in description:
+            errors.append(f"{path}: the Description row must say that only a platform administrator can call it")
+        need = [ADMIN_WRITE_RULE_BATCH if batch else ADMIN_WRITE_RULE, ADMIN_WRITE_APPROVED, "permission (403, E10009)", "#### QUERY - Get the platform administrator role", "#### QUERY - Check platform administrator",
+                "(../../../schema/author/m_role.md)", "(../../../schema/author/t_user_role.md)", f"You do not have permission to manage {thing}."]
+        if batch:
+            need += ["so the 403 message has no item position", "the same as the single upsert, only a platform administrator"]
+        if folder.startswith("product/0") and folder.split("/")[1].startswith(("01", "03")):
+            need += ["permission check (403, E10009, once for the request in a batch), in-use check (409)"]
+        elif folder != "shop/05-upsert-shop-type":
+            need += ["- Order of checks: validate the request (400) -> existence checks (404) -> permission (403, E10009) -> duplicate, in-use and other conflicts (409) -> write."]
+        if folder == "shop/05-upsert-shop-type":
+            need += ["existence check (404) -> permission (403, E10009) -> duplicate name check"]
+        for missing in missing_needles(md, need):
+            errors.append(f"{path} missing: {missing!r}")
+        for stale in ("Any caller with a valid access token can call this API", "A role check (for example platform administrators only) is not defined yet"):
+            if stale in md:
+                errors.append(f"{path} still says {stale!r}")
+        for query in queries:
+            if query and md.count(query) != 1:
+                errors.append(f"{path}: the platform administrator query must be copied exactly from sales/05, found {md.count(query)} copies")
+        if md.count("#### Fail - Forbidden") != 1 or md.count("#### QUERY - Get the platform administrator role") != 1 or md.count("#### QUERY - Check platform administrator") != 1:
+            errors.append(f"{path}: Fail - Forbidden and each platform administrator query must appear exactly once")
+        match = re.search(r"#### Fail - Forbidden\n\n```JSON\n(.*?)```", md, re.DOTALL)
+        if not match:
+            errors.append(f"{path}: no JSON in 'Fail - Forbidden'")
+        else:
+            status = json.loads(match.group(1))["status"]
+            if status["code"] != 403 or status["bizCode"] != "E10009" or status["bizMessage"] != f"You do not have permission to manage {thing}.":
+                errors.append(f"{path}: the Forbidden example must be 403 E10009 with the message 'You do not have permission to manage {thing}.'")
+            if "[" in status["bizMessage"]:
+                errors.append(f"{path}: the 403 message must have no item position")
+            if md.index("#### Fail - Forbidden") > md.index("#### Fail - Conflict"):
+                errors.append(f"{path}: Fail - Forbidden must come before the Conflict examples (after Not Found)")
+        if md.index("#### QUERY - Get the platform administrator role") < md.index("## Database Relations"):
+            errors.append(f"{path}: the platform administrator queries belong to Database Relations")
+        if md.count("E10009") < 3:
+            errors.append(f"{path}: E10009 must appear in the rule, the order of checks and the example")
+    if errors:
+        return fail("; ".join(errors))
+    print("OK: admin-write-spec (9 specs)")
+    return 0
+
+
+COMMANDS["admin-write-spec"] = check_admin_write_spec
 
 
 def main(argv: list[str]) -> int:

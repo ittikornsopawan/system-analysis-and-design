@@ -1,12 +1,12 @@
 # [POST]: v1/shop/type/upsert
 
-| Title       | Description                                                                                                                                                                                                                 |
-| ----------- | --------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------- |
-| Name        | Upsert Shop Type API                                                                                                                                                                                                        |
-| Method      | POST                                                                                                                                                                                                                        |
-| Endpoint    | v{version}/shop/type/upsert                                                                                                                                                                                                 |
-| Version     | 1                                                                                                                                                                                                                           |
-| Description | Insert, update or delete a shop type, Insert when id is not specified, Update when id is specified, Delete when rowStatus is DELETED (HTTP 204 No Content, no response body), Archive when rowStatus is ARCHIVED (HTTP 200) |
+| Title       | Description                                                                                                                                                                                                                                                            |
+| ----------- | ---------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------- |
+| Name        | Upsert Shop Type API                                                                                                                                                                                                                                                   |
+| Method      | POST                                                                                                                                                                                                                                                                   |
+| Endpoint    | v{version}/shop/type/upsert                                                                                                                                                                                                                                            |
+| Version     | 1                                                                                                                                                                                                                                                                      |
+| Description | Insert, update or delete a shop type, Insert when id is not specified, Update when id is specified, Delete when rowStatus is DELETED (HTTP 204 No Content, no response body), Archive when rowStatus is ARCHIVED (HTTP 200), only a platform administrator can call it |
 
 ## Domain
 
@@ -46,8 +46,8 @@
 - `name` and `description` are required in every request, including a delete and an archive.
 - DELETED is final: a DELETED shop type is never reopened and its `id` counts as not found (404, E10004). INACTIVE, LOCKED and ARCHIVED are reversible: an update with `rowStatus` ACTIVE opens the shop type again. `rowStatus` DELETED is rejected with 400 (E10001) when the request inserts a shop type.
 - A shop type cannot be deleted or archived while any shop that is not DELETED uses it (`shop.m_shop.type_id`), 409 (E10006). INACTIVE and LOCKED are allowed even when shops use the shop type, the shops are not changed. Whether a shop can be created with a shop type that is not ACTIVE is a rule of the shop API.
-- Any caller with a valid access token can call this API. A role check (for example platform administrators only) is not defined yet.
-- Execution order: validate the request (400) -> existence check (404) -> duplicate name check (409, E10003) -> in-use check (409, E10006, only when `rowStatus` is DELETED or ARCHIVED) -> write.
+- Permission: only a platform administrator (a user with an ACTIVE `author.t_user_role` row for the ACTIVE role `PLATFORM_ADMIN`) can call this API, any other caller gets 403 (E10009), after the existence checks and before the duplicate, in-use and other conflict checks and before anything is written. Reading is not changed by this rule. Approved by the product owner (answered through the lead SA, 2026-11-06).
+- Execution order: validate the request (400) -> existence check (404) -> permission (403, E10009) -> duplicate name check (409, E10003) -> in-use check (409, E10006, only when `rowStatus` is DELETED or ARCHIVED) -> write.
 - HTTP status of the single upsert: Insert 201 Created, Update 200 Ok, Delete 204 No Content (no response body), Archive 200 Ok.
 
 #### Example Body Parameters
@@ -276,6 +276,22 @@ HTTP/1.1 204 No Content
 }
 ```
 
+#### Fail - Forbidden
+
+```JSON
+{
+    "status": {
+        "code": 403,
+        "message": "Forbidden",
+        "bizCode": "E10009",
+        "bizMessage": "You do not have permission to manage shop types.",
+        "requestId": "req-430a1b2c-3d4e-5f6a-7b8c-9d0e1f2a3b4c",
+        "timestamp": "2026-11-06T09:41:47.123Z",
+        "status": "ERROR"
+    }
+}
+```
+
 #### Fail - Conflict
 
 ```JSON
@@ -393,4 +409,29 @@ SELECT
 FROM shop.m_shop s
 WHERE s.type_id = '<sequence.id>' -- only when rowStatus is DELETED or ARCHIVED
 AND s.row_status <> 'DELETED'
+```
+
+### Table: [author.m_role](../../../schema/author/m_role.md)
+
+#### QUERY - Get the platform administrator role
+
+```SQL
+SELECT
+    r.id as role_id
+FROM author.m_role r
+WHERE r.name = 'PLATFORM_ADMIN'
+AND r.row_status = 'ACTIVE'
+```
+
+### Table: [author.t_user_role](../../../schema/author/t_user_role.md)
+
+#### QUERY - Check platform administrator
+
+```SQL
+SELECT
+    ur.id as user_role_id
+FROM author.t_user_role ur
+WHERE ur.user_id = '<sequence.userId>'
+AND ur.role_id = '<sequence.roleId>'
+AND ur.row_status = 'ACTIVE'
 ```
