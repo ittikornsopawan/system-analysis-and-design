@@ -20,12 +20,13 @@ Description: Master table of the `authen` schema (defined in `db/migrations/up/0
 
 ## Constain
 
-| Key Name                         | Column Name | Description                                                                   |
-| -------------------------------- | ----------- | ----------------------------------------------------------------------------- |
-| pk_m_user_information_id         | id          | Primary key                                                                   |
-| fk_m_user_information_user_id    | user_id     | References authen.m_user(id), ON DELETE CASCADE                               |
-| ck_m_user_information_row_status | row_status  | CHECK (row_status IN ('ACTIVE', 'INACTIVE', 'DELETED', 'LOCKED', 'ARCHIVED')) |
-| ck_m_user_information_gender     | gender      | CHECK (gender IN ('MALE', 'FEMALE', '', 'OTHER'))                             |
+| Key Name                         | Column Name | Description                                                                    |
+| -------------------------------- | ----------- | ------------------------------------------------------------------------------ |
+| pk_m_user_information_id         | id          | Primary key                                                                    |
+| fk_m_user_information_user_id    | user_id     | References authen.m_user(id), ON DELETE CASCADE                                |
+| ck_m_user_information_row_status | row_status  | CHECK (row_status IN ('ACTIVE', 'INACTIVE', 'DELETED', 'LOCKED', 'ARCHIVED'))  |
+| ck_m_user_information_gender     | gender      | CHECK (gender IN ('MALE', 'FEMALE', '', 'OTHER'))                              |
+| uq_m_user_information_user_id    | user_id     | Unique among rows where row_status <> 'DELETED' (one information row per user) |
 
 ---
 
@@ -52,4 +53,8 @@ CREATE TABLE
         date_of_birth DATE,
         gender VARCHAR(16) CHECK (gender IN ('MALE', 'FEMALE', '', 'OTHER'))
     );
+
+CREATE UNIQUE INDEX IF NOT EXISTS uq_m_user_information_user_id ON authen.m_user_information (user_id)
+WHERE
+    row_status <> 'DELETED';
 ```

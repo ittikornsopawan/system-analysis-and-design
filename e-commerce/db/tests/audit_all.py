@@ -78,7 +78,7 @@ def indexes_of(tables):
         text = path.read_text(encoding="utf-8")
         for stmt in text.split(";"):
             s = normalize(stmt)
-            m = re.match(r"CREATE UNIQUE INDEX IF NOT EXISTS \S+ ON (\w+\.\w+) ", s)
+            m = re.match(r"CREATE (?:UNIQUE )?INDEX IF NOT EXISTS \S+ ON (\w+\.\w+) ", s)
             if m:
                 result.setdefault(m.group(1), []).append(s + ";")
     return result
@@ -139,7 +139,7 @@ def audit_docs(tables, indexes):
             finding("doc", f"{full}: SQL block differs from {t['file']}")
         for idx in indexes.get(full, []):
             if idx not in doc_sql:
-                finding("doc", f"{full}: unique index missing in the SQL block: {idx[:70]}")
+                finding("doc", f"{full}: index missing in the SQL block: {idx[:70]}")
         # the other direction: every CREATE, ALTER or DROP statement of the doc must be in the migration
         allowed = {t["sql"].rstrip(";").strip()} | {i.rstrip(";").strip() for i in indexes.get(full, [])}
         for statement in blocks.split(";"):

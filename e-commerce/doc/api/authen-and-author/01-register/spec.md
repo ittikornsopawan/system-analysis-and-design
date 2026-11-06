@@ -32,34 +32,34 @@
 
 ### Body Parameters
 
-|     | Parameter Name     | Data Type                            | M/O       | Description                                                                    | Example                              |
-| --- | ------------------ | ------------------------------------ | --------- | ------------------------------------------------------------------------------ | ------------------------------------ |
-| 1   | username           | String                               | MANDATORY | Encrypted username in AES256 Key and IV frontend side, It can be email address | kQ3v8Zx1pL0mN7aR2tYw5g==             |
-| 2   | emailAddress       | String                               | MANDATORY | Encrypted email address in AES256 Key and IV frontend side                     | Hn5cT1yQeV8rX2dW6oPz9A==             |
-| 3   | password           | String                               | MANDATORY | Encrypted password in AES256 Key and IV frontend side                          | Zr9TqL2vXw8mK5nB1cJd4A==             |
-| 4   | firstName          | String                               | OPTIONAL  | Encrypted first name in AES256 Key and IV frontend side                        | Qm4xTn8Rk2Vb7Ls0Yc3JhA==             |
-| 5   | lastName           | String                               | OPTIONAL  | Encrypted last name in AES256 Key and IV frontend side                         | Pw6zEd1Uo9Gf5Xa8Nt2KiQ==             |
-| 6   | displayName        | String                               | OPTIONAL  | Display name (max 128 characters)                                              | John Doe                             |
-| 7   | profilePicturePath | String                               | OPTIONAL  | Profile picture path                                                           | /profiles/john-doe.png               |
-| 8   | phoneNumber        | String                               | OPTIONAL  | Phone number                                                                   | 0812345678                           |
-| 9   | address            | String                               | OPTIONAL  | Address                                                                        | 123 Sukhumvit Road                   |
-| 10  | dateOfBirth        | Date                                 | OPTIONAL  | Date of birth (YYYY-MM-DD)                                                     | 1990-01-31                           |
-| 11  | gender             | String                               | OPTIONAL  | Gender (MALE, FEMALE, OTHER)                                                   | MALE                                 |
-| 12  | referrerId         | String: UUID                         | OPTIONAL  | User Id of the referrer                                                        | 8d7c6b5a-4f3e-2d1c-0b9a-876543210fed |
-| 13  | addresses          | [Object of Address](#address-object) | OPTIONAL  | User address                                                                   |                                      |
-| 14  | consents           | [Array of Consent](#consent-object)  | OPTIONAL  | User consents                                                                  |                                      |
+|     | Parameter Name     | Data Type                            | M/O       | Description                                                                                                                                               | Example                              |
+| --- | ------------------ | ------------------------------------ | --------- | --------------------------------------------------------------------------------------------------------------------------------------------------------- | ------------------------------------ |
+| 1   | username           | String                               | MANDATORY | Username (max 128 characters), Plain text over TLS, The system encrypts it before it is stored, It can be the email address                               | john.doe                             |
+| 2   | emailAddress       | String                               | MANDATORY | Email address (max 254 characters), Plain text over TLS, The system encrypts it before it is stored                                                       | john.doe@example.com                 |
+| 3   | password           | String                               | MANDATORY | Password, Plain text over TLS, 8 to 128 characters with an upper-case letter, a lower-case letter and a digit, Stored as a salted PBKDF2-HMAC-SHA256 hash | Passw0rd-Example                     |
+| 4   | firstName          | String                               | OPTIONAL  | First name (max 100 characters), Plain text over TLS, The system encrypts it before it is stored                                                          | John                                 |
+| 5   | lastName           | String                               | OPTIONAL  | Last name (max 100 characters), Plain text over TLS, The system encrypts it before it is stored                                                           | Doe                                  |
+| 6   | displayName        | String                               | OPTIONAL  | Display name (max 128 characters)                                                                                                                         | John Doe                             |
+| 7   | profilePicturePath | String                               | OPTIONAL  | Profile picture path                                                                                                                                      | /profiles/john-doe.png               |
+| 8   | phoneNumber        | String                               | OPTIONAL  | Phone number                                                                                                                                              | 0812345678                           |
+| 9   | address            | String                               | OPTIONAL  | Address                                                                                                                                                   | 123 Sukhumvit Road                   |
+| 10  | dateOfBirth        | Date                                 | OPTIONAL  | Date of birth (YYYY-MM-DD)                                                                                                                                | 1990-01-31                           |
+| 11  | gender             | String                               | OPTIONAL  | Gender (MALE, FEMALE, OTHER)                                                                                                                              | MALE                                 |
+| 12  | referrerId         | String: UUID                         | OPTIONAL  | User Id of the referrer                                                                                                                                   | 8d7c6b5a-4f3e-2d1c-0b9a-876543210fed |
+| 13  | addresses          | [Object of Address](#address-object) | OPTIONAL  | User address                                                                                                                                              |                                      |
+| 14  | consents           | [Array of Consent](#consent-object)  | OPTIONAL  | User consents                                                                                                                                             |                                      |
 
 #### Address Object
 
-|     | Parameter Name | Data Type | M/O       | Description                        | Example            |
-| --- | -------------- | --------- | --------- | ---------------------------------- | ------------------ |
-| 1   | title          | String    | MANDATORY | Address title (max 128 characters) | Home               |
-| 2   | isDefault      | Boolean   | OPTIONAL  | Default address, Defaults to FALSE | true               |
-| 3   | address        | String    | MANDATORY | Address                            | 123 Sukhumvit Road |
-| 4   | city           | String    | MANDATORY | City                               | Watthana           |
-| 5   | state          | String    | MANDATORY | State                              | Bangkok            |
-| 6   | postalCode     | String    | MANDATORY | Postal code                        | 10110              |
-| 7   | country        | String    | MANDATORY | Country                            | Thailand           |
+|     | Parameter Name | Data Type | M/O       | Description                                                                | Example            |
+| --- | -------------- | --------- | --------- | -------------------------------------------------------------------------- | ------------------ |
+| 1   | title          | String    | MANDATORY | Address title (max 128 characters)                                         | Home               |
+| 2   | isDefault      | Boolean   | OPTIONAL  | Default address, The first address of a user is always the default address | true               |
+| 3   | address        | String    | MANDATORY | Address                                                                    | 123 Sukhumvit Road |
+| 4   | city           | String    | MANDATORY | City                                                                       | Watthana           |
+| 5   | state          | String    | MANDATORY | State                                                                      | Bangkok            |
+| 6   | postalCode     | String    | MANDATORY | Postal code                                                                | 10110              |
+| 7   | country        | String    | MANDATORY | Country                                                                    | Thailand           |
 
 #### Consent Object
 
@@ -69,15 +69,22 @@
 | 2   | consentVersion | String       | OPTIONAL  | Consent version (max 8 characters), Defaults to 1.0.0 | 1.0.0                                |
 | 3   | result         | Boolean      | OPTIONAL  | Consent result, Defaults to FALSE                     | true                                 |
 
+### Register Rules
+
+- Sensitive fields (`username`, `emailAddress`, `password`, `firstName`, `lastName`, `phoneNumber`, `address` and the fields of the address) are sent as plain text over TLS. The system encrypts them before they are stored (deterministic encryption, so that `username` and `emailAddress` can be compared with `=`). The password is not encrypted: it is stored as a salted hash, PBKDF2-HMAC-SHA256 with a random 16 byte salt and 600,000 iterations. Approved by the product owner (answered through the lead SA, 2026-11-06).
+- The password follows the password policy: 8 to 128 characters with an upper-case letter, a lower-case letter and a digit (400, E10001).
+- The address that is sent becomes the default address of the new user (`is_default` TRUE) whatever `isDefault` says, because the first address of a user is the default (see `09-upsert-user-address`). If the request one day carries several addresses, at most one may have `isDefault` TRUE (400, E10001) and the first one is the default when none is.
+- The username and the email address must not exist yet, otherwise 409 (E10003). Register does not log the user in: the user calls login.
+
 #### Example Body Parameters
 
 ```JSON
 {
-    "username": "kQ3v8Zx1pL0mN7aR2tYw5g==",
-    "emailAddress": "Hn5cT1yQeV8rX2dW6oPz9A==",
-    "password": "Zr9TqL2vXw8mK5nB1cJd4A==",
-    "firstName": "Qm4xTn8Rk2Vb7Ls0Yc3JhA==",
-    "lastName": "Pw6zEd1Uo9Gf5Xa8Nt2KiQ==",
+    "username": "john.doe",
+    "emailAddress": "john.doe@example.com",
+    "password": "Passw0rd-Example",
+    "firstName": "John",
+    "lastName": "Doe",
     "displayName": "John Doe",
     "profilePicturePath": "/profiles/john-doe.png",
     "phoneNumber": "0812345678",
@@ -116,11 +123,11 @@ timestamp: 2026-11-05T12:42:00.123Z
 requestId: req-9b1deb4d-3b7d-4bad-9bdd-2b0d7b3dcb6d
 
 {
-    "username": "kQ3v8Zx1pL0mN7aR2tYw5g==",
-    "emailAddress": "Hn5cT1yQeV8rX2dW6oPz9A==",
-    "password": "Zr9TqL2vXw8mK5nB1cJd4A==",
-    "firstName": "Qm4xTn8Rk2Vb7Ls0Yc3JhA==",
-    "lastName": "Pw6zEd1Uo9Gf5Xa8Nt2KiQ==",
+    "username": "john.doe",
+    "emailAddress": "john.doe@example.com",
+    "password": "Passw0rd-Example",
+    "firstName": "John",
+    "lastName": "Doe",
     "displayName": "John Doe",
     "profilePicturePath": "/profiles/john-doe.png",
     "phoneNumber": "0812345678",
@@ -155,11 +162,11 @@ curl --location --request POST 'https://www.domain.com/api-dev/v1/auth/register'
 --header 'timestamp: 2026-11-05T12:42:00.123Z' \
 --header 'requestId: req-9b1deb4d-3b7d-4bad-9bdd-2b0d7b3dcb6d' \
 --data-raw '{
-    "username": "kQ3v8Zx1pL0mN7aR2tYw5g==",
-    "emailAddress": "Hn5cT1yQeV8rX2dW6oPz9A==",
-    "password": "Zr9TqL2vXw8mK5nB1cJd4A==",
-    "firstName": "Qm4xTn8Rk2Vb7Ls0Yc3JhA==",
-    "lastName": "Pw6zEd1Uo9Gf5Xa8Nt2KiQ==",
+    "username": "john.doe",
+    "emailAddress": "john.doe@example.com",
+    "password": "Passw0rd-Example",
+    "firstName": "John",
+    "lastName": "Doe",
     "displayName": "John Doe",
     "profilePicturePath": "/profiles/john-doe.png",
     "phoneNumber": "0812345678",
@@ -245,6 +252,22 @@ curl --location --request POST 'https://www.domain.com/api-dev/v1/auth/register'
         "bizMessage": "Username, Email Address and Password are required fields.",
         "requestId": "req-400a1b2c-3d4e-5f6a-7b8c-9d0e1f2a3b4c",
         "timestamp": "2026-11-05T12:43:45.123Z",
+        "status": "ERROR"
+    }
+}
+```
+
+#### Fail - Bad Request Password
+
+```JSON
+{
+    "status": {
+        "code": 400,
+        "message": "Bad Request",
+        "bizCode": "E10001",
+        "bizMessage": "Password must be 8 to 128 characters and contain an upper-case letter, a lower-case letter and a digit.",
+        "requestId": "req-410a1b2c-3d4e-5f6a-7b8c-9d0e1f2a3b4c",
+        "timestamp": "2026-11-05T12:43:50.123Z",
         "status": "ERROR"
     }
 }
@@ -385,7 +408,7 @@ VALUES (
     '<sequence.createdBy>',
     '<sequence.userId>',
     '<sequence.addresses.title>',
-    '<sequence.addresses.isDefault>',
+    TRUE, -- the first address of a user is the default address, whatever isDefault says
     '<sequence.addresses.addressBytes>',
     '<sequence.addresses.cityBytes>',
     '<sequence.addresses.stateBytes>',

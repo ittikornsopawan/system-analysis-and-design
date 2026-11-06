@@ -19,12 +19,13 @@ Description: Master table of the `authen` schema (defined in `db/migrations/up/0
 
 ## Constain
 
-| Key Name                      | Column Name | Description                                                                   |
-| ----------------------------- | ----------- | ----------------------------------------------------------------------------- |
-| pk_m_user_password_id         | id          | Primary key                                                                   |
-| fk_m_user_password_user_id    | user_id     | References authen.m_user(id), ON DELETE CASCADE                               |
-| ck_m_user_password_row_status | row_status  | CHECK (row_status IN ('ACTIVE', 'INACTIVE', 'DELETED', 'LOCKED', 'ARCHIVED')) |
-| ck_m_user_password_row_type   | row_type    | CHECK (row_type IN ('PASSWORD', 'TEMPORARY_PASSWORD'))                        |
+| Key Name                            | Column Name | Description                                                                                             |
+| ----------------------------------- | ----------- | ------------------------------------------------------------------------------------------------------- |
+| pk_m_user_password_id               | id          | Primary key                                                                                             |
+| fk_m_user_password_user_id          | user_id     | References authen.m_user(id), ON DELETE CASCADE                                                         |
+| ck_m_user_password_row_status       | row_status  | CHECK (row_status IN ('ACTIVE', 'INACTIVE', 'DELETED', 'LOCKED', 'ARCHIVED'))                           |
+| ck_m_user_password_row_type         | row_type    | CHECK (row_type IN ('PASSWORD', 'TEMPORARY_PASSWORD'))                                                  |
+| uq_m_user_password_user_id_password | user_id     | Unique among rows where row_type = 'PASSWORD' AND row_status = 'ACTIVE' (one current password per user) |
 
 ---
 
@@ -50,4 +51,9 @@ CREATE TABLE
         password BYTEA NOT NULL,
         password_salt BYTEA NOT NULL
     );
+
+CREATE UNIQUE INDEX IF NOT EXISTS uq_m_user_password_user_id_password ON authen.m_user_password (user_id)
+WHERE
+    row_type = 'PASSWORD'
+    AND row_status = 'ACTIVE';
 ```
