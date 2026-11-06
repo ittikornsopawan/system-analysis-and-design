@@ -28,6 +28,7 @@ This directory is the source of truth for repository-specific agent resources. R
 | --- | --- | --- |
 | `rules/global.md` | ready | Every task |
 | `rules/markdown.md` | ready | Creating or modifying an authored Markdown file |
+| `rules/component-repositories.md` | ready | Reading, creating, cloning, verifying, or changing a Project's `REPOS.md` or `repository/` content |
 
 ## Workflows
 
@@ -55,6 +56,7 @@ Skills marked `placeholder` are unavailable until designed. Design each `SKILL.m
 | `skills/data-modeling/SKILL.md` | ready | Adding or changing a table, column, constraint, index, migration, schema doc, or ER diagram |
 | `skills/api-contract-design/SKILL.md` | ready | Writing, reviewing, or changing an API spec, its examples, error codes, or its checker |
 | `skills/commit-and-pr/SKILL.md` | ready | The user asks to commit, push, open or update a pull request, or hands work over for review |
+| `skills/repository-bootstrap/SKILL.md` | ready | Setting up, cloning, verifying, or restoring Component Repositories declared by a Project |
 | `skills/requirement-analysis/SKILL.md` | placeholder | Reserved |
 | `skills/spec-authoring/SKILL.md` | placeholder | Reserved |
 | `skills/system-modeling/SKILL.md` | placeholder | Reserved |
@@ -71,6 +73,7 @@ The ready skills carry their own `references/`, `assets/` (templates ending in `
 | --- | --- | --- |
 | `templates/api-spec.md` | ready | A project has no project-specific API template |
 | `templates/schema.md` | ready | A project has no project-specific schema template |
+| `templates/repository-manifest.md` | ready | Creating the required `REPOS.md` for a new or migrating Project |
 | `templates/requirement-spec.md` | placeholder | Reserved for requirement specifications |
 | `templates/system-spec.md` | placeholder | Reserved for system specifications |
 | `templates/architecture-decision.md` | placeholder | Reserved for architecture decisions |

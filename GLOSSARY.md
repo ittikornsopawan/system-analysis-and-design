@@ -39,6 +39,28 @@ _Avoid_: final draft, completed document
 The Approved Spec that authorizes and constrains a particular implementation change.
 _Avoid_: related document, reference note
 
+## Repository Ownership
+
+**Showcase Repository**:
+The outer repository that owns Projects, specifications, diagrams, manifests, and shared agent resources but not Component Repository source code.
+_Avoid_: monorepo, parent source repository
+
+**Repository Manifest**:
+A Project-owned `REPOS.md` declaration of every Component Repository and its reproducible baseline.
+_Avoid_: repository list, clone notes
+
+**Checkout Directory**:
+The Project boundary reserved for materialized Component Repositories.
+_Avoid_: source root, backend repository
+
+**Component Repository**:
+An independently versioned Git repository declared by a Repository Manifest and materialized inside a Checkout Directory.
+_Avoid_: folder, submodule
+
+**Migration-Pending Project**:
+A legacy Project whose code has not yet been converted to manifest-managed Component Repositories.
+_Avoid_: invalid project, partially cloned project
+
 ## Agent Resources
 
 **Rule**:

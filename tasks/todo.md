@@ -42,3 +42,16 @@ Status: Complete
 - [x] Register the skill as ready in `.agents/README.md`.
 
 Verification: `preflight.py` flagged every planted problem in a scratch repository (main branch, secret, private key, 1.2 MB file, build output, trailing whitespace) and passed a placeholder bearer token and a clean file; `--run-checks` ran 22 `check_docs.py` sub-commands, `audit_all.py` (0 findings) and `run_db_tests.sh` (ALL PASSED) on the real repository. The skill has not been run against test prompts with a baseline, and nothing was committed.
+
+## repository-wide: Define independent Component Repository standard
+
+Status: Complete
+
+- [x] Inspect the current `e-commerce/repository/` ownership and references without moving files.
+- [x] Decide the manifest-managed independent repository model, naming, revision, ignore, and migration boundaries.
+- [x] Create the Component Repository rule, Repository Manifest template, bootstrap skill, ADR, and canonical glossary terms.
+- [x] Register the new resources and update root structure, SDD implementation routing, and e-commerce migration status.
+- [x] Validate the skill package, frontmatter, manifest contract, routing parity, references, and unchanged e-commerce backend layout.
+- [x] Record verification and mark this task complete.
+
+Verification: isolated forward tests covered a valid staged clone, a dirty existing checkout, a migration-pending Project, and a revision outside the declared default branch; declared targets and existing work were preserved and staging directories were cleaned. Ruby fallback validation passed for skill structure and YAML because the bundled Python validator could not import PyYAML. Root instruction parity, workflow numbering, registry entries, ADR, manifest fields, full-SHA and remote safety instructions, e-commerce migration state, and `git diff --check` all passed. No `e-commerce` backend file was moved and no nested Git metadata or `e-commerce/REPOS.md` was created.
