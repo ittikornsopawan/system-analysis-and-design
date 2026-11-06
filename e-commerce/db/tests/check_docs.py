@@ -3398,7 +3398,10 @@ AUTHEN_NEEDLES = {
            "record `REFUSED` and answer 401 when there are 5", "record `FAILED` and answer 401 when it does not match or the user is not found", "record `SUCCESS`",
            "AND la.result = 'FAILED' -- refused attempts are never counted", "'<sequence.result>' -- SUCCESS, FAILED or REFUSED",
            "One answer for every failure", "Invalid username or password.", "SHA-256 (32 bytes), never as the token itself",
-           "Lock order:", AUTHEN_LOCK, "14 days", "'<sequence.sessionId>', -- a new session id for every login"],
+           "Lock order:", AUTHEN_LOCK, "14 days", "'<sequence.sessionId>', -- a new session id for every login",
+           "**Authorization claims:**", "`roles`, `permissions` and `scopes`", "author.t_user_role", "author.m_role",
+           "author.t_role_permission", "author.t_role_permission_scope", "author.t_user_permission", "author.t_permission_scope",
+           "author.m_permission", "author.m_scope", "A user with no assigned role or permission can still log in"],
     "03": ["# [POST]: v1/auth/reset-password", "### Reset Password Rules", "The answer is always 200 with the same message",
            "If the email address is registered, a reset link has been sent.", "Throttle:", "3 times per hour", "uq_t_user_reset_password_user_id_active", "Lock order:",
            "#### QUERY - Lock the user", AUTHEN_LOCK, "#### QUERY - Count the requests of the last hour", "#### UPDATE - Make the old reset token INACTIVE",
@@ -3732,6 +3735,132 @@ def check_authen_schema() -> int:
 
 
 COMMANDS["authen-schema"] = check_authen_schema
+
+
+# ---------------------------------------------------------------- API sequence diagrams: spec SQL parity and table lifecycle
+SEQUENCE_SPEC_DIRS = (
+    "e-commerce/doc/api/authen-and-author",
+    "e-commerce/doc/api/consent",
+)
+
+
+def spec_database_operations(md: str) -> list[tuple[str, str, str]]:
+    """Return (qualified table, operation heading, SQL) in specification order."""
+    operations = []
+    current_table = None
+    lines = md.splitlines()
+    index = 0
+    while index < len(lines):
+        table = re.match(r"^### Table: \[([^\]]+)\]", lines[index])
+        if table:
+            current_table = table.group(1)
+            index += 1
+            continue
+        operation = re.match(r"^#### ((?:QUERY|INSERT|UPDATE|DELETE)[^\n]*)$", lines[index])
+        if operation and current_table:
+            cursor = index + 1
+            while cursor < len(lines) and lines[cursor] != "```SQL":
+                if lines[cursor].startswith("#### ") or lines[cursor].startswith("### Table:"):
+                    break
+                cursor += 1
+            if cursor < len(lines) and lines[cursor] == "```SQL":
+                cursor += 1
+                sql = []
+                while cursor < len(lines) and lines[cursor] != "```":
+                    sql.append(lines[cursor])
+                    cursor += 1
+                operations.append((current_table, operation.group(1), "\n".join(sql)))
+                index = cursor + 1
+                continue
+        index += 1
+    return operations
+
+
+def sequence_database_operations(wsd: str) -> tuple[list[tuple[str, str, str]], list[str]]:
+    """Return table interactions and lifecycle/indentation errors from one sequence."""
+    operations = []
+    errors = []
+    lines = wsd.splitlines()
+    index = 0
+    while index < len(lines):
+        request = re.match(r"^(\s*)infra -> (\w+): ((?:QUERY|INSERT|UPDATE|DELETE)[^\n]*)$", lines[index])
+        if not request:
+            index += 1
+            continue
+        indent, table, heading = len(request.group(1)), request.group(2), request.group(3)
+        if index + 2 >= len(lines):
+            errors.append(f"line {index + 1}: incomplete interaction for {table}")
+            break
+        if lines[index + 1] != " " * indent + f"activate {table}":
+            errors.append(f"line {index + 1}: {table} must activate immediately after the request")
+        if lines[index + 2] != " " * (indent + 4) + f"note right of {table}":
+            errors.append(f"line {index + 1}: {table} SQL note must be indented inside its activation")
+        cursor = index + 3
+        sql = []
+        while cursor < len(lines) and lines[cursor].strip() != "end note":
+            sql.append(lines[cursor][indent + 8:] if lines[cursor].startswith(" " * (indent + 8)) else lines[cursor].lstrip())
+            cursor += 1
+        if cursor >= len(lines):
+            errors.append(f"line {index + 1}: {table} SQL note is not closed")
+            break
+        if lines[cursor] != " " * (indent + 4) + "end note":
+            errors.append(f"line {cursor + 1}: {table} end note must stay inside its activation")
+        if cursor + 1 >= len(lines) or not re.match(rf"^{' ' * (indent + 4)}{re.escape(table)} -> infra: Return ", lines[cursor + 1]):
+            errors.append(f"line {cursor + 2}: {table} must return while it is active")
+        if cursor + 2 >= len(lines) or lines[cursor + 2] != " " * indent + f"deactivate {table}":
+            errors.append(f"line {cursor + 3}: {table} must deactivate after its return")
+        operations.append((table, heading, "\n".join(sql)))
+        index = cursor + 3
+    return operations, errors
+
+
+def check_api_sequence_spec() -> int:
+    errors = []
+    pairs = []
+    for directory in SEQUENCE_SPEC_DIRS:
+        pairs.extend(sorted((ROOT / directory).glob("*/spec.md")))
+    if len(pairs) != 18:
+        errors.append(f"expected 18 API specs in authen-and-author and consent, found {len(pairs)}")
+    for spec_path in pairs:
+        sequence_path = spec_path.with_name("sequence.wsd")
+        relative_spec = spec_path.relative_to(ROOT)
+        relative_sequence = sequence_path.relative_to(ROOT)
+        if not sequence_path.exists() or not sequence_path.read_text(encoding="utf-8").strip():
+            errors.append(f"{relative_sequence}: missing or empty")
+            continue
+        spec_operations = spec_database_operations(spec_path.read_text(encoding="utf-8"))
+        sequence_text = sequence_path.read_text(encoding="utf-8")
+        sequence_operations, lifecycle_errors = sequence_database_operations(sequence_text)
+        errors.extend(f"{relative_sequence}: {error}" for error in lifecycle_errors)
+        declared_tables = re.findall(r'^\s*database "[^"]+" as (\w+)$', sequence_text, re.MULTILINE)
+        expected_tables = list(dict.fromkeys(table.split(".")[-1] for table, _, _ in spec_operations))
+        if declared_tables != expected_tables:
+            errors.append(
+                f"{relative_sequence}: database participants {declared_tables} differ from spec tables {expected_tables}"
+            )
+        if not sequence_text.startswith("@startuml ") or not sequence_text.rstrip().endswith("@enduml"):
+            errors.append(f"{relative_sequence}: must have @startuml and @enduml")
+        if len(spec_operations) != len(sequence_operations):
+            errors.append(
+                f"{relative_sequence}: has {len(sequence_operations)} table interactions but {relative_spec} has {len(spec_operations)} SQL blocks"
+            )
+            continue
+        for position, (spec_operation, sequence_operation) in enumerate(zip(spec_operations, sequence_operations), start=1):
+            table, heading, sql = spec_operation
+            sequence_table, sequence_heading, sequence_sql = sequence_operation
+            if sequence_table != table.split(".")[-1] or sequence_heading != heading:
+                errors.append(
+                    f"{relative_sequence}: interaction {position} is {sequence_table} / {sequence_heading}, expected {table} / {heading}"
+                )
+            if normalize(sequence_sql) != normalize(sql):
+                errors.append(f"{relative_sequence}: interaction {position} SQL differs from {relative_spec}")
+    if errors:
+        return fail("; ".join(errors))
+    print("OK: api-sequence-spec (18 specs, SQL parity and table lifecycle)")
+    return 0
+
+
+COMMANDS["api-sequence-spec"] = check_api_sequence_spec
 
 
 CAMPAIGN_SCHEMA_DOC = "e-commerce/doc/schema/campaign"

@@ -1,12 +1,20 @@
+---
+name: Login API Specification
+description: Defines the login request, authentication controls, authorization claims, token session, responses, and database operations for POST v1/auth/login.
+status: draft
+approved_by: null
+approved_at: null
+---
+
 # [POST]: v1/auth/login
 
-| Title       | Description                                                                                                                                                                                                                                   |
-| ----------- | --------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------- |
-| Name        | Login API                                                                                                                                                                                                                                     |
-| Method      | POST                                                                                                                                                                                                                                          |
-| Endpoint    | v{version}/auth/login                                                                                                                                                                                                                         |
-| Version     | 1                                                                                                                                                                                                                                             |
-| Description | Authenticate a user by username or email address and password, record the session and issue an access token and a refresh token, A username that failed 5 times in 15 minutes is refused for a while with the same answer as a wrong password |
+| Title       | Description                                                                                                                                                                                                                                                                              |
+| ----------- | ---------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------- |
+| Name        | Login API                                                                                                                                                                                                                                                                                |
+| Method      | POST                                                                                                                                                                                                                                                                                     |
+| Endpoint    | v{version}/auth/login                                                                                                                                                                                                                                                                    |
+| Version     | 1                                                                                                                                                                                                                                                                                        |
+| Description | Authenticate a user by username or email address and password, load active roles, permissions and scopes, record the session and issue an access token and a refresh token, A username that failed 5 times in 15 minutes is refused for a while with the same answer as a wrong password |
 
 ## Domain
 
@@ -43,9 +51,10 @@
 - Only an ACTIVE user with an ACTIVE PASSWORD row can log in. The password is hashed with PBKDF2-HMAC-SHA256, the salt of the current password row and 600,000 iterations, and compared in constant time. Approved by the product owner (answered through the lead SA, 2026-11-06).
 - **One answer for every failure:** an unknown username, a wrong password, a user that is not ACTIVE and a username that is temporarily refused all get 401 (E10002) `Invalid username or password.` The answer never says which one it is.
 - **Brute force limit:** every request is written to `authen.l_user_login_attempt` with the SHA-256 of the username (also for names that do not exist) and a `result`: `SUCCESS`, `FAILED` (the password was checked and was wrong, or the user was not found or not ACTIVE) or `REFUSED` (the username was blocked and the password was not checked). **Only `FAILED` rows are counted.** When the username has 5 `FAILED` attempts in the last 15 minutes (configurable) the request is refused without checking the password, answered with the same 401 and recorded as `REFUSED`, which is not counted. The block therefore ends by itself as soon as the 5th most recent failure is older than 15 minutes, however many requests arrive meanwhile. Example: failures at 09:00, 09:01, 09:02, 09:03 and 09:04 block the username from 09:04, the requests from 09:05 to 09:14 are `REFUSED`, and at 09:15:01 the failure of 09:00 is older than 15 minutes, so 4 are counted and the next request checks the password. The `FAILED` and `REFUSED` rows are committed although the answer is 401 (they are written outside the transaction that creates the tokens). The lock is not stored in `authen.m_user` (the `LOCKED` status is kept for administrators). Attempts older than 30 days are deleted by a system job.
-- **Session:** a successful login creates a new `session_id` and inserts one access token row and one refresh token row, both with that `session_id`, in one transaction. The tokens are stored as SHA-256 (32 bytes), never as the token itself. The access token is a JWT (HS256) with `sub` (user id), `jti`, `iss`, `aud`, `iat` and `exp`, valid 15 minutes (`expiresIn` 900, configurable). The refresh token is 32 random bytes (base64url), valid 14 days (configurable) and usable once (see `05-refresh-token`).
-- Lock order: after the password matches, lock the `authen.m_user` row (`FOR UPDATE`), then write the tokens and the attempt.
-- Execution order: validate the request (400) -> count the `FAILED` attempts of the last 15 minutes (record `REFUSED` and answer 401 when there are 5) -> find the ACTIVE user -> get the current password and compare (record `FAILED` and answer 401 when it does not match or the user is not found) -> lock the user row -> insert the access token and the refresh token -> record `SUCCESS` -> answer 200.
+- **Authorization claims:** after the password matches, load ACTIVE roles from `author.t_user_role` and `author.m_role`; load role permissions and scopes from `author.t_role_permission` and `author.t_role_permission_scope`; load direct user permissions and their allowed scopes from `author.t_user_permission` and `author.t_permission_scope`; then resolve ACTIVE names from `author.m_permission` and `author.m_scope`. Merge and remove duplicate role, permission and scope values before issuing the JWT. A user with no assigned role or permission can still log in with empty authorization-claim arrays. Approved by the product owner in this task (2026-11-06).
+- **Session:** a successful login creates a new `session_id` and inserts one access token row and one refresh token row, both with that `session_id`, in one transaction. The tokens are stored as SHA-256 (32 bytes), never as the token itself. The access token is a JWT (HS256) with `sub` (user id), `jti`, `iss`, `aud`, `iat`, `exp`, `roles`, `permissions` and `scopes`, valid 15 minutes (`expiresIn` 900, configurable). The refresh token is 32 random bytes (base64url), valid 14 days (configurable) and usable once (see `05-refresh-token`).
+- Lock order: after the password matches, lock the `authen.m_user` row (`FOR UPDATE`), load the authorization claims, then write the tokens and the attempt.
+- Execution order: validate the request (400) -> count the `FAILED` attempts of the last 15 minutes (record `REFUSED` and answer 401 when there are 5) -> find the ACTIVE user -> get the current password and compare (record `FAILED` and answer 401 when it does not match or the user is not found) -> lock the user row -> load and merge ACTIVE roles, permissions and scopes -> insert the access token and the refresh token -> record `SUCCESS` -> answer 200.
 
 #### Example Body Parameters
 
@@ -277,6 +286,106 @@ FROM authen.m_user u
 WHERE u.id = '<sequence.userId>'
 AND u.row_status = 'ACTIVE'
 FOR UPDATE -- every authen API locks the user row first
+```
+
+### Table: [author.t_user_role](../../../schema/author/t_user_role.md)
+
+#### QUERY - Get active role ids
+
+```SQL
+SELECT
+    ur.role_id
+FROM author.t_user_role ur
+WHERE ur.user_id = '<sequence.userId>'
+AND ur.row_status = 'ACTIVE'
+```
+
+### Table: [author.m_role](../../../schema/author/m_role.md)
+
+#### QUERY - Get active roles
+
+```SQL
+SELECT
+    r.id AS role_id,
+    r.name AS role_name
+FROM author.m_role r
+WHERE r.id IN (<sequence.roleIds>)
+AND r.row_status = 'ACTIVE'
+```
+
+### Table: [author.t_role_permission](../../../schema/author/t_role_permission.md)
+
+#### QUERY - Get active role permissions
+
+```SQL
+SELECT
+    rp.id AS role_permission_id,
+    rp.permission_id
+FROM author.t_role_permission rp
+WHERE rp.role_id IN (<sequence.roleIds>)
+AND rp.row_status = 'ACTIVE'
+```
+
+### Table: [author.t_role_permission_scope](../../../schema/author/t_role_permission_scope.md)
+
+#### QUERY - Get active role permission scopes
+
+```SQL
+SELECT
+    rps.permission_scope_id AS scope_id
+FROM author.t_role_permission_scope rps
+WHERE rps.role_permission_id IN (<sequence.rolePermissionIds>)
+AND rps.row_status = 'ACTIVE'
+```
+
+### Table: [author.t_user_permission](../../../schema/author/t_user_permission.md)
+
+#### QUERY - Get active direct permissions
+
+```SQL
+SELECT
+    up.permission_id
+FROM author.t_user_permission up
+WHERE up.user_id = '<sequence.userId>'
+AND up.row_status = 'ACTIVE'
+```
+
+### Table: [author.t_permission_scope](../../../schema/author/t_permission_scope.md)
+
+#### QUERY - Get active direct permission scopes
+
+```SQL
+SELECT
+    ps.scope_id
+FROM author.t_permission_scope ps
+WHERE ps.permission_id IN (<sequence.directPermissionIds>)
+AND ps.row_status = 'ACTIVE'
+```
+
+### Table: [author.m_permission](../../../schema/author/m_permission.md)
+
+#### QUERY - Get active permissions
+
+```SQL
+SELECT
+    p.id AS permission_id,
+    p.name AS permission_name
+FROM author.m_permission p
+WHERE p.id IN (<sequence.permissionIds>)
+AND p.row_status = 'ACTIVE'
+```
+
+### Table: [author.m_scope](../../../schema/author/m_scope.md)
+
+#### QUERY - Get active scopes
+
+```SQL
+SELECT
+    s.id AS scope_id,
+    s.scope
+FROM author.m_scope s
+WHERE s.id IN (<sequence.scopeIds>)
+AND s.row_status = 'ACTIVE'
 ```
 
 ### Table: [authen.t_user_access_token](../../../schema/authen/t_user_access_token.md)

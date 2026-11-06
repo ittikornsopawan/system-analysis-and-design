@@ -1,0 +1,180 @@
+@startuml UpsertConsentTypeBatch Sequence
+
+title Upsert Consent Type Batch API Sequence
+
+' Visual style
+skinparam defaultFontName "Sarabun"
+skinparam defaultFontSize 14
+skinparam backgroundColor #FFFFFF
+skinparam shadowing false
+skinparam roundcorner 10
+skinparam sequence {
+    ArrowColor #475569
+    ArrowFontColor #334155
+    LifeLineBorderColor #CBD5E1
+    LifeLineBackgroundColor #F8FAFC
+    ParticipantBorderColor #94A3B8
+    ParticipantBackgroundColor #F1F5F9
+    ParticipantFontColor #0F172A
+    GroupBorderColor #94A3B8
+    GroupBackgroundColor #F8FAFC
+    GroupFontColor #334155
+}
+
+' Do not show participant footers at the bottom of the diagram
+hide footbox
+
+
+actor "User" as user
+
+box "Frontend" #F8FAFC
+    participant "Upsert Consent Type Batch Page" as page
+end box
+
+box "Web API" #F8FAFC
+    participant "API" as api
+    participant "Application" as app
+    participant "Domain" as domain
+    participant "Infrastructure" as infra
+end box
+
+box "Database" #F8FAFC
+    database "m_consent_type" as m_consent_type
+    database "t_consent" as t_consent
+    database "m_role" as m_role
+    database "t_user_role" as t_user_role
+end box
+
+user -> page: Submit Upsert Consent Type Batch
+
+activate page
+    page -> api: Call POST v1/consent/type/upsert/batch
+    activate api
+        api -> app: [**UpsertConsentTypeBatchCommandHandler**] Process request
+        activate app
+            app -> app: Validate request parameters and business rules
+            alt If request is invalid
+                app -> api: Return error response
+                api -> page: Return error response
+                page -> user: Display error message
+            else If request is valid
+                app -> infra: Execute database operations
+                activate infra
+                    infra -> m_consent_type: QUERY - Check existing consent type
+                    activate m_consent_type
+                        note right of m_consent_type
+                            SELECT
+                                ct.id as consent_type_id
+                            FROM consent.m_consent_type ct
+                            WHERE ct.id = '<sequence.consentTypes.id>'
+                            AND ct.row_status <> 'DELETED' -- the id of a DELETED consent type counts as not found
+                        end note
+                        m_consent_type -> infra: Return query result
+                    deactivate m_consent_type
+
+                    infra -> m_consent_type: QUERY - Check duplicate name
+                    activate m_consent_type
+                        note right of m_consent_type
+                            SELECT
+                                ct.id as consent_type_id
+                            FROM consent.m_consent_type ct
+                            WHERE ct.name = '<sequence.consentTypes.name>'
+                            AND ct.row_status <> 'DELETED'
+                            AND ct.id <> '<sequence.consentTypes.id>' -- only when id is specified
+                        end note
+                        m_consent_type -> infra: Return query result
+                    deactivate m_consent_type
+
+                    infra -> m_consent_type: INSERT - Create consent type
+                    activate m_consent_type
+                        note right of m_consent_type
+                            INSERT INTO consent.m_consent_type (
+                                created_by,
+                                row_status,
+                                name,
+                                description,
+                                is_required
+                            )
+                            VALUES (
+                                '<sequence.createdBy>',
+                                '<sequence.consentTypes.rowStatus>',
+                                '<sequence.consentTypes.name>',
+                                '<sequence.consentTypes.description>',
+                                '<sequence.consentTypes.isRequired>'
+                            )
+                            RETURNING id as consent_type_id
+                        end note
+                        m_consent_type -> infra: Return inserted result
+                    deactivate m_consent_type
+
+                    infra -> m_consent_type: UPDATE - Update or delete consent type
+                    activate m_consent_type
+                        note right of m_consent_type
+                            UPDATE consent.m_consent_type
+                            SET
+                                updated_by = '<sequence.updatedBy>',
+                                updated_at = NOW() AT TIME ZONE 'UTC',
+                                row_status = '<sequence.consentTypes.rowStatus>',
+                                name = '<sequence.consentTypes.name>',
+                                description = '<sequence.consentTypes.description>', -- only when description is specified (null clears it)
+                                is_required = '<sequence.consentTypes.isRequired>' -- only when isRequired is specified
+                            WHERE id = '<sequence.consentTypes.id>'
+                            RETURNING id as consent_type_id
+                        end note
+                        m_consent_type -> infra: Return updated result
+                    deactivate m_consent_type
+
+                    infra -> t_consent: QUERY - Check consent in use
+                    activate t_consent
+                        note right of t_consent
+                            SELECT
+                                c.id as consent_id
+                            FROM consent.t_consent c
+                            WHERE c.consent_type_id = '<sequence.consentTypes.id>' -- only when rowStatus is DELETED or ARCHIVED
+                            AND c.row_status <> 'DELETED'
+                        end note
+                        t_consent -> infra: Return query result
+                    deactivate t_consent
+
+                    infra -> m_role: QUERY - Get the platform administrator role
+                    activate m_role
+                        note right of m_role
+                            SELECT
+                                r.id as role_id
+                            FROM author.m_role r
+                            WHERE r.name = 'PLATFORM_ADMIN'
+                            AND r.row_status = 'ACTIVE'
+                        end note
+                        m_role -> infra: Return query result
+                    deactivate m_role
+
+                    infra -> t_user_role: QUERY - Check platform administrator
+                    activate t_user_role
+                        note right of t_user_role
+                            SELECT
+                                ur.id as user_role_id
+                            FROM author.t_user_role ur
+                            WHERE ur.user_id = '<sequence.userId>'
+                            AND ur.role_id = '<sequence.roleId>'
+                            AND ur.row_status = 'ACTIVE'
+                        end note
+                        t_user_role -> infra: Return query result
+                    deactivate t_user_role
+
+                    infra -> app: Return database result
+                deactivate infra
+
+                app -> domain: Apply domain rules and prepare response
+                activate domain
+                    domain -> app: Return response data
+                deactivate domain
+
+                app -> api: Return success response
+                api -> page: Return success response
+                page -> user: Display success result
+            end alt
+        deactivate app
+    deactivate api
+deactivate page
+
+@enduml
