@@ -110,3 +110,21 @@ description: Repository-wide and project-specific lessons captured from user cor
 - **Correction**: Every database-table interaction in a sequence diagram must activate the table, nest the exact SQL intended for the API specification inside a table-bound note, return the query result while the table remains active, and only then deactivate the table.
 - **Root cause**: The first revision omitted SQL entirely; the next revision added SQL but deactivated each table before drawing its return message, so the activation did not represent the complete database interaction.
 - **Corrected behavior**: For e-commerce API sequence diagrams, use this exact order and indentation: request message → `activate <table>` → indented table-bound SQL note → indented table return message → `deactivate <table>`. Keep the SQL aligned with the current migration and schema documentation.
+
+### 2026-11-06 — Revocation has to reach every row that holds the credential
+
+- **Correction**: Logout closed only the access token of the request, but a refresh adds another access token to the same session, so a logged-out session could still be used for up to 15 minutes.
+- **Root cause**: I wrote the revoke step for one token instead of listing every row that can authorise the user (all access tokens and refresh tokens of the session).
+- **Corrected behavior**: When a rule says something takes effect at once, list every row and cache that can still grant access and close all of them in one transaction. Also write the lock order and the single-use update (`WHERE row_status = 'ACTIVE' ... RETURNING`) so that concurrent requests cannot both pass.
+
+### 2026-11-06 — Never bootstrap privilege from an unverified identity
+
+- **Correction**: The first platform administrator was to be granted automatically to the user whose email matched a configured address, but registration does not verify email addresses and answers 409 for a taken name, so anyone who registers first would get the highest privilege.
+- **Root cause**: I treated the email address as proof of identity.
+- **Corrected behavior**: Grant the first administrator by an operator command that names the `userId` after the operator has checked the account out of band, and make it work only when no ACTIVE administrator exists. Ask first which identifiers the system really verifies.
+
+### 2026-11-06 — Do not build the API surface that nothing uses
+
+- **Correction**: The design proposed 17 specs for roles, permissions and scopes although no API enforces a permission, and the new `seed` folder changed the project structure without being asked.
+- **Root cause**: I followed the roadmap list and the table design instead of asking what is needed to hand over the first administrator.
+- **Corrected behavior**: Split the work into what is needed now and what waits for a consumer, change the schema of the deferred tables once so that later work is free, and ask before adding a folder or a tool to the project structure.

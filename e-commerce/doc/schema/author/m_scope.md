@@ -12,7 +12,7 @@ Description: Master table of the `author` schema (defined in `db/migrations/up/0
 |     |           | updated_by  | VARCHAR   | 64     | TRUE        | User or service that last updated the row                                |                   |
 |     |           | updated_at  | TIMESTAMP |        | TRUE        | Timestamp when the row was last updated                                  |                   |
 |     |           | row_status  | VARCHAR   | 32     | FALSE       | Lifecycle status of the row: ACTIVE, INACTIVE, DELETED, LOCKED, ARCHIVED | ACTIVE            |
-| UQ  |           | scope       | VARCHAR   | 64     | FALSE       | Unique                                                                   |                   |
+|     |           | scope       | VARCHAR   | 64     | FALSE       | Unique among rows where row_status <> 'DELETED'                          |                   |
 |     |           | name        | VARCHAR   | 64     | FALSE       |                                                                          |                   |
 |     |           | description | VARCHAR   | 256    | FALSE       |                                                                          |                   |
 
@@ -21,7 +21,7 @@ Description: Master table of the `author` schema (defined in `db/migrations/up/0
 | Key Name              | Column Name | Description                                                                   |
 | --------------------- | ----------- | ----------------------------------------------------------------------------- |
 | pk_m_scope_id         | id          | Primary key                                                                   |
-| uq_m_scope_scope      | scope       | Unique                                                                        |
+| uq_m_scope_scope      | scope       | Unique among rows where row_status <> 'DELETED'                               |
 | ck_m_scope_row_status | row_status  | CHECK (row_status IN ('ACTIVE', 'INACTIVE', 'DELETED', 'LOCKED', 'ARCHIVED')) |
 
 ---
@@ -43,8 +43,12 @@ CREATE TABLE
                 'ARCHIVED'
             )
         ),
-        scope VARCHAR(64) NOT NULL UNIQUE,
+        scope VARCHAR(64) NOT NULL,
         name VARCHAR(64) NOT NULL,
         description VARCHAR(256) NOT NULL
     );
+
+CREATE UNIQUE INDEX IF NOT EXISTS uq_m_scope_scope ON author.m_scope (scope)
+WHERE
+    row_status <> 'DELETED';
 ```

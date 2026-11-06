@@ -20,9 +20,9 @@ Description: Transaction table of the `author` schema (defined in `db/migrations
 | Key Name                                     | Column Name             | Description                                                                   |
 | -------------------------------------------- | ----------------------- | ----------------------------------------------------------------------------- |
 | pk_t_permission_scope_id                     | id                      | Primary key                                                                   |
-| fk_t_permission_scope_permission_id          | permission_id           | References author.m_permission(id), ON DELETE CASCADE                         |
-| fk_t_permission_scope_scope_id               | scope_id                | References author.m_scope(id), ON DELETE CASCADE                              |
-| uq_t_permission_scope_permission_id_scope_id | permission_id, scope_id | Unique combination                                                            |
+| fk_t_permission_scope_permission_id          | permission_id           | References author.m_permission(id), ON DELETE RESTRICT                        |
+| fk_t_permission_scope_scope_id               | scope_id                | References author.m_scope(id), ON DELETE RESTRICT                             |
+| uq_t_permission_scope_permission_id_scope_id | permission_id, scope_id | Unique among rows where row_status <> 'DELETED'                               |
 | ck_t_permission_scope_row_status             | row_status              | CHECK (row_status IN ('ACTIVE', 'INACTIVE', 'DELETED', 'LOCKED', 'ARCHIVED')) |
 
 ---
@@ -44,8 +44,11 @@ CREATE TABLE
                 'ARCHIVED'
             )
         ),
-        permission_id UUID NOT NULL REFERENCES author.m_permission (id) ON DELETE CASCADE,
-        scope_id UUID NOT NULL REFERENCES author.m_scope (id) ON DELETE CASCADE,
-        UNIQUE (permission_id, scope_id)
+        permission_id UUID NOT NULL REFERENCES author.m_permission (id) ON DELETE RESTRICT,
+        scope_id UUID NOT NULL REFERENCES author.m_scope (id) ON DELETE RESTRICT
     );
+
+CREATE UNIQUE INDEX IF NOT EXISTS uq_t_permission_scope_permission_id_scope_id ON author.t_permission_scope (permission_id, scope_id)
+WHERE
+    row_status <> 'DELETED';
 ```

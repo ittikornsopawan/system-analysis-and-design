@@ -2,6 +2,8 @@
 
 53 tables in 11 schemas, generated from `db/migrations/up/*.sql` using [`template.md`](template.md). ER diagram: [`er-diagram.drawio`](../../db/er-diagram.drawio).
 
+Reference data that the system needs to run (the role `PLATFORM_ADMIN`, the scopes and the permission list of `author`) is in [`db/seed/`](../../db/seed/author.seed.sql), run after the migrations. The first platform administrator is made by hand with [`grant-platform-admin.sql`](../../db/seed/grant-platform-admin.sql).
+
 
 ## public
 
@@ -42,7 +44,7 @@
 | [t_role_permission](author/t_role_permission.md) | Transaction | 8 | 2 |
 | [t_role_permission_scope](author/t_role_permission_scope.md) | Transaction | 8 | 2 |
 | [t_user_role](author/t_user_role.md) | Transaction | 8 | 2 |
-| [t_user_permission](author/t_user_permission.md) | Transaction | 8 | 2 |
+| [t_user_permission](author/t_user_permission.md) | Transaction | 9 | 3 |
 
 ## product
 

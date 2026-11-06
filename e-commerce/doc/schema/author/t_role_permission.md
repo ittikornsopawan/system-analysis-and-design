@@ -20,9 +20,9 @@ Description: Transaction table of the `author` schema (defined in `db/migrations
 | Key Name                                   | Column Name            | Description                                                                   |
 | ------------------------------------------ | ---------------------- | ----------------------------------------------------------------------------- |
 | pk_t_role_permission_id                    | id                     | Primary key                                                                   |
-| fk_t_role_permission_role_id               | role_id                | References author.m_role(id), ON DELETE CASCADE                               |
-| fk_t_role_permission_permission_id         | permission_id          | References author.m_permission(id), ON DELETE CASCADE                         |
-| uq_t_role_permission_role_id_permission_id | role_id, permission_id | Unique combination                                                            |
+| fk_t_role_permission_role_id               | role_id                | References author.m_role(id), ON DELETE RESTRICT                              |
+| fk_t_role_permission_permission_id         | permission_id          | References author.m_permission(id), ON DELETE RESTRICT                        |
+| uq_t_role_permission_role_id_permission_id | role_id, permission_id | Unique among rows where row_status <> 'DELETED'                               |
 | ck_t_role_permission_row_status            | row_status             | CHECK (row_status IN ('ACTIVE', 'INACTIVE', 'DELETED', 'LOCKED', 'ARCHIVED')) |
 
 ---
@@ -44,8 +44,11 @@ CREATE TABLE
                 'ARCHIVED'
             )
         ),
-        role_id UUID NOT NULL REFERENCES author.m_role (id) ON DELETE CASCADE,
-        permission_id UUID NOT NULL REFERENCES author.m_permission (id) ON DELETE CASCADE,
-        UNIQUE (role_id, permission_id)
+        role_id UUID NOT NULL REFERENCES author.m_role (id) ON DELETE RESTRICT,
+        permission_id UUID NOT NULL REFERENCES author.m_permission (id) ON DELETE RESTRICT
     );
+
+CREATE UNIQUE INDEX IF NOT EXISTS uq_t_role_permission_role_id_permission_id ON author.t_role_permission (role_id, permission_id)
+WHERE
+    row_status <> 'DELETED';
 ```
