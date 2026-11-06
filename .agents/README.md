@@ -54,6 +54,7 @@ Skills marked `placeholder` are unavailable until designed. Design each `SKILL.m
 | --- | --- | --- |
 | `skills/data-modeling/SKILL.md` | ready | Adding or changing a table, column, constraint, index, migration, schema doc, or ER diagram |
 | `skills/api-contract-design/SKILL.md` | ready | Writing, reviewing, or changing an API spec, its examples, error codes, or its checker |
+| `skills/commit-and-pr/SKILL.md` | ready | The user asks to commit, push, open or update a pull request, or hands work over for review |
 | `skills/requirement-analysis/SKILL.md` | placeholder | Reserved |
 | `skills/spec-authoring/SKILL.md` | placeholder | Reserved |
 | `skills/system-modeling/SKILL.md` | placeholder | Reserved |
@@ -62,7 +63,7 @@ Skills marked `placeholder` are unavailable until designed. Design each `SKILL.m
 | `skills/code-review/SKILL.md` | placeholder | Reserved |
 | `skills/diagram-creator/SKILL.md` | placeholder | Reserved |
 
-The two ready skills carry their own `references/`, `assets/` (templates ending in `.tmpl`), and `scripts/`; load those files only when the skill's procedure points to them.
+The ready skills carry their own `references/`, `assets/` (templates ending in `.tmpl`), and `scripts/`; load those files only when the skill's procedure points to them.
 
 ## Templates
 
