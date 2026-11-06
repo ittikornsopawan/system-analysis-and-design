@@ -196,10 +196,36 @@ Verification: not started
 
 ## e-commerce: WP5c admin-only writes for delivered master data APIs
 
-Status: Planned (starts after 5a passes gate 2 and the seed and the first administrator procedure are ready)
+Status: Implemented and committed locally by the author (commit 05c7d4a in her managed workspace); the push was refused by the permission system of her session, so there is no pull request yet. Gate 2 of the lead is open. The lead wrote this section from the author's report because her assignment scope was `e-commerce` only.
 
-- [ ] Add the `PLATFORM_ADMIN` rule, the 403 example and the two permission queries to `shop/05`, `06`, `product/01`, `03`, `04`, `06`, `07`, `09` and `consent/02`.
-- [ ] Adjust the checkers that cover those specs and mutation-test every change.
-- [ ] Run every checker, `audit_all.py` and `run_db_tests.sh`; send the gate 2 report.
+- [x] Read the nine specs on `main` (with the WP7 changes of `product/01`, `03`, `04`, `06`) and find the checkers that cover them.
+- [x] Add the `PLATFORM_ADMIN` rule, the 403 example and the two permission queries to `shop/05`, `06`, `product/01`, `03`, `04`, `06`, `07`, `09` and `consent/02`, and the two queries to the `consent/02` sequence diagram.
+- [x] Add the checker `admin-write-spec`, narrow the leftover-word rule of `shop-type-spec`, and mutation-test every change (the author reports 150 of 150 caught).
+- [x] Run every checker, `audit_all.py` and `run_db_tests.sh` (the author reports 38 of 38, 0 findings, ALL PASSED).
+- [ ] Gate 2 of the lead, then push and open the pull request.
 
-Verification: not started
+Verification: the numbers above are the author's; the lead has not rerun them yet.
+
+## e-commerce: Payment WP2 (Stripe)
+
+Status: Complete, merged in pull request 8
+
+- [x] Write `docs/superpowers/specs/2026-11-06-payment-design.md` (rules R51 to R72) after the owner chose Stripe.
+- [x] Write `db/tests/07-payment.test.sql` and change migration `07-payment` (provider, shipping method and fee, failure and refund columns, one live payment per order, `RESTRICT` on `order_id`).
+- [x] Update the schema doc, the README and the ER diagram (pages 6 and 8).
+- [x] Write five specs `payment/01` to `05` (start, Stripe webhook, inquiry for the customer and the shop, refund) and change `sales/01`, `sales/02`, `sales/05`.
+- [x] Add the checkers `payment-spec` and `payment-schema` and mutation-test them.
+
+Verification: when the pull request was opened `check_docs.py` passed 24 of 24, `audit_all.py` had 0 findings and `run_db_tests.sh` printed ALL PASSED. Nothing was run against Stripe; the Stripe event name for refunds and the THB 10 minimum are not confirmed against the Stripe reference.
+
+## e-commerce: Lead review of the SA work packages
+
+Status: In progress. Merged after the lead's review: WP3 shipping (pull request 10), WP6 master tables (11), WP4 authen (12), WP7 campaign (15), WP5 step 5a (17). Open work: WP3b (Tommy, waiting to prepare after the registry change in pull request 18) and WP5 step 5c (Marry, narrow scope under `e-commerce`).
+
+- [x] Review gate 1 and gate 2 of WP3, WP6, WP4, WP7 and WP5 5a, run the checkers in each analyst's tree and read the changed specs.
+- [x] Fix the first team protocol so that the analysts write `tasks/todo.md` and `tasks/lessons.md` as `CLAUDE.md` requires.
+- [x] Move the analysts' assignments to managed workspaces and widen the registry scope of tommy and marry (pull request 18) after the named-agent rule was merged.
+- [ ] Review gate 1 of WP3b and gate 2 of WP3b and WP5 5c.
+- [ ] Backlog for the owner's order: merge the two `er_name_rows` helpers of `check_docs.py`, extend `audit_all.py` to a column without an alias in the `WHERE` of an `UPDATE`, retrofit the plain `UNIQUE` and `CASCADE` of the older master tables, decide the 409 of `01-register`, decide whether the login sequence diagram keeps permission claims in the JWT (A16 says no), name who runs `grant-platform-admin.sql` at the first deployment, rewrite the team protocol in `docs/handoff/` to match the named-agent rule.
+
+Verification: each gate was checked by running every `check_docs.py` sub-command, `audit_all.py` and `run_db_tests.sh` in the analyst's tree and by reading the changed specs. The analysts' own mutation tests were not rerun by the lead.

@@ -128,3 +128,51 @@ description: Repository-wide and project-specific lessons captured from user cor
 - **Correction**: The design proposed 17 specs for roles, permissions and scopes although no API enforces a permission, and the new `seed` folder changed the project structure without being asked.
 - **Root cause**: I followed the roadmap list and the table design instead of asking what is needed to hand over the first administrator.
 - **Corrected behavior**: Split the work into what is needed now and what waits for a consumer, change the schema of the deferred tables once so that later work is free, and ask before adding a folder or a tool to the project structure.
+
+### 2026-11-07 — Process rules must not override the repository rules
+
+- **Correction**: The owner asked why neither the lead nor the analysts wrote `tasks/todo.md` and `tasks/lessons.md`. The first team protocol told the analysts not to touch those files, against `CLAUDE.md`.
+- **Root cause**: The protocol was written to avoid merge conflicts without checking it against the repository instructions.
+- **Corrected behavior**: Check a new process against `CLAUDE.md` before issuing it, write a plan before a package starts and lessons after a correction, and settle merge conflicts when packaging.
+
+### 2026-11-07 — Read the schema of a request before saying what it allows
+
+- **Correction**: The lead reported that `01-register` accepts several addresses with their own default flag; the spec has one address object, and the analyst corrected it.
+- **Root cause**: The lead inferred an array from a placeholder name in an `INSERT` instead of reading the request table.
+- **Corrected behavior**: Read the body parameters and the example before a claim about a request, and say in the finding when something was not checked.
+
+### 2026-11-07 — A review that approves a limit must test its worst case
+
+- **Correction**: The lead passed the login lock at gate 1 although refused attempts were counted, which let a stranger keep an account locked for ever; it was found at gate 2.
+- **Root cause**: The review checked the numbers (5 failures, 15 minutes) and not what a hostile caller does at the edge.
+- **Corrected behavior**: For every limit or lock ask what an attacker does to extend or abuse it, and write the answer into the finding.
+
+### 2026-11-07 — Give the next assignment when a gate closes
+
+- **Correction**: An analyst sat idle after her gate passed because the lead had said what not to touch but not what to do next.
+- **Root cause**: The lead answered each report and did not look at who was waiting.
+- **Corrected behavior**: When a gate passes, say in the same message what the analyst does next or that the analyst should stop.
+
+### 2026-11-07 — Read a rule the owner just merged before issuing assignments
+
+- **Correction**: The lead gave the analysts assignments in linked worktrees and with paths outside their registry scope, against `.agents/rules/named-agent-workspaces.md` that had been merged the evening before. One analyst found it and stopped; the lead had also opened a pull request from a linked worktree.
+- **Root cause**: The lead read the merged pull request list but not the rule it contained, and kept using the protocol written before it.
+- **Corrected behavior**: After the owner merges a rule, read it before the next assignment, state the contract (`agent`, `role`, `task`, `scope`, `delivery`, `authorized_by`) inside the registry scope, and when a helper blocks an assignment stop and ask instead of narrowing it alone.
+
+### 2026-11-07 — Treat a blocked helper as a limit of authority, not as a technical obstacle
+
+- **Correction**: `agent_workspace.py prepare` refused an assignment whose paths were outside the registry scope; the analyst cut the scope and ran it again before a new message from the assigner arrived.
+- **Root cause**: The refusal was read as something to get around, and no check was made for newer instructions before repeating the command.
+- **Corrected behavior**: When a helper blocks for a reason of authority or scope, stop and ask the assigner; do not change the contract, and look for a newer message before a retry.
+
+### 2026-11-07 — A checker written before a rule may reject the rule's own text
+
+- **Correction**: `shop-type-spec` flagged the word "product" in the standard approval sentence "product owner" of the new specs.
+- **Root cause**: The leftover-word rule was written before specs had to carry that approval sentence.
+- **Corrected behavior**: When a new spec rule collides with an old checker, narrow the checker as little as needed, show that it still catches the other words, and say so in the report.
+
+### 2026-11-07 — Look for the files that other checkers read from the same spec
+
+- **Correction**: `api-sequence-spec` forces `sequence.wsd` to match the SQL of its spec; adding the permission queries to the nine specs almost missed the sequence diagram of `consent/02`.
+- **Root cause**: The search for affected files stopped at the specs.
+- **Corrected behavior**: After adding SQL to a spec, search for every file read from the same spec (sequence diagram, schema doc) and run all the checkers before saying the work is complete.
