@@ -42,6 +42,8 @@ Work follows Spec-Driven Development (SDD): behavior is designed, reviewed, and 
 
 Use the `repository-bootstrap` skill to validate `REPOS.md` and materialize declared Component Repositories. Do not clone directly into a Checkout Directory or operate on a migration-pending Project.
 
+For a named agent, resolve `.agents/team/agents.yaml` and load `.agents/rules/named-agent-workspaces.md` before delegation. Read-only assignments use the primary checkout; any assignment that changes files must use the agent's managed `.workspace/<agent>` clone through `agent-workspace`.
+
 Each top-level project is self-contained. Before changing files, identify the active scope and, when it is project-specific, use that project's local specifications, templates, architecture, and conventions. Project-specific resources may refine shared defaults but must not weaken global rules.
 
 ## Workflow Orchestration

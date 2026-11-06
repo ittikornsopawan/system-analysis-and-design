@@ -153,3 +153,17 @@ Status: Not started (starts after WP7 round 2, no hurry; the lead SA asked for i
 - [ ] Decide the effect on the shipping rows (the system sets SHIPPED to DELIVERED as `system`, or a separate state) with the cost if wrong.
 - [ ] Decide the lock order (order row first), the clash with refund and with S9, and where the rule is written (spec 06 or a new job section, not an endpoint) as a proposal to the lead SA because spec 06 is already merged.
 - [ ] Send the document to the lead SA for gate 1 before any change to a spec, schema or checker.
+
+## repository-wide: Add named-agent workspace lifecycle
+
+Status: Complete
+
+- [x] Persist the user-approved named-agent workspace design and its approval evidence.
+- [x] Add the named-agent rule, canonical team registry, workspace ignore, and matching Codex/Claude routing.
+- [x] Implement the `agent-workspace` skill and deterministic lifecycle script.
+- [x] Add isolated tests for registry authority, path safety, locking, clone preparation, and merged-PR parking.
+- [x] Align `commit-and-pr` and supersede the conflicting dated team protocol without changing merge authority.
+- [x] Validate skill structure, Markdown frontmatter, routing parity, registry references, script behavior, and diffs.
+- [x] Record verification evidence and mark this task complete.
+
+Verification: `python3 -B -m unittest discover -s .agents/skills/agent-workspace/tests -v` passed all 12 tests, covering registry authority from `origin/main`, scope-bound delivery preflight, cleared-marker bypass prevention, symlink and linked-worktree rejection, execution locking, baseline contamination, open PRs on any base, cross-repository PR rejection, clone preparation, and squash-merge parking while preserving the remote branch. Independent forward review found no remaining P1/P2 issues. Team registry YAML, 11 modified Markdown frontmatters, and `AGENTS.md`/`CLAUDE.md` parity passed. `git diff --check` passed. The bundled `quick_validate.py` could not start because PyYAML is not installed; an equivalent Ruby YAML fallback passed its frontmatter, allowed-key, naming, description, and unfinished-placeholder checks.

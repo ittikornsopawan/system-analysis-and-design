@@ -13,6 +13,7 @@ commit (on main/master, a secret-looking line, build output, a file over 1 MB, a
 failing project checker). Exit code 0 means "nothing blocks"; the choice of files is still yours.
 """
 import argparse
+import json
 import os
 import re
 import shutil
@@ -76,6 +77,39 @@ def main():
     print(f"branch: {branch}   base: {args.base}")
     if branch in ("main", "master"):
         blockers.append(f"on {branch}: create a branch first (<type>/<topic>)")
+
+    root_path = os.path.realpath(root)
+    workspace_parent = os.path.dirname(root_path)
+    inferred_agent = os.path.basename(root_path) if os.path.basename(workspace_parent) == ".workspace" else ""
+    configured_agent = run(["git", "config", "--get", "agent.name"]).stdout.strip()
+    configured_host = run(["git", "config", "--get", "agent.workspaceHost"]).stdout.strip()
+    managed_agent = inferred_agent or configured_agent
+    if configured_agent and not inferred_agent:
+        blockers.append("agent identity marker exists outside a managed .workspace/<agent> path")
+    if configured_host and not inferred_agent:
+        blockers.append("workspace host marker exists outside a managed .workspace/<agent> path")
+    if inferred_agent:
+        helper = ".agents/skills/agent-workspace/scripts/agent_workspace.py"
+        if not os.path.isfile(helper):
+            blockers.append("managed workspace is missing the agent-workspace delivery checker")
+        else:
+            checked = run(
+                [
+                    sys.executable,
+                    helper,
+                    "delivery-check",
+                    "--agent",
+                    managed_agent,
+                ]
+            )
+            if checked.returncode != 0:
+                try:
+                    reason = json.loads(checked.stderr).get("reason", checked.stderr.strip())
+                except (json.JSONDecodeError, AttributeError):
+                    reason = checked.stderr.strip() or checked.stdout.strip()
+                blockers.append(f"managed assignment delivery check failed: {reason}")
+            else:
+                notes.append(f"managed assignment delivery authorized for {managed_agent}")
 
     tracked, untracked = changed_files()
     files = tracked + untracked

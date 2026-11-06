@@ -19,6 +19,12 @@ description: Repository-wide and project-specific lessons captured from user cor
 - **Root cause**: The adaptation optimized for document structure before confirming which concrete artifacts were mandatory.
 - **Corrected behavior**: Preserve explicitly requested artifacts and paths when adapting a reference; propose alternatives separately and wait for approval before substituting them.
 
+### 2026-11-06 — Model delegated delivery as a user-appointed capability
+
+- **Correction**: Delegated delivery authority must not be hardcoded to Josh or any specific lead name; any named agent may delegate delivery only when the user explicitly grants that capability.
+- **Root cause**: The design inferred authority from the current team example instead of separating stable agent identity from user-appointed capabilities.
+- **Corrected behavior**: Store delegation as an explicit registry capability, require the authorized user to grant or revoke it, and never let an agent self-assign or transitively grant that capability.
+
 ## Project-specific
 
 ### 2026-11-06 — A plain `UNIQUE` on a name blocks reuse after a soft delete

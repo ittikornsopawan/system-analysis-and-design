@@ -19,18 +19,18 @@ Status: `migration-pending`
 
 ## Source Map
 
-| Concern | Source of truth |
-| --- | --- |
-| API specifications | `e-commerce/doc/api/` |
-| Schema specifications | `e-commerce/doc/schema/` |
-| API contract | `e-commerce/api/api-contract.json` |
-| Diagrams | `e-commerce/diagram/` and project-specific diagram directories |
-| Database migrations | `e-commerce/db/migrations/up/` and `e-commerce/db/migrations/down/` |
-| Database tests | `e-commerce/db/tests/` |
-| C# backend | `e-commerce/repository/` |
-| Backend architecture and feature conventions | `e-commerce/repository/project-structure.md` |
+| Concern                                          | Source of truth                                                                         |
+| ------------------------------------------------ | --------------------------------------------------------------------------------------- |
+| API specifications                               | `e-commerce/doc/api/`                                                                   |
+| Schema specifications                            | `e-commerce/doc/schema/`                                                                |
+| API contract                                     | `e-commerce/api/api-contract.json`                                                      |
+| Diagrams                                         | `e-commerce/diagram/` and project-specific diagram directories                          |
+| Database migrations                              | `e-commerce/db/migrations/up/` and `e-commerce/db/migrations/down/`                     |
+| Database tests                                   | `e-commerce/db/tests/`                                                                  |
+| C# backend                                       | `e-commerce/repository/`                                                                |
+| Backend architecture and feature conventions     | `e-commerce/repository/project-structure.md`                                            |
 | Backend build configuration and target framework | `e-commerce/repository/Directory.Build.props` and `e-commerce/repository/Ecommerce.sln` |
-| Backend tests | `e-commerce/repository/tests/` |
+| Backend tests                                    | `e-commerce/repository/tests/`                                                          |
 
 ## Templates
 
