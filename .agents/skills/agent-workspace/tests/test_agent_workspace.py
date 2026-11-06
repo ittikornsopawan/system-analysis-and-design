@@ -73,7 +73,20 @@ class RegistryTests(unittest.TestCase):
                 encoding="utf-8"
             )
         )
-        self.assertEqual(["josh", "tommy", "marry"], [item["name"] for item in registry["agents"]])
+        self.assertEqual(["josh", "tommy", "marry", "peter"], [item["name"] for item in registry["agents"]])
+        peter = agent_workspace.agent_record(registry, "peter")
+        self.assertEqual(".agents/agents/system-analyst.md", peter["role"])
+        self.assertEqual("repository-wide", peter["scope"])
+        self.assertEqual("josh", peter["reports_to"])
+        self.assertEqual("peter", peter["workspace_key"])
+        self.assertEqual([], peter["capabilities"])
+        agent_workspace.validate_delivery(
+            registry, assignee="peter", delivery="open-pr", authorized_by="ittikorn"
+        )
+        with self.assertRaisesRegex(agent_workspace.Blocked, "cannot delegate"):
+            agent_workspace.validate_delivery(
+                registry, assignee="tommy", delivery="open-pr", authorized_by="peter"
+            )
 
     def test_registry_and_delegated_authority(self) -> None:
         registry = agent_workspace.parse_registry(REGISTRY)

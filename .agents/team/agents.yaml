@@ -28,3 +28,11 @@ agents:
     reports_to: josh
     workspace_key: marry
     capabilities: []
+  - name: peter
+    enabled: true
+    role: .agents/agents/system-analyst.md
+    title: System Analyst
+    scope: repository-wide
+    reports_to: josh
+    workspace_key: peter
+    capabilities: []
