@@ -3022,6 +3022,336 @@ def check_shipping_spec() -> int:
 COMMANDS["shipping-spec"] = check_shipping_spec
 
 
+# ---------------------------------------------------------------- master tables (WP6): product type, product brand, consent type
+MASTER_API = "e-commerce/doc/api"
+MASTER = {
+    "product-type": dict(
+        path="product-type", group="product", nums=("10", "11", "12"), folder=("upsert-product-type", "upsert-product-type-batch", "inquiry-product-type"),
+        title="Product Type", lower="product type", camel="productType", alias="pt", table="product.m_product_type", doc="product/m_product_type.md",
+        use_table="product.m_product", use_alias="p", use_col="type_id", use_doc="product/m_product.md", use_thing="product", use_things="products",
+        id="a7b8c9d0-1e2f-4a3b-8c4d-5e6f7a8b9c0d", other_spec=("product/01-upsert-product/spec.md", '"typeId"'), consent=False),
+    "product-brand": dict(
+        path="product-brand", group="product", nums=("13", "14", "15"), folder=("upsert-product-brand", "upsert-product-brand-batch", "inquiry-product-brand"),
+        title="Product Brand", lower="product brand", camel="productBrand", alias="pb", table="product.m_product_brand", doc="product/m_product_brand.md",
+        use_table="product.m_product", use_alias="p", use_col="brand_id", use_doc="product/m_product.md", use_thing="product", use_things="products",
+        id="c9d0e1f2-3a4b-4c5d-8e6f-7a8b9c0d1e2f", other_spec=("product/01-upsert-product/spec.md", '"brandId"'), consent=False),
+    "consent-type": dict(
+        path="consent/type", group="consent", nums=("06", "07", "08"), folder=("upsert-consent-type", "upsert-consent-type-batch", "inquiry-consent-type"),
+        title="Consent Type", lower="consent type", camel="consentType", alias="ct", table="consent.m_consent_type", doc="consent/m_consent_type.md",
+        use_table="consent.t_consent", use_alias="c", use_col="consent_type_id", use_doc="consent/t_consent.md", use_thing="consent", use_things="consents",
+        id="a7b8c9d0-1e2f-4a3b-8c4d-5e6f7a8b9c0d", other_spec=("consent/02-upsert-consent/spec.md", '"consentTypeId"'), consent=True),
+}
+MASTER_GROUPS = {"product-master": ("product-type", "product-brand"), "consent-type": ("consent-type",)}
+SINGLE_UPSERT_SPECS.extend(f"{MASTER_API}/{m['group']}/{m['nums'][0]}-{m['folder'][0]}/spec.md" for m in MASTER.values())
+BATCH_UPSERT_SPECS.extend(f"{MASTER_API}/{m['group']}/{m['nums'][1]}-{m['folder'][1]}/spec.md" for m in MASTER.values())
+
+
+def master_path(m: dict, i: int) -> str:
+    return f"{MASTER_API}/{m['group']}/{m['nums'][i]}-{m['folder'][i]}/spec.md"
+
+
+def master_cap(text: str) -> str:
+    return text[0].upper() + text[1:]
+
+
+def master_needles(m: dict) -> list[dict]:
+    lower, cap, alias, camel = m["lower"], master_cap(m["lower"]), m["alias"], m["camel"]
+    ua, uc = m["use_alias"], m["use_col"]
+    admin = ["- Permission:", "E10009", "#### Fail - Forbidden", "#### QUERY - Get the platform administrator role", "#### QUERY - Check platform administrator",
+             "(../../../schema/author/m_role.md)", "(../../../schema/author/t_user_role.md)", "WHERE r.name = 'PLATFORM_ADMIN'", "AND r.row_status = 'ACTIVE'",
+             "AND ur.role_id = '<sequence.roleId>'", "AND ur.row_status = 'ACTIVE'", f"You do not have permission to change {lower}s.",
+             "Approved by the product owner"]
+    upsert = [f"# [POST]: v1/{m['path']}/upsert", f"### {m['title']} Rules", "-> permission (403, E10009) -> duplicate name check", f"(../../../schema/{m['doc']})",
+              f"(../../../schema/{m['use_doc']})", f"#### QUERY - Check {m['use_thing']} in use", f"WHERE {ua}.{uc} = '<sequence.id>' -- only when rowStatus is DELETED or ARCHIVED",
+              f"AND {ua}.row_status <> 'DELETED'", f"AND {alias}.row_status <> 'DELETED'\nAND {alias}.id <> '<sequence.id>'", f"{cap} name already exists.",
+              f"{cap} is used by {m['use_things']}.", f"{cap} not found.", f"Row status must not be DELETED when inserting a {lower}.", "E10003", "E10004",
+              "E10006", "E90001", f"Insert {m['title']} Success", f"Archive {m['title']} Success", f"AND {alias}.row_status <> 'DELETED' -- the id of a DELETED {lower} counts as not found",
+              f"The name of a DELETED {lower} can be used again.", "are allowed even when", "blocks the writes that use it"] + admin
+    batch = [f"# [POST]: v1/{m['path']}/upsert/batch", f"### {m['title']} Rules (same as the single upsert, applied per {lower})", f"#### QUERY - Check {m['use_thing']} in use",
+             f"{camel}s[2]: Id is duplicated with {camel}s[1].", f"{camel}s[2]: Name is duplicated with {camel}s[0].", f"{cap}s must contain 1 to 100 items.",
+             "Swapping the names", f"{camel}s[2]: {cap} is used by {m['use_things']}.", f"AND {alias}.row_status <> 'DELETED'\nAND {alias}.id <> '<sequence.{camel}s.id>'",
+             f"WHERE {ua}.{uc} = '<sequence.{camel}s.id>' -- only when rowStatus is DELETED or ARCHIVED", f"{camel}s[0]: {cap} name already exists.",
+             f"{camel}s[1]: {cap} not found.", "so the 403 message has no item position", "Batch Upsert " + m["title"] + " Success"] + admin
+    inquiry = [f"# [GET]: v1/{m['path']}", f"#### QUERY - Get {lower}s", "#### QUERY - Get total items", "ILIKE", f"### {m['title']} Inquiry Rules", f"ORDER BY {alias}.created_at DESC, {alias}.id",
+               "Page Index and Page Size must be greater than 0", "Row status must be one of ACTIVE, INACTIVE, LOCKED, ARCHIVED.", "authorization",
+               f"Request: `GET v1/{m['path']}?id={m['id']}`", f"WHERE {alias}.row_status <> 'DELETED'", f"Inquiry {m['title']} Success", "no role is checked"]
+    if m["consent"]:
+        upsert.extend(["`description` and `isRequired` are optional"])
+        for lst in (upsert, batch):
+            lst.extend(["Name is a required field.", "is_required", "isRequired", "null clears it"])
+        inquiry.extend(["isRequired", "ct.is_required", "AND ct.is_required = '<sequence.isRequired>' -- only when isRequired is specified"])
+    return [{"upsert": upsert, "batch": batch, "inquiry": inquiry}]
+
+
+def master_counted(m: dict) -> dict:
+    """Texts that must appear an exact number of times (both inquiry queries carry the same filters)."""
+    alias, camel = m["alias"], m["camel"]
+    counted = {"inquiry": [(f"AND ({alias}.name ILIKE '%<sequence.search>%' OR {alias}.description ILIKE '%<sequence.search>%') -- only when search is specified", 2),
+                           (f"WHERE {alias}.row_status <> 'DELETED'\nAND {alias}.id = '<sequence.id>' -- only when id is specified", 2),
+                           (f"AND {alias}.row_status = '<sequence.rowStatus>' -- only when rowStatus is specified", 2)],
+               "upsert": [], "batch": []}
+    if m["consent"]:
+        counted["inquiry"] += [("AND ct.is_required = '<sequence.isRequired>' -- only when isRequired is specified", 2), ("    ct.is_required,\n    ct.row_status", 1)]
+        counted["upsert"] += [("    description,\n    is_required\n)", 1), ("    '<sequence.isRequired>'\n)", 1),
+                              ("    is_required = '<sequence.isRequired>' -- only when isRequired is specified", 1)]
+        counted["batch"] += [("    description,\n    is_required\n)", 1), (f"    '<sequence.{camel}s.isRequired>'\n)", 1),
+                             (f"    is_required = '<sequence.{camel}s.isRequired>' -- only when isRequired is specified", 1)]
+    return counted
+
+
+MASTER_FORBIDDEN = {
+    "upsert": [], "batch": [], "inquiry": ["Fail - Forbidden", "E10009", "PLATFORM_ADMIN", "t_user_role"],
+}
+
+
+def master_errors_upsert(m: dict, md: str) -> list[str]:
+    errors = []
+    cid = m["camel"] + "Id"
+    update = json.loads(re.search(r"##### Update\n\n```JSON\n(.*?)```", md, re.DOTALL).group(1))
+    delete = json.loads(re.search(r"##### Delete\n\n```JSON\n(.*?)```", md, re.DOTALL).group(1))
+    insert = json.loads(re.search(r"##### Insert\n\n```JSON\n(.*?)```", md, re.DOTALL).group(1))
+    if "id" in insert:
+        errors.append("the Insert example must not have an id")
+    if update["id"] != m["id"] or delete["id"] != m["id"]:
+        errors.append(f"the Update and Delete examples must use the id {m['id']}")
+    if update.get("rowStatus") != "ACTIVE" or delete.get("rowStatus") != "DELETED":
+        errors.append("Update must be ACTIVE and Delete must be DELETED")
+    for label, body in (("Insert", insert), ("Update", update), ("Delete", delete)):
+        if not body.get("name"):
+            errors.append(f"the {label} example has no name (required in every request)")
+        if len(body["name"]) > 128 or len(body.get("description") or "") > (1000 if m["consent"] else 256):
+            errors.append(f"the {label} example is longer than the limit")
+        if not m["consent"] and not body.get("description"):
+            errors.append(f"the {label} example has no description (required)")
+        if m["consent"] and not isinstance(body.get("isRequired"), bool):
+            errors.append(f"the {label} example needs a boolean isRequired")
+    for title in ("Success - Insert", "Success - Update", "Success - Archive"):
+        body = json_examples(md, title)
+        if body is None:
+            errors.append(f"no JSON in '{title}'")
+        elif body["data"][cid] != m["id"]:
+            errors.append(f"'{title}' answers a different {cid} than the Update example")
+    forbidden = json_examples(md, "Fail - Forbidden")
+    if not forbidden or forbidden["status"]["code"] != 403 or forbidden["status"]["bizCode"] != "E10009":
+        errors.append("the Forbidden example must be 403 E10009")
+    for title, code, biz in (("Fail - Bad Request", 400, "E10001"), ("Fail - Not Found", 404, "E10004"), ("Fail - Conflict", 409, "E10003"), ("Fail - Conflict In Use", 409, "E10006"),
+                             ("Fail - Unauthorized", 401, "E10002"), ("Fail - Request Timeout", 408, "E90001")):
+        body = json_examples(md, title)
+        if not body or body["status"]["code"] != code or body["status"]["bizCode"] != biz:
+            errors.append(f"'{title}' must be {code} {biz}")
+    return errors
+
+
+def master_errors_batch(m: dict, md: str) -> list[str]:
+    errors = []
+    key, cid = m["camel"] + "s", m["camel"] + "Id"
+    request = json.loads(re.search(r"#### Example Body Parameters\n\n```JSON\n(.*?)```", md, re.DOTALL).group(1))
+    items = request[key]
+    result = json_examples(md, "Success")["data"][key]
+    if len(result) != len(items):
+        errors.append(f"{len(result)} results for {len(items)} request items")
+    ids = [i["id"] for i in items if "id" in i]
+    if len(ids) != len(set(ids)):
+        errors.append("the request example repeats an id")
+    names = [i["name"] for i in items if i.get("rowStatus") != "DELETED"]
+    if len(names) != len(set(names)):
+        errors.append("the request example repeats a name among the items that are not DELETED")
+    for position, (item, res) in enumerate(zip(items, result)):
+        action = {"DELETED": "DELETE", "ARCHIVED": "ARCHIVE"}.get(item.get("rowStatus"), "UPDATE" if "id" in item else "INSERT")
+        if "id" not in item and item.get("rowStatus") == "DELETED":
+            errors.append(f"request item {position} deletes without an id")
+        if res["index"] != position or res["action"] != action:
+            errors.append(f"result {position} should be index {position}, action {action}, found {res['index']}/{res['action']}")
+        if "id" in item and res[cid] != item["id"]:
+            errors.append(f"result {position} answers a different {cid} than the request item")
+        if m["consent"] and not isinstance(item.get("isRequired"), bool):
+            errors.append(f"request item {position} needs a boolean isRequired")
+        if not item.get("name"):
+            errors.append(f"request item {position} has no name")
+    forbidden = json_examples(md, "Fail - Forbidden")
+    if not forbidden or forbidden["status"]["code"] != 403 or forbidden["status"]["bizCode"] != "E10009" or "[" in forbidden["status"]["bizMessage"]:
+        errors.append("the Forbidden example must be 403 E10009 without an item position")
+    for title in ("Fail - Bad Request", "Fail - Not Found", "Fail - Conflict", "Fail - Conflict In Use", "Fail - Bad Request Duplicate Id", "Fail - Bad Request Duplicate Name", "Fail - Bad Request Row Status"):
+        body = json_examples(md, title)
+        if not body or f"{key}[" not in body["status"]["bizMessage"]:
+            errors.append(f"'{title}' must start its message with the position ({key}[i])")
+    return errors
+
+
+def master_json(md: str, heading: str):
+    """Parsed JSON of the first ```JSON block under '#### <heading>', an optional 'Request: ...' line may come first."""
+    match = re.search(rf"^#### {re.escape(heading)}\n\n(?:Request: [^\n]*\n\n)?```JSON\n(.*?)```", md, re.MULTILINE | re.DOTALL)
+    return json.loads(match.group(1)) if match else None
+
+
+def master_errors_inquiry(m: dict, md: str) -> list[str]:
+    errors = []
+    cid = m["camel"] + "Id"
+    by_id = re.search(r"Request: `GET v1/[^`]*\?id=([0-9a-f-]{36})`", md).group(1)
+    for title in ("Success", "Success - By Id", "Success - Not Found"):
+        data = master_json(md, title)["data"]
+        if data["totalItems"] != len(data["items"]):
+            errors.append(f"'{title}' totalItems differs from the number of items")
+        expected_pages = 0 if data["totalItems"] == 0 else -(-data["totalItems"] // data["pageSize"])
+        if data["totalPages"] != expected_pages:
+            errors.append(f"'{title}' totalPages should be {expected_pages}")
+        if any(item["rowStatus"] == "DELETED" for item in data["items"]):
+            errors.append(f"'{title}' lists a DELETED {m['lower']}")
+        ids = [item[cid] for item in data["items"]]
+        if len(ids) != len(set(ids)):
+            errors.append(f"'{title}' repeats an id")
+        if m["consent"] and any(not isinstance(item.get("isRequired"), bool) for item in data["items"]):
+            errors.append(f"'{title}' needs a boolean isRequired on every item")
+        if title == "Success - By Id" and ids != [by_id]:
+            errors.append("the By Id example must list only the id of its request")
+        if title == "Success - Not Found" and data["items"]:
+            errors.append("the Not Found example must have no items")
+    if by_id != m["id"]:
+        errors.append(f"the By Id example must use the id {m['id']}")
+    for title, code, biz in (("Fail - Bad Request", 400, "E10001"), ("Fail - Bad Request Row Status", 400, "E10001"), ("Fail - Unauthorized", 401, "E10002"), ("Fail - Request Timeout", 408, "E90001")):
+        body = master_json(md, title)
+        if not body or body["status"]["code"] != code or body["status"]["bizCode"] != biz:
+            errors.append(f"'{title}' must be {code} {biz}")
+    return errors
+
+
+def check_master_spec(names: tuple[str, ...], label: str) -> int:
+    errors = []
+    for name in names:
+        m = MASTER[name]
+        mds = {}
+        for i, kind in enumerate(("upsert", "batch", "inquiry")):
+            path = master_path(m, i)
+            try:
+                md = read(path)
+            except FileNotFoundError:
+                errors.append(f"{path} does not exist")
+                continue
+            mds[kind] = md
+            for bad in table_lines_aligned(md):
+                errors.append(f"{path} misaligned table: {bad[:40]}")
+            for bad in json_blocks_parse(md):
+                errors.append(f"{path} invalid JSON block: {bad[:40]}")
+            for link in relative_links_exist(path, md):
+                errors.append(f"{path} broken link {link}")
+            for leftover in re.findall(r"(?i)shop\w*|slug|parent\w*|categor\w*", md):
+                errors.append(f"{path} still mentions '{leftover}' (copied from the prototype)")
+            if "ALTER TABLE" in md:
+                errors.append(f"{path} contains ALTER TABLE")
+            if not (ROOT / path).with_name("sequence.wsd").exists():
+                errors.append(f"{path} has no sequence.wsd beside it")
+            for missing in missing_needles(md, master_needles(m)[0][kind]):
+                errors.append(f"{path} missing: {missing!r}")
+            for text, times in master_counted(m)[kind]:
+                if md.count(text) != times:
+                    errors.append(f"{path}: {text!r} must appear {times} time(s), found {md.count(text)}")
+            for forbidden in MASTER_FORBIDDEN[kind]:
+                if forbidden in md:
+                    errors.append(f"{path} must not contain {forbidden!r} (the inquiry has no role check)")
+        if errors:
+            continue
+        for kind in ("upsert", "batch"):
+            for forbidden in ("pageSize", "pageIndex"):
+                if forbidden in mds[kind]:
+                    errors.append(f"{master_path(m, 0 if kind == 'upsert' else 1)} must not contain '{forbidden}'")
+        try:
+            errors.extend(f"{master_path(m, 0)}: {e}" for e in master_errors_upsert(m, mds["upsert"]))
+            errors.extend(f"{master_path(m, 1)}: {e}" for e in master_errors_batch(m, mds["batch"]))
+            errors.extend(f"{master_path(m, 2)}: {e}" for e in master_errors_inquiry(m, mds["inquiry"]))
+        except (KeyError, TypeError, AttributeError, ValueError) as exc:
+            errors.append(f"an example of {name} does not have the expected shape: {exc!r}")
+        other, key = m["other_spec"]
+        other_md = read(f"{MASTER_API}/{other}")
+        if f'{key}: "{m["id"]}"' not in other_md:
+            errors.append(f"the example id of {name} no longer matches {key} in {other}")
+        codes = success_codes(mds["upsert"])
+        if codes != {"Success - Insert": 201, "Success - Update": 200, "Success - Delete": 204, "Success - Archive": 200}:
+            errors.append(f"{master_path(m, 0)}: wrong success codes {codes}")
+        if set(success_codes(mds["batch"]).values()) != {200}:
+            errors.append(f"{master_path(m, 1)}: every success example must answer 200")
+    if errors:
+        return fail("; ".join(errors))
+    print(f"OK: {label}")
+    return 0
+
+
+COMMANDS["product-master-spec"] = lambda: check_master_spec(MASTER_GROUPS["product-master"], "product-master-spec")
+COMMANDS["consent-type-spec"] = lambda: check_master_spec(MASTER_GROUPS["consent-type"], "consent-type-spec")
+
+
+def er_name_rows(table: str) -> list[str]:
+    """Value of the 'name' row of every <table> drawn in the ER diagram (one per page that draws it)."""
+    import xml.etree.ElementTree as ET
+
+    root = ET.fromstring(read("e-commerce/db/er-diagram.drawio"))
+    cells = list(root.iter("mxCell"))
+    rows = []
+    for cell in cells:
+        if cell.get("value") == table:
+            for child in cells:
+                if child.get("parent") == cell.get("id") and re.search(r"\bname :", child.get("value") or ""):
+                    rows.append(child.get("value"))
+    return rows
+
+
+def check_master_schema(tables: list[str], migration: str, fk_table: tuple[str, str, str], test: str, label: str) -> int:
+    """name is unique among rows that are not DELETED and the foreign keys into the table are RESTRICT (migration, docs, ER, DB test)."""
+    errors = []
+    sql = read(f"e-commerce/db/migrations/up/{migration}")
+    for qualified in tables:
+        schema, table = qualified.split(".")
+        statements = schema_statements(sql, schema, table)
+        create = [s for s in statements if s.startswith("CREATE TABLE")]
+        if len(create) != 1 or "UNIQUE" in create[0]:
+            errors.append(f"migration {migration}: {table} must be created without an inline UNIQUE")
+        index = f"CREATE UNIQUE INDEX IF NOT EXISTS uq_{table} _name ON {qualified} (name) WHERE row_status <> 'DELETED'".replace("uq_" + table + " _name", f"uq_{table}_name")
+        if index not in statements:
+            errors.append(f"migration {migration}: partial unique index uq_{table}_name is missing or different")
+        path = f"e-commerce/doc/schema/{schema}/{table}.md"
+        md = read(path)
+        for bad in table_lines_aligned(md):
+            errors.append(f"{path} misaligned table: {bad[:40]}")
+        if schema_statements(" ".join(SQL_BLOCK.findall(md)), schema, table) != statements:
+            errors.append(f"{path} SQL differs from the migration")
+        if re.search(r"^\| UQ\s+\|.*\| name ", md, re.MULTILINE):
+            errors.append(f"{path} still marks name as UQ")
+        for needle in (f"uq_{table}_name", "Unique among rows where row_status <> 'DELETED'"):
+            if needle not in md:
+                errors.append(f"{path} missing: {needle}")
+        rows = er_name_rows(qualified)
+        if len(rows) < 2:
+            errors.append(f"ER diagram: expected {table} on at least 2 pages, found {len(rows)}")
+        for row in rows:
+            if row.startswith("UK"):
+                errors.append(f"ER diagram: {table}.name still carries the UK marker")
+    child_sql = sql if fk_table[0] == migration else read(f"e-commerce/db/migrations/up/{fk_table[0]}")
+    child_doc = read(f"e-commerce/doc/schema/{fk_table[1]}.md")
+    for column, parent in fk_table[2]:
+        fk = f"{column} UUID NOT NULL REFERENCES {parent} (id) ON DELETE RESTRICT"
+        if fk not in child_sql:
+            errors.append(f"migration {fk_table[0]}: {column} must be ON DELETE RESTRICT")
+        if fk not in child_doc:
+            errors.append(f"e-commerce/doc/schema/{fk_table[1]}.md: SQL for {column} must say ON DELETE RESTRICT")
+        if f"References {parent}(id), ON DELETE RESTRICT" not in child_doc:
+            errors.append(f"e-commerce/doc/schema/{fk_table[1]}.md: the constraint table must say ON DELETE RESTRICT for {column}")
+    if not (ROOT / f"e-commerce/db/tests/{test}").exists():
+        errors.append(f"db/tests/{test} does not exist")
+    if errors:
+        return fail("; ".join(errors))
+    print(f"OK: {label}")
+    return 0
+
+
+COMMANDS["product-master-schema"] = lambda: check_master_schema(
+    ["product.m_product_type", "product.m_product_brand"], "03-product.schema.up.sql",
+    ("03-product.schema.up.sql", "product/m_product", [("type_id", "product.m_product_type"), ("brand_id", "product.m_product_brand")]),
+    "03-product-master.test.sql", "product-master-schema")
+COMMANDS["consent-type-schema"] = lambda: check_master_schema(
+    ["consent.m_consent_type"], "00-common.schema.up.sql",
+    ("00-common.schema.up.sql", "consent/t_consent", [("consent_type_id", "consent.m_consent_type")]),
+    "00-consent-type.test.sql", "consent-type-schema")
+
+
 def main(argv: list[str]) -> int:
     if len(argv) < 2:
         print("usage: check_docs.py <subcommand>")

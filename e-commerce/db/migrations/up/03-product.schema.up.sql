@@ -16,9 +16,13 @@ CREATE TABLE
                 'ARCHIVED'
             )
         ),
-        name VARCHAR(128) NOT NULL UNIQUE,
+        name VARCHAR(128) NOT NULL,
         description VARCHAR(256) NOT NULL
     );
+
+CREATE UNIQUE INDEX IF NOT EXISTS uq_m_product_type_name ON product.m_product_type (name)
+WHERE
+    row_status <> 'DELETED';
 
 CREATE TABLE
     IF NOT EXISTS product.m_product_category (
@@ -79,9 +83,13 @@ CREATE TABLE
                 'ARCHIVED'
             )
         ),
-        name VARCHAR(128) NOT NULL UNIQUE,
+        name VARCHAR(128) NOT NULL,
         description VARCHAR(256) NOT NULL
     );
+
+CREATE UNIQUE INDEX IF NOT EXISTS uq_m_product_brand_name ON product.m_product_brand (name)
+WHERE
+    row_status <> 'DELETED';
 
 CREATE TABLE
     IF NOT EXISTS product.m_product (
@@ -99,9 +107,9 @@ CREATE TABLE
                 'ARCHIVED'
             )
         ),
-        type_id UUID NOT NULL REFERENCES product.m_product_type (id) ON DELETE CASCADE,
+        type_id UUID NOT NULL REFERENCES product.m_product_type (id) ON DELETE RESTRICT,
         category_id UUID NOT NULL REFERENCES product.m_product_category (id) ON DELETE CASCADE,
-        brand_id UUID NOT NULL REFERENCES product.m_product_brand (id) ON DELETE CASCADE,
+        brand_id UUID NOT NULL REFERENCES product.m_product_brand (id) ON DELETE RESTRICT,
         name VARCHAR(128) NOT NULL,
         description VARCHAR(256) NOT NULL,
         body TEXT NOT NULL,

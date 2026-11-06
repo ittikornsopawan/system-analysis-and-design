@@ -27,7 +27,7 @@ Description: Transaction table of the `consent` schema (defined in `db/migration
 | Key Name                     | Column Name     | Description                                                                   |
 | ---------------------------- | --------------- | ----------------------------------------------------------------------------- |
 | pk_t_consent_id              | id              | Primary key                                                                   |
-| fk_t_consent_consent_type_id | consent_type_id | References consent.m_consent_type(id), ON DELETE CASCADE                      |
+| fk_t_consent_consent_type_id | consent_type_id | References consent.m_consent_type(id), ON DELETE RESTRICT                     |
 | uq_t_consent_code            | code            | Unique                                                                        |
 | ck_t_consent_row_status      | row_status      | CHECK (row_status IN ('ACTIVE', 'INACTIVE', 'DELETED', 'LOCKED', 'ARCHIVED')) |
 
@@ -51,7 +51,7 @@ CREATE TABLE
             )
         ),
         code VARCHAR(64) NOT NULL UNIQUE,
-        consent_type_id UUID NOT NULL REFERENCES consent.m_consent_type (id) ON DELETE CASCADE,
+        consent_type_id UUID NOT NULL REFERENCES consent.m_consent_type (id) ON DELETE RESTRICT,
         consent_version VARCHAR(8) NOT NULL DEFAULT '1.0.0',
         consent_name VARCHAR(128) NOT NULL,
         consent_description TEXT,

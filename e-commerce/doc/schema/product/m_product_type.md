@@ -12,7 +12,7 @@ Description: Master table of the `product` schema (defined in `db/migrations/up/
 |     |           | updated_by  | VARCHAR   | 64     | TRUE        | User or service that last updated the row                                |                   |
 |     |           | updated_at  | TIMESTAMP |        | TRUE        | Timestamp when the row was last updated                                  |                   |
 |     |           | row_status  | VARCHAR   | 32     | FALSE       | Lifecycle status of the row: ACTIVE, INACTIVE, DELETED, LOCKED, ARCHIVED | ACTIVE            |
-| UQ  |           | name        | VARCHAR   | 128    | FALSE       | Unique                                                                   |                   |
+|     |           | name        | VARCHAR   | 128    | FALSE       | Unique among rows where row_status <> 'DELETED'                          |                   |
 |     |           | description | VARCHAR   | 256    | FALSE       |                                                                          |                   |
 
 ## Constain
@@ -20,7 +20,7 @@ Description: Master table of the `product` schema (defined in `db/migrations/up/
 | Key Name                     | Column Name | Description                                                                   |
 | ---------------------------- | ----------- | ----------------------------------------------------------------------------- |
 | pk_m_product_type_id         | id          | Primary key                                                                   |
-| uq_m_product_type_name       | name        | Unique                                                                        |
+| uq_m_product_type_name       | name        | Unique among rows where row_status <> 'DELETED'                               |
 | ck_m_product_type_row_status | row_status  | CHECK (row_status IN ('ACTIVE', 'INACTIVE', 'DELETED', 'LOCKED', 'ARCHIVED')) |
 
 ---
@@ -42,7 +42,11 @@ CREATE TABLE
                 'ARCHIVED'
             )
         ),
-        name VARCHAR(128) NOT NULL UNIQUE,
+        name VARCHAR(128) NOT NULL,
         description VARCHAR(256) NOT NULL
     );
+
+CREATE UNIQUE INDEX IF NOT EXISTS uq_m_product_type_name ON product.m_product_type (name)
+WHERE
+    row_status <> 'DELETED';
 ```
