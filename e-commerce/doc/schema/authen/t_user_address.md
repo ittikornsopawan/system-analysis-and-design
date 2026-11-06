@@ -14,7 +14,7 @@ Description: Transaction table of the `authen` schema (defined in `db/migrations
 |     |                               | row_status  | VARCHAR   | 32     | FALSE       | Lifecycle status of the row: ACTIVE, INACTIVE, DELETED, LOCKED, ARCHIVED | ACTIVE            |
 | FK  | [authen.m_user.id](m_user.md) | user_id     | UUID      |        | FALSE       | Reference to `authen.m_user.id`                                          |                   |
 |     |                               | title       | VARCHAR   | 128    | FALSE       |                                                                          |                   |
-|     |                               | is_default  | BOOLEAN   |        | FALSE       | Defaults to `FALSE`                                                      | FALSE             |
+|     |                               | is_default  | BOOLEAN   |        | FALSE       | Defaults to `FALSE`, at most one default per user                        | FALSE             |
 |     |                               | address     | BYTEA     |        | FALSE       |                                                                          |                   |
 |     |                               | city        | BYTEA     |        | FALSE       |                                                                          |                   |
 |     |                               | state       | BYTEA     |        | FALSE       |                                                                          |                   |
@@ -23,11 +23,12 @@ Description: Transaction table of the `authen` schema (defined in `db/migrations
 
 ## Constain
 
-| Key Name                     | Column Name | Description                                                                   |
-| ---------------------------- | ----------- | ----------------------------------------------------------------------------- |
-| pk_t_user_address_id         | id          | Primary key                                                                   |
-| fk_t_user_address_user_id    | user_id     | References authen.m_user(id), ON DELETE CASCADE                               |
-| ck_t_user_address_row_status | row_status  | CHECK (row_status IN ('ACTIVE', 'INACTIVE', 'DELETED', 'LOCKED', 'ARCHIVED')) |
+| Key Name                          | Column Name | Description                                                                                   |
+| --------------------------------- | ----------- | --------------------------------------------------------------------------------------------- |
+| pk_t_user_address_id              | id          | Primary key                                                                                   |
+| fk_t_user_address_user_id         | user_id     | References authen.m_user(id), ON DELETE CASCADE                                               |
+| ck_t_user_address_row_status      | row_status  | CHECK (row_status IN ('ACTIVE', 'INACTIVE', 'DELETED', 'LOCKED', 'ARCHIVED'))                 |
+| uq_t_user_address_user_id_default | user_id     | Unique among rows where is_default AND row_status <> 'DELETED' (one default address per user) |
 
 ---
 
@@ -57,4 +58,9 @@ CREATE TABLE
         postal_code BYTEA NOT NULL,
         country BYTEA NOT NULL
     );
+
+CREATE UNIQUE INDEX IF NOT EXISTS uq_t_user_address_user_id_default ON authen.t_user_address (user_id)
+WHERE
+    is_default
+    AND row_status <> 'DELETED';
 ```

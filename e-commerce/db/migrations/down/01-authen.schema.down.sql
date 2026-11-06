@@ -1,5 +1,7 @@
 -- Rollback of 01-authen.schema.up.sql (tables dropped in reverse dependency order)
 
+DROP TABLE IF EXISTS authen.l_user_login_attempt;
+
 DROP TABLE IF EXISTS authen.t_user_refresh_token;
 
 DROP TABLE IF EXISTS authen.t_user_access_token;
