@@ -45,6 +45,7 @@
 - The payment of the order is handled in the same request. A payment with the status `PENDING` becomes `CANCELLED` and its PaymentIntent is cancelled at the payment provider (Stripe). A payment with the status `PROCESSING` means money may be on its way, so the order cannot be cancelled and the answer is 409 (E10006) with the message `A payment of the order is in progress.` The scheduled job that cancels expired orders skips an order whose payment is `PROCESSING` and tries it again later. A payment that is `FAILED` or `CANCELLED` needs no change. If money arrives after the order was cancelled, the payment API refunds it automatically (see the payment webhook).
 - The system applies the same rule when `expires_at` has passed and the order is still `WAIT_PAYMENT` (the system acts as the caller `system`, this is a scheduled job, not an API).
 - The cancel is idempotent in outcome: cancelling an order that is already `CANCELLED` answers 409 (E10006), no quantity is added twice.
+- The budget that the order took from a campaign goes back in the same transaction as the stock, when the order is cancelled, also when the system cancels it because `expires_at` has passed (`docs/superpowers/specs/2026-11-06-campaign-design.md`, C7 and C9, approved by the product owner on 2026-11-06): every budget that has a ledger row `RESERVE` of the order and no `RELEASE` yet gets its `usage` back (`remaining` grows by that amount) and a ledger row `RELEASE` with the same `usage` is written. An order that took no budget changes nothing. The order of the locks is the order row, the lots by `id`, then the budgets by `id`.
 - Execution order: validate the request (400) -> existence and ownership checks (404) -> permission of a member of the shop (the owner skips it) -> status check and payment check (409) -> write the order, cancel the pending payment and give the quantity back. The whole request is one transaction.
 
 #### Example Body Parameters
@@ -380,4 +381,49 @@ FROM author.t_user_role ur
 WHERE ur.user_id = '<sequence.userId>'
 AND ur.role_id = '<sequence.roleId>'
 AND ur.row_status = 'ACTIVE'
+```
+
+### Table: [campaign.m_campaign_budget_ledger](../../../schema/campaign/m_campaign_budget_ledger.md)
+
+#### QUERY - Get the budget that the order took
+
+```SQL
+SELECT
+    l.campaign_budget_id,
+    l.campaign_id,
+    l.usage,
+    l.reference
+FROM campaign.m_campaign_budget_ledger l
+WHERE l.order_id = '<sequence.orderId>'
+AND l.entry_type = 'RESERVE'
+AND NOT EXISTS (
+    SELECT 1
+    FROM campaign.m_campaign_budget_ledger r
+    WHERE r.order_id = l.order_id
+    AND r.campaign_budget_id = l.campaign_budget_id
+    AND r.entry_type = 'RELEASE'
+) -- a budget that was already given back is skipped, so nothing goes back twice
+ORDER BY l.campaign_budget_id
+```
+
+#### INSERT - Write the release in the ledger
+
+```SQL
+INSERT INTO campaign.m_campaign_budget_ledger (created_by, campaign_budget_id, campaign_id, order_id, entry_type, reference, usage, remaining)
+VALUES ('<sequence.userId>', '<sequence.campaignBudgetId>', '<sequence.campaignId>', '<sequence.orderId>', 'RELEASE', '<sequence.reference>', '<sequence.usage>', '<sequence.remaining>')
+RETURNING id as ledger_id
+```
+
+### Table: [campaign.m_campaign_budget](../../../schema/campaign/m_campaign_budget.md)
+
+#### UPDATE - Give the budget back
+
+```SQL
+UPDATE campaign.m_campaign_budget
+SET
+    updated_by = '<sequence.userId>',
+    updated_at = NOW() AT TIME ZONE 'UTC',
+    remaining = remaining + '<sequence.usage>' -- the budget may be INACTIVE, LOCKED or ARCHIVED by now, it still gets the amount back
+WHERE id = '<sequence.campaignBudgetId>'
+RETURNING id as budget_id, remaining
 ```

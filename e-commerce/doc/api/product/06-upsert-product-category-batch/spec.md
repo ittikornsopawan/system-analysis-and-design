@@ -48,6 +48,10 @@
 | 5   | slug           | String       | OPTIONAL  | URL friendly name (max 128 characters, a-z, 0-9 and hyphen), Used in the web URL /{id}/{slug}, Generated from name when not specified on insert, Keep the current slug when not specified on update           | computer-accessories                  |
 | 6   | rowStatus      | String       | OPTIONAL  | Row status (ACTIVE, INACTIVE, DELETED, LOCKED, ARCHIVED), Defaults to ACTIVE, Delete when DELETED, Archive when ARCHIVED, Delete is allowed only when the category is not used by any product or sub category | ACTIVE                                |
 
+### Campaign Rules
+
+- A product category cannot be deleted while it is in a campaign that is not DELETED and has not ended (a live `campaign.t_campaign_product` row of a campaign whose `end_at` is after now), 409 (E10006) with the campaign name in the message. Take it out of the campaign first with the upsert campaign API (a campaign that ended or was deleted does not block). Archiving is always allowed. (`docs/superpowers/specs/2026-11-06-campaign-design.md`, C13, approved by the product owner on 2026-11-06)
+
 #### Example Body Parameters
 
 ```JSON
@@ -406,6 +410,22 @@ curl --location --request POST 'https://www.domain.com/api-dev/v1/product-catego
 }
 ```
 
+#### Fail - Conflict Campaign In Use
+
+```JSON
+{
+    "status": {
+        "code": 409,
+        "message": "Conflict",
+        "bizCode": "E10006",
+        "bizMessage": "categories[2]: The product category is in a campaign that has not ended (Black Friday 2026) and cannot be deleted.",
+        "requestId": "req-520a1b2c-3d4e-5f6a-7b8c-9d0e1f2a3b4c",
+        "timestamp": "2026-11-06T09:02:04.123Z",
+        "status": "ERROR"
+    }
+}
+```
+
 #### Fail - Request Timeout
 
 ```JSON
@@ -534,4 +554,22 @@ SELECT
 FROM product.m_product p
 WHERE p.category_id = '<sequence.categories.id>'
 AND p.row_status <> 'DELETED'
+```
+
+### Table: [campaign.t_campaign_product](../../../schema/campaign/t_campaign_product.md)
+
+#### QUERY - Check product category campaigns in use
+
+```SQL
+SELECT
+    cp.id as campaign_product_id,
+    c.name
+FROM campaign.t_campaign_product cp
+INNER JOIN campaign.m_campaign c
+    ON c.id = cp.campaign_id
+WHERE cp.product_category_id = '<sequence.id>'
+AND cp.row_status <> 'DELETED'
+AND c.row_status <> 'DELETED'
+AND c.end_at > NOW() AT TIME ZONE 'UTC' -- a campaign that ended or was deleted does not block, answer 409 (E10006) when a row is found
+LIMIT 1
 ```

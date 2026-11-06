@@ -113,6 +113,7 @@ All rules below apply to each product of the request on its own. The error messa
 - Adding a value or reopening a value generates the SKU combinations that are missing.
 - Adding, removing or reordering (changing the position of) a level closes the current SKUs of that product and generates new ones, and it is rejected with 409 when any SKU of that product is used in `shop.t_shop_product_sku`, `cart.t_cart` or `sales.t_order_item`.
 - All products are processed in one transaction (all or nothing). The request based validation (400, including the SKU maximum) of all products runs first in the order of the request, then the database based checks (404, then 409) in the order of the request, then the writes. The error of the first failing product is returned and nothing is changed.
+- A product cannot be deleted while it is in a campaign that is not DELETED and has not ended (a live `campaign.t_campaign_product` row of a campaign whose `end_at` is after now), 409 (E10006) with the campaign name in the message. Take it out of the campaign first with the upsert campaign API (a campaign that ended or was deleted does not block). Archiving is always allowed. (`docs/superpowers/specs/2026-11-06-campaign-design.md`, C13, approved by the product owner on 2026-11-06)
 - Execution order of each product: validate the request (400, including the SKU maximum), existence checks (404, the id of a DELETED option or value counts as not found, E10004), in-use check (409), move levels aside, delete the options and values that are not in the list, update the listed options and values (renames that collide are set to temporary names first), insert new options and values, images, close or reopen SKUs, then generate SKUs.
 
 #### Example Body Parameters
@@ -1014,6 +1015,22 @@ curl --location --request POST 'https://www.domain.com/api-dev/v1/product/upsert
 }
 ```
 
+#### Fail - Conflict Campaign In Use
+
+```JSON
+{
+    "status": {
+        "code": 409,
+        "message": "Conflict",
+        "bizCode": "E10006",
+        "bizMessage": "products[1]: The product is in a campaign that has not ended (Black Friday 2026) and cannot be deleted.",
+        "requestId": "req-500a1b2c-3d4e-5f6a-7b8c-9d0e1f2a3b4c",
+        "timestamp": "2026-11-06T09:00:50.123Z",
+        "status": "ERROR"
+    }
+}
+```
+
 #### Fail - Request Timeout
 
 ```JSON
@@ -1686,4 +1703,22 @@ VALUES (
     '<sequence.products.skus.optionValueIds>' -- one row for each value of the combination
 )
 RETURNING id as sku_option_value_id
+```
+
+### Table: [campaign.t_campaign_product](../../../schema/campaign/t_campaign_product.md)
+
+#### QUERY - Check product campaigns in use
+
+```SQL
+SELECT
+    cp.id as campaign_product_id,
+    c.name
+FROM campaign.t_campaign_product cp
+INNER JOIN campaign.m_campaign c
+    ON c.id = cp.campaign_id
+WHERE cp.product_id = '<sequence.id>'
+AND cp.row_status <> 'DELETED'
+AND c.row_status <> 'DELETED'
+AND c.end_at > NOW() AT TIME ZONE 'UTC' -- a campaign that ended or was deleted does not block, answer 409 (E10006) when a row is found
+LIMIT 1
 ```

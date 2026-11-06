@@ -76,6 +76,7 @@
 - `id` must not be duplicated in the request, and `name` must not be duplicated among the items that are not DELETED (400, E10001). The name of a DELETED item is not compared. Swapping the names of two shops in one request is rejected with 409 (E10003) at the first item, because that name is still held by the other shop when the item is checked. Rename them in two requests.
 - An item without `id` and with `rowStatus` DELETED is rejected with 400 (E10001). The caller of a batch becomes the ADMIN of every shop that the batch inserts.
 - The response is HTTP 200 for every successful batch, including a batch that deletes.
+- A shop cannot be deleted while it is in a campaign that is not DELETED and has not ended (a live `campaign.t_campaign_shop` row of a campaign whose `end_at` is after now), 409 (E10006) with the campaign name in the message. Take it out of the campaign first with the upsert campaign API (a campaign that ended or was deleted does not block). Archiving is always allowed. (`docs/superpowers/specs/2026-11-06-campaign-design.md`, C13, approved by the product owner on 2026-11-06)
 - Execution order of each item: validate (400) -> existence checks (404) -> permission (403) -> duplicate name (409, E10003) -> in-use check (409, E10006, only when `rowStatus` is DELETED) -> write the shop, the images and the ADMIN row.
 
 #### Example Body Parameters
@@ -624,6 +625,22 @@ curl --location --request POST 'https://www.domain.com/api-dev/v1/shop/upsert/ba
 }
 ```
 
+#### Fail - Conflict Campaign In Use
+
+```JSON
+{
+    "status": {
+        "code": 409,
+        "message": "Conflict",
+        "bizCode": "E10006",
+        "bizMessage": "shops[2]: The shop is in a campaign that has not ended (Black Friday 2026) and cannot be deleted.",
+        "requestId": "req-480a1b2c-3d4e-5f6a-7b8c-9d0e1f2a3b4c",
+        "timestamp": "2026-11-06T09:48:36.123Z",
+        "status": "ERROR"
+    }
+}
+```
+
 #### Fail - Request Timeout
 
 ```JSON
@@ -889,4 +906,22 @@ SET
     row_status = 'DELETED'
 WHERE shop_id = '<sequence.shops.id>' -- only when rowStatus is DELETED
 AND row_status <> 'DELETED'
+```
+
+### Table: [campaign.t_campaign_shop](../../../schema/campaign/t_campaign_shop.md)
+
+#### QUERY - Check shop campaigns in use
+
+```SQL
+SELECT
+    cs.id as campaign_shop_id,
+    c.name
+FROM campaign.t_campaign_shop cs
+INNER JOIN campaign.m_campaign c
+    ON c.id = cs.campaign_id
+WHERE cs.shop_id = '<sequence.id>'
+AND cs.row_status <> 'DELETED'
+AND c.row_status <> 'DELETED'
+AND c.end_at > NOW() AT TIME ZONE 'UTC' -- a campaign that ended or was deleted does not block, answer 409 (E10006) when a row is found
+LIMIT 1
 ```

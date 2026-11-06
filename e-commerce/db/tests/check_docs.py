@@ -1618,10 +1618,13 @@ def order_examples(md: str, title: str) -> list:
 
 def check_order_checkout(md: str) -> list[str]:
     errors = []
-    for k, ex in enumerate(order_examples(md, "Success")):
+    titled = re.findall(r"^#### (Success[^\n]*)\n\n```JSON\n(.*?)```", md, re.MULTILINE | re.DOTALL)
+    for k, (ex_title, raw) in enumerate(titled):
+        ex = json.loads(raw)
         data, tag = ex["data"], f"01 example {k}"
         count = qty = 0
         total = 0.0
+        errors.extend(campaign_example_errors("01", ex_title, data["shops"]))
         for shop in data["shops"]:
             for line in shop["items"]:
                 count += 1
@@ -1638,23 +1641,39 @@ def check_order_checkout(md: str) -> list[str]:
         if data["canCheckout"] != (not data["problems"] and bool(data["shops"])):
             errors.append(f"{tag}: canCheckout should be TRUE only when there is no problem and at least one shop")
         for p in data["problems"]:
-            if p["reason"] not in ("QUANTITY_EXCEEDS_STOCK", "OUT_OF_STOCK", "UNAVAILABLE"):
+            if p["reason"] not in ("QUANTITY_EXCEEDS_STOCK", "OUT_OF_STOCK", "UNAVAILABLE", "DISCOUNT_BUDGET_EXHAUSTED"):
                 errors.append(f"{tag}: unknown problem reason {p['reason']}")
             if p["reason"] == "QUANTITY_EXCEEDS_STOCK" and not 0 < p["maxOrderQuantity"] < p["quantity"]:
                 errors.append(f"{tag}: QUANTITY_EXCEEDS_STOCK needs 0 < maxOrderQuantity < quantity")
     return errors
 
 
+def campaign_example_errors(tag: str, title: str, shops: list) -> list[str]:
+    """The discount of an example: 0.00 unless the example is the one where a campaign applies, and never more than the price."""
+    errors = []
+    for s in shops:
+        if s["totalTax"] or s["totalShipping"]:
+            errors.append(f"{tag} {s.get('code') or s.get('shopName')}: tax and shipping are 0.00 here")
+        if title in ("Success - With Campaign", "Success - With Capped Discount"):
+            if not 0 <= s["totalDiscount"] <= s["totalPrice"] or s["totalDiscount"] != round(s["totalDiscount"], 2):
+                errors.append(f"{tag} {s.get('code') or s.get('shopName')}: a discount is between 0 and the price, with 2 decimals")
+        elif s["totalDiscount"]:
+            errors.append(f"{tag} {s.get('code') or s.get('shopName')}: the discount is 0.00 when no campaign applies")
+    if title in ("Success - With Campaign", "Success - With Capped Discount") and not any(s["totalDiscount"] > 0 for s in shops):
+        errors.append(f"{tag}: the campaign example needs at least one shop with a discount above 0")
+    return errors
+
+
 def check_order_create(md: str) -> list[str]:
     errors = []
-    for ex in order_examples(md, "Success"):
+    for title, raw in re.findall(r"^#### (Success[^\n]*)\n\n```JSON\n(.*?)```", md, re.MULTILINE | re.DOTALL):
+        ex = json.loads(raw)
         ids = set()
+        errors.extend(campaign_example_errors("02", title, ex["data"]["orders"]))
         for o in ex["data"]["orders"]:
             errors.extend(order_total_errors(f"02 order {o['code']}", o))
             if o["status"] != "WAIT_PAYMENT":
                 errors.append(f"02 order {o['code']}: a created order must be WAIT_PAYMENT")
-            if o["totalDiscount"] or o["totalTax"] or o["totalShipping"]:
-                errors.append(f"02 order {o['code']}: discount, tax and shipping are 0.00 for now")
             if o["shopId"] in ids:
                 errors.append("02: one order for each shop")
             ids.add(o["shopId"])
@@ -1728,7 +1747,8 @@ def check_order_spec() -> int:
     for key, need in needles.items():
         for missing in missing_needles(mds[key], need):
             errors.append(f"{ORDER_SPECS[key]} missing: {missing}")
-    for key, want in {"01": {"Success": 200, "Success - With Problems": 200}, "02": {"Success": 201}, "03": {"Success": 200, "Success - Empty": 200},
+    for key, want in {"01": {"Success": 200, "Success - With Campaign": 200, "Success - With Problems": 200},
+                      "02": {"Success": 201, "Success - With Campaign": 201, "Success - With Capped Discount": 201}, "03": {"Success": 200, "Success - Empty": 200},
                       "04": {"Success": 200, "Success - Empty": 200}, "05": {"Success": 200}}.items():
         if success_codes(mds[key]) != want:
             errors.append(f"{ORDER_SPECS[key]}: success examples should be {want}, found {success_codes(mds[key])}")
@@ -3841,6 +3861,436 @@ def check_api_sequence_spec() -> int:
 
 
 COMMANDS["api-sequence-spec"] = check_api_sequence_spec
+
+
+CAMPAIGN_SCHEMA_DOC = "e-commerce/doc/schema/campaign"
+CAMPAIGN_MIGRATION = "e-commerce/db/migrations/up/09-campaign.schema.up.sql"
+CAMPAIGN_INDEXES = {
+    "m_campaign": ["CREATE UNIQUE INDEX IF NOT EXISTS uq_m_campaign_name ON campaign.m_campaign (name) WHERE row_status <> 'DELETED'"],
+    "m_campaign_budget": ["CREATE UNIQUE INDEX IF NOT EXISTS uq_m_campaign_budget_campaign_id ON campaign.m_campaign_budget (campaign_id) "
+                          "WHERE row_status <> 'DELETED'"],
+    "m_campaign_budget_ledger": [],
+    "t_campaign_product": [
+        "CREATE UNIQUE INDEX IF NOT EXISTS uq_t_campaign_product_campaign_id_product_id ON campaign.t_campaign_product (campaign_id, product_id) "
+        "WHERE product_id IS NOT NULL AND row_status <> 'DELETED'",
+        "CREATE UNIQUE INDEX IF NOT EXISTS uq_t_campaign_product_campaign_id_product_category_id ON campaign.t_campaign_product "
+        "(campaign_id, product_category_id) WHERE product_category_id IS NOT NULL AND row_status <> 'DELETED'"],
+    "t_campaign_shop": ["CREATE UNIQUE INDEX IF NOT EXISTS uq_t_campaign_shop_campaign_id_shop_id ON campaign.t_campaign_shop (campaign_id, shop_id) "
+                        "WHERE row_status <> 'DELETED'"],
+    "t_campaign_discount": ["CREATE UNIQUE INDEX IF NOT EXISTS uq_t_campaign_discount_campaign_id ON campaign.t_campaign_discount (campaign_id) "
+                            "WHERE row_status <> 'DELETED'"],
+}
+CAMPAIGN_TABLE_PARTS = {
+    "m_campaign": ["CONSTRAINT ck_m_campaign_period CHECK (end_at > start_at)"],
+    "m_campaign_budget": ["remaining NUMERIC(16, 2) NOT NULL CHECK (remaining >= 0)",
+                          "CONSTRAINT ck_m_campaign_budget_remaining_within_budget CHECK (remaining <= budget)"],
+    "m_campaign_budget_ledger": ["order_id UUID NOT NULL REFERENCES sales.t_order (id) ON DELETE RESTRICT",
+                                 "entry_type VARCHAR(16) NOT NULL CHECK (entry_type IN ('RESERVE', 'RELEASE'))",
+                                 "UNIQUE (campaign_budget_id, order_id, entry_type)",
+                                 "campaign_budget_id UUID NOT NULL REFERENCES campaign.m_campaign_budget (id) ON DELETE CASCADE"],
+    "t_campaign_product": ["CONSTRAINT ck_t_campaign_product_target CHECK ( (product_category_id IS NULL) <> (product_id IS NULL) )"],
+    "t_campaign_shop": [],
+    "t_campaign_discount": ["discount_value NUMERIC(16, 2) NOT NULL CHECK (discount_value > 0)",
+                            "CONSTRAINT ck_t_campaign_discount_percentage CHECK ( discount_type <> 'PERCENTAGE' OR discount_value <= 100 )"],
+}
+CAMPAIGN_DOC_NEEDLES = {
+    "m_campaign": ["ck_m_campaign_period", "uq_m_campaign_name"],
+    "m_campaign_budget": ["ck_m_campaign_budget_remaining_within_budget", "uq_m_campaign_budget_campaign_id", "| remaining "],
+    "m_campaign_budget_ledger": ["fk_m_campaign_budget_ledger_order_id", "ON DELETE RESTRICT", "ck_m_campaign_budget_ledger_entry_type",
+                                 "uq_m_campaign_budget_ledger_campaign_budget_id_order_id_entry_type", "| entry_type ", "| order_id "],
+    "t_campaign_product": ["ck_t_campaign_product_target", "uq_t_campaign_product_campaign_id_product_id",
+                           "uq_t_campaign_product_campaign_id_product_category_id"],
+    "t_campaign_shop": ["uq_t_campaign_shop_campaign_id_shop_id"],
+    "t_campaign_discount": ["ck_t_campaign_discount_percentage", "uq_t_campaign_discount_campaign_id", "discount_value > 0"],
+}
+CAMPAIGN_README_ROWS = {
+    "m_campaign": "| [m_campaign](campaign/m_campaign.md) | Master | 10 | 0 |",
+    "m_campaign_budget": "| [m_campaign_budget](campaign/m_campaign_budget.md) | Master | 9 | 1 |",
+    "m_campaign_budget_ledger": "| [m_campaign_budget_ledger](campaign/m_campaign_budget_ledger.md) | Master | 13 | 3 |",
+    "t_campaign_product": "| [t_campaign_product](campaign/t_campaign_product.md) | Transaction | 9 | 3 |",
+    "t_campaign_shop": "| [t_campaign_shop](campaign/t_campaign_shop.md) | Transaction | 8 | 2 |",
+    "t_campaign_discount": "| [t_campaign_discount](campaign/t_campaign_discount.md) | Transaction | 9 | 1 |",
+}
+
+
+def check_campaign_schema() -> int:
+    """campaign.*: period, one live budget with remaining, ledger entry type per order, product target, one live discount."""
+    errors = []
+    sql = read(CAMPAIGN_MIGRATION)
+    for table, parts in CAMPAIGN_TABLE_PARTS.items():
+        statements = schema_statements(sql, "campaign", table)
+        create = [s for s in statements if s.startswith("CREATE TABLE")]
+        if len(create) != 1:
+            errors.append(f"migration 09: {table} must be created exactly once")
+            continue
+        if "UNIQUE" in create[0] and table != "m_campaign_budget_ledger":
+            errors.append(f"migration 09: {table} must be created without an inline UNIQUE (a partial unique index is used)")
+        for part in parts:
+            if normalize(part) not in create[0]:
+                errors.append(f"migration 09: {table} is missing: {part[:70]}")
+        indexes = [s for s in statements if s.startswith("CREATE UNIQUE INDEX")]
+        if indexes != [normalize(i) for i in CAMPAIGN_INDEXES[table]]:
+            errors.append(f"migration 09: the partial unique indexes of {table} are missing or different")
+        path = f"{CAMPAIGN_SCHEMA_DOC}/{table}.md"
+        md = read(path)
+        for bad in table_lines_aligned(md):
+            errors.append(f"{path} misaligned table: {bad[:40]}")
+        if schema_statements(" ".join(SQL_BLOCK.findall(md)), "campaign", table) != statements:
+            errors.append(f"{path} SQL differs from the migration")
+        for needle in CAMPAIGN_DOC_NEEDLES[table]:
+            if needle not in md:
+                errors.append(f"{path} missing: {needle}")
+    readme = read("e-commerce/doc/schema/README.md")
+    for table, row in CAMPAIGN_README_ROWS.items():
+        if row not in readme:
+            errors.append(f"README missing: {row}")
+    er = read("e-commerce/db/er-diagram.drawio")
+    for text in ("entry_type : varchar(16)", "UNIQUE (campaign_budget_id, order_id, entry_type)", "↗ sales.t_order"):
+        if er.count(text) < (1 if text.startswith("↗") else 2):
+            errors.append(f"ER diagram: '{text}' is not drawn where it must be (pages 7 and 8; the sales.t_order stub on page 7)")
+    test = ROOT / "e-commerce/db/tests/09-campaign.test.sql"
+    if not test.exists():
+        errors.append("db/tests/09-campaign.test.sql does not exist")
+    else:
+        text = test.read_text(encoding="utf-8")
+        for n in range(1, 12):
+            if f"PASS test {n}:" not in text:
+                errors.append(f"09-campaign.test.sql has no test {n}")
+    if errors:
+        return fail("; ".join(errors))
+    print("OK: campaign-schema")
+    return 0
+
+
+COMMANDS["campaign-schema"] = check_campaign_schema
+
+
+CAMPAIGN_SPECS = {
+    "01": "e-commerce/doc/api/campaign/01-upsert-campaign/spec.md",
+    "02": "e-commerce/doc/api/campaign/02-inquiry-campaign/spec.md",
+    "03": "e-commerce/doc/api/campaign/03-inquiry-campaign-ledger/spec.md",
+}
+CAMPAIGN_SUCCESS_CODES = {
+    "01": {"Success - Insert": 201, "Success - Update": 200, "Success - Delete": 204, "Success - Archive": 200},
+    "02": {"Success": 200, "Success - Shop": 200, "Success - Empty": 200},
+    "03": {"Success": 200, "Success - Empty": 200},
+}
+CAMPAIGN_NEEDLES = {
+    "01": ["### Campaign Rules", "ck_m_campaign_period", "#### QUERY - Check existing campaign", "#### QUERY - Check duplicate campaign name",
+           "#### INSERT - Create campaign", "#### UPDATE - Update, delete or archive campaign", "#### QUERY - Check campaign used",
+           "#### INSERT - Create budget", "#### UPDATE - Change budget", "AND (budget - remaining) <= '<sequence.budget.budget>'",
+           "'<sequence.budget.budget>', '<sequence.budget.budget>'", "#### INSERT - Create discount", "#### INSERT - Create campaign shop",
+           "#### INSERT - Create campaign product", "#### QUERY - Check shop", "#### QUERY - Check product", "#### QUERY - Check product category",
+           "#### Fail - Conflict In Use", "#### Fail - Conflict Budget Below Used", "#### Fail - Not Found Reference", "#### Fail - Forbidden",
+           "#### Fail - Bad Request Row Status", "E10003", "E10005", "E10006", "E10009", "Delete 204 No Content (no response body)",
+           "#### QUERY - Get the platform administrator role", "#### QUERY - Check platform administrator",
+           "validate the request (400) -> existence of the campaign, the children and the shops, products and categories (404) -> permission (403)"],
+    "02": ["### Campaign Inquiry Rules", "ORDER BY c.start_at DESC, c.id", "NOT EXISTS (", "cs.row_status = 'ACTIVE'", "#### QUERY - Count the campaigns",
+           "#### QUERY - Check shop member", "#### QUERY - Check shop", "#### QUERY - Check platform administrator", "#### Fail - Forbidden",
+           "#### Fail - Not Found Reference", "activeOnly", "#### QUERY - Get the budgets of the campaigns", "#### QUERY - Get the shops of the campaigns",
+           "validate the request (400) -> existence of the shop (404) -> permission (403) -> read"],
+    "03": ["### Campaign Ledger Inquiry Rules", "ORDER BY l.created_at DESC, l.id", "#### QUERY - Count the ledger entries", "#### Fail - Forbidden",
+           "#### Fail - Not Found", "budget - remaining = sum of RESERVE usage - sum of RELEASE usage", "#### QUERY - Check campaign",
+           "#### QUERY - Check platform administrator", "validate the request (400) -> existence of the campaign (404) -> permission (403) -> read"],
+}
+CAMPAIGN_COUNTS = {
+    "01": {"approved by the product owner": 2, "'<sequence.discount.": 8, "E10006": 3},
+    "02": {"approved by the product owner": 2, "FROM campaign.t_campaign_shop cs": 3, "OR NOT EXISTS (": 2, "AND cs.row_status = 'ACTIVE'": 4},
+    "03": {"approved by the product owner": 2, "-- only when entryType is specified": 2, "-- only when orderId is specified": 2},
+}
+CAMPAIGN_DISCOUNT_TYPES = ("PERCENTAGE", "FIXED_AMOUNT")
+
+
+def check_campaign_data(label: str, c: dict, shop_view: bool) -> list[str]:
+    """One campaign object of an example: money arithmetic, discount range, and what a shop member may see."""
+    errors = []
+    if not c["startAt"] < c["endAt"]:
+        errors.append(f"{label}: endAt must be after startAt")
+    d = c["discount"]
+    if d["discountType"] not in CAMPAIGN_DISCOUNT_TYPES or d["discountValue"] <= 0 or (d["discountType"] == "PERCENTAGE" and d["discountValue"] > 100):
+        errors.append(f"{label}: the discount is outside its range")
+    b = c["budget"]
+    if shop_view:
+        if b is not None or c["shops"] is not None:
+            errors.append(f"{label}: a member of a shop does not see the budget and the shops (null)")
+    else:
+        if b is None:
+            errors.append(f"{label}: a platform administrator sees the budget")
+        else:
+            if round(b["budget"] - b["remaining"], 2) != b["used"] or not 0 <= b["remaining"] <= b["budget"]:
+                errors.append(f"{label}: used must be budget - remaining and remaining must be between 0 and budget")
+    for p in c["products"]:
+        if (p["productCategoryId"] is None) == (p["productId"] is None):
+            errors.append(f"{label}: a campaign product names a product or a category, exactly one")
+    if c["shops"] is not None:
+        ids = [s["shopId"] for s in c["shops"]]
+        if len(ids) != len(set(ids)):
+            errors.append(f"{label}: a shop appears twice")
+    return errors
+
+
+def check_campaign_upsert_examples(md: str) -> list[str]:
+    errors = []
+    bodies = re.search(r"#### Example Body Parameters\n\n(.*?)\n\n## Example Request", md, re.DOTALL)
+    blocks = [json.loads(b) for b in re.findall(r"```JSON\n(.*?)```", bodies.group(1), re.DOTALL)] if bodies else []
+    if len(blocks) != 4:
+        return ["01: expected four example bodies (insert, update, delete, archive)"]
+    insert, update, delete, archive = blocks
+    if "id" in insert or not all("id" in b for b in (update, delete, archive)):
+        errors.append("01: insert has no id, update, delete and archive have one")
+    if delete.get("rowStatus") != "DELETED" or archive.get("rowStatus") != "ARCHIVED":
+        errors.append("01: the delete and archive examples need rowStatus DELETED and ARCHIVED")
+    if len({insert["id"] if "id" in insert else None, update["id"], delete["id"], archive["id"]}) != 4:
+        errors.append("01: the update, delete and archive examples are three different campaigns")
+    for b in blocks:
+        if not b["startAt"] < b["endAt"]:
+            errors.append("01: an example body ends before it starts")
+        for p in b.get("products", []):
+            if ("productId" in p) == ("productCategoryId" in p):
+                errors.append("01: an example product row names a product or a category, exactly one")
+    ins = json_examples(md, "Success - Insert")
+    upd = json_examples(md, "Success - Update")
+    arc = json_examples(md, "Success - Archive")
+    if not (ins and upd and arc):
+        return errors + ["01: a success example has no JSON"]
+    ins, upd, arc = ins["data"], upd["data"], arc["data"]
+    for label, data in (("Insert", ins), ("Update", upd), ("Archive", arc)):
+        errors.extend(check_campaign_data(f"01 {label}", data, False))
+    if ins["budget"]["remaining"] != ins["budget"]["budget"] or ins["budget"]["used"] != 0:
+        errors.append("01: a campaign that was just inserted has used nothing (remaining = budget)")
+    if update["id"] != ins["campaignId"] or upd["campaignId"] != update["id"]:
+        errors.append("01: the update example changes the campaign that the insert example created")
+    if update["budget"]["id"] != upd["budget"]["budgetId"] or update["budget"]["budget"] != upd["budget"]["budget"]:
+        errors.append("01: the update answer must show the budget that the request sent")
+    if update["discount"]["discountValue"] != upd["discount"]["discountValue"]:
+        errors.append("01: the update answer must show the discount that the request sent")
+    if upd["budget"]["used"] <= 0:
+        errors.append("01: the update example must show a budget that was already used, to show that remaining keeps it")
+    if arc["campaignId"] != archive["id"] or arc["rowStatus"] != "ARCHIVED" or arc["name"] != archive["name"]:
+        errors.append("01: the archive answer must match the archive request")
+    return errors
+
+
+def check_campaign_inquiry_examples(md: str) -> list[str]:
+    errors = []
+    admin = json_examples(md, "Success")
+    shop = json_examples(md, "Success - Shop")
+    empty = json_examples(md, "Success - Empty")
+    if not (admin and shop and empty):
+        return ["02: a success example has no JSON"]
+    for title, body, shop_view in (("Success", admin, False), ("Success - Shop", shop, True), ("Success - Empty", empty, False)):
+        data = body["data"]
+        rows = data["campaigns"]
+        if data["totalItems"] != len(rows) and data["totalPages"] <= 1:
+            errors.append(f"02 '{title}': totalItems is not the number of campaigns on a single page")
+        if data["totalPages"] != -(-data["totalItems"] // data["pageSize"]):
+            errors.append(f"02 '{title}': totalPages is not the ceiling of totalItems / pageSize")
+        starts = [r["startAt"] for r in rows]
+        if starts != sorted(starts, reverse=True):
+            errors.append(f"02 '{title}': campaigns must be ordered by startAt, newest first")
+        for r in rows:
+            errors.extend(check_campaign_data(f"02 '{title}' {r['name']}", r, shop_view))
+    if empty["data"]["campaigns"] or empty["data"]["totalPages"] != 0:
+        errors.append("02: the empty example has no campaigns and totalPages 0")
+    return errors
+
+
+def check_campaign_ledger_examples(md: str) -> list[str]:
+    errors = []
+    body = json_examples(md, "Success")
+    empty = json_examples(md, "Success - Empty")
+    if not (body and empty):
+        return ["03: a success example has no JSON"]
+    data = body["data"]
+    rows = data["entries"]
+    created = [r["createdAt"] for r in rows]
+    if created != sorted(created, reverse=True):
+        errors.append("03: entries must be newest first")
+    if data["totalItems"] != len(rows) or data["totalPages"] != -(-data["totalItems"] // data["pageSize"]):
+        errors.append("03: totalItems and totalPages do not match the entries")
+    for r in rows:
+        if r["usage"] <= 0 or r["remaining"] < 0:
+            errors.append("03: usage is positive and remaining is not negative")
+        if round(sum(i["discount"] for i in r["reference"]), 2) != r["usage"]:
+            errors.append("03: the discounts in reference must add up to usage")
+        if r["entryType"] not in ("RESERVE", "RELEASE"):
+            errors.append("03: unknown entry type")
+    ordered = sorted(rows, key=lambda r: r["createdAt"])
+    for before, after in zip(ordered, ordered[1:]):
+        step = -after["usage"] if after["entryType"] == "RESERVE" else after["usage"]
+        if round(before["remaining"] + step, 2) != after["remaining"]:
+            errors.append("03: remaining after an entry must be the remaining before it minus the usage of a RESERVE or plus the usage of a RELEASE")
+    if empty["data"]["entries"] or empty["data"]["totalPages"] != 0:
+        errors.append("03: the empty example has no entries and totalPages 0")
+    return errors
+
+
+CAMPAIGN_RELEASE_NEEDLES = ["goes back in the same transaction as the stock", "#### QUERY - Get the budget that the order took",
+                            "#### INSERT - Write the release in the ledger", "#### UPDATE - Give the budget back", "AND r.entry_type = 'RELEASE'",
+                            "remaining = remaining + '<sequence.usage>'", "[campaign.m_campaign_budget_ledger]"]
+CAMPAIGN_IN_USE_NEEDLES = ["cannot be deleted while it is in a campaign that is not DELETED and has not ended", "#### Fail - Conflict Campaign In Use",
+                           "AND c.end_at > NOW() AT TIME ZONE 'UTC'", "AND c.row_status <> 'DELETED'", "campaign.m_campaign c"]
+CAMPAIGN_DISCOUNT_NEEDLES = ["- Discount rules: a campaign applies to an item only when the campaign is ACTIVE", "- One campaign for each item:",
+                             "(selling_price - cost_price) x quantity", "#### QUERY - Get the campaigns that apply to the shop",
+                             "#### QUERY - Get the products and categories of the campaigns", "AND NOW() AT TIME ZONE 'UTC' < c.end_at",
+                             "OR NOT EXISTS (", "ORDER BY c.id", "DISCOUNT_BUDGET_EXHAUSTED"]
+CAMPAIGN_EFFECTS = {
+    "e-commerce/doc/api/sales/01-inquiry-checkout/spec.md": CAMPAIGN_DISCOUNT_NEEDLES + ["Nothing is reserved here.", "#### Success - With Campaign"],
+    "e-commerce/doc/api/sales/02-create-order/spec.md": [n for n in CAMPAIGN_DISCOUNT_NEEDLES if n != "DISCOUNT_BUDGET_EXHAUSTED"] + [
+        "#### UPDATE - Take the budget of the campaign", "AND remaining >= '<sequence.discountTotal>'", "#### INSERT - Write the reservation in the ledger", "'RESERVE'",
+        "the lots by `id`, then the budgets by `id`", "gross_profit = gross_margin x quantity - discount", "shop_profit = share_margin x quantity",
+        "platform_profit = platform_margin x quantity - discount", "'<sequence.totalDiscount>'", "'<sequence.discount>'", "#### Fail - Conflict Discount Budget",
+        "#### Success - With Campaign", "### Discount Example", "#### Success - With Capped Discount"],
+    "e-commerce/doc/api/sales/05-cancel-order/spec.md": CAMPAIGN_RELEASE_NEEDLES + ["also when the system cancels it because `expires_at` has passed"],
+    "e-commerce/doc/api/payment/05-refund-payment/spec.md": CAMPAIGN_RELEASE_NEEDLES + ["when the payment is refunded"],
+    "e-commerce/doc/api/payment/02-stripe-webhook/spec.md": CAMPAIGN_RELEASE_NEEDLES + ["does not touch the budget"],
+    "e-commerce/doc/api/shop/08-upsert-shop/spec.md": CAMPAIGN_IN_USE_NEEDLES + ["#### QUERY - Check shop campaigns in use", "cs.shop_id = '<sequence.id>'"],
+    "e-commerce/doc/api/shop/09-upsert-shop-batch/spec.md": CAMPAIGN_IN_USE_NEEDLES + ["#### QUERY - Check shop campaigns in use", "cs.shop_id = '<sequence.id>'"],
+    "e-commerce/doc/api/product/01-upsert-product/spec.md": CAMPAIGN_IN_USE_NEEDLES + ["#### QUERY - Check product campaigns in use", "cp.product_id = '<sequence.id>'"],
+    "e-commerce/doc/api/product/03-upsert-product-batch/spec.md": CAMPAIGN_IN_USE_NEEDLES + ["#### QUERY - Check product campaigns in use", "cp.product_id = '<sequence.id>'"],
+    "e-commerce/doc/api/product/04-upsert-product-category/spec.md": CAMPAIGN_IN_USE_NEEDLES + ["#### QUERY - Check product category campaigns in use", "cp.product_category_id = '<sequence.id>'"],
+    "e-commerce/doc/api/product/06-upsert-product-category-batch/spec.md": CAMPAIGN_IN_USE_NEEDLES + ["#### QUERY - Check product category campaigns in use", "cp.product_category_id = '<sequence.id>'"],
+}
+
+
+# cap of an order item of the examples: (selling_price - cost_price) x quantity of its lot (sales/04 shows the same two items)
+CAMPAIGN_ITEM_CAP = {"e1f2a3b4-3c4d-4e5f-9a6b-7c8d9e0f1a21": 158.0, "e2a3b4c5-4d5e-4f60-8b7c-8d9e0f1a2b32": 84.0}
+
+
+def check_discount_example(md: str) -> list[str]:
+    """The worked example of sales/02: FIXED_AMOUNT discount, the cap, the profits, and the capped success example that follows from it."""
+    errors = []
+    m = re.search(r"### Discount Example\n\n.*?\n\n((?:\|[^\n]*\n)+)", md, re.DOTALL)
+    if not m:
+        return ["sales/02: the Discount Example table is missing"]
+    rows = [[c.strip() for c in line.strip().strip("|").split("|")] for line in m.group(1).strip().split("\n")][2:]
+    total_price = total_discount = 0.0
+    capped_rows = 0
+    for r in rows:
+        item, price, cost, qty, campaign, raw, cap, discount, gross_before, shop, gross_profit, platform = r
+        price, cost, qty, raw, cap, discount, gross_before, shop, gross_profit, platform = (float(x) for x in (price, cost, qty, raw, cap, discount, gross_before, shop, gross_profit, platform))
+        kind, value = campaign.split()
+        value = float(value)
+        expected_raw = round(price * qty * value / 100, 2) if kind == "PERCENTAGE" else round(value * qty, 2)
+        if expected_raw != raw:
+            errors.append(f"sales/02 discount example {item}: the discount before the cap should be {expected_raw}")
+        if round((price - cost) * qty, 2) != cap:
+            errors.append(f"sales/02 discount example {item}: the cap should be (selling price - cost price) x quantity = {round((price - cost) * qty, 2)}")
+        if discount != min(raw, cap):
+            errors.append(f"sales/02 discount example {item}: the discount should be the smaller of the discount before the cap and the cap")
+        if discount > cap:
+            errors.append(f"sales/02 discount example {item}: the discount is above the cap")
+        if gross_before != cap:
+            errors.append(f"sales/02 discount example {item}: gross margin x quantity should equal the cap")
+        if round(gross_before - discount, 2) != gross_profit or gross_profit < 0:
+            errors.append(f"sales/02 discount example {item}: gross profit should be gross margin - discount and never below 0")
+        if round(gross_before - shop - discount, 2) != platform:
+            errors.append(f"sales/02 discount example {item}: platform profit should be gross margin - shop profit - discount")
+        capped_rows += raw > cap
+        total_price += price * qty
+        total_discount += discount
+    if not capped_rows or capped_rows == len(rows):
+        errors.append("sales/02 discount example: one item must be cut by the cap and one must stay under it")
+    capped = json_examples(md, "Success - With Capped Discount")
+    if capped:
+        first = capped["data"]["orders"][0]
+        if round(first["totalPrice"], 2) != round(total_price, 2) or round(first["totalDiscount"], 2) != round(total_discount, 2):
+            errors.append("sales/02: the capped example must have the totalPrice and the totalDiscount of the discount example table")
+    else:
+        errors.append("sales/02: the capped discount example has no JSON")
+    return errors
+
+
+def check_campaign_effects() -> list[str]:
+    """The proposals E1 to E7 of the campaign design: every delivered spec that the campaign touches still carries its rule, its SQL and its example."""
+    errors = []
+    for path, needles in CAMPAIGN_EFFECTS.items():
+        md = read(path)
+        for missing in missing_needles(md, needles):
+            errors.append(f"{path} missing: {missing}")
+        if "Fail - Conflict Campaign In Use" in md:
+            example = json_examples(md, "Fail - Conflict Campaign In Use")
+            if not example or example["status"]["code"] != 409 or example["status"]["bizCode"] != "E10006":
+                errors.append(f"{path}: the campaign in use example must be 409 with E10006")
+        if "Fail - Conflict Discount Budget" in md:
+            example = json_examples(md, "Fail - Conflict Discount Budget")
+            if not example or example["status"]["code"] != 409 or example["status"]["bizCode"] != "E10007":
+                errors.append(f"{path}: the discount budget example must be 409 with E10007")
+    errors.extend(check_discount_example(read("e-commerce/doc/api/sales/02-create-order/spec.md")))
+    ledger_example = json_examples(read(CAMPAIGN_SPECS["03"]), "Success")
+    for e in (ledger_example["data"]["entries"] if ledger_example else []):
+        for i in e["reference"]:
+            cap = CAMPAIGN_ITEM_CAP.get(i["orderItemId"])
+            if cap is not None and i["discount"] > cap:
+                errors.append(f"campaign ledger example: the discount {i['discount']} of an order item is above its cap {cap}")
+    # the order that the ledger example names is the order of the campaign example of the create order spec
+    ledger = json_examples(read(CAMPAIGN_SPECS["03"]), "Success")
+    created = None
+    for title, raw in re.findall(r"^#### (Success - With Campaign)\n\n```JSON\n(.*?)```", read("e-commerce/doc/api/sales/02-create-order/spec.md"), re.MULTILINE | re.DOTALL):
+        created = json.loads(raw)
+    if ledger and created:
+        reserved = [e for e in ledger["data"]["entries"] if e["entryType"] == "RESERVE"]
+        orders = {o["orderId"]: o for o in created["data"]["orders"]}
+        for e in reserved:
+            o = orders.get(e["orderId"])
+            if o is None:
+                errors.append("campaign ledger example: the RESERVE entry names an order that is not in the create order campaign example")
+            elif round(o["totalDiscount"], 2) != e["usage"]:
+                errors.append(f"campaign ledger example: usage {e['usage']} is not the totalDiscount {o['totalDiscount']} of the order in sales/02")
+    return errors
+
+
+def check_campaign_spec() -> int:
+    errors = []
+    mds = {}
+    for key, path in CAMPAIGN_SPECS.items():
+        try:
+            mds[key] = read(path)
+        except FileNotFoundError:
+            errors.append(f"{path} does not exist")
+            continue
+        md = mds[key]
+        for bad in table_lines_aligned(md):
+            errors.append(f"{path} misaligned table: {bad[:40]}")
+        for bad in json_blocks_parse(md):
+            errors.append(f"{path} invalid JSON block: {bad[:40]}")
+        for link in relative_links_exist(path, md):
+            errors.append(f"{path} broken link {link}")
+    if errors:
+        return fail("; ".join(errors))
+    for key, need in CAMPAIGN_NEEDLES.items():
+        for missing in missing_needles(mds[key], need):
+            errors.append(f"{CAMPAIGN_SPECS[key]} missing: {missing}")
+    for key, counts in CAMPAIGN_COUNTS.items():
+        for phrase, n in counts.items():
+            if mds[key].count(phrase) < n:
+                errors.append(f"{CAMPAIGN_SPECS[key]}: '{phrase[:60]}' must appear at least {n} times, found {mds[key].count(phrase)}")
+    for key, want in CAMPAIGN_SUCCESS_CODES.items():
+        if success_codes(mds[key]) != want:
+            errors.append(f"{CAMPAIGN_SPECS[key]}: success examples should be {want}, found {success_codes(mds[key])}")
+    for key, md in mds.items():
+        params = re.search(r"### (?:Query|Body) Parameters.*?(?=\n### |\n#### Example|\n## )", md, re.DOTALL)
+        if params and "userId" in params.group(0):
+            errors.append(f"{CAMPAIGN_SPECS[key]}: the request must not carry a user id")
+        if "PLATFORM_ADMIN" not in md:
+            errors.append(f"{CAMPAIGN_SPECS[key]}: the rules must name the platform administrator")
+        for forbidden in ("email", "username", "costPrice", "cost_price"):
+            if forbidden in md:
+                errors.append(f"{CAMPAIGN_SPECS[key]} must not contain '{forbidden}'")
+    for key in ("01", "03"):
+        if "QUERY - Check shop member" in mds[key]:
+            errors.append(f"{CAMPAIGN_SPECS[key]}: only a platform administrator calls it, there is no shop member check")
+    errors.extend(check_campaign_effects())
+    errors.extend(check_campaign_upsert_examples(mds["01"]))
+    errors.extend(check_campaign_inquiry_examples(mds["02"]))
+    errors.extend(check_campaign_ledger_examples(mds["03"]))
+    if errors:
+        return fail("; ".join(errors))
+    print("OK: campaign-spec")
+    return 0
+
+
+COMMANDS["campaign-spec"] = check_campaign_spec
 
 
 def main(argv: list[str]) -> int:
