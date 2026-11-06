@@ -18,13 +18,14 @@ Description: Transaction table of the `shipping` schema (defined in `db/migratio
 
 ## Constain
 
-| Key Name                         | Column Name   | Description                                                                   |
-| -------------------------------- | ------------- | ----------------------------------------------------------------------------- |
-| pk_t_shipping_item_id            | id            | Primary key                                                                   |
-| fk_t_shipping_item_shipping_id   | shipping_id   | References shipping.t_shipping(id), ON DELETE CASCADE                         |
-| fk_t_shipping_item_order_item_id | order_item_id | References sales.t_order_item(id), ON DELETE CASCADE                          |
-| ck_t_shipping_item_row_status    | row_status    | CHECK (row_status IN ('ACTIVE', 'INACTIVE', 'DELETED', 'LOCKED', 'ARCHIVED')) |
-| ck_t_shipping_item_quantity      | quantity      | CHECK (quantity > 0)                                                          |
+| Key Name                                     | Column Name                | Description                                                                            |
+| -------------------------------------------- | -------------------------- | -------------------------------------------------------------------------------------- |
+| pk_t_shipping_item_id                        | id                         | Primary key                                                                            |
+| fk_t_shipping_item_shipping_id               | shipping_id                | References shipping.t_shipping(id), ON DELETE CASCADE                                  |
+| fk_t_shipping_item_order_item_id             | order_item_id              | References sales.t_order_item(id), ON DELETE RESTRICT                                  |
+| uq_t_shipping_item_shipping_id_order_item_id | shipping_id, order_item_id | Unique among rows where row_status <> 'DELETED' (one row per order item in a shipping) |
+| ck_t_shipping_item_row_status                | row_status                 | CHECK (row_status IN ('ACTIVE', 'INACTIVE', 'DELETED', 'LOCKED', 'ARCHIVED'))          |
+| ck_t_shipping_item_quantity                  | quantity                   | CHECK (quantity > 0)                                                                   |
 
 ---
 
@@ -46,7 +47,11 @@ CREATE TABLE
             )
         ),
         shipping_id UUID NOT NULL REFERENCES shipping.t_shipping (id) ON DELETE CASCADE,
-        order_item_id UUID NOT NULL REFERENCES sales.t_order_item (id) ON DELETE CASCADE,
+        order_item_id UUID NOT NULL REFERENCES sales.t_order_item (id) ON DELETE RESTRICT,
         quantity INT NOT NULL DEFAULT 1 CHECK (quantity > 0)
     );
+
+CREATE UNIQUE INDEX IF NOT EXISTS uq_t_shipping_item_shipping_id_order_item_id ON shipping.t_shipping_item (shipping_id, order_item_id)
+WHERE
+    row_status <> 'DELETED';
 ```
