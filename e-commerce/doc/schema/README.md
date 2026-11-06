@@ -95,9 +95,9 @@
 
 | Table | Type | Columns | FKs |
 | ----- | ---- | ------: | --: |
-| [t_shipping](shipping/t_shipping.md) | Transaction | 12 | 1 |
+| [t_shipping](shipping/t_shipping.md) | Transaction | 13 | 1 |
 | [t_shipping_item](shipping/t_shipping_item.md) | Transaction | 9 | 2 |
-| [t_shipping_stop](shipping/t_shipping_stop.md) | Transaction | 11 | 1 |
+| [t_shipping_stop](shipping/t_shipping_stop.md) | Transaction | 12 | 1 |
 
 ## campaign
 

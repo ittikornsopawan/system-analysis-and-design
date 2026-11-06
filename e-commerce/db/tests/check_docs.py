@@ -2626,6 +2626,402 @@ def check_payment_schema() -> int:
 COMMANDS["payment-schema"] = check_payment_schema
 
 
+SHIPPING_SCHEMA_DOC = "e-commerce/doc/schema/shipping"
+SHIPPING_MIGRATION = "e-commerce/db/migrations/up/08-shipping.schema.up.sql"
+SHIPPING_INDEXES = {
+    "t_shipping": ("CREATE UNIQUE INDEX IF NOT EXISTS uq_t_shipping_carrier_name_tracking_number ON shipping.t_shipping (carrier_name, tracking_number) "
+                   "WHERE tracking_number IS NOT NULL AND row_status <> 'DELETED'"),
+    "t_shipping_item": ("CREATE UNIQUE INDEX IF NOT EXISTS uq_t_shipping_item_shipping_id_order_item_id ON shipping.t_shipping_item "
+                        "(shipping_id, order_item_id) WHERE row_status <> 'DELETED'"),
+    "t_shipping_stop": ("CREATE UNIQUE INDEX IF NOT EXISTS uq_t_shipping_stop_shipping_id_stop_number ON shipping.t_shipping_stop "
+                        "(shipping_id, stop_number) WHERE row_status <> 'DELETED'"),
+}
+SHIPPING_TABLE_PARTS = {
+    "t_shipping": [
+        "order_id UUID NOT NULL REFERENCES sales.t_order (id) ON DELETE RESTRICT",
+        "carrier_name VARCHAR(64),",
+        "tracking_number VARCHAR(64),",
+        "CONSTRAINT ck_t_shipping_shipped_has_tracking CHECK ( status NOT IN ('SHIPPED', 'DELIVERED', 'RETURNED') OR ( carrier_name IS NOT NULL "
+        "AND tracking_number IS NOT NULL AND shipped_at IS NOT NULL ) )",
+        "CONSTRAINT ck_t_shipping_delivered_at CHECK ( (status = 'DELIVERED') = (delivered_at IS NOT NULL) )",
+        "'PENDING', 'SHIPPED', 'DELIVERED', 'CANCELLED', 'RETURNED'",
+    ],
+    "t_shipping_item": [
+        "shipping_id UUID NOT NULL REFERENCES shipping.t_shipping (id) ON DELETE CASCADE",
+        "order_item_id UUID NOT NULL REFERENCES sales.t_order_item (id) ON DELETE RESTRICT",
+    ],
+    "t_shipping_stop": [
+        "shipping_id UUID NOT NULL REFERENCES shipping.t_shipping (id) ON DELETE CASCADE",
+        "stop_type IN ('PICKUP', 'TRANSIT', 'DROPOFF')",
+        "arrived_at TIMESTAMP WITHOUT TIME ZONE",
+    ],
+}
+SHIPPING_DOC_NEEDLES = {
+    "t_shipping": ["uq_t_shipping_carrier_name_tracking_number", "ck_t_shipping_shipped_has_tracking", "ck_t_shipping_delivered_at",
+                   "ON DELETE RESTRICT", "carrier_name", "Unique among rows where row_status <> 'DELETED' and tracking_number is not null"],
+    "t_shipping_item": ["uq_t_shipping_item_shipping_id_order_item_id", "ON DELETE RESTRICT", "Unique among rows where row_status <> 'DELETED'"],
+    "t_shipping_stop": ["uq_t_shipping_stop_shipping_id_stop_number", "TRANSIT", "arrived_at", "Unique among rows where row_status <> 'DELETED'"],
+}
+SHIPPING_README_ROWS = {
+    "t_shipping": "| [t_shipping](shipping/t_shipping.md) | Transaction | 13 | 1 |",
+    "t_shipping_item": "| [t_shipping_item](shipping/t_shipping_item.md) | Transaction | 9 | 2 |",
+    "t_shipping_stop": "| [t_shipping_stop](shipping/t_shipping_stop.md) | Transaction | 12 | 1 |",
+}
+
+
+def check_shipping_schema() -> int:
+    """shipping.*: tracking number per carrier, status checks, one row per item and stop number, history protected."""
+    errors = []
+    sql = read(SHIPPING_MIGRATION)
+    for table, parts in SHIPPING_TABLE_PARTS.items():
+        statements = schema_statements(sql, "shipping", table)
+        create = [s for s in statements if s.startswith("CREATE TABLE")]
+        if len(create) != 1:
+            errors.append(f"migration 08: {table} must be created exactly once")
+            continue
+        if "UNIQUE" in create[0]:
+            errors.append(f"migration 08: {table} must be created without an inline UNIQUE (a partial unique index is used)")
+        for part in parts:
+            if normalize(part) not in create[0]:
+                errors.append(f"migration 08: {table} is missing: {part[:70]}")
+        if SHIPPING_INDEXES[table] not in statements:
+            errors.append(f"migration 08: the partial unique index of {table} is missing or different")
+        path = f"{SHIPPING_SCHEMA_DOC}/{table}.md"
+        md = read(path)
+        for bad in table_lines_aligned(md):
+            errors.append(f"{path} misaligned table: {bad[:40]}")
+        if schema_statements(" ".join(SQL_BLOCK.findall(md)), "shipping", table) != statements:
+            errors.append(f"{path} SQL differs from the migration")
+        for needle in SHIPPING_DOC_NEEDLES[table]:
+            if needle not in md:
+                errors.append(f"{path} missing: {needle}")
+    readme = read("e-commerce/doc/schema/README.md")
+    for table, row in SHIPPING_README_ROWS.items():
+        if row not in readme:
+            errors.append(f"README missing: {row}")
+    er = read("e-commerce/db/er-diagram.drawio")
+    if "UK    tracking_number" in er:
+        errors.append("ER diagram: tracking_number is no longer a plain UNIQUE column")
+    for column in ("carrier_name : varchar(64)", "arrived_at : timestamp"):
+        if er.count(column) != 2:
+            errors.append(f"ER diagram: '{column}' must be drawn on page 6 and on page 8")
+    test = ROOT / "e-commerce/db/tests/08-shipping.test.sql"
+    if not test.exists():
+        errors.append("db/tests/08-shipping.test.sql does not exist")
+    else:
+        text = test.read_text(encoding="utf-8")
+        for n in range(1, 7):
+            if f"PASS test {n}:" not in text:
+                errors.append(f"08-shipping.test.sql has no test {n}")
+    if errors:
+        return fail("; ".join(errors))
+    print("OK: shipping-schema")
+    return 0
+
+
+COMMANDS["shipping-schema"] = check_shipping_schema
+
+
+SHIPPING_SPECS = {
+    "01": "e-commerce/doc/api/shipping/01-create-shipping/spec.md",
+    "02": "e-commerce/doc/api/shipping/02-update-shipping-status/spec.md",
+    "03": "e-commerce/doc/api/shipping/03-upsert-shipping-stop/spec.md",
+    "04": "e-commerce/doc/api/shipping/04-inquiry-shop-shipping/spec.md",
+    "05": "e-commerce/doc/api/shipping/05-inquiry-shipping/spec.md",
+    "06": "e-commerce/doc/api/shipping/06-confirm-delivery/spec.md",
+}
+SHIPPING_SUCCESS_CODES = {
+    "01": {"Success - First Shipping": 201, "Success - Second Shipping": 201},
+    "02": {"Success - Shipped": 200, "Success - Cancelled": 200, "Success - Returned": 200},
+    "03": {"Success - Insert": 201, "Success - Update": 200, "Success - Delete": 204, "Success - Archive": 200},
+    "04": {"Success": 200, "Success - Empty": 200},
+    "05": {"Success": 200, "Success - Empty": 200},
+    "06": {"Success - Order Still Processing": 200, "Success - Order Completed": 200},
+}
+SHIPPING_NEEDLES = {
+    "01": ["### Create Shipping Rules", "#### QUERY - Lock the order", "FOR UPDATE", "#### UPDATE - Start processing", "AND status = 'PAYMENT_CONFIRMED'",
+           "#### QUERY - Get the quantity already assigned", "AND s.status IN ('PENDING', 'SHIPPED', 'DELIVERED')", "#### QUERY - Get the shipping method of the order",
+           "p.status = 'COMPLETED'", "#### INSERT - Create the shipping", "#### INSERT - Add the items to the shipping", "#### Fail - Conflict Quantity",
+           "#### Fail - Conflict Order Status", "#### Fail - Not Found Reference", "#### Fail - Forbidden", "E10009", "E10006",
+           "validate the request (400) -> existence of the order and of the order items (404) -> permission of the caller (403)",
+           "approved by the product owner", "#### QUERY - Check shop member", "#### QUERY - Check platform administrator"],
+    "02": ["### Update Shipping Status Rules", "`PENDING` -> `SHIPPED`", "`PENDING` -> `CANCELLED`", "`SHIPPED` -> `RETURNED`", "#### UPDATE - Mark the shipping as shipped",
+           "#### UPDATE - Cancel the shipping", "#### UPDATE - Mark the shipping as returned", "AND status = 'PENDING' -- no row changed means the status changed in the meantime",
+           "AND status = 'SHIPPED' -- no row changed means the status changed in the meantime", "#### QUERY - Check duplicate tracking number",
+           "#### QUERY - Count the shippings that are still active", "#### UPDATE - Give the order back to PAYMENT_CONFIRMED", "AND status = 'PROCESSING'",
+           "#### QUERY - Lock the order", "FOR UPDATE", "#### Fail - Conflict Tracking Number", "#### Fail - Conflict Status", "E10003", "E10006", "E10009",
+           "approved by the product owner", "#### QUERY - Check shop member", "#### QUERY - Check platform administrator"],
+    "03": ["### Shipping Stop Rules", "#### INSERT - Create the stop", "#### UPDATE - Update, delete or archive the stop", "#### QUERY - Check duplicate stop number",
+           "#### QUERY - Lock the order", "FOR UPDATE", "#### Fail - Bad Request Row Status", "#### Fail - Conflict Status", "E10003", "E10006", "E10009",
+           "Delete 204 No Content (no response body)", "approved by the product owner", "#### QUERY - Check shop member"],
+    "04": ["### Shop Shipping Inquiry Rules", "E10009", "#### Fail - Forbidden", "#### Fail - Not Found Reference", "#### QUERY - Check shop member",
+           "#### QUERY - Check platform administrator", "#### QUERY - Check shop", "ORDER BY s.created_at DESC, s.id", "o.shop_id = '<sequence.shopId>'",
+           "#### QUERY - Count the shippings of the shop", "#### QUERY - Get the stops of the shippings", "o.ship_address", "approved by the product owner"],
+    "05": ["### Shipping Inquiry Rules", "ORDER BY s.created_at DESC, s.id", "o.user_id = '<sequence.userId>'", "#### QUERY - Count the shippings of the user",
+           "ss.row_status = 'ACTIVE'", "sh.name ILIKE", "#### QUERY - Get the stops of the shippings", "approved by the product owner"],
+    "06": ["### Confirm Delivery Rules", "#### UPDATE - Confirm the delivery", "AND status = 'SHIPPED' -- no row changed means the status changed in the meantime",
+           "#### UPDATE - Complete the order", "AND status = 'PROCESSING'", "#### QUERY - Get the delivered quantity of every item", "s.status = 'DELIVERED'",
+           "o.user_id = '<sequence.userId>'", "#### QUERY - Lock the order", "FOR UPDATE", "#### Fail - Conflict Status", "E10006",
+           "approved by the product owner"],
+}
+# phrases that must appear at least n times (a rule or a guard that two statements share must not lose one copy unnoticed)
+SHIPPING_COUNTS = {
+    "01": {"approved by the product owner": 2},
+    "02": {"AND status = 'PENDING' -- no row changed means the status changed in the meantime": 2,
+           "AND status = 'SHIPPED' -- no row changed means the status changed in the meantime": 1, "approved by the product owner": 2},
+    "03": {"approved by the product owner": 2},
+    "04": {"o.shop_id = '<sequence.shopId>'": 2, "approved by the product owner": 2, "-- only when search is specified": 2},
+    "05": {"o.user_id = '<sequence.userId>'": 2, "approved by the product owner": 1, "-- only when search is specified": 2},
+    "06": {"approved by the product owner": 1},
+}
+SHIPPING_STATUSES = ("PENDING", "SHIPPED", "DELIVERED", "CANCELLED", "RETURNED")
+SHIPPING_STOP_TYPES = ("PICKUP", "TRANSIT", "DROPOFF")
+# quantities of the order items in the examples (sales/04 and sales/05 use the same ids)
+SHIPPING_ORDER_ITEM_QUANTITY = {"e1f2a3b4-3c4d-4e5f-9a6b-7c8d9e0f1a21": 2, "e2a3b4c5-4d5e-4f60-8b7c-8d9e0f1a2b32": 1}
+
+
+def check_shipping_row(label: str, s: dict, shop_side: bool) -> list[str]:
+    """One shipping of an inquiry example: the columns that must go together with the status."""
+    errors = []
+    status = s.get("status")
+    if status not in SHIPPING_STATUSES:
+        errors.append(f"{label}: unknown status {status}")
+    shipped = status in ("SHIPPED", "DELIVERED", "RETURNED")
+    for key in ("carrierName", "trackingNumber", "shippedAt"):
+        if (s.get(key) is not None) != shipped:
+            errors.append(f"{label}: {key} must be {'set' if shipped else 'null'} when the status is {status}")
+    if (s.get("deliveredAt") is not None) != (status == "DELIVERED"):
+        errors.append(f"{label}: deliveredAt must be set exactly when the status is DELIVERED")
+    stops = s.get("stops", [])
+    numbers = [p["stopNumber"] for p in stops]
+    if numbers != sorted(set(numbers)):
+        errors.append(f"{label}: stops must be in stopNumber order without a duplicate number")
+    for p in stops:
+        if p["stopType"] not in SHIPPING_STOP_TYPES:
+            errors.append(f"{label}: unknown stop type {p['stopType']}")
+        if ("rowStatus" in p) != shop_side:
+            errors.append(f"{label}: stop rowStatus is returned to the shop only")
+        if shop_side and p["rowStatus"] == "DELETED":
+            errors.append(f"{label}: a DELETED stop is never returned")
+    for item in s.get("items", []):
+        if not isinstance(item["quantity"], int) or item["quantity"] < 1:
+            errors.append(f"{label}: item quantity must be a positive integer")
+        want = SHIPPING_ORDER_ITEM_QUANTITY.get(item["orderItemId"])
+        if want is not None and item["quantity"] > want:
+            errors.append(f"{label}: item quantity {item['quantity']} is more than the {want} that was ordered")
+    if ("shippingAddress" in s) != shop_side:
+        errors.append(f"{label}: shippingAddress is returned to the shop only")
+    if ("shop" in s) == shop_side:
+        errors.append(f"{label}: the shop object is returned to the customer only")
+    return errors
+
+
+def check_shipping_inquiry(md: str, key: str) -> list[str]:
+    errors = []
+    shop_side = key == "04"
+    names = {}
+    for title in ("Success", "Success - Empty"):
+        body = json_examples(md, title)
+        if body is None:
+            errors.append(f"{key}: no JSON in '{title}'")
+            continue
+        data = body["data"]
+        rows = data["shippings"]
+        if title == "Success - Empty" and (rows or data["totalItems"] != 0 or data["totalPages"] != 0):
+            errors.append(f"{key}: the empty example must have no shippings, totalItems 0 and totalPages 0")
+        if data["totalItems"] != len(rows) and data["totalPages"] <= 1:
+            errors.append(f"{key} '{title}': totalItems {data['totalItems']} is not the number of shippings {len(rows)} on a single page")
+        if data["totalPages"] != -(-data["totalItems"] // data["pageSize"]):
+            errors.append(f"{key} '{title}': totalPages is not the ceiling of totalItems / pageSize")
+        created = [r["createdAt"] for r in rows]
+        if created != sorted(created, reverse=True):
+            errors.append(f"{key} '{title}': shippings must be newest first")
+        for i, r in enumerate(rows):
+            errors.extend(check_shipping_row(f"{key} '{title}' shippings[{i}]", r, shop_side))
+            for item in r["items"]:
+                names.setdefault(item["skuId"], set()).add((item["productName"], item["skuName"]))
+    for sku, found in names.items():
+        if len(found) > 1:
+            errors.append(f"{key}: the SKU {sku} has different names in the examples")
+    if shop_side and "shopId" not in md.split("### Shop Shipping Inquiry Rules")[0]:
+        errors.append("04: shopId must be a query parameter")
+    if not shop_side:
+        params = re.search(r"### Query Parameters.*?(?=\n### )", md, re.DOTALL)
+        if params and ("userId" in params.group(0) or "shopId" in params.group(0)):
+            errors.append("05: the request must not carry a user id or a shop id")
+    return errors
+
+
+def check_shipping_actions(mds: dict) -> list[str]:
+    """Examples of the write APIs: the order status that follows the shipping status, and ids that agree with the request."""
+    errors = []
+    # 01
+    for title, status_before in (("Success - First Shipping", "PAYMENT_CONFIRMED"), ("Success - Second Shipping", "PROCESSING")):
+        body = json_examples(mds["01"], title)
+        if body is None:
+            errors.append(f"01: no JSON in '{title}'")
+            continue
+        data = body["data"]
+        if data["orderStatus"] != "PROCESSING" or data["status"] != "PENDING":
+            errors.append(f"01 '{title}': a new shipping is PENDING and the order is PROCESSING after the request")
+        if data["shippingMethod"] not in ("STANDARD", "EXPRESS", "SAME_DAY"):
+            errors.append(f"01 '{title}': unknown shipping method")
+        for item in data["items"]:
+            want = SHIPPING_ORDER_ITEM_QUANTITY.get(item["orderItemId"])
+            if want is not None and item["quantity"] > want:
+                errors.append(f"01 '{title}': quantity {item['quantity']} is more than the {want} that was ordered")
+    request = json.loads(re.search(r"### HTTP Request\n\n```HTTP\n.*?\n\n(\{.*?\})\n```", mds["01"], re.DOTALL).group(1))
+    request_part = mds["01"].split("### Create Shipping Rules")[0] + mds["01"].split("#### Example Body Parameters")[1].split("## Example Request")[0]
+    if "shippingMethod" in request or "shippingMethod" in request_part:
+        errors.append("01: the request must not carry shippingMethod (it is copied from the payment)")
+    first = json_examples(mds["01"], "Success - First Shipping")
+    if first and first["data"]["orderId"] != request["orderId"]:
+        errors.append("01: the first example answers a different orderId than the request")
+    # 02
+    want = {"Success - Shipped": ("SHIPPED", "PROCESSING", True), "Success - Cancelled": ("CANCELLED", "PROCESSING", False),
+            "Success - Returned": ("RETURNED", "PAYMENT_CONFIRMED", True)}
+    for title, (status, order_status, has_track) in want.items():
+        body = json_examples(mds["02"], title)
+        if body is None:
+            errors.append(f"02: no JSON in '{title}'")
+            continue
+        data = body["data"]
+        if data["status"] != status:
+            errors.append(f"02 '{title}': status must be {status}")
+        if data["orderStatus"] != order_status:
+            errors.append(f"02 '{title}': orderStatus must be {order_status}")
+        for key in ("carrierName", "trackingNumber", "shippedAt"):
+            if (data[key] is not None) != has_track:
+                errors.append(f"02 '{title}': {key} must be {'set' if has_track else 'null'}")
+    bodies = re.findall(r"#### Example Body Parameters\n\n(.*?)\n\n## Example Request", mds["02"], re.DOTALL)
+    blocks = [json.loads(b) for b in re.findall(r"```JSON\n(.*?)```", bodies[0], re.DOTALL)] if bodies else []
+    if [b["status"] for b in blocks] != ["SHIPPED", "CANCELLED", "RETURNED"]:
+        errors.append("02: the example bodies must be SHIPPED, CANCELLED and RETURNED")
+    for b in blocks:
+        has = "carrierName" in b or "trackingNumber" in b
+        if has != (b["status"] == "SHIPPED"):
+            errors.append("02: carrierName and trackingNumber belong to the SHIPPED example only")
+    # 03
+    stop_ids = {}
+    bodies = re.search(r"#### Example Body Parameters\n\n(.*?)\n\n## Example Request", mds["03"], re.DOTALL)
+    blocks = [json.loads(b) for b in re.findall(r"```JSON\n(.*?)```", bodies.group(1), re.DOTALL)] if bodies else []
+    if len(blocks) != 4:
+        errors.append("03: expected four example bodies (insert, update, delete, archive)")
+    else:
+        insert, update, delete, archive = blocks
+        if "id" in insert or not all("id" in b for b in (update, delete, archive)):
+            errors.append("03: insert has no id, update, delete and archive have one")
+        if delete.get("rowStatus") != "DELETED" or archive.get("rowStatus") != "ARCHIVED":
+            errors.append("03: the delete and archive examples need rowStatus DELETED and ARCHIVED")
+        if len({b["shippingId"] for b in blocks}) != 1:
+            errors.append("03: the examples must use one shippingId")
+        for title, b in (("Success - Insert", insert), ("Success - Update", update), ("Success - Archive", archive)):
+            body = json_examples(mds["03"], title)
+            if body is None:
+                errors.append(f"03: no JSON in '{title}'")
+                continue
+            data = body["data"]
+            if data["shippingId"] != b["shippingId"] or data["stopNumber"] != b["stopNumber"] or data["stopType"] != b["stopType"]:
+                errors.append(f"03 '{title}': the answer does not match the request body")
+            if "id" in b and data["stopId"] != b["id"]:
+                errors.append(f"03 '{title}': the answer has a different stopId than the request")
+        inserted = json_examples(mds["03"], "Success - Insert")
+        if inserted and inserted["data"]["stopId"] != update["id"]:
+            errors.append("03: the update example must change the stop that the insert example created")
+        if json_examples(mds["03"], "Success - Archive")["data"]["rowStatus"] != "ARCHIVED":
+            errors.append("03: the archive example must answer rowStatus ARCHIVED")
+        if json_examples(mds["03"], "Success - Insert")["data"]["arrivedAt"] is not None:
+            errors.append("03: a stop that was just inserted has not arrived yet")
+        if {b["stopType"] for b in blocks} - set(SHIPPING_STOP_TYPES):
+            errors.append("03: unknown stop type in an example body")
+        if update["id"] == delete["id"] or update["id"] == archive["id"] or delete["id"] == archive["id"]:
+            errors.append("03: the update, delete and archive examples must use different stops")
+        if len({delete["stopNumber"], archive["stopNumber"], update["stopNumber"]}) != 3 or insert["stopNumber"] != update["stopNumber"]:
+            errors.append("03: the insert and update examples are the same stop, the delete and archive examples are other stops with other numbers")
+    # 06
+    for title, order_status in (("Success - Order Still Processing", "PROCESSING"), ("Success - Order Completed", "COMPLETED")):
+        body = json_examples(mds["06"], title)
+        if body is None:
+            errors.append(f"06: no JSON in '{title}'")
+            continue
+        data = body["data"]
+        if data["status"] != "DELIVERED" or data["deliveredAt"] is None:
+            errors.append(f"06 '{title}': the shipping is DELIVERED with deliveredAt")
+        if data["orderStatus"] != order_status:
+            errors.append(f"06 '{title}': orderStatus must be {order_status}")
+    request = json.loads(re.search(r"### HTTP Request\n\n```HTTP\n.*?\n\n(\{.*?\})\n```", mds["06"], re.DOTALL).group(1))
+    first = json_examples(mds["06"], "Success - Order Still Processing")
+    if first and first["data"]["shippingId"] != request["shippingId"]:
+        errors.append("06: the first example answers a different shippingId than the request")
+    return errors
+
+
+def check_shipping_spec() -> int:
+    errors = []
+    mds = {}
+    for key, path in SHIPPING_SPECS.items():
+        try:
+            mds[key] = read(path)
+        except FileNotFoundError:
+            errors.append(f"{path} does not exist")
+            continue
+        md = mds[key]
+        for bad in table_lines_aligned(md):
+            errors.append(f"{path} misaligned table: {bad[:40]}")
+        for bad in json_blocks_parse(md):
+            errors.append(f"{path} invalid JSON block: {bad[:40]}")
+        for link in relative_links_exist(path, md):
+            errors.append(f"{path} broken link {link}")
+    if errors:
+        return fail("; ".join(errors))
+    for key, need in SHIPPING_NEEDLES.items():
+        for missing in missing_needles(mds[key], need):
+            errors.append(f"{SHIPPING_SPECS[key]} missing: {missing}")
+    for key, counts in SHIPPING_COUNTS.items():
+        for phrase, n in counts.items():
+            if mds[key].count(phrase) < n:
+                errors.append(f"{SHIPPING_SPECS[key]}: '{phrase[:60]}' must appear at least {n} times, found {mds[key].count(phrase)}")
+    for key, want in SHIPPING_SUCCESS_CODES.items():
+        if success_codes(mds[key]) != want:
+            errors.append(f"{SHIPPING_SPECS[key]}: success examples should be {want}, found {success_codes(mds[key])}")
+    for key in ("01", "02", "03", "05", "06"):
+        params = re.search(r"### (?:Query|Body) Parameters.*?(?=\n### |\n#### Example|\n## )", mds[key], re.DOTALL)
+        if params and "userId" in params.group(0):
+            errors.append(f"{SHIPPING_SPECS[key]}: the request must not carry a user id")
+    for key in ("05", "06"):
+        if "E10009" in mds[key]:
+            errors.append(f"{SHIPPING_SPECS[key]}: the customer APIs do not use the forbidden code E10009 (another user's row is not found)")
+    for key, md in mds.items():
+        for forbidden in ("email", "username", "costPrice", "cost_price", "platformProfit", "grossProfit", "shopProfit", "margin"):
+            if forbidden in md:
+                errors.append(f"{SHIPPING_SPECS[key]} must not contain '{forbidden}'")
+    for key in ("01", "02", "03", "06"):
+        rules = mds[key].split("#### Example Body Parameters")[0]
+        if "SELECT ... FOR UPDATE" not in rules:
+            errors.append(f"{SHIPPING_SPECS[key]}: the rules must say that the order row is locked with SELECT ... FOR UPDATE")
+    errors.extend(check_shipping_inquiry(mds["04"], "04"))
+    errors.extend(check_shipping_inquiry(mds["05"], "05"))
+    errors.extend(check_shipping_actions(mds))
+    # the same SKU has the same name in the shop and the customer inquiry
+    names = {}
+    for key in ("04", "05"):
+        body = json_examples(mds[key], "Success")
+        if body:
+            for r in body["data"]["shippings"]:
+                for item in r["items"]:
+                    names.setdefault(item["skuId"], set()).add((item["productName"], item["skuName"]))
+    for sku, found in names.items():
+        if len(found) > 1:
+            errors.append(f"04 and 05: the SKU {sku} has different product or SKU names")
+    if errors:
+        return fail("; ".join(errors))
+    print("OK: shipping-spec")
+    return 0
+
+
+COMMANDS["shipping-spec"] = check_shipping_spec
+
+
 def main(argv: list[str]) -> int:
     if len(argv) < 2:
         print("usage: check_docs.py <subcommand>")
