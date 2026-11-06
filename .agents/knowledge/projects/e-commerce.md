@@ -9,6 +9,14 @@ description: Project index agents load when the active project is e-commerce to 
 
 Load this document only when the active project is `e-commerce`. It is an index, not a copy of project facts that can be read from their authoritative files.
 
+## Component Repository Migration
+
+Status: `migration-pending`
+
+- The backend currently lives directly in `e-commerce/repository/` and remains tracked by the Showcase Repository.
+- `e-commerce/REPOS.md` does not exist yet, so `repository-bootstrap` must stop without changing the directory.
+- Do not move, delete, overwrite, clone into, or create nested Git metadata in `e-commerce/repository/` until an explicitly approved migration task resolves the remote URL, repository name, and history strategy.
+
 ## Source Map
 
 | Concern | Source of truth |

@@ -65,7 +65,8 @@ Complete only when the governing spec is approved.
 
 ## 6. Implement
 
-- Implement the approved spec within `<project>/repository/` using that project's architecture and conventions.
+- For a manifest-managed Project, implement the approved spec in the Component Repository declared by `<project>/REPOS.md` at `<project>/repository/<repo-name>/`.
+- For a migration-pending Project, follow its project knowledge and do not relocate or create nested Git metadata outside an explicitly approved migration task.
 - Add or update automated tests that trace to the acceptance criteria and business rules.
 - Keep implementation changes within the approved scope.
 

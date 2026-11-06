@@ -26,14 +26,21 @@ Work follows Spec-Driven Development (SDD): behavior is designed, reviewed, and 
 │   ├── todo.md            # Checkable plans grouped by active task
 │   └── lessons.md         # Corrections and reusable lessons
 └── <project>/             # Independent System Analysis and Design case study
+    ├── REPOS.md           # Machine-readable manifest of Component Repositories
     ├── api/               # Machine-readable API contracts
     ├── db/                # Database migrations and database tests
     ├── diagram/           # System and architecture diagrams
     ├── doc/
     │   ├── api/           # Human-readable API specifications
     │   └── schema/        # Human-readable data schema specifications
-    └── repository/        # C#/.NET backend implementation and automated tests
+    └── repository/        # Checkout Directory; child repositories are ignored by the Showcase Repository
+        ├── .gitkeep
+        └── <github-repository-name>/
+            ├── .git/      # Independent Git history and remote
+            └── ...
 ```
+
+Use the `repository-bootstrap` skill to validate `REPOS.md` and materialize declared Component Repositories. Do not clone directly into a Checkout Directory or operate on a migration-pending Project.
 
 Each top-level project is self-contained. Before changing files, identify the active scope and, when it is project-specific, use that project's local specifications, templates, architecture, and conventions. Project-specific resources may refine shared defaults but must not weaken global rules.
 
