@@ -56,3 +56,9 @@ description: Repository-wide and project-specific lessons captured from user cor
 - **Correction**: `01-register` and `02-login` asked the frontend to encrypt fields with AES and a key and IV, while the backend already took plain text; the owner chose plain text over TLS with encryption on the server.
 - **Root cause**: The first specs described client-side encryption without asking where the key lives.
 - **Corrected behavior**: Protect sensitive fields with TLS in transit and server-side encryption at rest; do not specify client-side encryption with a key that ships in the app.
+
+### 2026-11-06 — Keep SQL execution and return inside each table activation
+
+- **Correction**: Every database-table interaction in a sequence diagram must activate the table, nest the exact SQL intended for the API specification inside a table-bound note, return the query result while the table remains active, and only then deactivate the table.
+- **Root cause**: The first revision omitted SQL entirely; the next revision added SQL but deactivated each table before drawing its return message, so the activation did not represent the complete database interaction.
+- **Corrected behavior**: For e-commerce API sequence diagrams, use this exact order and indentation: request message → `activate <table>` → indented table-bound SQL note → indented table return message → `deactivate <table>`. Keep the SQL aligned with the current migration and schema documentation.

@@ -1,0 +1,116 @@
+@startuml InquiryUserAddress Sequence
+
+title Inquiry User Address API Sequence
+
+' Visual style
+skinparam defaultFontName "Sarabun"
+skinparam defaultFontSize 14
+skinparam backgroundColor #FFFFFF
+skinparam shadowing false
+skinparam roundcorner 10
+skinparam sequence {
+    ArrowColor #475569
+    ArrowFontColor #334155
+    LifeLineBorderColor #CBD5E1
+    LifeLineBackgroundColor #F8FAFC
+    ParticipantBorderColor #94A3B8
+    ParticipantBackgroundColor #F1F5F9
+    ParticipantFontColor #0F172A
+    GroupBorderColor #94A3B8
+    GroupBackgroundColor #F8FAFC
+    GroupFontColor #334155
+}
+
+' Do not show participant footers at the bottom of the diagram
+hide footbox
+
+
+actor "User" as user
+
+box "Frontend" #F8FAFC
+    participant "Inquiry User Address Page" as page
+end box
+
+box "Web API" #F8FAFC
+    participant "API" as api
+    participant "Application" as app
+    participant "Domain" as domain
+    participant "Infrastructure" as infra
+end box
+
+box "Database" #F8FAFC
+    database "t_user_address" as t_user_address
+end box
+
+user -> page: Request Inquiry User Address
+
+activate page
+    page -> api: Call GET v1/user/address
+    activate api
+        api -> app: [**InquiryUserAddressQueryHandler**] Process request
+        activate app
+            app -> app: Validate request parameters and business rules
+            alt If request is invalid
+                app -> api: Return error response
+                api -> page: Return error response
+                page -> user: Display error message
+            else If request is valid
+                app -> infra: Execute database operations
+                activate infra
+                    infra -> t_user_address: QUERY - Get user addresses
+                    activate t_user_address
+                        note right of t_user_address
+                            SELECT
+                                ua.id as user_address_id,
+                                ua.title,
+                                ua.is_default,
+                                ua.address,
+                                ua.city,
+                                ua.state,
+                                ua.postal_code,
+                                ua.country,
+                                ua.row_status
+                            FROM authen.t_user_address ua
+                            WHERE ua.user_id = '<sequence.userId>'
+                            AND ua.row_status <> 'DELETED'
+                            AND ua.id = '<sequence.id>' -- only when id is specified
+                            AND ua.title ILIKE '%<sequence.search>%' -- only when search is specified
+                            AND ua.row_status = '<sequence.rowStatus>' -- only when rowStatus is specified
+                            ORDER BY ua.is_default DESC, ua.created_at DESC, ua.id
+                            LIMIT <sequence.pageSize> OFFSET (<sequence.pageIndex> - 1) * <sequence.pageSize>
+                        end note
+                        t_user_address -> infra: Return query result
+                    deactivate t_user_address
+
+                    infra -> t_user_address: QUERY - Get total items
+                    activate t_user_address
+                        note right of t_user_address
+                            SELECT
+                                COUNT(ua.id) as total_items
+                            FROM authen.t_user_address ua
+                            WHERE ua.user_id = '<sequence.userId>'
+                            AND ua.row_status <> 'DELETED'
+                            AND ua.id = '<sequence.id>' -- only when id is specified
+                            AND ua.title ILIKE '%<sequence.search>%' -- only when search is specified
+                            AND ua.row_status = '<sequence.rowStatus>' -- only when rowStatus is specified
+                        end note
+                        t_user_address -> infra: Return query result
+                    deactivate t_user_address
+
+                    infra -> app: Return database result
+                deactivate infra
+
+                app -> domain: Apply domain rules and prepare response
+                activate domain
+                    domain -> app: Return response data
+                deactivate domain
+
+                app -> api: Return success response
+                api -> page: Return success response
+                page -> user: Display success result
+            end alt
+        deactivate app
+    deactivate api
+deactivate page
+
+@enduml

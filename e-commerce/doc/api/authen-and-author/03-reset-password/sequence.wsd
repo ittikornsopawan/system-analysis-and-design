@@ -1,0 +1,147 @@
+@startuml ResetPassword Sequence
+
+title Reset Password API Sequence
+
+' Visual style
+skinparam defaultFontName "Sarabun"
+skinparam defaultFontSize 14
+skinparam backgroundColor #FFFFFF
+skinparam shadowing false
+skinparam roundcorner 10
+skinparam sequence {
+    ArrowColor #475569
+    ArrowFontColor #334155
+    LifeLineBorderColor #CBD5E1
+    LifeLineBackgroundColor #F8FAFC
+    ParticipantBorderColor #94A3B8
+    ParticipantBackgroundColor #F1F5F9
+    ParticipantFontColor #0F172A
+    GroupBorderColor #94A3B8
+    GroupBackgroundColor #F8FAFC
+    GroupFontColor #334155
+}
+
+' Do not show participant footers at the bottom of the diagram
+hide footbox
+
+
+actor "User" as user
+
+box "Frontend" #F8FAFC
+    participant "Reset Password Page" as page
+end box
+
+box "Web API" #F8FAFC
+    participant "API" as api
+    participant "Application" as app
+    participant "Domain" as domain
+    participant "Infrastructure" as infra
+end box
+
+box "Database" #F8FAFC
+    database "m_user" as m_user
+    database "t_user_reset_password" as t_user_reset_password
+end box
+
+user -> page: Submit Reset Password
+
+activate page
+    page -> api: Call POST v1/auth/reset-password
+    activate api
+        api -> app: [**ResetPasswordCommandHandler**] Process request
+        activate app
+            app -> app: Validate request parameters and business rules
+            alt If request is invalid
+                app -> api: Return error response
+                api -> page: Return error response
+                page -> user: Display error message
+            else If request is valid
+                app -> infra: Execute database operations
+                activate infra
+                    infra -> m_user: QUERY - Find the active user by email address
+                    activate m_user
+                        note right of m_user
+                            SELECT
+                                u.id as user_id
+                            FROM authen.m_user u
+                            WHERE u.email_address = '<sequence.emailAddressBytes>'
+                            AND u.row_status = 'ACTIVE'
+                        end note
+                        m_user -> infra: Return query result
+                    deactivate m_user
+
+                    infra -> m_user: QUERY - Lock the user
+                    activate m_user
+                        note right of m_user
+                            SELECT
+                                u.id as user_id
+                            FROM authen.m_user u
+                            WHERE u.id = '<sequence.userId>'
+                            AND u.row_status = 'ACTIVE'
+                            FOR UPDATE -- every authen API locks the user row first
+                        end note
+                        m_user -> infra: Return query result
+                    deactivate m_user
+
+                    infra -> t_user_reset_password: QUERY - Count the requests of the last hour
+                    activate t_user_reset_password
+                        note right of t_user_reset_password
+                            SELECT
+                                COUNT(rp.id) as requests
+                            FROM authen.t_user_reset_password rp
+                            WHERE rp.user_id = '<sequence.userId>'
+                            AND rp.created_at > '<sequence.windowStart>' -- now minus 1 hour (configurable)
+                        end note
+                        t_user_reset_password -> infra: Return query result
+                    deactivate t_user_reset_password
+
+                    infra -> t_user_reset_password: UPDATE - Make the old reset token INACTIVE
+                    activate t_user_reset_password
+                        note right of t_user_reset_password
+                            UPDATE authen.t_user_reset_password
+                            SET
+                                updated_by = '<sequence.userId>',
+                                updated_at = NOW() AT TIME ZONE 'UTC',
+                                row_status = 'INACTIVE'
+                            WHERE user_id = '<sequence.userId>'
+                            AND row_status = 'ACTIVE'
+                        end note
+                        t_user_reset_password -> infra: Return updated result
+                    deactivate t_user_reset_password
+
+                    infra -> t_user_reset_password: INSERT - Create reset token
+                    activate t_user_reset_password
+                        note right of t_user_reset_password
+                            INSERT INTO authen.t_user_reset_password (
+                                created_by,
+                                user_id,
+                                reset_token,
+                                expired_at
+                            )
+                            VALUES (
+                                '<sequence.userId>',
+                                '<sequence.userId>',
+                                '<sequence.resetTokenHash>', -- SHA-256 of the token that is sent by email
+                                '<sequence.expiredAt>' -- now plus 30 minutes (configurable)
+                            )
+                        end note
+                        t_user_reset_password -> infra: Return inserted result
+                    deactivate t_user_reset_password
+
+                    infra -> app: Return database result
+                deactivate infra
+
+                app -> domain: Apply domain rules and prepare response
+                activate domain
+                    domain -> app: Return response data
+                deactivate domain
+
+                app -> api: Return success response
+                api -> page: Return success response
+                page -> user: Display success result
+            end alt
+        deactivate app
+    deactivate api
+deactivate page
+
+@enduml
