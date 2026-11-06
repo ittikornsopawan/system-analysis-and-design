@@ -1,6 +1,6 @@
 # Database schema
 
-52 tables in 11 schemas, generated from `db/migrations/up/*.sql` using [`template.md`](template.md). ER diagram: [`er-diagram.drawio`](../../db/er-diagram.drawio).
+53 tables in 11 schemas, generated from `db/migrations/up/*.sql` using [`template.md`](template.md). ER diagram: [`er-diagram.drawio`](../../db/er-diagram.drawio).
 
 
 ## public
@@ -27,8 +27,9 @@
 | [l_user_referral](authen/l_user_referral.md) | Log | 5 | 2 |
 | [m_user_information](authen/m_user_information.md) | Master | 11 | 1 |
 | [t_user_address](authen/t_user_address.md) | Transaction | 14 | 1 |
-| [t_user_access_token](authen/t_user_access_token.md) | Transaction | 9 | 1 |
-| [t_user_refresh_token](authen/t_user_refresh_token.md) | Transaction | 9 | 1 |
+| [t_user_access_token](authen/t_user_access_token.md) | Transaction | 10 | 1 |
+| [t_user_refresh_token](authen/t_user_refresh_token.md) | Transaction | 10 | 1 |
+| [l_user_login_attempt](authen/l_user_login_attempt.md) | Log | 6 | 1 |
 
 ## author
 

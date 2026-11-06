@@ -38,3 +38,21 @@ description: Repository-wide and project-specific lessons captured from user cor
 - **Correction**: Review found that the shop type, product category, category attribute, product and consent upsert specs said nothing about permission, so every access token could write master data.
 - **Root cause**: Early specs copied a template that had no permission section, and the checkers did not require one.
 - **Corrected behavior**: A spec of a write API states its caller (`PLATFORM_ADMIN`, shop member, or owner of the data) and has a 403 example when the answer can be 403; the fix for the delivered specs is planned in WP5 step 5c.
+
+### 2026-11-06 — A lock that counts its own refusals never ends
+
+- **Correction**: The first login lock counted refused attempts as failures, so anyone sending one request every 15 minutes kept a victim locked out for ever. The lead SA missed it at gate 1 and found it at gate 2.
+- **Root cause**: The attempt log had a boolean success flag, which cannot tell a wrong password from a refused attempt.
+- **Corrected behavior**: Log every attempt with a result of `SUCCESS`, `FAILED` or `REFUSED` and count only `FAILED`; test the count with refused rows present.
+
+### 2026-11-06 — State what is committed when an API answers an error
+
+- **Correction**: The refresh token reuse rule closed the whole session but did not say that the closing is committed although the answer is 401.
+- **Root cause**: The spec described the steps of one transaction and the answer, not which writes survive a failed answer.
+- **Corrected behavior**: When an error answer must keep a write (closing a session, recording a refused attempt), say so in the rules and in the order of steps, and keep that write outside the transaction that is rolled back.
+
+### 2026-11-06 — A key shipped in the client gives no secrecy
+
+- **Correction**: `01-register` and `02-login` asked the frontend to encrypt fields with AES and a key and IV, while the backend already took plain text; the owner chose plain text over TLS with encryption on the server.
+- **Root cause**: The first specs described client-side encryption without asking where the key lives.
+- **Corrected behavior**: Protect sensitive fields with TLS in transit and server-side encryption at rest; do not specify client-side encryption with a key that ships in the app.

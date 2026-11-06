@@ -98,3 +98,16 @@ Status: Complete
 - [x] Verify frontmatter, registry and workflow consistency, JSON validity, preserved unrelated work, and clean Markdown diffs.
 
 Verification: the eight selected Agent Roles have valid frontmatter, matching names and paths, `model: inherit`, and `ready` registry rows; the SDD workflow has nine sequential phases with API Documenter publishing the contract before implementation; System Analyst, Solution Architect, Backend Developer, and Code Reviewer handoffs reference OpenAPI consistently; `e-commerce/api/api-contract.json` parses as JSON; `git diff --check` passes. No semantic OpenAPI validator is configured in the repository, so the role reports semantic validation as unverified until a validator is available.
+## e-commerce: Authentication WP4 (tokens, refresh, logout, reset password, profile, address)
+
+Status: Complete, reviewed by the lead SA (gate 1, gate 2 and one re-check), waiting for the product owner to merge the pull request
+
+- [x] Write `docs/superpowers/specs/2026-11-06-authen-design.md` (decisions U1 to U29) and get the owner's answers on token lifetime, login lock, logout scope, scope of work, field encryption and the unique indexes on delivered tables.
+- [x] Write `db/tests/01-authen.test.sql` first and watch it fail on the old migration.
+- [x] Change migration `01-authen` (up and down): `session_id` on both token tables, four partial unique indexes, the new log table `authen.l_user_login_attempt` (53 tables), with no `ALTER TABLE`.
+- [x] Update seven schema docs, the README counts and the ER diagram (Common and Authen page and All Tables page).
+- [x] Write eight specs `03` to `10` and change `01-register` and `02-login` (plain text over TLS, session and token rows, login lock, token lifetime, default address).
+- [x] Add the checkers `authen-spec` and `authen-schema`, extend `audit_all.py` to plain indexes, and mutation-test them.
+- [x] Run every checker, the audit and the database tests after rebasing on `origin/main`.
+
+Verification: see the pull request. The authen checkers caught 120 of 120 deliberate faults and the migration 10 of 10 according to the author; the lead did not rerun them. Tests 2 to 6 of the SQL file were not seen failing before the migration change (the script stops at the first error of a file); their sharpness was shown by deliberate migration faults. Nothing was run against a backend or a real database; the existing backend differs from the specs in endpoint paths and token lifetime, as written in the design document.

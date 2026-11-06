@@ -70,6 +70,11 @@ CREATE TABLE
         password_salt BYTEA NOT NULL
     );
 
+CREATE UNIQUE INDEX IF NOT EXISTS uq_m_user_password_user_id_password ON authen.m_user_password (user_id)
+WHERE
+    row_type = 'PASSWORD'
+    AND row_status = 'ACTIVE';
+
 CREATE TABLE
     IF NOT EXISTS authen.t_user_reset_password (
         id UUID NOT NULL DEFAULT GEN_RANDOM_UUID () PRIMARY KEY,
@@ -90,6 +95,10 @@ CREATE TABLE
         reset_token BYTEA NOT NULL UNIQUE,
         expired_at TIMESTAMP WITHOUT TIME ZONE NOT NULL
     );
+
+CREATE UNIQUE INDEX IF NOT EXISTS uq_t_user_reset_password_user_id_active ON authen.t_user_reset_password (user_id)
+WHERE
+    row_status = 'ACTIVE';
 
 CREATE TABLE
     IF NOT EXISTS authen.l_user_referral (
@@ -123,6 +132,10 @@ CREATE TABLE
         gender VARCHAR(16) CHECK (gender IN ('MALE', 'FEMALE', '', 'OTHER'))
     );
 
+CREATE UNIQUE INDEX IF NOT EXISTS uq_m_user_information_user_id ON authen.m_user_information (user_id)
+WHERE
+    row_status <> 'DELETED';
+
 CREATE TABLE
     IF NOT EXISTS authen.t_user_address (
         id UUID NOT NULL DEFAULT GEN_RANDOM_UUID () PRIMARY KEY,
@@ -149,6 +162,11 @@ CREATE TABLE
         country BYTEA NOT NULL
     );
 
+CREATE UNIQUE INDEX IF NOT EXISTS uq_t_user_address_user_id_default ON authen.t_user_address (user_id)
+WHERE
+    is_default
+    AND row_status <> 'DELETED';
+
 CREATE TABLE
     IF NOT EXISTS authen.t_user_access_token (
         id UUID NOT NULL DEFAULT GEN_RANDOM_UUID () PRIMARY KEY,
@@ -166,6 +184,7 @@ CREATE TABLE
             )
         ),
         user_id UUID NOT NULL REFERENCES authen.m_user (id) ON DELETE CASCADE,
+        session_id UUID NOT NULL,
         token BYTEA NOT NULL UNIQUE,
         expired_at TIMESTAMP WITHOUT TIME ZONE NOT NULL
     );
@@ -187,6 +206,19 @@ CREATE TABLE
             )
         ),
         user_id UUID NOT NULL REFERENCES authen.m_user (id) ON DELETE CASCADE,
+        session_id UUID NOT NULL,
         token BYTEA NOT NULL UNIQUE,
         expired_at TIMESTAMP WITHOUT TIME ZONE NOT NULL
     );
+
+CREATE TABLE
+    IF NOT EXISTS authen.l_user_login_attempt (
+        id UUID NOT NULL DEFAULT GEN_RANDOM_UUID () PRIMARY KEY,
+        created_by VARCHAR(64) NOT NULL,
+        created_at TIMESTAMP WITHOUT TIME ZONE NOT NULL DEFAULT NOW (),
+        identifier_hash BYTEA NOT NULL,
+        user_id UUID REFERENCES authen.m_user (id) ON DELETE CASCADE,
+        result VARCHAR(16) NOT NULL CHECK (result IN ('SUCCESS', 'FAILED', 'REFUSED'))
+    );
+
+CREATE INDEX IF NOT EXISTS ix_l_user_login_attempt_identifier_hash_created_at ON authen.l_user_login_attempt (identifier_hash, created_at);

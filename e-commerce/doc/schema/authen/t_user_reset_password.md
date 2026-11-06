@@ -13,17 +13,18 @@ Description: Transaction table of the `authen` schema (defined in `db/migrations
 |     |                               | updated_at  | TIMESTAMP |        | TRUE        | Timestamp when the row was last updated                                  |                   |
 |     |                               | row_status  | VARCHAR   | 32     | FALSE       | Lifecycle status of the row: ACTIVE, INACTIVE, DELETED, LOCKED, ARCHIVED | ACTIVE            |
 | FK  | [authen.m_user.id](m_user.md) | user_id     | UUID      |        | FALSE       | Reference to `authen.m_user.id`                                          |                   |
-| UQ  |                               | reset_token | BYTEA     |        | FALSE       | Unique                                                                   |                   |
+| UQ  |                               | reset_token | BYTEA     |        | FALSE       | SHA-256 of the reset token (32 bytes), never the token itself, Unique    |                   |
 |     |                               | expired_at  | TIMESTAMP |        | FALSE       |                                                                          |                   |
 
 ## Constain
 
-| Key Name                             | Column Name | Description                                                                   |
-| ------------------------------------ | ----------- | ----------------------------------------------------------------------------- |
-| pk_t_user_reset_password_id          | id          | Primary key                                                                   |
-| fk_t_user_reset_password_user_id     | user_id     | References authen.m_user(id), ON DELETE CASCADE                               |
-| uq_t_user_reset_password_reset_token | reset_token | Unique                                                                        |
-| ck_t_user_reset_password_row_status  | row_status  | CHECK (row_status IN ('ACTIVE', 'INACTIVE', 'DELETED', 'LOCKED', 'ARCHIVED')) |
+| Key Name                                | Column Name | Description                                                                   |
+| --------------------------------------- | ----------- | ----------------------------------------------------------------------------- |
+| pk_t_user_reset_password_id             | id          | Primary key                                                                   |
+| fk_t_user_reset_password_user_id        | user_id     | References authen.m_user(id), ON DELETE CASCADE                               |
+| uq_t_user_reset_password_reset_token    | reset_token | Unique                                                                        |
+| ck_t_user_reset_password_row_status     | row_status  | CHECK (row_status IN ('ACTIVE', 'INACTIVE', 'DELETED', 'LOCKED', 'ARCHIVED')) |
+| uq_t_user_reset_password_user_id_active | user_id     | Unique among rows where row_status = 'ACTIVE' (one live reset token per user) |
 
 ---
 
@@ -48,4 +49,8 @@ CREATE TABLE
         reset_token BYTEA NOT NULL UNIQUE,
         expired_at TIMESTAMP WITHOUT TIME ZONE NOT NULL
     );
+
+CREATE UNIQUE INDEX IF NOT EXISTS uq_t_user_reset_password_user_id_active ON authen.t_user_reset_password (user_id)
+WHERE
+    row_status = 'ACTIVE';
 ```

@@ -131,7 +131,7 @@ def check_schema() -> int:
             errors.append(f"{path} SQL block has statements not in the migration")
     readme = read("e-commerce/doc/schema/README.md")
     needles = [
-        "52 tables in 11 schemas",
+        "53 tables in 11 schemas",
         "| [m_product_option](product/m_product_option.md) | Master | 9 | 1 |",
         "| [m_product_option_value](product/m_product_option_value.md) | Master | 9 | 1 |",
         "| [m_product_sku_option_value](product/m_product_sku_option_value.md) | Master | 8 | 2 |",
@@ -3350,6 +3350,368 @@ COMMANDS["consent-type-schema"] = lambda: check_master_schema(
     ["consent.m_consent_type"], "00-common.schema.up.sql",
     ("00-common.schema.up.sql", "consent/t_consent", [("consent_type_id", "consent.m_consent_type")]),
     "00-consent-type.test.sql", "consent-type-schema")
+
+
+# ---------------------------------------------------------------- authen (WP4): tokens, reset password, profile, address
+AUTHEN_DIR = "e-commerce/doc/api/authen-and-author"
+AUTHEN_SPECS = {
+    "01": f"{AUTHEN_DIR}/01-register/spec.md",
+    "02": f"{AUTHEN_DIR}/02-login/spec.md",
+    "03": f"{AUTHEN_DIR}/03-reset-password/spec.md",
+    "04": f"{AUTHEN_DIR}/04-create-new-password/spec.md",
+    "05": f"{AUTHEN_DIR}/05-refresh-token/spec.md",
+    "06": f"{AUTHEN_DIR}/06-logout/spec.md",
+    "07": f"{AUTHEN_DIR}/07-upsert-user-profile/spec.md",
+    "08": f"{AUTHEN_DIR}/08-inquiry-user-profile/spec.md",
+    "09": f"{AUTHEN_DIR}/09-upsert-user-address/spec.md",
+    "10": f"{AUTHEN_DIR}/10-inquiry-user-address/spec.md",
+}
+AUTHEN_LOCK = "FOR UPDATE -- every authen API locks the user row first"
+AUTHEN_POLICY = "Password must be 8 to 128 characters and contain an upper-case letter, a lower-case letter and a digit."
+AUTHEN_ADDRESS_ID = "d4e5f6a7-b8c9-4d0e-9f1a-2b3c4d5e6f7a"
+AUTHEN_NEEDLES = {
+    "01": ["### Register Rules", "#### Fail - Bad Request Password", "TRUE, -- the first address of a user is the default address, whatever isDefault says",
+           "PBKDF2-HMAC-SHA256", "Plain text over TLS", AUTHEN_POLICY],
+    "02": ["### Login Rules", "(../../../schema/authen/l_user_login_attempt.md)", "#### QUERY - Count failed attempts", "#### INSERT - Record attempt",
+           "#### INSERT - Create access token", "#### INSERT - Create refresh token", "5 `FAILED` attempts in the last 15 minutes", '"expiresIn": 900', "**Only `FAILED` rows are counted.**", "recorded as `REFUSED`, which is not counted",
+           "The block therefore ends by itself as soon as the 5th most recent failure is older than 15 minutes", "The `FAILED` and `REFUSED` rows are committed although the answer is 401",
+           "record `REFUSED` and answer 401 when there are 5", "record `FAILED` and answer 401 when it does not match or the user is not found", "record `SUCCESS`",
+           "AND la.result = 'FAILED' -- refused attempts are never counted", "'<sequence.result>' -- SUCCESS, FAILED or REFUSED",
+           "One answer for every failure", "Invalid username or password.", "SHA-256 (32 bytes), never as the token itself",
+           "Lock order:", AUTHEN_LOCK, "14 days", "'<sequence.sessionId>', -- a new session id for every login"],
+    "03": ["# [POST]: v1/auth/reset-password", "### Reset Password Rules", "The answer is always 200 with the same message",
+           "If the email address is registered, a reset link has been sent.", "Throttle:", "3 times per hour", "uq_t_user_reset_password_user_id_active", "Lock order:",
+           "#### QUERY - Lock the user", AUTHEN_LOCK, "#### QUERY - Count the requests of the last hour", "#### UPDATE - Make the old reset token INACTIVE",
+           "#### INSERT - Create reset token", "WHERE u.email_address = '<sequence.emailAddressBytes>'\nAND u.row_status = 'ACTIVE'", "'<sequence.resetTokenHash>'",
+           "30 minutes", "(../../../schema/authen/t_user_reset_password.md)", "(../../../schema/authen/m_user.md)", "Email Address is required and must be a valid email address.",
+           "E10001", "E90001", "AND rp.created_at > '<sequence.windowStart>'", "AND row_status = 'ACTIVE'"],
+    "04": ["# [POST]: v1/auth/create-new-password", "### Create New Password Rules", "Reset token is invalid or expired.", "New password must be different from the current password.",
+           AUTHEN_POLICY, "AND row_status = 'ACTIVE'\nAND expired_at > NOW() AT TIME ZONE 'UTC'\nRETURNING id as reset_id", "#### UPDATE - Close the access tokens of the user",
+           "#### UPDATE - Close the refresh tokens of the user", "#### UPDATE - Make the current password INACTIVE", "#### INSERT - Create password", "PBKDF2-HMAC-SHA256",
+           "600,000", "Password storage: PBKDF2-HMAC-SHA256 with a random 16 byte salt and 600,000 iterations", "uq_m_user_password_user_id_password", AUTHEN_LOCK, "Lock order:", "(../../../schema/authen/m_user_password.md)",
+           "WHERE user_id = '<sequence.userId>'\nAND row_status = 'ACTIVE'", "AND up.row_type = 'PASSWORD'\nAND up.row_status = 'ACTIVE'", "E10001", "E90001"],
+    "05": ["# [POST]: v1/auth/refresh-token", "### Refresh Token Rules", "Invalid or expired refresh token.", "**Rotation:**", "**Reuse:**", "When the row became INACTIVE less than 10 seconds ago (configurable)", "**The closing of the session is committed although the answer is 401:**",
+           "written in its own transaction that is committed before the answer is sent", "any other user gets 401 and **nothing has changed**, the refresh token is not made INACTIVE",
+           "when the row was a reuse older than 10 seconds the session is closed and committed first", "are one transaction: when any of them fails nothing is saved",
+           "RETURNING session_id -- no row means the answer is 401", "#### INSERT - Create refresh token", "#### INSERT - Create access token",
+           "#### UPDATE - Close the refresh tokens of the session (reuse)", "#### UPDATE - Close the access tokens of the session (reuse)", AUTHEN_LOCK, "Lock order:",
+           '"expiresIn": 900', "AND row_status = 'ACTIVE'\nAND expired_at > NOW() AT TIME ZONE 'UTC'\nRETURNING session_id", "SHA-256 (32 bytes), never as the token itself",
+           "WHERE session_id = '<sequence.sessionId>'\nAND row_status = 'ACTIVE'"],
+    "06": ["# [POST]: v1/auth/logout", "### Logout Rules", "every ACTIVE access token and refresh token that has the same `session_id`", "#### UPDATE - Close the access tokens of the session",
+           "#### UPDATE - Close the refresh tokens of the session", "WHERE session_id = '<sequence.sessionId>'\nAND user_id = '<sequence.userId>'\nAND row_status = 'ACTIVE'",
+           "Logout Success", AUTHEN_LOCK, "Lock order:", "Sessions of other devices are not changed."],
+    "07": ["# [POST]: v1/user/profile/upsert", "### User Profile Rules", "Username, Email Address and Password cannot be changed here.", "-- only when firstName is specified (null clears it)",
+           "-- only when lastName is specified (null clears it)", "-- only when displayName is specified (null clears it)", "-- only when profilePicturePath is specified (null clears it)",
+           "-- only when phoneNumber is specified (null clears it)", "-- only when address is specified (null clears it)", "-- only when dateOfBirth is specified (null clears it)",
+           "-- only when gender is specified (null clears it)", AUTHEN_LOCK, "uq_m_user_information_user_id", "Lock order:", "never read from the request"],
+    "08": ["# [GET]: v1/user/profile", "### User Profile Inquiry Rules", "AND u.row_status = 'ACTIVE'", "never returned", "WHERE u.id = '<sequence.userId>'",
+           "WHERE ui.user_id = '<sequence.userId>'"],
+    "09": ["# [POST]: v1/user/address/upsert", "### User Address Rules", "uq_t_user_address_user_id_default", "A user can have at most 10 addresses.", "A default address must be ACTIVE.",
+           "User address not found.", "#### UPDATE - Clear the old default", "#### UPDATE - Promote another default address", "AND ua.user_id = '<sequence.userId>'", "Lock order:", AUTHEN_LOCK,
+           "Delete 204 No Content", "AND ua.row_status <> 'DELETED' -- an address of another user or a DELETED address counts as not found",
+           "AND is_default\nAND row_status <> 'DELETED'", "Row status must not be DELETED when inserting a user address."],
+    "10": ["# [GET]: v1/user/address", "### User Address Inquiry Rules", "ORDER BY ua.is_default DESC, ua.created_at DESC, ua.id",
+           "Row status must be one of ACTIVE, INACTIVE.", "Page Index and Page Size must be greater than 0", "Request: `GET v1/user/address?id=%s`" % AUTHEN_ADDRESS_ID],
+}
+AUTHEN_COUNTED = {
+    "10": [("WHERE ua.user_id = '<sequence.userId>'\nAND ua.row_status <> 'DELETED'", 2), ("AND ua.title ILIKE '%<sequence.search>%' -- only when search is specified", 2),
+           ("AND ua.row_status = '<sequence.rowStatus>' -- only when rowStatus is specified", 2)],
+    "05": [("INSERT INTO authen.t_user_access_token (", 1), ("INSERT INTO authen.t_user_refresh_token (", 1),
+           ("AND row_status = 'ACTIVE' -- only when the used token became INACTIVE more than 10 seconds ago", 2)],
+    "06": [("WHERE session_id = '<sequence.sessionId>'\nAND user_id = '<sequence.userId>'\nAND row_status = 'ACTIVE'", 2)],
+    "02": [("INSERT INTO authen.t_user_access_token (", 1), ("INSERT INTO authen.t_user_refresh_token (", 1), ("INSERT INTO authen.l_user_login_attempt (", 1)],
+    "09": [("ua.user_id = '<sequence.userId>'", 4)],
+}
+AUTHEN_FORBIDDEN = {
+    "01": ["AES256", "Encrypted "], "02": ["AES256", "mobile no", "3600", "7 day", "Encrypted ", "recorded as a failed attempt", "is_success", "isSuccess"],
+    "03": ['"code": 401', '"code": 403', '"code": 404', '"code": 409'], "04": ['"code": 401', '"code": 404', '"code": 409'],
+    "05": [],
+}
+AUTHEN_PUBLIC = ("01", "02", "03", "04", "05")
+AUTHEN_PRIVATE = ("06", "07", "08", "09", "10")
+JWT_FULL = re.compile(r"eyJ[A-Za-z0-9_-]{10,}\.[A-Za-z0-9_-]{10,}\.[A-Za-z0-9_-]{10,}")
+SECRET_ASSIGNED = re.compile(r"(?i)\b(password|passwd|secret|api[_-]?key|access[_-]?token)\b\s*[:=]\s*['\"][^'\"\s<>{}$]{8,}['\"]")
+
+
+def authen_json(md: str, heading: str):
+    """Parsed JSON of the first ```JSON block under '#### <heading>' (an optional 'Request: ...' line may come first)."""
+    match = re.search(rf"^#### {re.escape(heading)}\n\n(?:Request: [^\n]*\n\n)?```JSON\n(.*?)```", md, re.MULTILINE | re.DOTALL)
+    return json.loads(match.group(1)) if match else None
+
+
+def authen_status(md: str, title: str, code: int, biz: str, message: str | None = None) -> list[str]:
+    body = authen_json(md, title)
+    if body is None:
+        return [f"no JSON in '{title}'"]
+    status = body["status"]
+    errors = []
+    if status["code"] != code or status["bizCode"] != biz:
+        errors.append(f"'{title}' must be {code} {biz}")
+    if message is not None and status["bizMessage"] != message:
+        errors.append(f"'{title}' must say {message!r}")
+    return errors
+
+
+def authen_example_errors(key: str, md: str) -> list[str]:
+    errors = []
+    if key == "01":
+        if "username" not in md or "john.doe" not in md:
+            errors.append("the example must use the plain username john.doe")
+    elif key == "02":
+        ok = authen_json(md, "Success")
+        if ok["data"]["expiresIn"] != 900 or ok["data"]["tokenType"] != "Bearer":
+            errors.append("the Success example must have tokenType Bearer and expiresIn 900")
+        for token in ("accessToken", "refreshAccessToken"):
+            if not ok["data"][token].endswith("..."):
+                errors.append(f"the example {token} must end with '...'")
+        errors += authen_status(md, "Fail - Unauthorized", 401, "E10002", "Invalid username or password.")
+    elif key == "03":
+        errors += authen_status(md, "Success", 200, "S10000", "If the email address is registered, a reset link has been sent.")
+        errors += authen_status(md, "Fail - Bad Request", 400, "E10001")
+        if "data" in authen_json(md, "Success"):
+            errors.append("the Success example has no data")
+    elif key == "04":
+        errors += authen_status(md, "Success", 200, "S10000", "Create New Password Success")
+        errors += authen_status(md, "Fail - Bad Request Password Policy", 400, "E10001", AUTHEN_POLICY)
+        errors += authen_status(md, "Fail - Bad Request Reset Token", 400, "E10001", "Reset token is invalid or expired.")
+        errors += authen_status(md, "Fail - Bad Request Same Password", 400, "E10001", "New password must be different from the current password.")
+        request = json.loads(re.search(r"#### Example Body Parameters\n\n```JSON\n(.*?)```", md, re.DOTALL).group(1))
+        if set(request) != {"resetToken", "newPassword"} or not request["resetToken"].endswith("..."):
+            errors.append("the request example must have resetToken (ending with '...') and newPassword")
+    elif key == "05":
+        ok = authen_json(md, "Success")
+        if set(ok["data"]) != {"tokenType", "accessToken", "refreshAccessToken", "expiresIn"} or ok["data"]["expiresIn"] != 900:
+            errors.append("the Success example must have the four token fields and expiresIn 900")
+        for token in ("accessToken", "refreshAccessToken"):
+            if not ok["data"][token].endswith("..."):
+                errors.append(f"the example {token} must end with '...'")
+        errors += authen_status(md, "Fail - Unauthorized", 401, "E10002", "Invalid or expired refresh token.")
+    elif key == "06":
+        errors += authen_status(md, "Success", 200, "S10000", "Logout Success")
+        errors += authen_status(md, "Fail - Unauthorized", 401, "E10002", "Invalid or expired access token.")
+    elif key == "07":
+        request = json.loads(re.search(r"#### Example Body Parameters\n\n```JSON\n(.*?)```", md, re.DOTALL).group(1))
+        for fixed in ("username", "emailAddress", "password", "userId", "id"):
+            if fixed in request:
+                errors.append(f"the request example must not carry {fixed}")
+        ok = authen_json(md, "Success")
+        if ok["status"]["code"] != 200 or set(ok["data"]) != {"userId"}:
+            errors.append("the Success example must be 200 with userId")
+        errors += authen_status(md, "Fail - Bad Request Fixed Field", 400, "E10001", "Username, Email Address and Password cannot be changed here.")
+    elif key == "08":
+        data = authen_json(md, "Success")["data"]
+        expected = {"userId", "emailAddress", "firstName", "lastName", "displayName", "profilePicturePath", "phoneNumber", "address", "dateOfBirth", "gender"}
+        if set(data) != expected:
+            errors.append(f"the Success data keys must be {sorted(expected)}")
+        if "username" in data or "password" in data:
+            errors.append("the profile must not return username or password")
+    elif key == "09":
+        bodies = {t: json.loads(re.search(rf"##### {t}\n\n```JSON\n(.*?)```", md, re.DOTALL).group(1)) for t in ("Insert", "Update", "Delete")}
+        if "id" in bodies["Insert"]:
+            errors.append("the Insert example must not have an id")
+        if bodies["Update"].get("id") != AUTHEN_ADDRESS_ID or bodies["Delete"].get("id") != AUTHEN_ADDRESS_ID:
+            errors.append("the Update and Delete examples must use the same address id")
+        if bodies["Delete"].get("rowStatus") != "DELETED" or bodies["Update"].get("rowStatus") != "ACTIVE":
+            errors.append("Update must be ACTIVE and Delete must be DELETED")
+        for label, body in bodies.items():
+            if body.get("isDefault") and body.get("rowStatus") != "ACTIVE" and label != "Delete":
+                errors.append(f"the {label} example sets a default on a row that is not ACTIVE")
+        codes = success_codes(md)
+        if codes != {"Success - Insert": 201, "Success - Update": 200, "Success - Delete": 204}:
+            errors.append(f"wrong success codes {codes}")
+        for title in ("Success - Insert", "Success - Update"):
+            if authen_json(md, title)["data"]["userAddressId"] != AUTHEN_ADDRESS_ID:
+                errors.append(f"'{title}' answers a different userAddressId")
+        for title, code, biz in (("Fail - Bad Request", 400, "E10001"), ("Fail - Bad Request Limit", 400, "E10001"), ("Fail - Not Found", 404, "E10004"), ("Fail - Unauthorized", 401, "E10002")):
+            errors += authen_status(md, title, code, biz)
+    elif key == "10":
+        defaults_seen = 0
+        for title in ("Success", "Success - By Id", "Success - Not Found"):
+            data = authen_json(md, title)["data"]
+            if data["totalItems"] != len(data["items"]):
+                errors.append(f"'{title}' totalItems differs from the number of items")
+            pages = 0 if data["totalItems"] == 0 else -(-data["totalItems"] // data["pageSize"])
+            if data["totalPages"] != pages:
+                errors.append(f"'{title}' totalPages should be {pages}")
+            if any(item["rowStatus"] == "DELETED" for item in data["items"]):
+                errors.append(f"'{title}' lists a DELETED address")
+            flags = [item["isDefault"] for item in data["items"]]
+            if sum(flags) > 1 or flags != sorted(flags, reverse=True):
+                errors.append(f"'{title}' must have at most one default address and list it first")
+            defaults_seen += sum(flags)
+            if title == "Success - By Id" and [item["userAddressId"] for item in data["items"]] != [AUTHEN_ADDRESS_ID]:
+                errors.append("the By Id example must list only its id")
+            if title == "Success - Not Found" and data["items"]:
+                errors.append("the Not Found example must have no items")
+        if defaults_seen == 0:
+            errors.append("an example must show the default address")
+        for title, code, biz in (("Fail - Bad Request", 400, "E10001"), ("Fail - Unauthorized", 401, "E10002")):
+            errors += authen_status(md, title, code, biz)
+    if key in ("03", "04", "05", "06", "07", "08", "09", "10"):
+        errors += authen_status(md, "Fail - Request Timeout", 408, "E90001")
+    if key in ("06", "07", "08", "09", "10"):
+        errors += authen_status(md, "Fail - Unauthorized", 401, "E10002", "Invalid or expired access token.")
+    return errors
+
+
+def check_authen_spec() -> int:
+    errors = []
+    mds = {}
+    for key, path in AUTHEN_SPECS.items():
+        try:
+            mds[key] = read(path)
+        except FileNotFoundError:
+            errors.append(f"{path} does not exist")
+            continue
+        md = mds[key]
+        for bad in table_lines_aligned(md):
+            errors.append(f"{path} misaligned table: {bad[:40]}")
+        for bad in json_blocks_parse(md):
+            errors.append(f"{path} invalid JSON block: {bad[:40]}")
+        for link in relative_links_exist(path, md):
+            errors.append(f"{path} broken link {link}")
+        if "ALTER TABLE" in md:
+            errors.append(f"{path} contains ALTER TABLE")
+        if JWT_FULL.search(md):
+            errors.append(f"{path} contains a full three part JWT (cut the example with '...')")
+        for field, value in re.findall(r'"(accessToken|refreshAccessToken|resetToken)": "([^"]+)"', md):
+            if not value.endswith("..."):
+                errors.append(f"{path}: the example {field} must end with '...'")
+        if SECRET_ASSIGNED.search(md):
+            errors.append(f"{path} contains a secret-looking assignment")
+        if not (ROOT / path).with_name("sequence.wsd").exists():
+            errors.append(f"{path} has no sequence.wsd beside it")
+        for missing in missing_needles(md, AUTHEN_NEEDLES.get(key, [])):
+            errors.append(f"{path} missing: {missing!r}")
+        for text, times in AUTHEN_COUNTED.get(key, []):
+            if md.count(text) != times:
+                errors.append(f"{path}: {text!r} must appear {times} time(s), found {md.count(text)}")
+        for forbidden in AUTHEN_FORBIDDEN.get(key, []):
+            if forbidden in md:
+                errors.append(f"{path} must not contain {forbidden!r}")
+        has_header = bool(re.search(r"^\| \d+ +\| authorization +\|", md, re.MULTILINE))
+        if key in AUTHEN_PUBLIC and has_header:
+            errors.append(f"{path} is a public API and must not have the authorization header")
+        if key in AUTHEN_PRIVATE and not has_header:
+            errors.append(f"{path} is a private API and needs the authorization header")
+    if errors:
+        return fail("; ".join(errors))
+    for key in ("01", "02", "03", "04", "05", "06", "07", "08", "09", "10"):
+        try:
+            errors.extend(f"{AUTHEN_SPECS[key]}: {e}" for e in authen_example_errors(key, mds[key]))
+        except (KeyError, TypeError, AttributeError, ValueError, IndexError) as exc:
+            errors.append(f"{AUTHEN_SPECS[key]}: an example does not have the expected shape: {exc!r}")
+    for key in ("03", "04", "05", "06"):
+        if "PBKDF2" in mds[key] and "600,000" not in mds[key]:
+            errors.append(f"{AUTHEN_SPECS[key]}: the hash must be PBKDF2 with 600,000 iterations")
+    if errors:
+        return fail("; ".join(errors))
+    print("OK: authen-spec")
+    return 0
+
+
+COMMANDS["authen-spec"] = check_authen_spec
+
+AUTHEN_INDEXES = [
+    "CREATE UNIQUE INDEX IF NOT EXISTS uq_t_user_reset_password_user_id_active ON authen.t_user_reset_password (user_id) WHERE row_status = 'ACTIVE'",
+    "CREATE UNIQUE INDEX IF NOT EXISTS uq_m_user_password_user_id_password ON authen.m_user_password (user_id) WHERE row_type = 'PASSWORD' AND row_status = 'ACTIVE'",
+    "CREATE UNIQUE INDEX IF NOT EXISTS uq_m_user_information_user_id ON authen.m_user_information (user_id) WHERE row_status <> 'DELETED'",
+    "CREATE UNIQUE INDEX IF NOT EXISTS uq_t_user_address_user_id_default ON authen.t_user_address (user_id) WHERE is_default AND row_status <> 'DELETED'",
+]
+AUTHEN_LOG_INDEX = "CREATE INDEX IF NOT EXISTS ix_l_user_login_attempt_identifier_hash_created_at ON authen.l_user_login_attempt (identifier_hash, created_at)"
+
+
+def authen_statements(sql: str, table: str) -> list[str]:
+    found = []
+    for statement in sql.split(";"):
+        text = normalize(statement)
+        if re.search(rf"^CREATE TABLE IF NOT EXISTS authen\.{table} \(", text) or re.search(rf"^CREATE (UNIQUE )?INDEX IF NOT EXISTS \S+ ON authen\.{table} \(", text):
+            found.append(text)
+    return found
+
+
+def er_rows(table: str, needle: str) -> list[str]:
+    """Rows of every drawn <table> of the ER diagram that contain <needle> (one per page that draws the table)."""
+    import xml.etree.ElementTree as ET
+
+    root = ET.fromstring(read("e-commerce/db/er-diagram.drawio"))
+    cells = list(root.iter("mxCell"))
+    rows = []
+    for cell in cells:
+        if cell.get("value") == table:
+            rows.extend(child.get("value") for child in cells if child.get("parent") == cell.get("id") and needle in (child.get("value") or ""))
+    return rows
+
+
+def check_authen_schema() -> int:
+    """WP4: session_id on the token tables, one live row per user, the login attempt log (migration, down, docs, README, ER, test)."""
+    errors = []
+    sql = read("e-commerce/db/migrations/up/01-authen.schema.up.sql")
+    for table in ("t_user_access_token", "t_user_refresh_token"):
+        create = [s for s in authen_statements(sql, table) if s.startswith("CREATE TABLE")]
+        if len(create) != 1 or "session_id UUID NOT NULL" not in create[0] or "token BYTEA NOT NULL UNIQUE" not in create[0]:
+            errors.append(f"migration 01: {table} needs 'session_id UUID NOT NULL' and 'token BYTEA NOT NULL UNIQUE'")
+    for index in AUTHEN_INDEXES:
+        table = re.search(r"ON authen\.(\w+)", index).group(1)
+        if index not in authen_statements(sql, table):
+            errors.append(f"migration 01: missing or different: {index[:90]}")
+    log = authen_statements(sql, "l_user_login_attempt")
+    expected_log = ["identifier_hash BYTEA NOT NULL", "user_id UUID REFERENCES authen.m_user (id) ON DELETE CASCADE", "result VARCHAR(16) NOT NULL CHECK (result IN ('SUCCESS', 'FAILED', 'REFUSED'))"]
+    if not log or any(part not in log[0] for part in expected_log):
+        errors.append("migration 01: l_user_login_attempt is missing or has different columns")
+    if AUTHEN_LOG_INDEX not in log:
+        errors.append("migration 01: the index of l_user_login_attempt is missing or different")
+    down = read("e-commerce/db/migrations/down/01-authen.schema.down.sql")
+    if "DROP TABLE IF EXISTS authen.l_user_login_attempt;" not in down or down.index("authen.l_user_login_attempt") > down.index("authen.m_user;"):
+        errors.append("down 01: l_user_login_attempt must be dropped before m_user")
+    for table in ("t_user_access_token", "t_user_refresh_token", "t_user_reset_password", "m_user_password", "m_user_information", "t_user_address", "l_user_login_attempt"):
+        path = f"e-commerce/doc/schema/authen/{table}.md"
+        md = read(path)
+        for bad in table_lines_aligned(md):
+            errors.append(f"{path} misaligned table: {bad[:40]}")
+        if authen_statements(" ".join(SQL_BLOCK.findall(md)), table) != authen_statements(sql, table):
+            errors.append(f"{path} SQL differs from the migration")
+        if table in ("t_user_access_token", "t_user_refresh_token") and not re.search(r"\| session_id +\| UUID +\| +\| FALSE", md):
+            errors.append(f"{path} does not list session_id")
+        if table in ("t_user_access_token", "t_user_refresh_token", "t_user_reset_password") and "never the token itself" not in md:
+            errors.append(f"{path} must say that the token column holds a SHA-256, never the token itself")
+    for index in AUTHEN_INDEXES + [AUTHEN_LOG_INDEX]:
+        name = re.search(r"INDEX IF NOT EXISTS (\S+) ON authen\.(\w+)", index)
+        md = read(f"e-commerce/doc/schema/authen/{name.group(2)}.md")
+        if name.group(1) not in md.split("## Constain")[1].split("\n---\n")[0]:
+            errors.append(f"e-commerce/doc/schema/authen/{name.group(2)}.md: the constraint table must list {name.group(1)}")
+    readme = read("e-commerce/doc/schema/README.md")
+    for row in ("| [t_user_access_token](authen/t_user_access_token.md) | Transaction | 10 | 1 |", "| [t_user_refresh_token](authen/t_user_refresh_token.md) | Transaction | 10 | 1 |",
+                "| [l_user_login_attempt](authen/l_user_login_attempt.md) | Log | 6 | 1 |"):
+        if row not in readme:
+            errors.append(f"README missing row: {row}")
+    for table in ("authen.t_user_access_token", "authen.t_user_refresh_token"):
+        if len(er_rows(table, "session_id : uuid")) < 2:
+            errors.append(f"ER diagram: {table} must draw session_id on at least 2 pages")
+    if len(er_rows("authen.l_user_login_attempt", "result : varchar(16)")) < 2:
+        errors.append("ER diagram: l_user_login_attempt must draw result : varchar(16) on at least 2 pages")
+    if "ck_l_user_login_attempt_result" not in read("e-commerce/doc/schema/authen/l_user_login_attempt.md"):
+        errors.append("e-commerce/doc/schema/authen/l_user_login_attempt.md: the constraint table must list ck_l_user_login_attempt_result")
+    if len(er_rows("authen.l_user_login_attempt", "identifier_hash : bytea")) < 2:
+        errors.append("ER diagram: l_user_login_attempt must be drawn on at least 2 pages")
+    for table in ("authen.m_user_password", "authen.m_user_information", "authen.t_user_address"):
+        if any(row.startswith("UK") and "user_id" in row for row in er_rows(table, "user_id")):
+            errors.append(f"ER diagram: {table}.user_id must not carry the UK marker (the unique index is partial)")
+    if not (ROOT / "e-commerce/db/tests/01-authen.test.sql").exists():
+        errors.append("db/tests/01-authen.test.sql does not exist")
+    elif "PASS test 7: refused attempts are not counted" not in read("e-commerce/db/tests/01-authen.test.sql"):
+        errors.append("db/tests/01-authen.test.sql must test that refused attempts are not counted")
+    login = read(AUTHEN_SPECS["02"])
+    count_query = re.search(r"#### QUERY - Count failed attempts\n\n```SQL\n(.*?)```", login, re.DOTALL)
+    if not count_query or "AND la.result = 'FAILED'" not in count_query.group(1) or "REFUSED" in count_query.group(1) or "SUCCESS" in count_query.group(1):
+        errors.append("02-login: the count query must count only FAILED attempts")
+    if errors:
+        return fail("; ".join(errors))
+    print("OK: authen-schema")
+    return 0
+
+
+COMMANDS["authen-schema"] = check_authen_schema
 
 
 def main(argv: list[str]) -> int:
