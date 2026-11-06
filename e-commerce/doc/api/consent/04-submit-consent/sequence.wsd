@@ -1,0 +1,152 @@
+@startuml SubmitConsent Sequence
+
+title Submit Consent API Sequence
+
+' Visual style
+skinparam defaultFontName "Sarabun"
+skinparam defaultFontSize 14
+skinparam backgroundColor #FFFFFF
+skinparam shadowing false
+skinparam roundcorner 10
+skinparam sequence {
+    ArrowColor #475569
+    ArrowFontColor #334155
+    LifeLineBorderColor #CBD5E1
+    LifeLineBackgroundColor #F8FAFC
+    ParticipantBorderColor #94A3B8
+    ParticipantBackgroundColor #F1F5F9
+    ParticipantFontColor #0F172A
+    GroupBorderColor #94A3B8
+    GroupBackgroundColor #F8FAFC
+    GroupFontColor #334155
+}
+
+' Do not show participant footers at the bottom of the diagram
+hide footbox
+
+
+actor "User" as user
+
+box "Frontend" #F8FAFC
+    participant "Submit Consent Page" as page
+end box
+
+box "Web API" #F8FAFC
+    participant "API" as api
+    participant "Application" as app
+    participant "Domain" as domain
+    participant "Infrastructure" as infra
+end box
+
+box "Database" #F8FAFC
+    database "t_consent" as t_consent
+    database "t_user_consent" as t_user_consent
+end box
+
+user -> page: Submit Submit Consent
+
+activate page
+    page -> api: Call POST v1/consent/submit
+    activate api
+        api -> app: [**SubmitConsentCommandHandler**] Process request
+        activate app
+            app -> app: Validate request parameters and business rules
+            alt If request is invalid
+                app -> api: Return error response
+                api -> page: Return error response
+                page -> user: Display error message
+            else If request is valid
+                app -> infra: Execute database operations
+                activate infra
+                    infra -> t_consent: QUERY - Get active consents
+                    activate t_consent
+                        note right of t_consent
+                            SELECT
+                                c.id as consent_id,
+                                c.consent_version
+                            FROM consent.t_consent c
+                            WHERE c.id IN ('<sequence.consentIds>')
+                            AND c.row_status = 'ACTIVE'
+                            AND c.effective_at <= NOW() AT TIME ZONE 'UTC'
+                            AND (c.expired_at IS NULL OR c.expired_at > NOW() AT TIME ZONE 'UTC')
+                        end note
+                        t_consent -> infra: Return query result
+                    deactivate t_consent
+
+                    infra -> t_user_consent: QUERY - Get existing user consent
+                    activate t_user_consent
+                        note right of t_user_consent
+                            SELECT
+                                uc.id as user_consent_id,
+                                uc.consent_id,
+                                uc.consent_version,
+                                uc.result,
+                                uc.is_read
+                            FROM authen.t_user_consent uc
+                            WHERE uc.user_id = '<sequence.userId>'
+                            AND uc.consent_id = '<sequence.consents.consentId>'
+                            AND uc.consent_version = '<sequence.consents.consentVersion>'
+                            AND uc.row_status = 'ACTIVE'
+                        end note
+                        t_user_consent -> infra: Return query result
+                    deactivate t_user_consent
+
+                    infra -> t_user_consent: INSERT - Create user consent
+                    activate t_user_consent
+                        note right of t_user_consent
+                            INSERT INTO authen.t_user_consent (
+                                created_by,
+                                user_id,
+                                consent_id,
+                                consent_version,
+                                result,
+                                is_read,
+                                read_at
+                            )
+                            VALUES (
+                                '<sequence.createdBy>',
+                                '<sequence.userId>',
+                                '<sequence.consents.consentId>',
+                                '<sequence.consents.consentVersion>',
+                                '<sequence.consents.result>', -- only when result is specified
+                                '<sequence.consents.isRead>',
+                                NOW() AT TIME ZONE 'UTC' -- only when isRead is true
+                            )
+                            RETURNING id as user_consent_id
+                        end note
+                        t_user_consent -> infra: Return inserted result
+                    deactivate t_user_consent
+
+                    infra -> t_user_consent: UPDATE - Update user consent
+                    activate t_user_consent
+                        note right of t_user_consent
+                            UPDATE authen.t_user_consent
+                            SET
+                                updated_by = '<sequence.updatedBy>',
+                                updated_at = NOW() AT TIME ZONE 'UTC',
+                                result = '<sequence.consents.result>', -- only when result is specified
+                                is_read = '<sequence.consents.isRead>',
+                                read_at = NOW() AT TIME ZONE 'UTC' -- only when isRead is true
+                            WHERE id = '<sequence.userConsentId>'
+                            RETURNING id as user_consent_id
+                        end note
+                        t_user_consent -> infra: Return updated result
+                    deactivate t_user_consent
+
+                    infra -> app: Return database result
+                deactivate infra
+
+                app -> domain: Apply domain rules and prepare response
+                activate domain
+                    domain -> app: Return response data
+                deactivate domain
+
+                app -> api: Return success response
+                api -> page: Return success response
+                page -> user: Display success result
+            end alt
+        deactivate app
+    deactivate api
+deactivate page
+
+@enduml
