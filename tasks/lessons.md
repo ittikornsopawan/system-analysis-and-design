@@ -158,3 +158,21 @@ description: Repository-wide and project-specific lessons captured from user cor
 - **Correction**: The lead gave the analysts assignments in linked worktrees and with paths outside their registry scope, against `.agents/rules/named-agent-workspaces.md` that had been merged the evening before. One analyst found it and stopped; the lead had also opened a pull request from a linked worktree.
 - **Root cause**: The lead read the merged pull request list but not the rule it contained, and kept using the protocol written before it.
 - **Corrected behavior**: After the owner merges a rule, read it before the next assignment, state the contract (`agent`, `role`, `task`, `scope`, `delivery`, `authorized_by`) inside the registry scope, and when a helper blocks an assignment stop and ask instead of narrowing it alone.
+
+### 2026-11-07 — Treat a blocked helper as a limit of authority, not as a technical obstacle
+
+- **Correction**: `agent_workspace.py prepare` refused an assignment whose paths were outside the registry scope; the analyst cut the scope and ran it again before a new message from the assigner arrived.
+- **Root cause**: The refusal was read as something to get around, and no check was made for newer instructions before repeating the command.
+- **Corrected behavior**: When a helper blocks for a reason of authority or scope, stop and ask the assigner; do not change the contract, and look for a newer message before a retry.
+
+### 2026-11-07 — A checker written before a rule may reject the rule's own text
+
+- **Correction**: `shop-type-spec` flagged the word "product" in the standard approval sentence "product owner" of the new specs.
+- **Root cause**: The leftover-word rule was written before specs had to carry that approval sentence.
+- **Corrected behavior**: When a new spec rule collides with an old checker, narrow the checker as little as needed, show that it still catches the other words, and say so in the report.
+
+### 2026-11-07 — Look for the files that other checkers read from the same spec
+
+- **Correction**: `api-sequence-spec` forces `sequence.wsd` to match the SQL of its spec; adding the permission queries to the nine specs almost missed the sequence diagram of `consent/02`.
+- **Root cause**: The search for affected files stopped at the specs.
+- **Corrected behavior**: After adding SQL to a spec, search for every file read from the same spec (sequence diagram, schema doc) and run all the checkers before saying the work is complete.

@@ -196,13 +196,15 @@ Verification: not started
 
 ## e-commerce: WP5c admin-only writes for delivered master data APIs
 
-Status: Planned (starts after 5a passes gate 2 and the seed and the first administrator procedure are ready)
+Status: Implemented and committed locally by the author (commit 05c7d4a in her managed workspace); the push was refused by the permission system of her session, so there is no pull request yet. Gate 2 of the lead is open. The lead wrote this section from the author's report because her assignment scope was `e-commerce` only.
 
-- [ ] Add the `PLATFORM_ADMIN` rule, the 403 example and the two permission queries to `shop/05`, `06`, `product/01`, `03`, `04`, `06`, `07`, `09` and `consent/02`.
-- [ ] Adjust the checkers that cover those specs and mutation-test every change.
-- [ ] Run every checker, `audit_all.py` and `run_db_tests.sh`; send the gate 2 report.
+- [x] Read the nine specs on `main` (with the WP7 changes of `product/01`, `03`, `04`, `06`) and find the checkers that cover them.
+- [x] Add the `PLATFORM_ADMIN` rule, the 403 example and the two permission queries to `shop/05`, `06`, `product/01`, `03`, `04`, `06`, `07`, `09` and `consent/02`, and the two queries to the `consent/02` sequence diagram.
+- [x] Add the checker `admin-write-spec`, narrow the leftover-word rule of `shop-type-spec`, and mutation-test every change (the author reports 150 of 150 caught).
+- [x] Run every checker, `audit_all.py` and `run_db_tests.sh` (the author reports 38 of 38, 0 findings, ALL PASSED).
+- [ ] Gate 2 of the lead, then push and open the pull request.
 
-Verification: not started
+Verification: the numbers above are the author's; the lead has not rerun them yet.
 
 ## e-commerce: Payment WP2 (Stripe)
 
