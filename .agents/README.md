@@ -17,10 +17,11 @@ This directory is the source of truth for repository-specific agent resources. R
 1. Determine whether the active scope is a specific project or `repository-wide`.
 2. Load every rule whose scope applies. Global rules always apply.
 3. Load the active project's knowledge document when available.
-4. Load the workflow that matches the task.
-5. Load the relevant ready agent role.
-6. Load only ready skills and templates needed by the selected workflow.
-7. Prefer project-specific resources over global defaults without weakening global rules.
+4. Resolve the named-agent registry and workspace rule when an assignment names, delegates to, or changes authority for a named agent.
+5. Load the workflow that matches the task.
+6. Load the relevant ready agent role.
+7. Load only ready skills and templates needed by the selected workflow.
+8. Prefer project-specific resources over global defaults without weakening global rules.
 
 ## Rules
 
@@ -29,6 +30,7 @@ This directory is the source of truth for repository-specific agent resources. R
 | `rules/global.md` | ready | Every task |
 | `rules/markdown.md` | ready | Creating or modifying an authored Markdown file |
 | `rules/component-repositories.md` | ready | Reading, creating, cloning, verifying, or changing a Project's `REPOS.md` or `repository/` content |
+| `rules/named-agent-workspaces.md` | ready | Naming or delegating to an agent, changing delivery authority, or reading or changing `.workspace/` content |
 
 ## Workflows
 
@@ -57,8 +59,9 @@ Skills marked `placeholder` are unavailable until designed. Design each `SKILL.m
 | --- | --- | --- |
 | `skills/data-modeling/SKILL.md` | ready | Adding or changing a table, column, constraint, index, migration, schema doc, or ER diagram |
 | `skills/api-contract-design/SKILL.md` | ready | Writing, reviewing, or changing an API spec, its examples, error codes, or its checker |
-| `skills/commit-and-pr/SKILL.md` | ready | The user asks to commit, push, open or update a pull request, or hands work over for review |
+| `skills/commit-and-pr/SKILL.md` | ready | The user directly authorizes delivery or a named-agent assignment carries validated delegated delivery authorization |
 | `skills/repository-bootstrap/SKILL.md` | ready | Setting up, cloning, verifying, or restoring Component Repositories declared by a Project |
+| `skills/agent-workspace/SKILL.md` | ready | An enabled named agent will change files, resume review fixes, or reconcile a merged pull request |
 | `skills/requirement-analysis/SKILL.md` | placeholder | Reserved |
 | `skills/spec-authoring/SKILL.md` | placeholder | Reserved |
 | `skills/system-modeling/SKILL.md` | placeholder | Reserved |
@@ -90,6 +93,18 @@ These paths are relative to the repository root.
 | --- | --- | --- |
 | `tasks/todo.md` | ready | Planning and tracking every non-trivial task |
 | `tasks/lessons.md` | ready | Reviewing and recording user corrections and reusable lessons |
+
+## Team Registry
+
+| Resource | Status | Load when |
+| --- | --- | --- |
+| `.agents/team/agents.yaml` | ready | Resolving a named agent's role, scope, reporting line, workspace key, enabled state, or delivery-delegation capability |
+
+## Approved Designs
+
+| Resource | Status | Load when |
+| --- | --- | --- |
+| `designs/named-agent-workspace.md` | ready | Changing named-agent identity, delegated delivery authority, workspace lifecycle, or post-merge parking behavior |
 
 ## Repository Language
 

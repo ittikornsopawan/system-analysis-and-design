@@ -16,6 +16,7 @@ Run `python3 .agents/skills/commit-and-pr/scripts/preflight.py --base main [--ru
 | 5 | No file over 1 MB | yes, unless the user confirms | ask, or leave it out |
 | 6 | `git diff --check` is clean (no trailing whitespace or conflict markers) in what you will commit | yes | fix the whitespace |
 | 7 | Project checkers pass when the change touches specs, schema, migrations, SQL tests or the ER diagram | yes | fix the cause; never edit a checker to make it pass |
+| 8 | In a managed named-agent workspace, active assignment metadata authorizes `open-pr` and every changed path is inside its recorded scope | yes | resume through `agent-workspace` with the original assignment or remove out-of-scope changes; never edit local metadata to bypass the check |
 
 ## Project checkers (the e-commerce project)
 

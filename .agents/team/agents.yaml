@@ -1,0 +1,30 @@
+version: 1
+authorized_user: ittikorn
+default_branch: main
+workspace_root: .workspace
+agents:
+  - name: josh
+    enabled: true
+    role: .agents/agents/system-analyst.md
+    title: SA Lead
+    scope: repository-wide
+    reports_to: ittikorn
+    workspace_key: josh
+    capabilities:
+      - delegate-delivery
+  - name: tommy
+    enabled: true
+    role: .agents/agents/system-analyst.md
+    title: System Analyst
+    scope: e-commerce
+    reports_to: josh
+    workspace_key: tommy
+    capabilities: []
+  - name: marry
+    enabled: true
+    role: .agents/agents/system-analyst.md
+    title: System Analyst
+    scope: e-commerce
+    reports_to: josh
+    workspace_key: marry
+    capabilities: []
