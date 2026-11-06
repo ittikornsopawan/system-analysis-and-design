@@ -43,7 +43,7 @@
 - A line can be ordered only when it is AVAILABLE as the cart defines it: the shop, the product, the shop product, the shop product SKU and the product SKU are ACTIVE, one lot is on sale and the quantity of the line is not larger than the remaining quantity of that lot. One line that is not AVAILABLE rejects the whole request with 409 (E10007), nothing is created, the message names the line (`cartId`) and the reason (QUANTITY_EXCEEDS_STOCK, OUT_OF_STOCK or UNAVAILABLE).
 - One order is created for each shop of the selected lines, so a cart with lines of two shops makes two orders. All orders are created in one transaction, either every order is created or none.
 - The price of an item is the selling price of the lot that is on sale at the moment of the request and the item keeps that lot (`lot_id`), the price never changes afterwards. The profit of an item is the margin of that lot multiplied by the quantity (`gross_profit`, `shop_profit`, `platform_profit`).
-- `totalDiscount`, `totalTax` and `totalShipping` are 0.00 for now (the campaign discount, the tax and the shipping fee are not defined yet) and `totalAmount = totalPrice - totalDiscount + totalTax + totalShipping`, the database enforces this formula (`ck_t_order_total_amount_sum`) so the calculation can be added later without changing the tables.
+- `totalDiscount`, `totalTax` and `totalShipping` are 0.00 for now (the campaign discount and the tax are not defined yet, and the shipping fee is set by the payment API when the customer starts to pay) and `totalAmount = totalPrice - totalDiscount + totalTax + totalShipping`, the database enforces this formula (`ck_t_order_total_amount_sum`) so the calculation can be added later without changing the tables.
 
 - The response lists the lines that can be ordered in `shops` (AVAILABLE lines only) and the lines that cannot in `problems`. `canCheckout` is true only when `problems` is empty and `shops` is not empty, it is the same test that the create order API applies. The stock can still change between the preview and the order, the order API checks again.
 
@@ -116,7 +116,7 @@ curl --location --request GET 'https://www.domain.com/api-dev/v1/checkout?addres
 | 4   | totalPrice     | Numeric                       | MANDATORY | Sequence Diagram | data.shops[].totalPrice    | Sum of lineTotal of the items                         | 617.00                               |
 | 5   | totalDiscount  | Numeric                       | MANDATORY | Sequence Diagram | data.shops[].totalDiscount | Discount, 0.00 for now                                | 0.00                                 |
 | 6   | totalTax       | Numeric                       | MANDATORY | Sequence Diagram | data.shops[].totalTax      | Tax, 0.00 for now                                     | 0.00                                 |
-| 7   | totalShipping  | Numeric                       | MANDATORY | Sequence Diagram | data.shops[].totalShipping | Shipping fee, 0.00 for now                            | 0.00                                 |
+| 7   | totalShipping  | Numeric                       | MANDATORY | Sequence Diagram | data.shops[].totalShipping | Shipping fee, 0.00 until the payment starts           | 0.00                                 |
 | 8   | totalAmount    | Numeric                       | MANDATORY | Sequence Diagram | data.shops[].totalAmount   | totalPrice - totalDiscount + totalTax + totalShipping | 617.00                               |
 
 #### Item Object
