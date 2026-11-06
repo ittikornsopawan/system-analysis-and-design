@@ -2410,6 +2410,222 @@ def check_review_schema() -> int:
 COMMANDS["shop-review-schema"] = check_review_schema
 
 
+PAYMENT_SPECS = {
+    "01": "e-commerce/doc/api/payment/01-start-payment/spec.md",
+    "02": "e-commerce/doc/api/payment/02-stripe-webhook/spec.md",
+    "03": "e-commerce/doc/api/payment/03-inquiry-payment/spec.md",
+    "04": "e-commerce/doc/api/payment/04-inquiry-shop-payment/spec.md",
+    "05": "e-commerce/doc/api/payment/05-refund-payment/spec.md",
+}
+PAYMENT_STATUSES = ["PENDING", "PROCESSING", "COMPLETED", "FAILED", "CANCELLED", "REFUNDED"]
+SHIPPING_FEES = {"STANDARD": 40.00, "EXPRESS": 80.00, "SAME_DAY": 150.00}
+WEBHOOK_ACTIONS = ["PAYMENT_PROCESSING", "PAYMENT_COMPLETED", "PAYMENT_FAILED", "PAYMENT_CANCELLED", "PAYMENT_REFUNDED", "LATE_PAYMENT_REFUNDED", "IGNORED"]
+PROVIDER_ID_FIELDS = ("providerPaymentId", "providerRefundId", "transactionCode", "clientSecret")
+
+
+def check_payment_start(md: str) -> list[str]:
+    errors = []
+    for k, ex in enumerate(order_examples(md, "Success")):
+        d, tag = ex["data"], f"01 example {k}"
+        if d["shippingFee"] != SHIPPING_FEES.get(d["shippingMethod"]):
+            errors.append(f"{tag}: shippingFee {d['shippingFee']} is not the fee of {d['shippingMethod']}")
+        if d["totalShipping"] != d["shippingFee"]:
+            errors.append(f"{tag}: totalShipping should equal shippingFee")
+        expected = round(d["totalPrice"] - d["totalDiscount"] + d["totalTax"] + d["totalShipping"], 2)
+        if round(d["totalAmount"], 2) != expected or round(d["amount"], 2) != expected:
+            errors.append(f"{tag}: totalAmount and amount should be {expected}")
+        if d["status"] != "PENDING" or d["paymentMethod"] not in ("CREDIT_CARD", "THAI_QR"):
+            errors.append(f"{tag}: a started payment is PENDING with CREDIT_CARD or THAI_QR")
+        if d["currency"] != "THB" or not d["clientSecret"]:
+            errors.append(f"{tag}: currency THB and a client secret are required")
+    return errors
+
+
+def check_payment_webhook(md: str) -> list[str]:
+    errors = []
+    for title in ("Success", "Success - Ignored", "Success - Late Payment Refunded"):
+        for ex in order_examples(md, title):
+            d = ex["data"]
+            if d["action"] not in WEBHOOK_ACTIONS:
+                errors.append(f"02 {title}: unknown action {d['action']}")
+            if (d["action"] == "IGNORED") != (d["paymentId"] is None and d["orderId"] is None):
+                errors.append(f"02 {title}: IGNORED goes with a null paymentId and orderId, other actions with both")
+    body = re.search(r"#### Example Body Parameters\n\n```JSON\n(.*?)```", md, re.DOTALL)
+    if not body:
+        errors.append("02: no example body")
+    else:
+        event = json.loads(body.group(1))
+        if event["type"] != "payment_intent.succeeded" or not event["data"]["object"]["id"].startswith("pi_"):
+            errors.append("02: the example event should be payment_intent.succeeded of a PaymentIntent (pi_)")
+    return errors
+
+
+def check_payment_inquiry(md: str, key: str) -> list[str]:
+    errors = []
+    for k, ex in enumerate(order_examples(md, "Success")):
+        data = ex["data"]
+        if data["totalPages"] != -(-data["totalItems"] // data["pageSize"]):
+            errors.append(f"{key} example {k}: totalPages does not match totalItems and pageSize")
+        if data["totalPages"] <= 1 and data["totalItems"] != len(data["payments"]):
+            errors.append(f"{key} example {k}: one page holds every payment, totalItems should be {len(data['payments'])}")
+        for p in data["payments"]:
+            label = f"{key} payment {p['paymentId']}"
+            if p["status"] not in PAYMENT_STATUSES:
+                errors.append(f"{label}: unknown status {p['status']}")
+            if p["shippingFee"] != SHIPPING_FEES.get(p["shippingMethod"]):
+                errors.append(f"{label}: shippingFee is not the fee of {p['shippingMethod']}")
+            if (p["failureCode"] is not None) != (p["status"] == "FAILED"):
+                errors.append(f"{label}: failureCode goes with FAILED only")
+            if (p["refundedAt"] is not None) != (p["status"] == "REFUNDED") or (p["refundReason"] is not None) != (p["status"] == "REFUNDED"):
+                errors.append(f"{label}: refundedAt and refundReason go with REFUNDED only")
+            if (p["transactionAt"] is not None) != (p["status"] in ("COMPLETED", "REFUNDED")):
+                errors.append(f"{label}: transactionAt goes with COMPLETED or REFUNDED only")
+            if key == "03" and any(f in p for f in PROVIDER_ID_FIELDS):
+                errors.append(f"{label}: the customer must not see the ids of the provider")
+            if key == "04":
+                for f in ("providerPaymentId", "providerRefundId"):
+                    if f not in p:
+                        errors.append(f"{label}: {f} must stay as a key")
+                    elif p[f] is not None:
+                        errors.append(f"{label}: {f} is null for the members of the shop")
+    return errors
+
+
+def check_payment_refund(md: str) -> list[str]:
+    errors = []
+    for ex in order_examples(md, "Success"):
+        d = ex["data"]
+        if d["status"] != "REFUNDED" or d["orderStatus"] != "REFUNDED" or not d["restoredItems"]:
+            errors.append("05: a refund makes the payment and the order REFUNDED and gives items back")
+    return errors
+
+
+def check_payment_spec() -> int:
+    errors = []
+    mds = {}
+    for key, path in PAYMENT_SPECS.items():
+        try:
+            mds[key] = read(path)
+        except FileNotFoundError:
+            errors.append(f"{path} does not exist")
+            continue
+        md = mds[key]
+        for bad in table_lines_aligned(md):
+            errors.append(f"{path} misaligned table: {bad[:40]}")
+        for bad in json_blocks_parse(md):
+            errors.append(f"{path} invalid JSON block: {bad[:40]}")
+        for link in relative_links_exist(path, md):
+            errors.append(f"{path} broken link {link}")
+    if errors:
+        return fail("; ".join(errors))
+    needles = {
+        "01": ["### Payment Rules", "CASH_ON_DELIVERY", "uq_t_payment_order_id_live", "header set to the id of the new payment row", "clientSecret", "amount x 100", "#### Fail - Conflict Payment In Progress",
+               "#### INSERT - Create the payment", "#### UPDATE - Set the shipping fee and the amount of the order", "AND status = 'WAIT_PAYMENT'", "FOR UPDATE", "E10006", "E90001"],
+        "02": ["### Webhook Rules", "stripe-signature", "raw body", "5 minutes", "LATE_PAYMENT_REFUNDED", "IGNORED", "payment_intent.succeeded", "charge.refunded",
+               "#### UPDATE - Mark the payment as completed", "#### UPDATE - Confirm the order", "AND status = 'WAIT_PAYMENT'", "#### UPDATE - Mark the payment as refunded",
+               "#### UPDATE - Give the quantity back to the lot", "idempotent", "E10001"],
+        "03": ["### Payment Inquiry Rules", "ORDER BY p.created_at DESC, p.id", "o.user_id = '<sequence.userId>'", "#### QUERY - Count the payments of the user", "ILIKE"],
+        "04": ["### Shop Payment Inquiry Rules", "E10009", "#### Fail - Forbidden", "#### QUERY - Check shop member", "#### QUERY - Check platform administrator",
+               "providerPaymentId", "ORDER BY p.created_at DESC, p.id", "#### QUERY - Count the payments of the shop"],
+        "05": ["### Refund Rules", "#### UPDATE - Refund the payment", "AND status = 'COMPLETED'", "#### UPDATE - Refund the order", "AND status = 'PAYMENT_CONFIRMED'",
+               "#### UPDATE - Give the quantity back to the lot", "refund-", "E10006", "E10009", "restoredItems", "#### QUERY - Check shop member", "FOR UPDATE -- taken before the payment is changed"],
+    }
+    for key, need in needles.items():
+        for missing in missing_needles(mds[key], need):
+            errors.append(f"{PAYMENT_SPECS[key]} missing: {missing}")
+    for key, want in {"01": {"Success": 201, "Success - Reused": 200}, "02": {"Success": 200, "Success - Ignored": 200, "Success - Late Payment Refunded": 200},
+                      "03": {"Success": 200, "Success - Empty": 200}, "04": {"Success": 200, "Success - Empty": 200}, "05": {"Success": 200}}.items():
+        if success_codes(mds[key]) != want:
+            errors.append(f"{PAYMENT_SPECS[key]}: success examples should be {want}, found {success_codes(mds[key])}")
+    for key in ("01", "03", "05"):
+        params = re.search(r"### (?:Query|Body) Parameters.*?(?=\n### |\n#### Example|\n## )", mds[key], re.DOTALL)
+        if params and "userId" in params.group(0):
+            errors.append(f"{PAYMENT_SPECS[key]}: the request must not carry a user id")
+    body1 = re.search(r"### Body Parameters.*?(?=\n### )", mds["01"], re.DOTALL)
+    if body1 and re.search(r"\|\s*(amount|shippingFee|currency)\s*\|", body1.group(0)):
+        errors.append(f"{PAYMENT_SPECS['01']}: the client never sends an amount, a fee or a currency")
+    if "authorization" in re.search(r"### Header Parameters.*?(?=\n### )", mds["02"], re.DOTALL).group(0):
+        errors.append(f"{PAYMENT_SPECS['02']}: the webhook is public, it has no authorization header")
+    for key in ("01", "03", "04", "05"):
+        for forbidden in ("cardNumber", "card_number", "cvc", "cvv"):
+            if forbidden in mds[key]:
+                errors.append(f"{PAYMENT_SPECS[key]} must not contain '{forbidden}': card data never reaches the API")
+    if "E10009" in mds["01"] or "E10009" in mds["03"] or "E10009" in mds["02"]:
+        errors.append("01-03: only the shop APIs use the forbidden code E10009")
+    errors.extend(check_payment_start(mds["01"]))
+    errors.extend(check_payment_webhook(mds["02"]))
+    errors.extend(check_payment_inquiry(mds["03"], "03"))
+    errors.extend(check_payment_inquiry(mds["04"], "04"))
+    errors.extend(check_payment_refund(mds["05"]))
+    if errors:
+        return fail("; ".join(errors))
+    print("OK: payment-spec")
+    return 0
+
+
+COMMANDS["payment-spec"] = check_payment_spec
+
+
+PAYMENT_LIVE_INDEX = ("CREATE UNIQUE INDEX IF NOT EXISTS uq_t_payment_order_id_live ON payment.t_payment (order_id) "
+                      "WHERE status IN ('PENDING', 'PROCESSING', 'COMPLETED') AND row_status = 'ACTIVE'")
+PAYMENT_COLUMNS = ["provider", "provider_payment_id", "currency", "shipping_method", "shipping_fee", "failure_code", "failure_message",
+                   "provider_refund_id", "refunded_at", "refund_reason"]
+PAYMENT_CONSTRAINTS = ["ck_t_payment_paid_has_transaction_at", "ck_t_payment_refund_details", "ck_t_payment_failure_only_when_failed",
+                       "uq_t_payment_order_id_live", "uq_t_payment_provider_payment_id", "uq_t_payment_provider_refund_id",
+                       "ck_t_payment_shipping_method", "ck_t_payment_shipping_fee", "ck_t_payment_currency", "ck_t_payment_provider"]
+
+
+def check_payment_schema() -> int:
+    """payment.t_payment: one row is one Stripe PaymentIntent, one live payment per order, refund details, RESTRICT on the order."""
+    errors = []
+    sql = read("e-commerce/db/migrations/up/07-payment.schema.up.sql")
+    statements = schema_statements(sql, "payment", "t_payment")
+    create = [s for s in statements if s.startswith("CREATE TABLE")]
+    if len(create) != 1:
+        errors.append("migration 07: t_payment must have exactly one CREATE TABLE")
+    else:
+        if "ON DELETE RESTRICT" not in create[0] or "ON DELETE CASCADE" in create[0]:
+            errors.append("migration 07: t_payment.order_id must be ON DELETE RESTRICT")
+        for column in PAYMENT_COLUMNS:
+            if not re.search(rf"\b{column}\b", create[0]):
+                errors.append(f"migration 07: column {column} is missing")
+        for text in ("provider_payment_id VARCHAR(64) NOT NULL UNIQUE", "provider_refund_id VARCHAR(64) UNIQUE", "shipping_fee NUMERIC(16, 2) NOT NULL DEFAULT 0.00",
+                     "shipping_method VARCHAR(32) NOT NULL"):
+            if text not in create[0]:
+                errors.append(f"migration 07: missing {text}")
+    if PAYMENT_LIVE_INDEX not in statements:
+        errors.append("migration 07: partial unique index uq_t_payment_order_id_live is missing or different")
+    path = "e-commerce/doc/schema/payment/t_payment.md"
+    md = read(path)
+    for bad in table_lines_aligned(md):
+        errors.append(f"{path} misaligned table: {bad[:40]}")
+    if schema_statements(" ".join(SQL_BLOCK.findall(md)), "payment", "t_payment") != statements:
+        errors.append(f"{path} SQL differs from the migration")
+    for name in PAYMENT_CONSTRAINTS + PAYMENT_COLUMNS:
+        if f"| {name} " not in md:
+            errors.append(f"{path} missing row: {name}")
+    if "ON DELETE RESTRICT" not in md:
+        errors.append(f"{path} must say ON DELETE RESTRICT")
+    readme = read("e-commerce/doc/schema/README.md")
+    if "| [t_payment](payment/t_payment.md) | Transaction | 23 | 1 |" not in readme:
+        errors.append("README: t_payment should have 23 columns and 1 FK")
+    test = ROOT / "e-commerce/db/tests/07-payment.test.sql"
+    if not test.exists():
+        errors.append("db/tests/07-payment.test.sql does not exist")
+    else:
+        text = test.read_text(encoding="utf-8")
+        for n in range(1, 8):
+            if f"PASS test {n}:" not in text:
+                errors.append(f"07-payment.test.sql has no test {n}")
+    if errors:
+        return fail("; ".join(errors))
+    print("OK: payment-schema")
+    return 0
+
+
+COMMANDS["payment-schema"] = check_payment_schema
+
+
 def main(argv: list[str]) -> int:
     if len(argv) < 2:
         print("usage: check_docs.py <subcommand>")

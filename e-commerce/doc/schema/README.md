@@ -89,7 +89,7 @@
 
 | Table | Type | Columns | FKs |
 | ----- | ---- | ------: | --: |
-| [t_payment](payment/t_payment.md) | Transaction | 13 | 1 |
+| [t_payment](payment/t_payment.md) | Transaction | 23 | 1 |
 
 ## shipping
 

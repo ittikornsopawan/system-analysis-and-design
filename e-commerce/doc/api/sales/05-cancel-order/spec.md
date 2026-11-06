@@ -1,12 +1,12 @@
 # [POST]: v1/order/cancel
 
-| Title       | Description                                                                                                                                                                                                                                                       |
-| ----------- | ----------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------- |
-| Name        | Cancel Order API                                                                                                                                                                                                                                                  |
-| Method      | POST                                                                                                                                                                                                                                                              |
-| Endpoint    | v{version}/order/cancel                                                                                                                                                                                                                                           |
-| Version     | 1                                                                                                                                                                                                                                                                 |
-| Description | Cancel an order that is waiting for payment, The quantity of every item goes back to the lot it was taken from, The order owner, a member of the shop of the order or a platform administrator can cancel, Orders that are paid or later cannot be cancelled here |
+| Title       | Description                                                                                                                                                                                                                                                                                                                                                                               |
+| ----------- | ----------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------- |
+| Name        | Cancel Order API                                                                                                                                                                                                                                                                                                                                                                          |
+| Method      | POST                                                                                                                                                                                                                                                                                                                                                                                      |
+| Endpoint    | v{version}/order/cancel                                                                                                                                                                                                                                                                                                                                                                   |
+| Version     | 1                                                                                                                                                                                                                                                                                                                                                                                         |
+| Description | Cancel an order that is waiting for payment, The quantity of every item goes back to the lot it was taken from, The order owner, a member of the shop of the order or a platform administrator can cancel, The payment that is still pending is cancelled with the order, An order with a payment in progress cannot be cancelled, Orders that are paid or later cannot be cancelled here |
 
 ## Domain
 
@@ -42,9 +42,10 @@
 - The caller must be the owner of the order (the user of the access token), an ACTIVE member of the shop of the order (ADMIN or STAFF in `shop.t_shop_user`) or a platform administrator (a user that has the role `PLATFORM_ADMIN`). For any other user the order counts as not found (404, E10004), the same answer as an order that does not exist or is DELETED.
 - Only an order with the status `WAIT_PAYMENT` can be cancelled, otherwise 409 (E10006) with the current status in the message. An order that has been paid is refunded through the payment API, it is not cancelled here.
 - The order becomes `CANCELLED` and the quantity of every item is added back to its lot (`lot_id` of the item) even when that lot is no longer on sale. A lot that was DELETED or ARCHIVED still gets its quantity back because the lot is the stock history. The order and its items stay in the tables as history.
+- The payment of the order is handled in the same request. A payment with the status `PENDING` becomes `CANCELLED` and its PaymentIntent is cancelled at the payment provider (Stripe). A payment with the status `PROCESSING` means money may be on its way, so the order cannot be cancelled and the answer is 409 (E10006) with the message `A payment of the order is in progress.` The scheduled job that cancels expired orders skips an order whose payment is `PROCESSING` and tries it again later. A payment that is `FAILED` or `CANCELLED` needs no change. If money arrives after the order was cancelled, the payment API refunds it automatically (see the payment webhook).
 - The system applies the same rule when `expires_at` has passed and the order is still `WAIT_PAYMENT` (the system acts as the caller `system`, this is a scheduled job, not an API).
 - The cancel is idempotent in outcome: cancelling an order that is already `CANCELLED` answers 409 (E10006), no quantity is added twice.
-- Execution order: validate the request (400) -> existence and ownership checks (404) -> permission of a member of the shop (the owner skips it) -> status check (409) -> write the order and give the quantity back. The whole request is one transaction.
+- Execution order: validate the request (400) -> existence and ownership checks (404) -> permission of a member of the shop (the owner skips it) -> status check and payment check (409) -> write the order, cancel the pending payment and give the quantity back. The whole request is one transaction.
 
 #### Example Body Parameters
 
@@ -221,6 +222,22 @@ curl --location --request POST 'https://www.domain.com/api-dev/v1/order/cancel' 
 }
 ```
 
+#### Fail - Conflict Payment In Progress
+
+```JSON
+{
+    "status": {
+        "code": 409,
+        "message": "Conflict",
+        "bizCode": "E10006",
+        "bizMessage": "A payment of the order is in progress.",
+        "requestId": "req-430a1b2c-3d4e-5f6a-7b8c-9d0e1f2a3b4c",
+        "timestamp": "2026-11-06T09:43:01.123Z",
+        "status": "ERROR"
+    }
+}
+```
+
 #### Fail - Request Timeout
 
 ```JSON
@@ -296,6 +313,34 @@ SET
     quantity = quantity + '<sequence.quantity>' -- the lot may be DELETED or ARCHIVED, it still gets the quantity back
 WHERE id = '<sequence.lotId>'
 RETURNING id as lot_id, quantity
+```
+
+### Table: [payment.t_payment](../../../schema/payment/t_payment.md)
+
+#### QUERY - Get the live payment of the order
+
+```SQL
+SELECT
+    p.id as payment_id,
+    p.provider_payment_id,
+    p.status
+FROM payment.t_payment p
+WHERE p.order_id = '<sequence.orderId>'
+AND p.status IN ('PENDING', 'PROCESSING')
+AND p.row_status = 'ACTIVE' -- PROCESSING means answer 409 (E10006), the order is not changed
+```
+
+#### UPDATE - Cancel the pending payment
+
+```SQL
+UPDATE payment.t_payment
+SET
+    updated_by = '<sequence.userId>',
+    updated_at = NOW() AT TIME ZONE 'UTC',
+    status = 'CANCELLED'
+WHERE id = '<sequence.paymentId>'
+AND status = 'PENDING' -- no row changed means the payment moved on in the meantime, answer 409 (E10006)
+RETURNING id as payment_id, status
 ```
 
 ### Table: [shop.t_shop_user](../../../schema/shop/t_shop_user.md)
