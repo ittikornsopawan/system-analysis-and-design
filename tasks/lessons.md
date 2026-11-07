@@ -189,3 +189,10 @@ description: Repository-wide and project-specific lessons captured from user cor
 - **Correction**: The handoff said Java was unavailable after /usr/bin/java failed. OpenJDK was already installed under Homebrew, and a PlantUML JAR existed in the VS Code extension.
 - **Root cause**: A failing system launcher was mistaken for the absence of an installed runtime; common installation locations were not checked.
 - **Corrected behavior**: Inspect the selected tool path and known installation locations before reporting a missing capability. Use the existing runtime by absolute path and report precisely what was tried when rendering truly cannot run.
+
+
+### 2026-11-07 — Apply the owner's latest delivery override
+
+- **Correction**: The owner replaced the earlier one-open-PR workflow with an explicit instruction to leave each completed API PR open, switch back to main and start a fresh branch immediately, without waiting for merge.
+- **Root cause**: A previously selected workflow or a tool default can remain in effect after the user has superseded it unless the current assignment records the new authority explicitly.
+- **Corrected behavior**: For this API review, persist the exact override, preserve branch-scoped PR/assignment records and edit one branch at a time in Peter's managed clone, then continue to the next API after opening its PR. Do not use the old merge gate to stop, and do not infer merge, force-push or delegation authority from this override.

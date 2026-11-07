@@ -3418,8 +3418,8 @@ AUTHEN_NEEDLES = {
            "when the row was a reuse older than 10 seconds the session is closed and committed first", "are one transaction: when any of them fails nothing is saved",
            "RETURNING session_id -- no row means the answer is 401", "#### INSERT - Create refresh token", "#### INSERT - Create access token",
            "#### UPDATE - Close the refresh tokens of the session (reuse)", "#### UPDATE - Close the access tokens of the session (reuse)", AUTHEN_LOCK, "Lock order:",
-           '"expiresIn": 900', "AND row_status = 'ACTIVE'\nAND expired_at > NOW() AT TIME ZONE 'UTC'\nRETURNING session_id", "SHA-256 (32 bytes), never as the token itself",
-           "WHERE session_id = '<sequence.sessionId>'\nAND row_status = 'ACTIVE'"],
+           '"expiresIn": 900', "AND row_status = 'ACTIVE'\nAND expired_at > '<sequence.now>'\nRETURNING session_id", "SHA-256 (32 bytes), never as the token itself",
+           "WHERE session_id = '<sequence.sessionId>'\nAND user_id = '<sequence.userId>'\nAND row_status = 'ACTIVE'"],
     "06": ["# [POST]: v1/auth/logout", "### Logout Rules", "every ACTIVE access token and refresh token that has the same `session_id`", "#### UPDATE - Close the access tokens of the session",
            "#### UPDATE - Close the refresh tokens of the session", "WHERE session_id = '<sequence.sessionId>'\nAND user_id = '<sequence.userId>'\nAND row_status = 'ACTIVE'",
            "Logout Success", AUTHEN_LOCK, "Lock order:", "Sessions of other devices are not changed."],
@@ -3440,7 +3440,7 @@ AUTHEN_COUNTED = {
     "10": [("WHERE ua.user_id = '<sequence.userId>'\nAND ua.row_status <> 'DELETED'", 2), ("AND ua.title ILIKE '%<sequence.search>%' -- only when search is specified", 2),
            ("AND ua.row_status = '<sequence.rowStatus>' -- only when rowStatus is specified", 2)],
     "05": [("INSERT INTO authen.t_user_access_token (", 1), ("INSERT INTO authen.t_user_refresh_token (", 1),
-           ("AND row_status = 'ACTIVE' -- only when the used token became INACTIVE more than 10 seconds ago", 2)],
+           ("AND row_status = 'ACTIVE' -- only on replay outside the 10-second grace window", 2)],
     "06": [("WHERE session_id = '<sequence.sessionId>'\nAND user_id = '<sequence.userId>'\nAND row_status = 'ACTIVE'", 2)],
     "02": [("INSERT INTO authen.t_user_access_token (", 1), ("INSERT INTO authen.t_user_refresh_token (", 1), ("INSERT INTO authen.l_user_login_attempt (", 1)],
     "09": [("ua.user_id = '<sequence.userId>'", 4)],
@@ -5063,6 +5063,146 @@ def check_admin_write_spec() -> int:
 
 
 COMMANDS["admin-write-spec"] = check_admin_write_spec
+
+
+def check_refresh_flow() -> int:
+    """Check refresh rotation and replay as distinct committed/rolled-back paths."""
+    path = AUTHEN_SPECS['05']
+    md = read(path)
+    wsd = read(str(Path(path).with_name('sequence.wsd')))
+    errors = []
+    operations = spec_database_operations(md)
+    sql = {heading: statement for _, heading, statement in operations}
+    required = {
+        'QUERY - Find the refresh token': ['rt.id', 'rt.user_id', '<sequence.presentedRefreshTokenHash>', '<sequence.lookupNow>'],
+        'QUERY - Lock the user': ["u.row_status = 'ACTIVE'", 'FOR UPDATE', '<sequence.userId>'],
+        'QUERY - Reread the refresh token after user lock': ['rt.row_status', 'rt.updated_at', 'rt.expired_at', 'rt.session_id', '<sequence.refreshTokenId>', '<sequence.userId>', '<sequence.presentedRefreshTokenHash>'],
+        'UPDATE - Use the refresh token once': ["row_status = 'INACTIVE'", "updated_at = '<sequence.now>'", "AND row_status = 'ACTIVE'", "AND expired_at > '<sequence.now>'", "AND user_id = '<sequence.userId>'", "AND session_id = '<sequence.sessionId>'", "AND token = '<sequence.presentedRefreshTokenHash>'", 'RETURNING session_id'],
+        'INSERT - Create access token': ['<sequence.accessTokenHash>', '<sequence.sessionId>', '<sequence.accessExpiredAt>'],
+        'INSERT - Create refresh token': ['<sequence.newRefreshTokenHash>', '<sequence.sessionId>', '<sequence.refreshExpiredAt>'],
+        'UPDATE - Close the refresh tokens of the session (reuse)': ["WHERE session_id = '<sequence.sessionId>'", "AND user_id = '<sequence.userId>'", "AND row_status = 'ACTIVE'", "updated_at = '<sequence.now>'"],
+        'UPDATE - Close the access tokens of the session (reuse)': ["WHERE session_id = '<sequence.sessionId>'", "AND user_id = '<sequence.userId>'", "AND row_status = 'ACTIVE'", "updated_at = '<sequence.now>'"],
+    }
+    for heading, needles in required.items():
+        statement = re.sub(r'--[^\n]*', '', sql.get(heading, ''))
+        for needle in needles:
+            if needle not in statement:
+                errors.append(f'{heading}: missing {needle}')
+    if '<sequence.presentedRefreshTokenHash>' in sql.get('INSERT - Create refresh token', ''):
+        errors.append('replacement refresh must not reuse the presented credential hash')
+    if 'NOW()' in sql.get('UPDATE - Use the refresh token once', ''):
+        errors.append('consume must use post-lock now, not transaction-start NOW()')
+    login_claims = [o for o in spec_database_operations(read(AUTHEN_SPECS['02'])) if o[0].startswith('author.')]
+    refresh_claims = [o for o in operations if o[0].startswith('author.')]
+    if [(t,h,normalize(s)) for t,h,s in login_claims] != [(t,h,normalize(s)) for t,h,s in refresh_claims]:
+        errors.append('refresh must resolve current claims using all eight canonical login queries')
+    for needle in ('2026-11-07-api-review-design.md', 'permission-specific',
+                   'at exactly 10 seconds', 'updated_at', 'issuedAt'):
+        if needle.lower() not in md.lower():
+            errors.append(f'refresh spec missing {needle}')
+    front = re.match(r'---\n(.*?)\n---\n', md, re.DOTALL)
+    if not front:
+        errors.append('refresh spec needs approval metadata')
+    else:
+        state = re.search(r'^status: (draft|in-review|approved)$', front.group(1), re.MULTILINE)
+        if not state:
+            errors.append('refresh spec has invalid status')
+        for field in ('approved_by', 'approved_at'):
+            value = re.search(rf'^{field}: (.+)$', front.group(1), re.MULTILINE)
+            if not value or (state and ((state.group(1) == 'approved') == (value.group(1) == 'null'))):
+                errors.append(f'refresh spec has inconsistent {field}')
+    guards = ('alt Owner lookup returned no row', 'alt ACTIVE user row returned',
+              'alt Fresh row is ACTIVE and expired_at > now',
+              'alt Conditional consume returned session_id',
+              'else Conditional consume returned no row',
+              'else Fresh row is INACTIVE, unexpired, updated_at known and now < updated_at + 10 seconds',
+              'else Fresh row is INACTIVE, unexpired and outside grace (or updated_at is NULL)',
+              'else Fresh row missing, expired or another status')
+    for guard in guards:
+        if not re.search(r'^\s*' + re.escape(guard) + r'\s*$', wsd, re.MULTILINE):
+            errors.append(f'refresh sequence missing branch {guard}')
+    for note in re.finditer(r'(?m)^([ \t]*)note right of \w+\n(.*?)^\1end note$', wsd, re.DOTALL):
+        if any(line.lstrip().startswith("'") for line in note.group(2).splitlines()):
+            errors.append('leading SQL literal would be hidden by PlantUML')
+    lines = wsd.splitlines()
+    for i,line in enumerate(lines):
+        request = re.match(r'^(\s*)infra -> (\w+): ((?:QUERY|INSERT|UPDATE)[^\n]*)$', line)
+        if not request: continue
+        pad, table, heading = request.groups()
+        if i == 0 or lines[i-1].strip() != 'app -> infra: ' + heading:
+            errors.append(f'{heading}: missing Application request')
+        end = next((j for j in range(i+1,len(lines)) if lines[j] == pad+'deactivate '+table), None)
+        if end is None or end+1 >= len(lines) or not lines[end+1].startswith(pad+'infra -> app: Return '):
+            errors.append(f'{heading}: missing result returned to Application')
+    if '--rendered-svg' in sys.argv:
+        from collections import Counter
+        import xml.etree.ElementTree as ET
+        try:
+            root = ET.parse(sys.argv[sys.argv.index('--rendered-svg')+1]).getroot()
+            expected = Counter(' '.join(line.split()) for _,_,statement in operations for line in statement.splitlines() if line.strip())
+            visible = Counter(' '.join(''.join(e.itertext()).split()) for e in root.iter() if e.tag.endswith('}text'))
+            missing = expected-visible
+            if missing: errors.append(f'rendered refresh SQL missing {sum(missing.values())}/{sum(expected.values())} lines')
+            else: print(f'OK: rendered refresh SQL ({sum(expected.values())}/{sum(expected.values())} visible lines)')
+        except (IndexError, OSError, ET.ParseError) as exc:
+            errors.append(f'cannot verify rendered refresh SVG: {exc}')
+    for title,code in {'Success':200,'Fail - Bad Request':400,'Fail - Unauthorized':401,'Fail - Request Timeout':408,'Fail - Internal Server Error':500}.items():
+        try:
+            status=authen_json(md,title)['status']
+            if status['code'] != code or (code==500 and 'bizCode' in status):
+                errors.append(f'{title}: incorrect HTTP example or invented internal bizCode')
+        except (KeyError,TypeError,AttributeError,ValueError):
+            errors.append(f'{title}: missing response example')
+    traces, structure = login_sequence_paths(wsd)
+    errors.extend(structure)
+    outcomes=[]
+    for trace in traces:
+        response=[e for e in trace if e.startswith('app -> api: HTTP ')]
+        if len(response)!=1:
+            errors.append('each refresh trace needs exactly one HTTP outcome');continue
+        code=int(response[0].split('HTTP ')[1].split()[0]);outcomes.append(code)
+        joined='\n'.join(trace)
+        def ordered(*needles):
+            pos=[next((i for i,e in enumerate(trace) if n in e),-1) for n in needles]
+            return -1 not in pos and pos==sorted(set(pos))
+        begins=any(e.startswith('app -> infra: BEGIN') for e in trace)
+        commits=any(e=='app -> infra: COMMIT' for e in trace)
+        rolls_back=any(e=='app -> infra: ROLLBACK' for e in trace)
+        inserts=[e for e in trace if e.startswith('infra -> ') and ': INSERT' in e]
+        closes=['UPDATE - Close the refresh tokens of the session (reuse)' in joined,
+                'UPDATE - Close the access tokens of the session (reuse)' in joined]
+        if code==400:
+            if begins or any(e.startswith('infra -> ') for e in trace): errors.append('400 must have no SQL or transaction')
+        elif code in (408,500):
+            if commits or not ordered('BEGIN','ROLLBACK',f'HTTP {code}'): errors.append('pre-commit failure must roll back')
+        elif code==200:
+            if closes!=[False,False] or rolls_back or not ordered('QUERY - Find the refresh token','BEGIN','QUERY - Lock the user','Capture UTC now','QUERY - Reread the refresh token after user lock','UPDATE - Use the refresh token once','Build verified authorization claims','INSERT - Create access token','INSERT - Create refresh token','app -> infra: COMMIT','HTTP 200'):
+                errors.append('rotation must reread/consume under lock, reload claims, issue both tokens and commit without replay revocation')
+            for _,heading,_ in login_claims:
+                if not ordered('UPDATE - Use the refresh token once',heading,'Build verified authorization claims'):
+                    errors.append('current claim queries must follow the successful consume and precede claim construction')
+            for field in ('tokenType','accessToken','refreshAccessToken','expiresIn'):
+                if not re.search(r'\b'+field+r'\b',response[0]): errors.append(f'success omits {field}')
+        elif code==401:
+            if inserts: errors.append('401 must not create replacement token rows')
+            if any(closes):
+                if closes!=[True,True] or rolls_back or not ordered('QUERY - Lock the user','QUERY - Reread the refresh token after user lock','UPDATE - Close the refresh tokens of the session (reuse)','UPDATE - Close the access tokens of the session (reuse)','app -> infra: COMMIT','HTTP 401'):
+                    errors.append('older replay must durably close both token tables before 401')
+                if 'UPDATE - Use the refresh token once' in joined: errors.append('replay must not execute normal rotation')
+            elif begins:
+                if commits or not ordered('BEGIN','ROLLBACK','HTTP 401'): errors.append('invalid/recent-duplicate paths must roll back without committing')
+            elif not ordered('QUERY - Find the refresh token','HTTP 401'):
+                errors.append('missing owner must fail after lookup without a transaction')
+        if 'QUERY - Reread the refresh token after user lock' in joined and not ordered('QUERY - Lock the user','Capture UTC now','QUERY - Reread the refresh token after user lock'):
+            errors.append('replay classification requires the post-lock reread and timestamp')
+    if sorted(outcomes)!=[200,400,401,401,401,401,401,401,408,500]:
+        errors.append(f'expected ten refresh paths, got {sorted(outcomes)}')
+    if errors: return fail('; '.join(errors))
+    print('OK: refresh-flow (10 outcome paths, fresh claims, post-lock reread and replay commit)')
+    return 0
+
+
+COMMANDS['refresh-flow'] = check_refresh_flow
 
 
 def main(argv: list[str]) -> int:
