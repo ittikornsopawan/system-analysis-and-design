@@ -1,0 +1,320 @@
+@startuml UpsertUserRole Sequence
+
+title Upsert User Role API Sequence
+
+' Leading SQL apostrophes use &#39; so PlantUML preserves literals; parity compares decoded SQL.
+
+' Visual style
+skinparam defaultFontName "Sarabun"
+skinparam defaultFontSize 14
+skinparam backgroundColor #FFFFFF
+skinparam shadowing false
+skinparam roundcorner 10
+skinparam sequence {
+    ArrowColor #475569
+    ArrowFontColor #334155
+    LifeLineBorderColor #CBD5E1
+    LifeLineBackgroundColor #F8FAFC
+    ParticipantBorderColor #94A3B8
+    ParticipantBackgroundColor #F1F5F9
+    ParticipantFontColor #0F172A
+    GroupBorderColor #94A3B8
+    GroupBackgroundColor #F8FAFC
+    GroupFontColor #334155
+}
+
+' Do not show participant footers at the bottom of the diagram
+hide footbox
+
+actor "User" as user
+box "Frontend" #F8FAFC
+    participant "Upsert User Role Page" as page
+end box
+box "Web API" #F8FAFC
+    participant "API" as api
+    participant "Application" as app
+    participant "Domain" as domain
+    participant "Infrastructure" as infra
+end box
+box "Database" #F8FAFC
+    database "m_user" as m_user
+    database "m_role" as m_role
+    database "t_user_role" as t_user_role
+end box
+
+user -> page: Submit the user role
+activate page
+    page -> api: POST v1/author/user/role/upsert
+    activate api
+        api -> app: [**UpsertUserRoleCommandHandler**] Process request
+        activate app
+            app -> app: Create request context; generate requestId when omitted
+            app -> app: Validate headers and body: userId and roleId are required UUIDs, rowStatus is not DELETED when inserting
+            alt Invalid input
+                app -> api: HTTP 400 E10001
+                api -> page: Bad request
+                page -> user: Display validation error
+            else Valid input
+                app -> app: Verify JWT signature, issuer, audience, exp and UUID sub
+                alt Missing, malformed or invalid JWT
+                    app -> api: HTTP 401 E10002 Invalid or expired access token.
+                    api -> page: Authentication error
+                    page -> user: Ask the user to sign in again
+                else Verified JWT
+                    app -> app: userId = verified sub
+                    app -> infra: BEGIN READ COMMITTED
+                    activate infra
+                    alt Work completes before commit
+                        app -> infra: QUERY - Lock the target user
+                        infra -> m_user: QUERY - Lock the target user
+                        activate m_user
+                            note right of m_user
+                                SELECT
+                                    u.id as user_id
+                                FROM authen.m_user u
+                                WHERE u.id = '<sequence.userId>'
+                                FOR UPDATE -- the target users, in ascending id order, before any role row
+                            end note
+                            m_user -> infra: Return query result
+                        deactivate m_user
+                        infra -> app: Return the locked user or no row (the target users are locked in ascending id order, before any role row)
+                        app -> infra: QUERY - Get the platform administrator role
+                        infra -> m_role: QUERY - Get the platform administrator role
+                        activate m_role
+                            note right of m_role
+                                SELECT
+                                    r.id as role_id
+                                FROM author.m_role r
+                                WHERE r.name = 'PLATFORM_ADMIN'
+                                AND r.row_status = 'ACTIVE'
+                            end note
+                            m_role -> infra: Return query result
+                        deactivate m_role
+                        infra -> app: Return the id of the PLATFORM_ADMIN role
+                        alt The request touches the PLATFORM_ADMIN assignment
+                            app -> infra: QUERY - Lock the platform administrator role
+                            infra -> m_role: QUERY - Lock the platform administrator role
+                            activate m_role
+                                note right of m_role
+                                    SELECT
+                                        r.id as role_id
+                                    FROM author.m_role r
+                                    WHERE r.name = 'PLATFORM_ADMIN'
+                                    AND r.row_status = 'ACTIVE'
+                                    FOR UPDATE -- only when the request touches the PLATFORM_ADMIN assignment
+                                end note
+                                m_role -> infra: Return query result
+                            deactivate m_role
+                            infra -> app: Return the locked PLATFORM_ADMIN role
+                        end
+                        alt id is specified (update, delete or archive)
+                            app -> infra: QUERY - Check existing user role
+                            infra -> t_user_role: QUERY - Check existing user role
+                            activate t_user_role
+                                note right of t_user_role
+                                    SELECT
+                                        ur.id as user_role_id,
+                                        ur.user_id,
+                                        ur.role_id
+                                    FROM author.t_user_role ur
+                                    WHERE ur.id = '<sequence.id>'
+                                    AND ur.row_status <> 'DELETED' -- the id of a DELETED row counts as not found
+                                end note
+                                t_user_role -> infra: Return query result
+                            deactivate t_user_role
+                            infra -> app: Return the user role or no row
+                            alt User role not found or DELETED
+                                app -> infra: ROLLBACK
+                                app -> api: HTTP 404 E10004 User role not found.
+                                api -> page: Not found
+                                page -> user: Display the user role is not found
+                            end
+                            alt userId or roleId differs from the row of id
+                                app -> infra: ROLLBACK
+                                app -> api: HTTP 400 E10001 User Id and Role Id cannot be changed.
+                                api -> page: Bad request
+                                page -> user: Display validation error
+                            end
+                        end
+                        alt The request gives the role (insert, or an update that sets ACTIVE on a row that is not ACTIVE)
+                            app -> infra: QUERY - Check user
+                            infra -> m_user: QUERY - Check user
+                            activate m_user
+                                note right of m_user
+                                    SELECT
+                                        u.id as user_id
+                                    FROM authen.m_user u
+                                    WHERE u.id = '<sequence.userId>'
+                                    AND u.row_status = 'ACTIVE' -- only when the request gives the role (an insert, or opening a row that is not ACTIVE)
+                                end note
+                                m_user -> infra: Return query result
+                            deactivate m_user
+                            infra -> app: Return the user or no row
+                            app -> infra: QUERY - Check role
+                            infra -> m_role: QUERY - Check role
+                            activate m_role
+                                note right of m_role
+                                    SELECT
+                                        r.id as role_id,
+                                        r.name
+                                    FROM author.m_role r
+                                    WHERE r.id = '<sequence.roleId>'
+                                    AND r.row_status = 'ACTIVE' -- only when the request gives the role (an insert, or opening a row that is not ACTIVE)
+                                end note
+                                m_role -> infra: Return query result
+                            deactivate m_role
+                            infra -> app: Return the role or no row
+                            alt The user or the role is not found or not ACTIVE
+                                app -> infra: ROLLBACK
+                                app -> api: HTTP 404 E10005 User or role not found or not ACTIVE.
+                                api -> page: Not found
+                                page -> user: Display the user or the role is not available
+                            end
+                        end
+                        app -> infra: QUERY - Check platform administrator
+                        infra -> t_user_role: QUERY - Check platform administrator
+                        activate t_user_role
+                            note right of t_user_role
+                                SELECT
+                                    ur.id as user_role_id
+                                FROM author.t_user_role ur
+                                WHERE ur.user_id = '<sequence.userId>'
+                                AND ur.role_id = '<sequence.roleId>'
+                                AND ur.row_status = 'ACTIVE'
+                            end note
+                            t_user_role -> infra: Return query result
+                        deactivate t_user_role
+                        infra -> app: Return the ACTIVE PLATFORM_ADMIN assignment of the caller or no row
+                        alt The caller is not a platform administrator
+                            app -> infra: ROLLBACK
+                            app -> api: HTTP 403 E10009 You do not have permission to assign roles.
+                            api -> page: Forbidden
+                            page -> user: Display no permission
+                        end
+                        app -> infra: QUERY - Check duplicate user role
+                        infra -> t_user_role: QUERY - Check duplicate user role
+                        activate t_user_role
+                            note right of t_user_role
+                                SELECT
+                                    ur.id as user_role_id
+                                FROM author.t_user_role ur
+                                WHERE ur.user_id = '<sequence.userId>'
+                                AND ur.role_id = '<sequence.roleId>'
+                                AND ur.row_status <> 'DELETED'
+                                AND ur.id <> '<sequence.id>' -- only when id is specified
+                            end note
+                            t_user_role -> infra: Return query result
+                        deactivate t_user_role
+                        infra -> app: Return the row of the user and the role that is not DELETED or no row
+                        alt The user already has the role in a row that is not DELETED
+                            app -> infra: ROLLBACK
+                            app -> api: HTTP 409 E10003 The user already has this role.
+                            api -> page: Conflict
+                            page -> user: Display the user has the role
+                        end
+                        alt id is not specified (insert)
+                            app -> infra: INSERT - Create user role
+                            infra -> t_user_role: INSERT - Create user role
+                            activate t_user_role
+                                note right of t_user_role
+                                    INSERT INTO author.t_user_role (
+                                        created_by,
+                                        row_status,
+                                        user_id,
+                                        role_id
+                                    )
+                                    VALUES (
+                                        &#39;<sequence.createdBy>',
+                                        &#39;<sequence.rowStatus>',
+                                        &#39;<sequence.userId>',
+                                        &#39;<sequence.roleId>'
+                                    )
+                                    RETURNING id as user_role_id
+                                end note
+                                t_user_role -> infra: Return inserted result
+                            deactivate t_user_role
+                            infra -> app: Return the new user role
+                        else id is specified (update, archive or delete)
+                            app -> infra: UPDATE - Update, archive or delete user role
+                            infra -> t_user_role: UPDATE - Update, archive or delete user role
+                            activate t_user_role
+                                note right of t_user_role
+                                    UPDATE author.t_user_role
+                                    SET
+                                        updated_by = '<sequence.updatedBy>',
+                                        updated_at = NOW() AT TIME ZONE 'UTC',
+                                        row_status = '<sequence.rowStatus>'
+                                    WHERE id = '<sequence.id>'
+                                    RETURNING id as user_role_id
+                                end note
+                                t_user_role -> infra: Return updated result
+                            deactivate t_user_role
+                            infra -> app: Return the changed user role
+                        end
+                        app -> infra: QUERY - Count the platform administrators after the write
+                        infra -> t_user_role: QUERY - Count the platform administrators after the write
+                        activate t_user_role
+                            note right of t_user_role
+                                SELECT
+                                    COUNT(ur.id) as administrators
+                                FROM author.t_user_role ur
+                                INNER JOIN authen.m_user u
+                                    ON u.id = ur.user_id
+                                        AND u.row_status = 'ACTIVE'
+                                WHERE ur.role_id = '<sequence.platformAdminRoleId>'
+                                AND ur.row_status = 'ACTIVE' -- the request is rolled back (409) when the count is 0
+                            end note
+                            t_user_role -> infra: Return query result
+                        deactivate t_user_role
+                        infra -> app: Return the number of ACTIVE PLATFORM_ADMIN assignments whose user is ACTIVE
+                        alt No ACTIVE administrator is left after the write
+                            app -> infra: ROLLBACK
+                            app -> api: HTTP 409 E10006 The platform must keep at least one administrator.
+                            api -> page: Conflict
+                            page -> user: Display the last administrator cannot be removed
+                        else At least one administrator remains
+                            alt Insert
+                                app -> infra: COMMIT
+                                app -> api: HTTP 201 S10000 Insert User Role Success
+                                api -> page: Return the user role
+                                page -> user: Display the user role saved
+                            else rowStatus = DELETED (delete)
+                                app -> infra: COMMIT
+                                app -> api: HTTP 204 No Content; no response body
+                                api -> page: No content
+                                page -> user: Display the user role removed
+                            else rowStatus = ARCHIVED (archive)
+                                app -> infra: COMMIT
+                                app -> api: HTTP 200 S10000 Archive User Role Success
+                                api -> page: Return the user role
+                                page -> user: Display the user role saved
+                            else Update
+                                app -> infra: COMMIT
+                                app -> api: HTTP 200 S10000 Update User Role Success
+                                api -> page: Return the user role
+                                page -> user: Display the user role saved
+                            end
+                        end
+                    else Timeout before COMMIT
+                        note over app, infra
+                            A timeout can interrupt any preceding SQL or domain step.
+                            No success response is sent without a successful COMMIT.
+                        end note
+                        app -> infra: ROLLBACK
+                        app -> api: HTTP 408 E90001
+                        api -> page: Request timeout
+                        page -> user: Retry if needed
+                    else Unexpected failure before COMMIT
+                        app -> infra: ROLLBACK
+                        app -> api: HTTP 500 generic error; no new bizCode
+                        api -> page: Internal server error
+                        page -> user: Display generic failure
+                    end
+                    deactivate infra
+                end
+            end
+        deactivate app
+    deactivate api
+deactivate page
+
+@enduml
