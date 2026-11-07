@@ -687,3 +687,11 @@ Status: Complete in the branch, waiting for review. Assignment: agent `tommy`, d
 - [x] Write `sequence.wsd` of `shipping/01-create-shipping`, `02-update-shipping-status`, `03-upsert-shipping-stop`, `04-inquiry-shop-shipping`, `sales/04-inquiry-shop-order`, `05-cancel-order`, `payment/04-inquiry-shop-payment`, `05-refund-payment` to the agreed standard (order row locked first where the spec says so).
 - [x] Check them with `api-sequence-spec`, the skeleton test, PlantUML and mutation tests.
 - [x] Open the PR with `commit-and-pr`; do not merge.
+
+## repository-wide: Sequence diagrams of the campaign APIs (set D, campaign)
+
+Status: Complete in the branch, waiting for review. Assignment: agent `tommy`, delivery `open-pr`, authorized by `josh`, workspace `.workspace/tommy`, branch `feat/tommy-sequence-campaign`, scopes `e-commerce/doc/api/campaign` and `tasks`.
+
+- [x] Write `sequence.wsd` of `campaign/01-upsert-campaign`, `02-inquiry-campaign` and `03-inquiry-campaign-ledger` to the agreed standard.
+- [x] Check them with `api-sequence-spec`, the skeleton test, PlantUML and mutation tests.
+- [x] Open the PR with `commit-and-pr`; do not merge. The author APIs (`author/01` to `11`) follow in the next pull request.
