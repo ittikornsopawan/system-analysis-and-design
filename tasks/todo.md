@@ -667,6 +667,19 @@ Status: Complete in the branch, waiting for review. Assignment: agent `tommy`, d
 - [x] Check every file with `api-sequence-spec`, the skeleton test, PlantUML and mutation tests.
 - [x] Open the PR with `commit-and-pr`; do not merge.
 
+## e-commerce: Sequence diagrams of 10 shop APIs (set B)
+
+Status: Diagrams written in the managed workspace of Marry on branch `docs/marry-shop-write-sequences`; the pull request is opened after the checks and merged by the lead. Scope: the ten folders below and `tasks/`. No `spec.md` is changed. With this set `shop` is 16/16 filled.
+
+Folders (`e-commerce/doc/api/shop/`): `01-upsert-shop-product-sku`, `02-upsert-shop-product-sku-batch`, `05-upsert-shop-type`, `06-upsert-shop-type-batch`, `08-upsert-shop`, `09-upsert-shop-batch`, `10-inquiry-shop`, `11-upsert-shop-user`, `12-upsert-shop-user-batch`, `13-inquiry-shop-user`.
+
+- [x] Write APIs (`01`, `02`, `05`, `06`, `08`, `09`, `11`, `12`): 400 in Application -> `Verify JWT` -> 401 E10002 -> BEGIN READ COMMITTED -> existence checks (404) -> permission (403) -> conflicts (409) -> write -> COMMIT -> 201 / 200 / 204 (single) or 200 (batch); a ROLLBACK before every error after BEGIN; 408 and 500 as in `02-login`.
+- [x] Permission of each API as its spec writes it: platform administrator only (`05`, `06`); shop member (ADMIN or STAFF) or platform administrator (`01`, `02`; in `02` once for the request with the position `skus[i]`); open insert and ADMIN or platform administrator for update, delete and archive, and a platform administrator for a changed `platformMarginRate` (`08`, `09`); ADMIN or platform administrator, and a STAFF member may only leave the shop (`11`, `12`), followed by the ADMIN rule on the result (409 E10006, the request is rolled back; in `12` once for each shop after the last item).
+- [x] Inquiries (`10`, `13`): 400 -> 401 -> reads -> 200, with no transaction; `10` returns an empty list when nothing matches (the margin rates of other shops are masked in the Domain step by the rule of the spec); `13` answers 403 E10009 before the reads when the caller may not read the requested shop or user.
+- [x] Every SQL block is copied letter for letter and used once, in the order of the work; the participants follow the first use.
+- [x] Checks: `api-sequence-spec` (`shop` 16/16), PlantUML `-checkonly` and `-syntax`, SVG (every SQL line visible, no strike-through), mutation tests of the new files (see the pull request).
+- [ ] Merge `main` into the branch, run every checker and the preflight, push, open the pull request, tell the lead; hold the lock until the merge, then release and park.
+
 ## repository-wide: Sequence diagrams of the shop and operations APIs (set C)
 
 Status: Complete in the branch, waiting for review. Assignment: agent `tommy`, delivery `open-pr`, authorized by `josh`, workspace `.workspace/tommy`, branch `feat/tommy-sequence-set-c`, scopes: the eight API folders below and `tasks`.

@@ -1,0 +1,216 @@
+@startuml InquiryShop Sequence
+
+title Inquiry Shop API Sequence
+
+' Leading SQL apostrophes use &#39; so PlantUML preserves literals; parity compares decoded SQL.
+
+' Visual style
+skinparam defaultFontName "Sarabun"
+skinparam defaultFontSize 14
+skinparam backgroundColor #FFFFFF
+skinparam shadowing false
+skinparam roundcorner 10
+skinparam sequence {
+    ArrowColor #475569
+    ArrowFontColor #334155
+    LifeLineBorderColor #CBD5E1
+    LifeLineBackgroundColor #F8FAFC
+    ParticipantBorderColor #94A3B8
+    ParticipantBackgroundColor #F1F5F9
+    ParticipantFontColor #0F172A
+    GroupBorderColor #94A3B8
+    GroupBackgroundColor #F8FAFC
+    GroupFontColor #334155
+}
+
+' Do not show participant footers at the bottom of the diagram
+hide footbox
+
+actor "User" as user
+box "Frontend" #F8FAFC
+    participant "Inquiry Shop Page" as page
+end box
+box "Web API" #F8FAFC
+    participant "API" as api
+    participant "Application" as app
+    participant "Domain" as domain
+    participant "Infrastructure" as infra
+end box
+box "Database" #F8FAFC
+    database "m_shop" as m_shop
+    database "m_shop_type" as m_shop_type
+    database "t_shop_user" as t_shop_user
+    database "m_role" as m_role
+    database "t_user_role" as t_user_role
+    database "m_shop_image" as m_shop_image
+end box
+
+user -> page: Request Inquiry Shop
+activate page
+    page -> api: GET v1/shop
+    activate api
+        api -> app: [**InquiryShopQueryHandler**] Process request
+        activate app
+            app -> app: Create request context; generate requestId when omitted
+            app -> app: Validate headers and query parameters
+            alt Invalid input
+                app -> api: HTTP 400 E10001
+                api -> page: Bad request
+                page -> user: Display validation error
+            else Valid input
+                app -> app: Verify the access token (signature and expiry)
+                alt Access token is missing, invalid or expired
+                    app -> api: HTTP 401 E10002
+                    api -> page: Unauthorized
+                    page -> user: Display unauthorized error
+                else Access token is valid
+                    app -> infra: Execute database operations
+                    activate infra
+                        app -> infra: QUERY - Get shops
+                        infra -> m_shop: QUERY - Get shops
+                        activate m_shop
+                            note right of m_shop
+                                SELECT
+                                    s.id as shop_id,
+                                    s.type_id,
+                                    s.name,
+                                    s.description,
+                                    s.platform_margin_rate,
+                                    s.shop_margin_rate,
+                                    s.row_status
+                                FROM shop.m_shop s
+                                WHERE s.row_status <> 'DELETED'
+                                AND s.id = '<sequence.id>' -- only when id is specified
+                                AND s.type_id = '<sequence.typeId>' -- only when typeId is specified
+                                AND (s.name ILIKE '%<sequence.search>%' OR s.description ILIKE '%<sequence.search>%') -- only when search is specified
+                                AND s.row_status = '<sequence.rowStatus>' -- only when rowStatus is specified
+                                ORDER BY s.created_at DESC
+                                LIMIT <sequence.pageSize> OFFSET (<sequence.pageIndex> - 1) * <sequence.pageSize>
+                            end note
+                            m_shop -> infra: Return query result
+                        deactivate m_shop
+                        infra -> app: Return result of Get shops
+                        app -> infra: QUERY - Get total items
+                        infra -> m_shop: QUERY - Get total items
+                        activate m_shop
+                            note right of m_shop
+                                SELECT
+                                    COUNT(s.id) as total_items
+                                FROM shop.m_shop s
+                                WHERE s.row_status <> 'DELETED'
+                                AND s.id = '<sequence.id>' -- only when id is specified
+                                AND s.type_id = '<sequence.typeId>' -- only when typeId is specified
+                                AND (s.name ILIKE '%<sequence.search>%' OR s.description ILIKE '%<sequence.search>%') -- only when search is specified
+                                AND s.row_status = '<sequence.rowStatus>' -- only when rowStatus is specified
+                            end note
+                            m_shop -> infra: Return query result
+                        deactivate m_shop
+                        infra -> app: Return result of Get total items
+                    deactivate infra
+                    alt No shop matches the filters
+                        app -> domain: Prepare the response with empty items
+                        activate domain
+                            domain -> app: Return response data
+                        deactivate domain
+                        app -> api: HTTP 200 S10000
+                        api -> page: Return success response
+                        page -> user: Display success result
+                    else Shops found
+                        app -> infra: Execute database operations
+                        activate infra
+                            app -> infra: QUERY - Get shop type names
+                            infra -> m_shop_type: QUERY - Get shop type names
+                            activate m_shop_type
+                                note right of m_shop_type
+                                    SELECT
+                                        st.id as type_id,
+                                        st.name as type_name
+                                    FROM shop.m_shop_type st
+                                    WHERE st.id IN ('<sequence.typeIds>')
+                                end note
+                                m_shop_type -> infra: Return query result
+                            deactivate m_shop_type
+                            infra -> app: Return result of Get shop type names
+                            app -> infra: QUERY - Check shop members
+                            infra -> t_shop_user: QUERY - Check shop members
+                            activate t_shop_user
+                                note right of t_shop_user
+                                    SELECT
+                                        su.shop_id
+                                    FROM shop.t_shop_user su
+                                    WHERE su.shop_id IN ('<sequence.shopIds>')
+                                    AND su.user_id = '<sequence.userId>'
+                                    AND su.role IN ('ADMIN', 'STAFF')
+                                    AND su.row_status = 'ACTIVE'
+                                end note
+                                t_shop_user -> infra: Return query result
+                            deactivate t_shop_user
+                            infra -> app: Return result of Check shop members
+                            app -> infra: QUERY - Get the platform administrator role
+                            infra -> m_role: QUERY - Get the platform administrator role
+                            activate m_role
+                                note right of m_role
+                                    SELECT
+                                        r.id as role_id
+                                    FROM author.m_role r
+                                    WHERE r.name = 'PLATFORM_ADMIN'
+                                    AND r.row_status = 'ACTIVE'
+                                end note
+                                m_role -> infra: Return query result
+                            deactivate m_role
+                            infra -> app: Return result of Get the platform administrator role
+                            app -> infra: QUERY - Check platform administrator
+                            infra -> t_user_role: QUERY - Check platform administrator
+                            activate t_user_role
+                                note right of t_user_role
+                                    SELECT
+                                        ur.id as user_role_id
+                                    FROM author.t_user_role ur
+                                    WHERE ur.user_id = '<sequence.userId>'
+                                    AND ur.role_id = '<sequence.roleId>'
+                                    AND ur.row_status = 'ACTIVE'
+                                end note
+                                t_user_role -> infra: Return query result
+                            deactivate t_user_role
+                            infra -> app: Return result of Check platform administrator
+                            app -> infra: QUERY - Get shop images
+                            infra -> m_shop_image: QUERY - Get shop images
+                            activate m_shop_image
+                                note right of m_shop_image
+                                    SELECT
+                                        si.id as image_id,
+                                        si.shop_id,
+                                        si.type,
+                                        si.seq,
+                                        si.image_path,
+                                        si.row_status
+                                    FROM shop.m_shop_image si
+                                    WHERE si.shop_id IN ('<sequence.shopIds>')
+                                    AND si.row_status <> 'DELETED'
+                                    ORDER BY si.type, si.seq, si.created_at, si.id
+                                end note
+                                m_shop_image -> infra: Return query result
+                            deactivate m_shop_image
+                            infra -> app: Return result of Get shop images
+                        deactivate infra
+                        alt Processing times out
+                            app -> api: HTTP 408 E90001
+                            api -> page: Request timeout
+                            page -> user: Display timeout error
+                        else Processing completes in time
+                            app -> domain: Apply domain rules and prepare response
+                            activate domain
+                                domain -> app: Return response data
+                            deactivate domain
+                            app -> api: HTTP 200 S10000
+                            api -> page: Return success response
+                            page -> user: Display success result
+                        end
+                    end
+                end
+            end
+        deactivate app
+    deactivate api
+deactivate page
+
+@enduml
