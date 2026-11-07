@@ -2656,6 +2656,9 @@ SHIPPING_INDEXES = {
     "t_shipping_stop": ("CREATE UNIQUE INDEX IF NOT EXISTS uq_t_shipping_stop_shipping_id_stop_number ON shipping.t_shipping_stop "
                         "(shipping_id, stop_number) WHERE row_status <> 'DELETED'"),
 }
+# the index that the automatic completion job needs (S26, S31): not unique, partial on the SHIPPED parcels
+SHIPPING_SCAN_INDEX = ("CREATE INDEX IF NOT EXISTS ix_t_shipping_shipped_at ON shipping.t_shipping (shipped_at) "
+                       "WHERE status = 'SHIPPED' AND row_status <> 'DELETED'")
 SHIPPING_TABLE_PARTS = {
     "t_shipping": [
         "order_id UUID NOT NULL REFERENCES sales.t_order (id) ON DELETE RESTRICT",
@@ -2677,7 +2680,7 @@ SHIPPING_TABLE_PARTS = {
     ],
 }
 SHIPPING_DOC_NEEDLES = {
-    "t_shipping": ["uq_t_shipping_carrier_name_tracking_number", "ck_t_shipping_shipped_has_tracking", "ck_t_shipping_delivered_at",
+    "t_shipping": ["uq_t_shipping_carrier_name_tracking_number", "ix_t_shipping_shipped_at", "ck_t_shipping_shipped_has_tracking", "ck_t_shipping_delivered_at",
                    "ON DELETE RESTRICT", "carrier_name", "Unique among rows where row_status <> 'DELETED' and tracking_number is not null"],
     "t_shipping_item": ["uq_t_shipping_item_shipping_id_order_item_id", "ON DELETE RESTRICT", "Unique among rows where row_status <> 'DELETED'"],
     "t_shipping_stop": ["uq_t_shipping_stop_shipping_id_stop_number", "TRANSIT", "arrived_at", "Unique among rows where row_status <> 'DELETED'"],
@@ -2715,6 +2718,12 @@ def check_shipping_schema() -> int:
         for needle in SHIPPING_DOC_NEEDLES[table]:
             if needle not in md:
                 errors.append(f"{path} missing: {needle}")
+    migration_statements = [normalize(x) for x in sql.split(";")]
+    if SHIPPING_SCAN_INDEX not in migration_statements:
+        errors.append("migration 08: the partial index ix_t_shipping_shipped_at on shipped_at is missing or different")
+    doc_sql = [normalize(x) for x in " ".join(SQL_BLOCK.findall(read(f"{SHIPPING_SCHEMA_DOC}/t_shipping.md"))).split(";")]
+    if SHIPPING_SCAN_INDEX not in doc_sql:
+        errors.append("t_shipping.md: the SQL block does not hold ix_t_shipping_shipped_at")
     readme = read("e-commerce/doc/schema/README.md")
     for table, row in SHIPPING_README_ROWS.items():
         if row not in readme:
@@ -2730,7 +2739,7 @@ def check_shipping_schema() -> int:
         errors.append("db/tests/08-shipping.test.sql does not exist")
     else:
         text = test.read_text(encoding="utf-8")
-        for n in range(1, 7):
+        for n in range(1, 8):
             if f"PASS test {n}:" not in text:
                 errors.append(f"08-shipping.test.sql has no test {n}")
     if errors:
@@ -2782,7 +2791,15 @@ SHIPPING_NEEDLES = {
     "06": ["### Confirm Delivery Rules", "#### UPDATE - Confirm the delivery", "AND status = 'SHIPPED' -- no row changed means the status changed in the meantime",
            "#### UPDATE - Complete the order", "AND status = 'PROCESSING'", "#### QUERY - Get the delivered quantity of every item", "s.status = 'DELIVERED'",
            "o.user_id = '<sequence.userId>'", "#### QUERY - Lock the order", "FOR UPDATE", "#### Fail - Conflict Status", "E10006",
-           "approved by the product owner"],
+           "approved by the product owner",
+           "### Automatic Completion Rules", "### Automatic Completion Example", "#### QUERY - Get the orders with an old SHIPPED parcel",
+           "#### UPDATE - Confirm the delivery as the system", "#### QUERY - Check that the order qualifies", "updated_by = 'system'",
+           "AND status = 'SHIPPED' -- no row changed means the shippings changed in the meantime", "`completion_days`",
+           "AND s.shipped_at > NOW() AT TIME ZONE 'UTC' - INTERVAL '<sequence.completionDays> days'", "AND s2.status IN ('SHIPPED', 'DELIVERED')",
+           "AND s.shipped_at <= NOW() AT TIME ZONE 'UTC' - INTERVAL '<sequence.completionDays> days'", "ix_t_shipping_shipped_at", "never by the shop",
+           "so the shop has to record a returned parcel before the seven days are over", "A partial shipment that cannot be finished",
+           "locks the order row first (`SELECT ... FOR UPDATE`), checks the five conditions again under the lock",
+           "and by the automatic completion below (the system confirms after `completion_days`", "at least `completion_days` days old"],
 }
 # phrases that must appear at least n times (a rule or a guard that two statements share must not lose one copy unnoticed)
 SHIPPING_COUNTS = {
@@ -2792,7 +2809,7 @@ SHIPPING_COUNTS = {
     "03": {"approved by the product owner": 2},
     "04": {"o.shop_id = '<sequence.shopId>'": 2, "approved by the product owner": 2, "-- only when search is specified": 2},
     "05": {"o.user_id = '<sequence.userId>'": 2, "approved by the product owner": 1, "-- only when search is specified": 2},
-    "06": {"approved by the product owner": 1},
+    "06": {"approved by the product owner": 1, "AND s.row_status <> 'DELETED'": 6, "AND s.status = 'SHIPPED'": 2, "AND s.status = 'PENDING'": 1},
 }
 SHIPPING_STATUSES = ("PENDING", "SHIPPED", "DELIVERED", "CANCELLED", "RETURNED")
 SHIPPING_STOP_TYPES = ("PICKUP", "TRANSIT", "DROPOFF")
@@ -2976,6 +2993,82 @@ def check_shipping_actions(mds: dict) -> list[str]:
     return errors
 
 
+SHIPPING_JOB_PHRASE = "Time the customer or the system confirmed the parcel (UTC)"
+
+
+def check_shipping_job_example(md: str) -> list[str]:
+    """The Automatic Completion Example of spec 06: every case is judged again with the five conditions and compared with the result that is written."""
+    m = re.search(r"### Automatic Completion Example\n\n(.*?)\n\n((?:\|[^\n]*\n)+)", md, re.DOTALL)
+    if not m:
+        return ["06: the Automatic Completion Example table is missing"]
+    day = re.search(r"runs on day (\d+) with `completion_days` (\d+)", m.group(1))
+    quantity = re.search(r"quantity (\d+)", m.group(1))
+    if not day or not quantity:
+        return ["06: the example must say the day of the job, completion_days and the quantity of the item"]
+    now, days, ordered = int(day.group(1)), int(day.group(2)), int(quantity.group(1))
+    rows = [[c.strip() for c in line.strip().strip("|").split("|")] for line in m.group(2).strip().split("\n")][2:]
+    errors, results = [], set()
+    for case, parcels, result, reason in rows:
+        items = []
+        for part in parcels.split(";"):
+            tokens = part.split()
+            status = tokens[1]
+            shipped = next((int(t[1:]) for t in tokens if re.fullmatch(r"d\d+", t)), None)
+            qty = next(int(t[1:]) for t in tokens if re.fullmatch(r"q\d+", t))
+            items.append((status, shipped, qty))
+        statuses = [x[0] for x in items]
+        allocated = sum(q for st, _, q in items if st in ("SHIPPED", "DELIVERED"))
+        if "SHIPPED" not in statuses:
+            expected = "NOT A CANDIDATE"
+        elif "PENDING" in statuses:
+            expected = "WAITS"
+        elif allocated != ordered:
+            expected = "NOT ELIGIBLE"
+        elif any(st == "SHIPPED" and now - d < days for st, d, _ in items):
+            expected = "WAITS"
+        else:
+            expected = "COMPLETES"
+        results.add(expected)
+        if result != expected:
+            errors.append(f"06 automatic completion case {case}: the five conditions give {expected}, the example says {result}")
+        if expected == "COMPLETES" and "COMPLETED" not in reason:
+            errors.append(f"06 automatic completion case {case}: a case that completes must say that the order is COMPLETED")
+        if result == "COMPLETES" and any(st == "DELIVERED" for st in statuses) and "only" not in reason.lower():
+            errors.append(f"06 automatic completion case {case}: a shipping that is already DELIVERED is not changed, the reason must say that only the SHIPPED ones change")
+    if results != {"COMPLETES", "WAITS", "NOT ELIGIBLE", "NOT A CANDIDATE"}:
+        errors.append("06: the example must show the four results COMPLETES, WAITS, NOT ELIGIBLE and NOT A CANDIDATE")
+    return errors
+
+
+# the scan query of the job must hold every condition that can be tested without a lock, or an order that can never qualify
+# keeps an old SHIPPED parcel, is selected in every run and fills the batch before an order with a larger id (the job starves)
+SHIPPING_SCAN_PARTS = {
+    "the order must be PROCESSING": "o.status = 'PROCESSING'",
+    "the order must not be DELETED": "o.row_status <> 'DELETED'",
+    "a SHIPPED shipping at least completion_days old": "AND s.shipped_at <= NOW() AT TIME ZONE 'UTC' - INTERVAL '<sequence.completionDays> days'",
+    "no PENDING shipping (condition 2)": "AND NOT EXISTS (\n    SELECT 1\n    FROM shipping.t_shipping s\n    WHERE s.order_id = o.id\n    AND s.row_status <> 'DELETED'\n    AND s.status = 'PENDING'\n)",
+    "no SHIPPED shipping younger than completion_days (condition 5)": "AND s.shipped_at > NOW() AT TIME ZONE 'UTC' - INTERVAL '<sequence.completionDays> days'",
+    "every item allocated in full (condition 4)": "AND oi.quantity <> (",
+    "the allocation counts only SHIPPED and DELIVERED shippings": "AND s2.status IN ('SHIPPED', 'DELIVERED')",
+    "a fixed ascending order and one batch": "ORDER BY o.id\nLIMIT <sequence.batchSize>",
+}
+
+
+def check_shipping_scan_query(md: str) -> list[str]:
+    m = re.search(r"#### QUERY - Get the orders with an old SHIPPED parcel\n\n```SQL\n(.*?)\n```", md, re.DOTALL)
+    if not m:
+        return ["06: the scan query 'Get the orders with an old SHIPPED parcel' is missing"]
+    sql = m.group(1)
+    errors = [f"06 scan query: {why} is missing, an order that never qualifies would fill the batch and starve the others"
+              for why, part in SHIPPING_SCAN_PARTS.items() if part not in sql]
+    if "s.shipped_at > NOW()" in sql and sql.count("NOT EXISTS") < 3:
+        errors.append("06 scan query: the three NOT EXISTS (PENDING, young SHIPPED, item not allocated) must stay NOT EXISTS")
+    for needle in ("so a dead-end order like case 4 cannot block the orders after it", "(the job starves)"):
+        if needle not in md:
+            errors.append(f"06: the reason why the scan applies every condition is missing: {needle}")
+    return errors
+
+
 def check_shipping_spec() -> int:
     errors = []
     mds = {}
@@ -3019,6 +3112,15 @@ def check_shipping_spec() -> int:
         rules = mds[key].split("#### Example Body Parameters")[0]
         if "SELECT ... FOR UPDATE" not in rules:
             errors.append(f"{SHIPPING_SPECS[key]}: the rules must say that the order row is locked with SELECT ... FOR UPDATE")
+    for key in ("04", "05", "06"):
+        if SHIPPING_JOB_PHRASE not in mds[key]:
+            errors.append(f"{SHIPPING_SPECS[key]}: deliveredAt must be described as '{SHIPPING_JOB_PHRASE}' (the system can confirm too)")
+        if "Time the receiver confirmed the parcel (UTC)" in mds[key]:
+            errors.append(f"{SHIPPING_SPECS[key]}: the old deliveredAt wording (only the receiver confirms) must not stay")
+    if "There is no automatic completion" in mds["06"]:
+        errors.append("06: the sentence that there is no automatic completion must not stay")
+    errors.extend(check_shipping_job_example(mds["06"]))
+    errors.extend(check_shipping_scan_query(mds["06"]))
     errors.extend(check_shipping_inquiry(mds["04"], "04"))
     errors.extend(check_shipping_inquiry(mds["05"], "05"))
     errors.extend(check_shipping_actions(mds))

@@ -51,6 +51,11 @@ WHERE
     tracking_number IS NOT NULL
     AND row_status <> 'DELETED';
 
+CREATE INDEX IF NOT EXISTS ix_t_shipping_shipped_at ON shipping.t_shipping (shipped_at)
+WHERE
+    status = 'SHIPPED'
+    AND row_status <> 'DELETED';
+
 CREATE TABLE
     IF NOT EXISTS shipping.t_shipping_item (
         id UUID NOT NULL DEFAULT GEN_RANDOM_UUID () PRIMARY KEY,

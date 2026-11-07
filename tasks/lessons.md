@@ -177,7 +177,6 @@ description: Repository-wide and project-specific lessons captured from user cor
 - **Root cause**: The search for affected files stopped at the specs.
 - **Corrected behavior**: After adding SQL to a spec, search for every file read from the same spec (sequence diagram, schema doc) and run all the checkers before saying the work is complete.
 
-
 ### 2026-11-07 — Prove specification and sequence correctness together
 
 - **Correction**: The owner challenged whether sequence.wsd had been checked alongside spec.md. Both files were changed in PR #23, but the handoff did not make the paired evidence easy to inspect. The subsequent render exposed a real gap: PlantUML treated SQL value lines beginning with a single quote as comments, so VALUES were missing in the image even though source SQL parity passed.
@@ -190,9 +189,32 @@ description: Repository-wide and project-specific lessons captured from user cor
 - **Root cause**: A failing system launcher was mistaken for the absence of an installed runtime; common installation locations were not checked.
 - **Corrected behavior**: Inspect the selected tool path and known installation locations before reporting a missing capability. Use the existing runtime by absolute path and report precisely what was tried when rendering truly cannot run.
 
-
 ### 2026-11-07 — Apply the owner's latest delivery override
 
 - **Correction**: The owner replaced the earlier one-open-PR workflow with an explicit instruction to leave each completed API PR open, switch back to main and start a fresh branch immediately, without waiting for merge.
 - **Root cause**: A previously selected workflow or a tool default can remain in effect after the user has superseded it unless the current assignment records the new authority explicitly.
 - **Corrected behavior**: For this API review, persist the exact override, preserve branch-scoped PR/assignment records and edit one branch at a time in Peter's managed clone, then continue to the next API after opening its PR. Do not use the old merge gate to stop, and do not infer merge, force-push or delegation authority from this override.
+
+### 2026-11-07 — A design that scans a table must name the index, or say why none is needed
+
+- **Correction**: The first WP3b appendix (S26) scanned the `SHIPPED` shipping rows by `shipped_at` for the automatic completion job but also said that the schema does not change (S30). The lead SA pointed out the contradiction at gate 1.
+- **Root cause**: The scan was designed from the rules and the data model was not read for the access path of a query that runs all the time.
+- **Corrected behavior**: When a job or an inquiry filters a growing table by a column, write the index (a partial index when the filtered state is small), its test and its documents in the same design, or write the reason it is not needed.
+
+### 2026-11-07 — A status that gets a new meaning must change every field that shows it
+
+- **Correction**: Letting the system set `DELIVERED` (S25) changed what `deliveredAt` means in `shipping/04`, `05` and `06`, but the first appendix did not touch their field descriptions. The lead SA found it at gate 1.
+- **Root cause**: The change was designed at the rules level and the specs that display the value were not listed.
+- **Corrected behavior**: List every spec and field that shows a status or a timestamp whose meaning changes, change their descriptions in the same round and make the checker catch the new wording.
+
+### 2026-11-07 — Write the boundary of a time limit once and use it everywhere
+
+- **Correction**: The rule said "older than 7 days" while the SQL used `shipped_at <= now - 7 days` and the example said "day 3 or earlier"; a mutation test showed that the checker agreed with the wrong reading.
+- **Root cause**: The words, the SQL and the checker were written separately.
+- **Corrected behavior**: Decide whether the limit includes the boundary, write it in the rule ("at least 7 days old, exactly 7 days qualifies"), the SQL comment, the example and the checker, and add a mutation at the boundary.
+
+### 2026-11-07 — A scan with a limit must filter by everything that decides the result
+
+- **Correction**: The scan query of the automatic completion job selected the orders by the age of a `SHIPPED` parcel only, sorted by `order_id` and limited to one batch. The lead SA found at gate 2 that an order that can never qualify (a partial shipment that cannot be finished, a `PENDING` parcel left) stays a candidate in every run and, with more such orders than the batch size, the orders with a larger id that qualify are never selected.
+- **Root cause**: The scan was treated as a loose pre-filter because the conditions are checked again under the lock, and the effect of `ORDER BY ... LIMIT` over rows that are always skipped was not considered.
+- **Corrected behavior**: When a job takes a limited, ordered batch, put every condition that can be tested without a lock into the scan (the check under the lock stays as the guard), write the reason in the rule, and add a checker needle with a mutation for each condition.
