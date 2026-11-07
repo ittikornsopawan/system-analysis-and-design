@@ -536,6 +536,16 @@ Status: Complete in the branch, waiting for review. Assignment: agent `tommy`, d
 - [x] Mutation-test the test (7 changes of the test, 5 changes of real diagrams): 12/12 caught.
 - [x] Open the PR with `commit-and-pr`; do not merge.
 
+## repository-wide: Guard check_docs.py against a merge that cuts it
+
+Status: Complete in the branch, waiting for review. Assignment: agent `tommy`, delivery `open-pr`, authorized by `josh` (queue item 1.5 after the repair of PR 39), workspace `.workspace/tommy`, branch `feat/tommy-check-docs-integrity`, scopes `e-commerce/db/tests/check_docs.py`, `.agents/skills/commit-and-pr/scripts`, `.agents/skills/commit-and-pr/references` and `tasks`.
+
+- [x] Find why the preflight let a file that does not parse pass: the list of sub-commands came back empty and the report said `0/0 OK`.
+- [x] Make the preflight parse `check_docs.py` first and report a blocker with the line, and report a blocker when no sub-command is listed.
+- [x] Add the sub-command `check-registry`: every top-level `check_*` function ends with `return` or `raise` and is registered in `COMMANDS` or called, and no sub-command is registered twice.
+- [x] Say it in `references/checklist.md`.
+- [x] Mutation-test it (6 changes of `check_docs.py`) and show the old preflight passing a broken file and the new one failing.
+- [x] Open the PR with `commit-and-pr`; do not merge.
 ## e-commerce: Reword the SQL comments with two `--` in shop/14 and shop/16
 
 Status: Implemented in the managed workspace of Marry on branch `docs/marry-reword-double-dash-comments`; the pull request is opened after the preflight and merged by the lead. Scope: `shop/14-inquiry-storefront-shop-product`, `shop/16-inquiry-storefront-product-review` and `tasks/`. Only comments change; no SQL that runs.
