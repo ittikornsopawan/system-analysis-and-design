@@ -7,6 +7,23 @@ description: Shared checklist for planning and tracking non-trivial tasks withou
 
 Use one section per task, named `<scope>: <task-name>`. Preserve other task sections and mark an item complete only after its completion criterion is satisfied.
 
+## e-commerce: Jinny architecture diagrams
+
+Status: Registration prepared and verified locally; diagram creation waits for registration on origin/main. Ittikorn requested Jinny and three diagrams on 2026-11-07, then explicitly chose to register Jinny and use the diagram-design default light style. Ittikorn subsequently authorized commit, push, and a registration PR in this chat. That direct delivery authorization covers registration only; the future diagram assignment retains delivery: none.
+
+- [x] Read the bootstrap, applicable rules, lessons, diagram-design skill, existing diagram payload, backend project structure, project references, and relevant payment/shipping specifications.
+- [x] Register Jinny with a dedicated diagram designer role, reporting to Josh, repository-wide scope for diagram assignments and required task bookkeeping, and no delegation capabilities; validate the role, registry, and existing workspace tests.
+- [x] Obtain direct user authorization for registration delivery; prepare the registration branch and PR package, preserving unrelated handoff files. Merge remains the owner's action.
+- [ ] After registration reaches origin/main, prepare Jinny's managed workspace with an assignment limited to `e-commerce/diagram/` and required task bookkeeping; delivery remains none.
+- [ ] Record the visual plan before drawing: architecture overview, backend request architecture, and system/domain context; `doc-wide` 1280 x 720, engineer audience, default light style, at most nine functional nodes per image.
+- [ ] Create self-contained HTML sources and editable draw.io PNGs for `architecture-design`, `repository-architecture`, and `system-design`, based on inspected evidence without introducing architecture changes; mark specification-only capabilities explicitly.
+- [ ] Run skill self-checks, inspect connector geometry and text bounds, reopen embedded draw.io models, render and visually review all three final PNGs, and document any merged or omitted source content.
+- [ ] Deliver the three requested files with verification evidence and any unresolved limitations.
+
+Evidence: `architecture-design.drawio.png` and `system-design.drawio.png` are zero-byte files; the extractor reports `not a draw.io file (no mxfile, mxGraphModel, or payload)` for each. `repository-architecture.drawio.png` contains eight functional components plus decorative cells and legend edges. The current backend implements Authen in five .NET 10 projects; broader payment and shipping capabilities are described in specifications and must not be presented as implemented code. Jinny is absent from the inspected origin/main registry. Registration must be effective on origin/main before managed-workspace mutation begins, per `.agents/rules/named-agent-workspaces.md`.
+
+Registration verification: `python3 -B -m unittest discover -s .agents/skills/agent-workspace/tests -v` passed all 13 tests, including Jinny's role, enabled registry lookup, reporting line, workspace key, and inability to delegate delivery. Role frontmatter and registry pointer checks passed; `git diff --check` passed. No diagrams have been modified, rendered, or claimed as verified. Existing unrelated untracked handoff files were preserved.
+
 ## repository-wide: Make agent instructions operational
 
 Status: Complete

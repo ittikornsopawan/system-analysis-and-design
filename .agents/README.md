@@ -46,6 +46,7 @@ This directory is the source of truth for repository-specific agent resources. R
 | `agents/business-analyst.md` | ready | Stakeholder needs, processes, business rules, and Requirements |
 | `agents/system-analyst.md` | ready | Specification completeness, system behavior, SQL analysis, traceability, and approval readiness |
 | `agents/solution-architect.md` | ready | Architecture, boundaries, dependencies, integrations, and technical decisions |
+| `agents/diagram-designer.md` | ready | Jinny's system diagram creation, source traceability, editable artifacts, and rendered visual review |
 | `agents/api-documenter.md` | ready | Pre-implementation OpenAPI 3.1 publication and validation from Approved API Specs |
 | `agents/backend-developer.md` | ready | Version-aware C# and .NET implementation with traceable automated tests |
 | `agents/code-reviewer.md` | ready | Independent Spec compliance and engineering-quality review |
