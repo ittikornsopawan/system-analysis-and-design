@@ -452,3 +452,15 @@ Status: Active consent delivered in PR #36 (four files; MERGEABLE when opened), 
 Me verification: replaced the obsolete live-role query with one exact credential/user SELECT; roles/admin come from the calling verified token. Generated the previously empty sequence with the ready skeleton tool and completed every TODO/branch/mapping; the global check now reports author 1/12 filled, not the whole group complete. The finished sequence has eight terminal traces and seven participants; SVG/PNG were generated and inspected with 13/13 visible SQL lines. Original pair rejected; mutations caught 31/31, and three synchronized ownership/user-status/live-assignment faults pass SQL parity but fail semantic guards. A real renderer omission is also rejected with correct source unchanged. Temporary PostgreSQL executed the exact credential SQL alongside ephemeral locally signed JWT reference fixtures: old roles survive assignment revocation, new empty snapshot reports false, independent admin flags are ignored, sorting/response shape remain correct, malformed/duplicate roles and tampering fail before lookup, and wrong owner/expiry/inactive user/revoked or unstored token are rejected. This is reference/design and SQL verification, not backend conformance.
 
 Me delivery preflight: four authorized paths, 41/41 documentation commands OK, audit 53 tables / 0 findings, database ALL PASSED, Peter delivery authorized, no blockers. Origin/main unchanged at pre-delivery fetch.
+
+## repository-wide: Sequence phase 1, five prototype diagrams
+
+Status: Complete in the branch, waiting for review. Assignment: agent `tommy`, delivery `open-pr`, authorized by `josh` (the product owner ordered real diagrams instead of a notes document), workspace `.workspace/tommy`, branch `feat/tommy-sequence-cart-order-webhook`, scopes `e-commerce/doc/api/cart`, `e-commerce/doc/api/sales/02-create-order`, `e-commerce/doc/api/payment/02-stripe-webhook`, `e-commerce/db/tests/check_docs.py`, `tasks`.
+
+- [x] Close the earlier notes task (discarded by the lead SA; the note is kept in the scratchpad) and park the workspace.
+- [x] Write `sequence.wsd` of `cart/01`, `cart/02`, `cart/03`, `sales/02` to the login standard with no `TODO(author)` left: real order of checks (400, 404, 409, write), blocks placed on the branch where they run, every error after `BEGIN` after a `ROLLBACK`, every lock after `BEGIN`, participants in order of first use.
+- [x] Write `sequence.wsd` of `payment/02` with Stripe as `participant "Stripe" as stripe` in `box "External"`, and let `sequence_structure_errors` accept `External, Web API, Database` (no Frontend, no actor User, the External box holds a participant).
+- [x] Mutation-test the diagrams and the new rule, render every diagram with PlantUML, run all checkers.
+- [x] Open the PR with `commit-and-pr`; do not merge.
+
+Verification: see the PR. No `spec.md` and no `sequence_skeleton.py` was changed. Gaps of the specs found while writing are reported to the lead SA in the PR body.

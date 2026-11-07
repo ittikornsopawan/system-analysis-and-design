@@ -3939,7 +3939,11 @@ def sequence_database_operations(wsd: str) -> tuple[list[tuple[str, str, str]], 
 
 
 SEQUENCE_PARTICIPANT_CHAIN = ('participant "API" as api', 'participant "Application" as app', 'participant "Domain" as domain', 'participant "Infrastructure" as infra')
-SEQUENCE_HEAD = ('skinparam defaultFontName "Sarabun"', "hide footbox", 'actor "User" as user')
+SEQUENCE_HEAD = ('skinparam defaultFontName "Sarabun"', "hide footbox")
+SEQUENCE_USER_HEAD = 'actor "User" as user'
+SEQUENCE_USER_BOXES = ["Frontend", "Web API", "Database"]
+# a caller that is an external system (the Stripe webhook): box External with its participants instead of actor User and box Frontend
+SEQUENCE_EXTERNAL_BOXES = ["External", "Web API", "Database"]
 SEQUENCE_BOXES = ('box "Frontend"', 'box "Web API"', 'box "Database"')
 SEQUENCE_LOCK = re.compile(r"FOR\s+(?:NO\s+KEY\s+)?UPDATE|FOR\s+(?:KEY\s+)?SHARE|pg_(?:try_)?advisory_(?:xact_)?lock", re.IGNORECASE)
 SEQUENCE_LOGIN_STANDARD = ("-> infra: BEGIN", "-> infra: COMMIT", "-> infra: ROLLBACK", "HTTP 400 E10001", "HTTP 408 E90001", "HTTP 500")
@@ -3956,8 +3960,17 @@ def sequence_structure_errors(text: str) -> list[str]:
         if needle not in text:
             errors.append(f"missing {needle!r}")
     boxes = re.findall(r'^box "([^"]+)"', text, re.MULTILINE)
-    if boxes != ["Frontend", "Web API", "Database"]:
-        errors.append(f"boxes must be Frontend, Web API, Database in that order, found {boxes}")
+    external = boxes == SEQUENCE_EXTERNAL_BOXES
+    if boxes != SEQUENCE_USER_BOXES and not external:
+        errors.append(f"boxes must be Frontend, Web API, Database in that order, or External, Web API, Database when the caller is an external system (never Frontend and External together), found {boxes}")
+    if external:
+        external_box = re.search(r'^box "External".*?^end box$', text, re.MULTILINE | re.DOTALL)
+        if not external_box or not re.search(r'^\s*participant "[^"]+" as \w+$', external_box.group(0), re.MULTILINE):
+            errors.append("the External box must hold the participant of the external caller")
+        if SEQUENCE_USER_HEAD in text:
+            errors.append(f"an external caller replaces {SEQUENCE_USER_HEAD!r}: remove the actor")
+    elif SEQUENCE_USER_HEAD not in text:
+        errors.append(f"missing {SEQUENCE_USER_HEAD!r}")
     if len(re.findall(r"^end box$", text, re.MULTILINE)) != 3:
         errors.append("every box must be closed with end box")
     positions = [text.find(chain) for chain in SEQUENCE_PARTICIPANT_CHAIN]

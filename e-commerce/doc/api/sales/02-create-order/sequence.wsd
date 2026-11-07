@@ -1,0 +1,450 @@
+@startuml CreateOrder Sequence
+
+title Create Order API Sequence
+
+' Leading SQL apostrophes use &#39; so PlantUML preserves literals; parity compares decoded SQL.
+
+' Visual style
+skinparam defaultFontName "Sarabun"
+skinparam defaultFontSize 14
+skinparam backgroundColor #FFFFFF
+skinparam shadowing false
+skinparam roundcorner 10
+skinparam sequence {
+    ArrowColor #475569
+    ArrowFontColor #334155
+    LifeLineBorderColor #CBD5E1
+    LifeLineBackgroundColor #F8FAFC
+    ParticipantBorderColor #94A3B8
+    ParticipantBackgroundColor #F1F5F9
+    ParticipantFontColor #0F172A
+    GroupBorderColor #94A3B8
+    GroupBackgroundColor #F8FAFC
+    GroupFontColor #334155
+}
+
+' Do not show participant footers at the bottom of the diagram
+hide footbox
+
+actor "User" as user
+box "Frontend" #F8FAFC
+    participant "Create Order Page" as page
+end box
+box "Web API" #F8FAFC
+    participant "API" as api
+    participant "Application" as app
+    participant "Domain" as domain
+    participant "Infrastructure" as infra
+end box
+box "Database" #F8FAFC
+    database "t_cart" as t_cart
+    database "t_user_address" as t_user_address
+    database "t_shop_product_sku" as t_shop_product_sku
+    database "m_campaign" as m_campaign
+    database "t_campaign_product" as t_campaign_product
+    database "t_shop_product_sku_lot" as t_shop_product_sku_lot
+    database "m_campaign_budget" as m_campaign_budget
+    database "t_order" as t_order
+    database "t_order_item" as t_order_item
+    database "m_campaign_budget_ledger" as m_campaign_budget_ledger
+end box
+
+user -> page: Submit the order
+activate page
+    page -> api: POST v1/order
+    activate api
+        api -> api: Verify the access token; the userId is the user of the token
+        alt Invalid or expired access token
+            api -> page: HTTP 401 E10002
+            page -> user: Ask the user to sign in again
+        else Valid access token
+            api -> app: [**CreateOrderCommandHandler**] Process request
+            activate app
+                app -> app: Create request context; generate requestId when omitted
+                app -> app: Validate headers and body: addressId is a UUID, cartIds are UUIDs without duplicates and at most 100
+                alt Invalid input
+                    app -> api: HTTP 400 E10001
+                    api -> page: Bad request
+                    page -> user: Display validation error
+                else Valid input
+                    app -> infra: BEGIN READ COMMITTED
+                    activate infra
+                    alt Work completes before commit
+                        app -> infra: QUERY - Get the cart lines to order
+                        infra -> t_cart: QUERY - Get the cart lines to order
+                        activate t_cart
+                            note right of t_cart
+                                SELECT
+                                    c.id as cart_id,
+                                    c.shop_id,
+                                    c.product_id,
+                                    c.sku_id,
+                                    c.quantity
+                                FROM cart.t_cart c
+                                WHERE c.user_id = '<sequence.userId>'
+                                AND c.row_status = 'ACTIVE'
+                                AND c.id IN ('<sequence.cartIds>') -- only when cartIds is specified, otherwise every ACTIVE line of the user
+                                ORDER BY c.created_at
+                            end note
+                            t_cart -> infra: Return query result
+                        deactivate t_cart
+                        infra -> app: Return the lines of the user (the selected cartIds, or every ACTIVE line)
+                        alt cartIds is specified and a line is not found (another user's line or a deleted line)
+                            app -> infra: ROLLBACK
+                            app -> api: HTTP 404 E10004 Cart item not found.
+                            api -> page: Not found
+                            page -> user: Display the cart item is not found
+                        else cartIds is not specified and the cart has no line
+                            app -> infra: ROLLBACK
+                            app -> api: HTTP 400 E10001 The cart has no item to order.
+                            api -> page: Bad request
+                            page -> user: Display the cart is empty
+                        else Lines found
+                            app -> infra: QUERY - Check the address of the user
+                            infra -> t_user_address: QUERY - Check the address of the user
+                            activate t_user_address
+                                note right of t_user_address
+                                    SELECT
+                                        ua.id as address_id,
+                                        ua.title,
+                                        ua.address,
+                                        ua.city,
+                                        ua.state,
+                                        ua.postal_code,
+                                        ua.country
+                                    FROM authen.t_user_address ua
+                                    WHERE ua.id = '<sequence.addressId>'
+                                    AND ua.user_id = '<sequence.userId>'
+                                    AND ua.row_status = 'ACTIVE'
+                                end note
+                                t_user_address -> infra: Return query result
+                            deactivate t_user_address
+                            infra -> app: Return the address or no row
+                            alt Address not found for this user
+                                app -> infra: ROLLBACK
+                                app -> api: HTTP 404 E10005 Address not found.
+                                api -> page: Not found
+                                page -> user: Display the address is not found
+                            else Address found
+                                app -> infra: QUERY - Get the SKU of each line with the lot that is on sale
+                                infra -> t_shop_product_sku: QUERY - Get the SKU of each line with the lot that is on sale
+                                activate t_shop_product_sku
+                                    note right of t_shop_product_sku
+                                        SELECT
+                                            ssk.id as shop_product_sku_id,
+                                            sp.shop_id,
+                                            sp.product_id,
+                                            ssk.sku_id,
+                                            s.name as shop_name,
+                                            p.name as product_name,
+                                            ps.name as sku_name,
+                                            l.id as lot_id,
+                                            l.selling_price,
+                                            l.cost_price,
+                                            l.gross_margin,
+                                            l.share_margin,
+                                            l.platform_margin,
+                                            l.quantity as max_order_quantity
+                                        FROM shop.t_shop_product_sku ssk
+                                        INNER JOIN shop.t_shop_product sp
+                                            ON sp.id = ssk.shop_product_id
+                                            AND sp.row_status = 'ACTIVE'
+                                        INNER JOIN shop.m_shop s
+                                            ON s.id = sp.shop_id
+                                            AND s.row_status = 'ACTIVE'
+                                        INNER JOIN product.m_product p
+                                            ON p.id = sp.product_id
+                                            AND p.row_status = 'ACTIVE'
+                                        INNER JOIN product.m_product_sku ps
+                                            ON ps.id = ssk.sku_id
+                                            AND ps.row_status = 'ACTIVE'
+                                        LEFT JOIN shop.t_shop_product_sku_lot l
+                                            ON l.shop_product_sku_id = ssk.id
+                                            AND l.is_on_sale = TRUE
+                                            AND l.row_status = 'ACTIVE'
+                                        WHERE (sp.shop_id, sp.product_id, ssk.sku_id) IN (<sequence.lineKeys>)
+                                        AND ssk.row_status = 'ACTIVE'
+                                    end note
+                                    t_shop_product_sku -> infra: Return query result
+                                deactivate t_shop_product_sku
+                                infra -> app: Return the SKU, the lot and its prices and max_order_quantity of every line
+                                app -> domain: Decide the availability of every line (AVAILABLE, QUANTITY_EXCEEDS_STOCK, OUT_OF_STOCK, UNAVAILABLE)
+                                activate domain
+                                domain -> app: Return the availability of every line
+                                deactivate domain
+                                alt A line is not AVAILABLE
+                                    app -> infra: ROLLBACK
+                                    app -> api: HTTP 409 E10007 Cart item <cartId>: the reason (QUANTITY_EXCEEDS_STOCK, OUT_OF_STOCK or UNAVAILABLE)
+                                    api -> page: Conflict
+                                    page -> user: Display the line that cannot be ordered
+                                else Every line is AVAILABLE
+                                    loop For every shop of the selected lines
+                                        app -> infra: QUERY - Get the campaigns that apply to the shop
+                                        infra -> m_campaign: QUERY - Get the campaigns that apply to the shop
+                                        activate m_campaign
+                                            note right of m_campaign
+                                                SELECT
+                                                    c.id as campaign_id,
+                                                    c.name,
+                                                    d.discount_type,
+                                                    d.discount_value,
+                                                    b.id as budget_id,
+                                                    b.remaining
+                                                FROM campaign.m_campaign c
+                                                INNER JOIN campaign.t_campaign_discount d
+                                                    ON d.campaign_id = c.id
+                                                    AND d.row_status = 'ACTIVE'
+                                                INNER JOIN campaign.m_campaign_budget b
+                                                    ON b.campaign_id = c.id
+                                                    AND b.row_status = 'ACTIVE'
+                                                WHERE c.row_status = 'ACTIVE'
+                                                AND c.start_at <= NOW() AT TIME ZONE 'UTC'
+                                                AND NOW() AT TIME ZONE 'UTC' < c.end_at
+                                                AND (EXISTS (
+                                                        SELECT 1
+                                                        FROM campaign.t_campaign_shop cs
+                                                        WHERE cs.campaign_id = c.id
+                                                        AND cs.shop_id = '<sequence.shopId>'
+                                                        AND cs.row_status = 'ACTIVE'
+                                                    ) OR NOT EXISTS (
+                                                        SELECT 1
+                                                        FROM campaign.t_campaign_shop cs
+                                                        WHERE cs.campaign_id = c.id
+                                                        AND cs.row_status = 'ACTIVE'
+                                                    ))
+                                                ORDER BY c.id
+                                            end note
+                                            m_campaign -> infra: Return query result
+                                        deactivate m_campaign
+                                        infra -> app: Return the campaigns with their discount and budget
+                                        alt At least one campaign applies
+                                            app -> infra: QUERY - Get the products and categories of the campaigns
+                                            infra -> t_campaign_product: QUERY - Get the products and categories of the campaigns
+                                            activate t_campaign_product
+                                                note right of t_campaign_product
+                                                    SELECT
+                                                        cp.campaign_id,
+                                                        cp.product_id,
+                                                        cp.product_category_id,
+                                                        p.id as matched_product_id
+                                                    FROM campaign.t_campaign_product cp
+                                                    LEFT JOIN product.m_product p
+                                                        ON p.id = cp.product_id
+                                                        OR p.category_id = cp.product_category_id
+                                                    WHERE cp.campaign_id IN ('<sequence.campaignIds>')
+                                                    AND cp.row_status = 'ACTIVE'
+                                                    AND p.id IN ('<sequence.productIds>') -- a campaign without a live product row is for every product
+                                                end note
+                                                t_campaign_product -> infra: Return query result
+                                            deactivate t_campaign_product
+                                            infra -> app: Return the products and categories of the campaigns
+                                        end
+                                    end
+                                    app -> domain: Calculate the discount of every item: the campaign with the largest discount wins, PERCENTAGE or FIXED_AMOUNT, never more than (selling_price - cost_price) x quantity; then the totals, the profit and the order code of every shop
+                                    activate domain
+                                    domain -> app: Return the orders to create
+                                    deactivate domain
+                                    loop For every lot of the items in lot id order, across all shops
+                                        app -> infra: UPDATE - Take the quantity from the lot that is on sale
+                                        infra -> t_shop_product_sku_lot: UPDATE - Take the quantity from the lot that is on sale
+                                        activate t_shop_product_sku_lot
+                                            note right of t_shop_product_sku_lot
+                                                UPDATE shop.t_shop_product_sku_lot
+                                                SET
+                                                    updated_by = '<sequence.userId>',
+                                                    updated_at = NOW() AT TIME ZONE 'UTC',
+                                                    quantity = quantity - '<sequence.quantity>'
+                                                WHERE id = '<sequence.lotId>'
+                                                AND is_on_sale = TRUE
+                                                AND row_status = 'ACTIVE'
+                                                AND quantity >= '<sequence.quantity>' -- no row changed means the stock was taken by someone else, answer 409 (E10007) and roll back
+                                                RETURNING id as lot_id, quantity
+                                            end note
+                                            t_shop_product_sku_lot -> infra: Return updated result
+                                        deactivate t_shop_product_sku_lot
+                                        infra -> app: Return the lot and its remaining quantity or no row
+                                        alt No row changed: the stock was taken by someone else
+                                            app -> infra: ROLLBACK
+                                            app -> api: HTTP 409 E10007 Cart item <cartId>: Quantity exceeds the available stock
+                                            api -> page: Conflict
+                                            page -> user: Display the item that cannot be bought
+                                        end
+                                    end
+                                    loop For every campaign of every order in budget id order
+                                        app -> infra: UPDATE - Take the budget of the campaign
+                                        infra -> m_campaign_budget: UPDATE - Take the budget of the campaign
+                                        activate m_campaign_budget
+                                            note right of m_campaign_budget
+                                                UPDATE campaign.m_campaign_budget
+                                                SET
+                                                    updated_by = '<sequence.userId>',
+                                                    updated_at = NOW() AT TIME ZONE 'UTC',
+                                                    remaining = remaining - '<sequence.discountTotal>'
+                                                WHERE id = '<sequence.budgetId>'
+                                                AND row_status = 'ACTIVE'
+                                                AND remaining >= '<sequence.discountTotal>' -- no row changed means the budget is short, answer 409 (E10007) and roll back
+                                                RETURNING id as budget_id, remaining
+                                            end note
+                                            m_campaign_budget -> infra: Return updated result
+                                        deactivate m_campaign_budget
+                                        infra -> app: Return the budget and what is left or no row
+                                        alt No row changed: the budget is short
+                                            app -> infra: ROLLBACK
+                                            app -> api: HTTP 409 E10007 The budget of the campaign cannot cover the discount of the order; check the checkout again
+                                            api -> page: Conflict
+                                            page -> user: Display the discount is no longer available
+                                        end
+                                    end
+                                    loop For every shop of the selected lines
+                                        app -> infra: INSERT - Create the order of a shop
+                                        infra -> t_order: INSERT - Create the order of a shop
+                                        activate t_order
+                                            note right of t_order
+                                                INSERT INTO sales.t_order (
+                                                    created_by,
+                                                    row_status,
+                                                    user_id,
+                                                    shop_id,
+                                                    address_id,
+                                                    ship_title,
+                                                    ship_address,
+                                                    ship_city,
+                                                    ship_state,
+                                                    ship_postal_code,
+                                                    ship_country,
+                                                    code,
+                                                    total_price,
+                                                    total_discount,
+                                                    total_tax,
+                                                    total_shipping,
+                                                    total_amount,
+                                                    expires_at,
+                                                    status
+                                                )
+                                                VALUES (
+                                                    &#39;<sequence.userId>',
+                                                    &#39;ACTIVE',
+                                                    &#39;<sequence.userId>',
+                                                    &#39;<sequence.shopId>',
+                                                    &#39;<sequence.addressId>',
+                                                    &#39;<sequence.address.title>', -- copy of the user address
+                                                    &#39;<sequence.address.address>',
+                                                    &#39;<sequence.address.city>',
+                                                    &#39;<sequence.address.state>',
+                                                    &#39;<sequence.address.postalCode>',
+                                                    &#39;<sequence.address.country>',
+                                                    &#39;<sequence.code>', -- generated by the system, generate a new code when it is not unique
+                                                    &#39;<sequence.totalPrice>',
+                                                    &#39;<sequence.totalDiscount>', -- sum of the item discounts, 0.00 when no campaign applies
+                                                    0.00,
+                                                    0.00,
+                                                    &#39;<sequence.totalAmount>',
+                                                    NOW() AT TIME ZONE 'UTC' + INTERVAL '<sequence.paymentWindow>',
+                                                    &#39;WAIT_PAYMENT'
+                                                )
+                                                RETURNING id as order_id, code, expires_at
+                                            end note
+                                            t_order -> infra: Return inserted result
+                                        deactivate t_order
+                                        infra -> app: Return order_id, code and expires_at
+                                        loop For every item of the order
+                                            app -> infra: INSERT - Create the items of the order
+                                            infra -> t_order_item: INSERT - Create the items of the order
+                                            activate t_order_item
+                                                note right of t_order_item
+                                                    INSERT INTO sales.t_order_item (
+                                                        created_by,
+                                                        order_id,
+                                                        shop_id,
+                                                        product_id,
+                                                        sku_id,
+                                                        lot_id,
+                                                        quantity,
+                                                        price,
+                                                        discount,
+                                                        total_price,
+                                                        gross_profit,
+                                                        shop_profit,
+                                                        platform_profit
+                                                    )
+                                                    VALUES (
+                                                        &#39;<sequence.userId>',
+                                                        &#39;<sequence.orderId>',
+                                                        &#39;<sequence.shopId>',
+                                                        &#39;<sequence.productId>',
+                                                        &#39;<sequence.skuId>',
+                                                        &#39;<sequence.lotId>', -- the lot that is on sale
+                                                        &#39;<sequence.quantity>',
+                                                        &#39;<sequence.sellingPrice>', -- selling price of the lot
+                                                        &#39;<sequence.discount>', -- discount of the campaign, 0.00 when none applies
+                                                        &#39;<sequence.sellingPrice * quantity>',
+                                                        &#39;<sequence.grossMargin * quantity - discount>', -- margin of the lot, the platform pays the discount
+                                                        &#39;<sequence.shareMargin * quantity>',
+                                                        &#39;<sequence.platformMargin * quantity - discount>'
+                                                    )
+                                                    RETURNING id as order_item_id
+                                                end note
+                                                t_order_item -> infra: Return inserted result
+                                            deactivate t_order_item
+                                            infra -> app: Return order_item_id
+                                        end
+                                        loop For every campaign of the order
+                                            app -> infra: INSERT - Write the reservation in the ledger
+                                            infra -> m_campaign_budget_ledger: INSERT - Write the reservation in the ledger
+                                            activate m_campaign_budget_ledger
+                                                note right of m_campaign_budget_ledger
+                                                    INSERT INTO campaign.m_campaign_budget_ledger (created_by, campaign_budget_id, campaign_id, order_id, entry_type, reference, usage, remaining)
+                                                    VALUES ('<sequence.userId>', '<sequence.budgetId>', '<sequence.campaignId>', '<sequence.orderId>', 'RESERVE', '<sequence.reference>', '<sequence.discountTotal>', '<sequence.remaining>')
+                                                    RETURNING id as ledger_id
+                                                end note
+                                                m_campaign_budget_ledger -> infra: Return inserted result
+                                            deactivate m_campaign_budget_ledger
+                                            infra -> app: Return ledger_id
+                                        end
+                                    end
+                                    app -> infra: UPDATE - Delete the cart lines that were ordered
+                                    infra -> t_cart: UPDATE - Delete the cart lines that were ordered
+                                    activate t_cart
+                                        note right of t_cart
+                                            UPDATE cart.t_cart
+                                            SET
+                                                updated_by = '<sequence.userId>',
+                                                updated_at = NOW() AT TIME ZONE 'UTC',
+                                                row_status = 'DELETED'
+                                            WHERE id IN ('<sequence.orderedCartIds>')
+                                            AND user_id = '<sequence.userId>'
+                                            AND row_status = 'ACTIVE'
+                                        end note
+                                        t_cart -> infra: Return updated result
+                                    deactivate t_cart
+                                    infra -> app: Return the deleted lines
+                                    app -> infra: COMMIT
+                                    app -> api: HTTP 201 S10000 Create Order Success: data.orders[] with the orders and their items
+                                    api -> page: Return the committed orders
+                                    page -> user: Display the orders waiting for payment
+                                end
+                            end
+                        end
+                    else Timeout before COMMIT
+                        note over app, infra
+                            A timeout can interrupt any preceding SQL or domain step.
+                            No success response is sent without a successful COMMIT.
+                        end note
+                        app -> infra: ROLLBACK
+                        app -> api: HTTP 408 E90001
+                        api -> page: Request timeout
+                        page -> user: Retry if needed
+                    else Unexpected failure before COMMIT
+                        app -> infra: ROLLBACK
+                        app -> api: HTTP 500 generic error; no new bizCode
+                        api -> page: Internal server error
+                        page -> user: Display generic failure
+                    end
+                    deactivate infra
+                end
+            deactivate app
+        end
+    deactivate api
+deactivate page
+
+@enduml
