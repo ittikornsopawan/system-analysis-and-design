@@ -13,7 +13,7 @@ description: Behaviour rules for e-commerce API specs: endpoint naming, HTTP and
 | `POST v1/<group>/<name>/upsert/batch` | `NN-upsert-<name>-batch` | the same for 1–100 rows in one transaction |
 | `GET v1/<group>/<name>` | `NN-inquiry-<name>` | list or fetch rows |
 
-Folder: `e-commerce/doc/api/<group>/<NN>-<name>/` with `spec.md` and an empty `sequence.wsd`; the number continues the group's numbering. Not every table needs all three (a table the system fills itself has only an inquiry; a customer-owned row like a review has no batch). Say why in the spec when you leave one out.
+Folder: `e-commerce/doc/api/<group>/<NN>-<name>/` with `spec.md` and `sequence.wsd` (the diagram, built from the spec with `scripts/sequence_skeleton.py` and finished by the author, see "Sequence diagram" below); the number continues the group's numbering. Not every table needs all three (a table the system fills itself has only an inquiry; a customer-owned row like a review has no batch). Say why in the spec when you leave one out.
 
 ## Upsert
 
@@ -73,3 +73,14 @@ validate the request (400) → existence (404) → permission (403) → conflict
 | public page | `doc/api/shop/04`, `14`, `16` |
 | customer-owned row from the token | `doc/api/consent/04`, `doc/api/shop/15` |
 | cart / checkout / order flow | `doc/api/cart/01`–`03`, `doc/api/sales/01`–`05` |
+
+## Sequence diagram (`sequence.wsd`)
+
+The diagram is the picture of the same behaviour that the spec states in words and SQL, so it must repeat every SQL of the spec exactly, in the spec's order. Build it, do not type it:
+
+1. Run `python3 .agents/skills/api-contract-design/scripts/sequence_skeleton.py <spec.md> --write`. It writes `sequence.wsd` next to the spec (without `--write` it prints on the screen; it refuses to overwrite a file that already has content unless you add `--force`). The skeleton has the header of the login diagram, the participants (one `database` per table, in the order of the spec), the handler line (`<Name>CommandHandler` when the spec has an INSERT, UPDATE or DELETE, `<Name>QueryHandler` when it only reads), and one block per SQL copied letter for letter. A write API has `BEGIN READ COMMITTED`, `COMMIT`, `ROLLBACK` and the 400 E10001, 408 E90001 and 500 branches; an inquiry has no transaction.
+2. Replace every `' TODO(author): ...` comment with what only the author can decide: the checks in the order of the spec (400 -> 404 -> 403 -> 409 -> write) as `alt` / `else` branches, which database block runs on which branch, the lock (`SELECT ... FOR UPDATE`), the values that pass between steps and one response for each outcome. The comments under each marker list the execution order and the success and failure examples of the spec as hints. Keep the SQL in the notes exactly as the spec has it (a line that starts with a quote is written `&#39;` and the checker decodes it).
+3. Run `python3 e-commerce/db/tests/check_docs.py api-sequence-spec`. No `' TODO(author)` marker may stay in a finished diagram (`grep -rn "TODO(author)" e-commerce/doc/api` must print nothing).
+4. Two things only the picture shows: a SQL line with two `--` (a comment after a commented-out line) is drawn struck through by PlantUML, and the script prints a warning for it; render the diagram when the warning appears and ask the lead SA whether to reword the spec line.
+
+`python3 .agents/skills/api-contract-design/scripts/test_sequence_skeleton.py` tests the script against every spec of the repository and against the hand-written diagrams; run it after you change the script, and mutation-test the script with `../data-modeling/scripts/mutation_harness.py` (the check is that test file).

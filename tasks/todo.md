@@ -347,4 +347,17 @@ Status: Implemented in the managed workspace of Marry on branch `feat/marry-sequ
 - [x] Lead review of PR #27, fix 3: fail when no spec is found or a required group has no spec; mutation-test the three fixes and rerun every check.
 - [ ] Push the fixes to the same branch, tell the lead; hold the lock until the merge, then release and park.
 
-Verification: `api-sequence-spec` prints `OK: api-sequence-spec (83 specs; ... 10 legacy without the login standard)`; harness 35 of 35 caught; 10 special cases of the first round as expected after the BEGIN case was rebuilt (see the lesson of 2026-11-07); review round: BEGIN moved after the locks in `02-login` (3 cases), every ROLLBACK before an error answer of `02-login` and `05-refresh-token` deleted one by one (8 cases), a ROLLBACK replaced by a query, no spec at all, a required group without spec and a missing required group are all caught; 40 of 40 sub-commands OK; audit 53 tables, 0 findings; database tests ALL PASSED.
+Verification: `api-sequence-spec` prints `OK: api-sequence-spec (83 specs; ... 10 legacy without the login standard)`; harness 35 of 35 caught; special cases 10 of 10 as expected after the BEGIN case was rebuilt (see the lesson of 2026-11-07); 40 of 40 sub-commands OK; audit 53 tables, 0 findings; database tests ALL PASSED.
+
+## repository-wide: Sequence phase 0, generator side (`sequence_skeleton.py`)
+
+Status: Complete in the branch, waiting for gate review. Assignment: agent `tommy`, delivery `open-pr`, authorized by `josh` (the product owner ordered phase 0 and the split of the work), workspace `.workspace/tommy`, branch `feat/tommy-sequence-skeleton-generator`, scope `.agents/skills/api-contract-design` and `tasks`. Marry owns the checker side (`check_docs.py`, PR 27 merged).
+
+- [x] Read the login and consent diagrams and `spec_database_operations` / `sequence_database_operations` of `check_docs.py`.
+- [x] Write `.agents/skills/api-contract-design/scripts/sequence_skeleton.py` (stdout, `--write`, `--force`, refuses a file with content).
+- [x] Write `scripts/test_sequence_skeleton.py`: all 83 specs through the parser and the structure and login-standard checks of `check_docs.py`, the 18 hand-written diagrams against the generated database blocks and participants, the command line.
+- [x] Mutation-test the script with `mutation_harness.py` (24 cases) and parse every skeleton with PlantUML.
+- [x] Update `SKILL.md` and `references/api-conventions.md` (no empty `sequence.wsd`: generator, checker, no `TODO(author)` left).
+- [x] Run the project checkers and open the PR with `commit-and-pr`; do not merge.
+
+Verification: see the PR. Not run: the script was not used to fill the 65 empty diagrams (that is the next step of phase 0 and changes `e-commerce/doc/api`, outside this scope).
