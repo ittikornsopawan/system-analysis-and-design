@@ -1,3 +1,11 @@
+---
+name: Logout API Specification
+description: Defines user-first serialized logout, fresh credential/session checks, atomic session-wide access/refresh revocation, concurrent refresh behavior, complete outcomes and exact SQL for POST v1/auth/logout.
+status: in-review
+approved_by: null
+approved_at: null
+---
+
 # [POST]: v1/auth/logout
 
 | Title       | Description                                                                                                                                            |
@@ -36,11 +44,30 @@ No body.
 
 ### Logout Rules
 
-- The caller is the user of the access token. The access token is checked as defined for every private API (signature, expiry, an ACTIVE row of `authen.t_user_access_token` and an ACTIVE user), otherwise 401 (E10002).
-- Logout closes **every ACTIVE access token and refresh token that has the same `session_id` as the access token of the request**, including the access tokens that earlier refreshes issued and that have not expired yet. It makes them INACTIVE in one transaction. Sessions of other devices are not changed.
-- After logout the same access token is rejected with 401 on every API, because its row is INACTIVE. Calling logout again therefore answers 401.
-- Lock order: read the session of the access token, lock the `authen.m_user` row (`FOR UPDATE`), then close the tokens.
-- Execution order: check the access token (401) -> lock the user row -> close the access tokens of the session -> close the refresh tokens of the session -> answer 200.
+- Governing behavior: [owner-confirmed review](../../../../../docs/superpowers/specs/2026-11-07-api-review-design.md), Q13, approved by the product owner, and WP4 U9/U23. This detailed endpoint revision remains in-review; no backend implementation is included. No administrator role is required to log out of one's own session.
+- No body or target userId/sessionId is accepted. Validate mandatory timestamp as a UTC timestamp and empty body before SQL; invalid input returns 400 E10001. Generate requestId when omitted. Missing/malformed Bearer credentials or failed JWT signature/issuer/audience/expiry/UUID sub validation return the same 401 E10002 `Invalid or expired access token.` before a transaction.
+- Derive userId only from verified JWT sub and accessTokenHash as SHA-256 (32 bytes) of the exact presented JWT. Never take userId/sessionId from the request or trust an unverified token payload. JWT role/permission changes do not change this self-session operation; current credential/user checks are still required.
+- Lock order: BEGIN READ COMMITTED -> lock the ACTIVE authen.m_user row FOR UPDATE -> capture fresh server UTC now after the lock -> recheck JWT expiry and read the ACTIVE stored access token/session using hash, userId and expiry > now -> close the session's access rows -> close the session's refresh rows -> COMMIT -> 200. Do not use a pre-lock token/session snapshot or transaction-start NOW() to authorize a waiter. No token UPDATE may run before the user lock and fresh credential check.
+- Missing/inactive user or missing/revoked/expired/mismatched credential returns the same 401 after ROLLBACK, with no token changes. sessionId comes only from the post-lock access-token row; it is not a JWT flag or caller-selected target. If the JWT expires while waiting, the post-lock expiry check rejects the call even if it passed before the wait.
+- Close **every ACTIVE access token and refresh token that has the same `session_id` as the access token of the request**, including all access tokens issued by earlier refreshes in that session. Both UPDATEs also guard user_id. Sessions of other devices are not changed. Other users are unaffected even if legacy data reuses a sessionId. Do not filter revocation to the presented token hash or only unexpired rows: all ACTIVE rows of this user/session become INACTIVE.
+- The common user lock serializes logout with refresh, password reset and other conforming credential writers for that user. If refresh commits first, logout reads its still-valid presented access token and closes the newly issued pair too. If logout commits first, a later refresh rereads an INACTIVE credential and cannot issue new tokens. A second concurrent logout waits, then finds its access token INACTIVE and returns 401 without writes. Calling logout again likewise answers 401.
+- Both token-table changes are one transaction. Zero refresh rows is allowed when none remains ACTIVE; the access token that authorized the request must be included in access closure. Use returned affected counts for consistency checks; an unexpected zero access-row update after valid authorization is an internal failure that rolls back, not 200. Do not commit only one token table. All parameters are typed bound UUIDs/bytes/timestamps, never interpolated SQL; updatedBy is the verified userId.
+- COMMIT must succeed before 200 S10000 `Logout Success` with status only and no data. On timeout before commit, ROLLBACK then 408 E90001; on unexpected pre-commit failure, ROLLBACK then generic 500 without a new bizCode. None of the 400/401/408/500 paths intentionally preserves a token change. A lost response after commit does not undo logout: retry with that token returns 401 because revocation is durable.
+- A successful logout does not issue tokens, refresh claims, alter roles/passwords, or affect another session. Each database result returns to Application before branching or deriving sessionId. Return generic credential errors without revealing whether user/token/session exists.
+
+#### Scenario correspondence with sequence.wsd
+
+| Scenario                                         | Required sequence behavior                                       | HTTP             | Durable effects                                 |
+| ------------------------------------------------ | ---------------------------------------------------------------- | ---------------- | ----------------------------------------------- |
+| Invalid timestamp/body                           | No SQL or BEGIN                                                  | 400 E10001       | None                                            |
+| Missing/invalid JWT                              | No SQL or BEGIN                                                  | 401 E10002       | None                                            |
+| Missing/inactive user                            | User lock returns no ACTIVE row; ROLLBACK                        | 401 E10002       | None                                            |
+| Revoked/expired/mismatched token after lock wait | Fresh token check fails; ROLLBACK                                | 401 E10002       | None                                            |
+| Valid current session                            | Close both token tables after lock/check, COMMIT before response | 200 S10000       | All ACTIVE tokens in that user/session INACTIVE |
+| Unexpected zero access closure                   | Abort and ROLLBACK before common success                         | 500              | None                                            |
+| Concurrent refresh first                         | Close its new pair too under the same user lock                  | 200 S10000       | Session remains fully revoked                   |
+| Concurrent logout first / repeated call          | Fresh credential check sees INACTIVE                             | 401 E10002       | No additional writes                            |
+| Timeout / other pre-commit failure               | ROLLBACK every token change                                      | 408 E90001 / 500 | None                                            |
 
 #### Example Body Parameters
 
@@ -142,36 +169,42 @@ No `data`. Only the status object is returned.
 }
 ```
 
+#### Fail - Bad Request
+
+```JSON
+{
+    "status": {
+        "code": 400,
+        "message": "Bad Request",
+        "bizCode": "E10001",
+        "bizMessage": "Timestamp must be a valid UTC timestamp and the request body must be empty.",
+        "requestId": "req-logout-review",
+        "timestamp": "2026-11-07T12:00:00.123Z",
+        "status": "ERROR"
+    }
+}
+```
+
+#### Fail - Internal Server Error
+
+```JSON
+{
+    "status": {
+        "code": 500,
+        "message": "Internal Server Error",
+        "bizMessage": "An unexpected error occurred.",
+        "requestId": "req-logout-review",
+        "timestamp": "2026-11-07T12:00:00.123Z",
+        "status": "ERROR"
+    }
+}
+```
+
 ---
 
 ## Database Relations
 
-### Table: [authen.t_user_access_token](../../../schema/authen/t_user_access_token.md)
-
-#### QUERY - Get the session of the access token
-
-```SQL
-SELECT
-    at.session_id
-FROM authen.t_user_access_token at
-WHERE at.token = '<sequence.accessTokenHash>' -- SHA-256 of the JWT
-AND at.user_id = '<sequence.userId>'
-AND at.row_status = 'ACTIVE'
-AND at.expired_at > NOW() AT TIME ZONE 'UTC'
-```
-
-#### UPDATE - Close the access tokens of the session
-
-```SQL
-UPDATE authen.t_user_access_token
-SET
-    updated_by = '<sequence.userId>',
-    updated_at = NOW() AT TIME ZONE 'UTC',
-    row_status = 'INACTIVE'
-WHERE session_id = '<sequence.sessionId>'
-AND user_id = '<sequence.userId>'
-AND row_status = 'ACTIVE'
-```
+Statements are listed in execution order, all under the common user transaction lock. now is captured after that lock returns. sessionId is the post-lock stored access-token result; affected row counts return from each UPDATE.
 
 ### Table: [authen.m_user](../../../schema/authen/m_user.md)
 
@@ -186,6 +219,35 @@ AND u.row_status = 'ACTIVE'
 FOR UPDATE -- every authen API locks the user row first
 ```
 
+### Table: [authen.t_user_access_token](../../../schema/authen/t_user_access_token.md)
+
+#### QUERY - Get the session of the access token
+
+```SQL
+SELECT
+    at.session_id
+FROM authen.t_user_access_token at
+WHERE at.token = '<sequence.accessTokenHash>' -- SHA-256 of the JWT
+AND at.user_id = '<sequence.userId>'
+AND at.row_status = 'ACTIVE'
+AND at.expired_at > '<sequence.now>'
+```
+
+### Table: [authen.t_user_access_token](../../../schema/authen/t_user_access_token.md)
+
+#### UPDATE - Close the access tokens of the session
+
+```SQL
+UPDATE authen.t_user_access_token
+SET
+    updated_by = '<sequence.userId>',
+    updated_at = '<sequence.now>',
+    row_status = 'INACTIVE'
+WHERE session_id = '<sequence.sessionId>'
+AND user_id = '<sequence.userId>'
+AND row_status = 'ACTIVE'
+```
+
 ### Table: [authen.t_user_refresh_token](../../../schema/authen/t_user_refresh_token.md)
 
 #### UPDATE - Close the refresh tokens of the session
@@ -194,7 +256,7 @@ FOR UPDATE -- every authen API locks the user row first
 UPDATE authen.t_user_refresh_token
 SET
     updated_by = '<sequence.userId>',
-    updated_at = NOW() AT TIME ZONE 'UTC',
+    updated_at = '<sequence.now>',
     row_status = 'INACTIVE'
 WHERE session_id = '<sequence.sessionId>'
 AND user_id = '<sequence.userId>'

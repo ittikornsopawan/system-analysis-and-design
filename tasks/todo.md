@@ -389,3 +389,20 @@ Status: Implemented in the managed workspace of Marry on branch `fix/marry-rejec
 - [ ] Preflight, commit, push, open the pull request, tell the lead; hold the lock until the merge, then release and park.
 
 Verification: `python3 .agents/skills/agent-workspace/tests/test_agent_workspace.py` runs 15 tests OK (13 before).
+
+
+## e-commerce: Peter API review — logout (API 8)
+
+Status: Author/me delivered as PR #37 (four files; MERGEABLE when opened), branch/history preserved. Clean main-based logout assignment passed baselines under Q15. Q13 keeps immediate credential revocation; WP4 U9/U23 requires the user lock and atomic closure of every token in the caller's session. Management-consent Q18/Q19 remains pending; independent authorized work continues.
+
+- [x] Preserve PR #37/history and prepare logout from main without waiting for merge. The first prepare label exceeded the helper's 240-character formatting limit; shorten only that label, retaining scope/requirements/authority, then prepare successfully.
+- [x] Read logout spec/sequence and relevant transaction, full-session revocation and lock-order lessons; reproduce the sequence's access-token UPDATE before user lock.
+- [x] Correct spec with user-first lock, fresh post-lock token/session/expiry validation, server-derived ids, complete atomic revocation and error/retry semantics.
+- [x] Regenerate then finish sequence with actual execution order, every SQL request/result and success/invalid/revoked/rollback/timeout paths; remove its legacy exemption only when the new standard passes.
+- [x] Add logout-flow checks, reject original/synchronized faults and mutation-test ordering, scope, transaction and rendered SQL.
+- [ ] Execute exact SQL for session-wide closure, rollback, concurrent refresh/logout and expiry/revocation while waiting; render/inspect SVG/PNG and pass all current delivery checks.
+- [ ] Open one logout PR through commit-and-pr, preserve its review record and continue from main under Q15.
+
+Logout verification: four identical SQL operations in user-lock -> fresh session -> access closure -> refresh closure order; eight terminal paths. Regenerated via the ready skeleton tool, completed all markers/branches/mappings and removed the now-complete legacy exemption. Original pair rejected; mutations caught 36/36 (durable temporary log retained). Four additional synchronized faults, including moving the complete access UPDATE before the user lock while preserving SQL parity/participant first use, are rejected by logout-flow. Real rendered omission rejected independently; final PlantUML has nine participants, inspected SVG/PNG and 29/29 visible SQL lines. Temporary PostgreSQL executed exact logout and refresh credential statements: full closure includes older/expired ACTIVE access rows, preserves other devices/users even with a shared session id and inactive history, actual mid-transaction error rolls back, zero refresh closure is valid, zero access closure is detected, repeated/concurrent logout sees revocation, both refresh/logout races leave no new usable pair, and post-lock time rejects expiry while waiting. These are design/SQL checks, not backend conformance.
+
+Logout pre-integration preflight passed 41/41 commands, audit 53/0, database ALL PASSED and four authorized paths. Origin/main then advanced through the already merged API reviews and cart/order/webhook diagrams; checker syntax at 4c263c7 was broken by incomplete merged function bodies. Latest main was checked again before integration and now carries the upstream repair. Integrate the latest complete checker, preserve every command/body and rerun the full current checks before delivery.
