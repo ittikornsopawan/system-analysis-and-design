@@ -181,7 +181,7 @@ description: Repository-wide and project-specific lessons captured from user cor
 
 - **Correction**: The owner challenged whether sequence.wsd had been checked alongside spec.md. Both files were changed in PR #23, but the handoff did not make the paired evidence easy to inspect. The subsequent render exposed a real gap: PlantUML treated SQL value lines beginning with a single quote as comments, so VALUES were missing in the image even though source SQL parity passed.
 - **Root cause**: Source equality, table activation and branch checks were treated as sufficient diagram evidence without verifying the renderer's interpretation of the same SQL text.
-- **Corrected behavior**: Review each scenario against both files, including validation, input/result mapping, permissions, SQL order, transaction effects and HTTP outcomes; preserve visible SQL values with renderer-safe escaping and compare the decoded SQL; render and inspect the diagram before claiming the diagram is verified, and show paired paths plus a scenario correspondence table in the handoff.
+- **Corrected behavior**: Review each scenario against both files, including validation, input/result mapping, permissions, SQL order, transaction effects and HTTP outcomes; preserve visible SQL values with renderer-safe escaping and compare the decoded SQL; render and inspect the diagram before claiming the diagram is verified, and show paired paths plus a scenario correspondence table in the handoff. Any SQL edit must update its existing sequence in the same PR; run every current checker before each push, and announce the current and next API group to coordinate concurrent work.
 
 ### 2026-11-07 — Discover installed runtimes beyond PATH
 

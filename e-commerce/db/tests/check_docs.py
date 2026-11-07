@@ -3512,7 +3512,7 @@ AUTHEN_NEEDLES = {
            "30 minutes", "(../../../schema/authen/t_user_reset_password.md)", "(../../../schema/authen/m_user.md)", "Email Address is required and must be a valid email address.",
            "E10001", "E90001", "AND rp.created_at > '<sequence.windowStart>'", "AND row_status = 'ACTIVE'"],
     "04": ["# [POST]: v1/auth/create-new-password", "### Create New Password Rules", "Reset token is invalid or expired.", "New password must be different from the current password.",
-           AUTHEN_POLICY, "AND row_status = 'ACTIVE'\nAND expired_at > NOW() AT TIME ZONE 'UTC'\nRETURNING id as reset_id", "#### UPDATE - Close the access tokens of the user",
+           AUTHEN_POLICY, "AND row_status = 'ACTIVE'\nAND expired_at > '<sequence.now>'\nRETURNING id as reset_id", "#### UPDATE - Close the access tokens of the user",
            "#### UPDATE - Close the refresh tokens of the user", "#### UPDATE - Make the current password INACTIVE", "#### INSERT - Create password", "PBKDF2-HMAC-SHA256",
            "600,000", "Password storage: PBKDF2-HMAC-SHA256 with a random 16 byte salt and 600,000 iterations", "uq_m_user_password_user_id_password", AUTHEN_LOCK, "Lock order:", "(../../../schema/authen/m_user_password.md)",
            "WHERE user_id = '<sequence.userId>'\nAND row_status = 'ACTIVE'", "AND up.row_type = 'PASSWORD'\nAND up.row_status = 'ACTIVE'", "E10001", "E90001"],
@@ -3852,13 +3852,29 @@ REQUIRED_GROUPS = ("authen-and-author", "consent")
 LEGACY_SEQUENCES = (
     # authen-and-author: waiting for a retrofit to the login standard
     "authen-and-author/03-reset-password",
-    "authen-and-author/04-create-new-password",
     "authen-and-author/07-upsert-user-profile",
     "authen-and-author/09-upsert-user-address",
     # consent: waiting for a retrofit to the login standard
     "consent/02-upsert-consent",
     "consent/06-upsert-consent-type",
     "consent/07-upsert-consent-type-batch",
+)
+# Diagrams written before the access token and timeout answers became part of the check. Each is exempt from the token
+# rule (Verify JWT and 401 E10002 when the spec has a mandatory authorization header) and from the 408 E90001 rule, and
+# must still fail at least one of them: a file that passes both has to leave this list. Remove an entry in the same
+# change that adds the missing answers to the diagram.
+LEGACY_TOKEN_SEQUENCES = (
+    "authen-and-author/03-reset-password",          # no 408
+    "authen-and-author/04-create-new-password",     # no 408
+    "authen-and-author/07-upsert-user-profile",     # no Verify JWT / 401 step, no 408
+    "authen-and-author/08-inquiry-user-profile",    # no Verify JWT / 401 step, no 408
+    "authen-and-author/09-upsert-user-address",     # no Verify JWT / 401 step, no 408
+    "authen-and-author/10-inquiry-user-address",    # no Verify JWT / 401 step, no 408
+    "consent/02-upsert-consent",                    # no Verify JWT / 401 step, no 408
+    "consent/03-inquiry-consent",                   # no Verify JWT / 401 step, no 408
+    "consent/06-upsert-consent-type",               # no Verify JWT / 401 step, no 408
+    "consent/07-upsert-consent-type-batch",         # no Verify JWT / 401 step, no 408
+    "consent/08-inquiry-consent-type",              # no Verify JWT / 401 step, no 408
 )
 
 
@@ -3990,9 +4006,12 @@ def sequence_login_standard_errors(text: str) -> list[str]:
     writes = [m.start() for m in re.finditer(r"^\s*infra -> \w+: (?:INSERT|UPDATE|DELETE)", text, re.MULTILINE)]
     # A read that only finds the row to lock (05-refresh-token) may come before BEGIN; every write must come after it.
     lines = text.splitlines()
+    begin_line = next(i for i, line in enumerate(lines) if "-> infra: BEGIN" in line)
+    # Routing reads can fail before BEGIN: there is no transaction to roll back yet.
+    # Every 408/500 after BEGIN still requires its own immediately preceding ROLLBACK.
     for position, line in enumerate(lines):
         failure = re.match(r"^(\s*)app -> api: HTTP (408 E90001|500)\b", line)
-        if failure and (position == 0 or lines[position - 1] != failure.group(1) + "app -> infra: ROLLBACK"):
+        if failure and position > begin_line and (position == 0 or lines[position - 1] != failure.group(1) + "app -> infra: ROLLBACK"):
             errors.append(f"line {position + 1}: HTTP {failure.group(2)} must follow 'app -> infra: ROLLBACK' on the line before")
     for needle in ("HTTP 400 E10001", "HTTP 408 E90001", "HTTP 500"):
         if not re.search(rf"^\s*app -> api: {re.escape(needle)}", text, re.MULTILINE):
@@ -4032,6 +4051,58 @@ def sequence_login_standard_errors(text: str) -> list[str]:
             errors.append(f"line {position + 1}: {line.strip().split(': ', 1)[1]} inside the transaction must follow 'app -> infra: ROLLBACK' or 'COMMIT' (found {previous!r})")
     if interactions and text.rindex("-> infra: COMMIT") < interactions[-1]:
         errors.append("COMMIT must come after the last SQL interaction")
+    return errors
+
+
+SEQUENCE_AUTH_ROW = re.compile(r"^\|\s*\d+\s*\|\s*authorization\s*\|[^|]*\|\s*MANDATORY\s*\|", re.MULTILINE | re.IGNORECASE)
+
+
+def spec_needs_token(spec_text: str) -> bool:
+    """The spec has a mandatory authorization header, so the caller sends an access token (login and refresh do not)."""
+    return bool(SEQUENCE_AUTH_ROW.search(spec_text))
+
+
+def spec_is_public(spec_text: str) -> bool:
+    """The spec has no authorization header and says it is a public API."""
+    return not spec_needs_token(spec_text) and bool(re.search(r"public api|api is public", spec_text, re.IGNORECASE))
+
+
+def sequence_answer_errors(text: str, needs_token: bool, is_public: bool) -> list[str]:
+    """Token, public and timeout answers: the 401 comes after the access token is verified and before the first database call."""
+    errors = []
+    lines = text.splitlines()
+    first_infra = next((n for n, line in enumerate(lines) if re.match(r"^\s*app -> infra:", line)), len(lines))
+    if needs_token:
+        verify = next((n for n, line in enumerate(lines) if re.match(r"^\s*app -> app: Verify\b.*(?:\bJWT\b|access token)", line, re.IGNORECASE)), None)
+        answer = next((n for n, line in enumerate(lines) if re.match(r"^\s*app -> api: HTTP 401 E10002\b", line)), None)
+        if verify is None:
+            errors.append("the spec has a mandatory authorization header: missing 'app -> app: Verify JWT ...' (or 'Verify the access token ...')")
+        if answer is None:
+            errors.append("the spec has a mandatory authorization header: missing 'app -> api: HTTP 401 E10002'")
+        if verify is not None and answer is not None:
+            if not verify < answer < first_infra:
+                errors.append("the access token is verified and the 401 E10002 is answered before the first 'app -> infra' line")
+            elif not any(re.match(r"^\s*alt\b", line) for line in lines[verify + 1:answer]):
+                errors.append("the 401 E10002 answer belongs to an alt branch right after the verify step")
+    if is_public and any(re.match(r"^\s*app -> api: HTTP 401\b", line) for line in lines):
+        errors.append("the spec is a public API (no authorization header): the diagram must not answer 401")
+    if not any(re.match(r"^\s*app -> api: HTTP 408 E90001\b", line) for line in lines):
+        errors.append("missing 'app -> api: HTTP 408 E90001'")
+    return errors
+
+
+def sequence_heading_errors(text: str) -> list[str]:
+    """Each 'app -> infra: <SQL heading>' line is followed at once by 'infra -> <table>: <the same heading>'."""
+    errors = []
+    lines = text.splitlines()
+    for number, line in enumerate(lines):
+        request = re.match(r"^\s*app -> infra: ((?:QUERY|INSERT|UPDATE|DELETE) - .*)$", line)
+        if not request:
+            continue
+        following = re.match(r"^\s*infra -> \w+: (.*)$", lines[number + 1]) if number + 1 < len(lines) else None
+        if not following or following.group(1) != request.group(1):
+            found = following.group(1) if following else (lines[number + 1].strip() if number + 1 < len(lines) else "end of file")
+            errors.append(f"line {number + 1}: 'app -> infra: {request.group(1)}' must be followed by 'infra -> <table>: {request.group(1)}', found {found!r}")
     return errors
 
 
@@ -4091,6 +4162,9 @@ def check_api_sequence_spec() -> int:
     for entry in LEGACY_SEQUENCES:
         if not (api_root / entry / "spec.md").exists():
             errors.append(f"LEGACY_SEQUENCES lists {entry}, which is not a spec folder")
+    for entry in LEGACY_TOKEN_SEQUENCES:
+        if not (api_root / entry / "spec.md").exists():
+            errors.append(f"LEGACY_TOKEN_SEQUENCES lists {entry}, which is not a spec folder")
     for spec_path in specs:
         group = spec_path.parent.parent.name
         folder = f"{group}/{spec_path.parent.name}"
@@ -4122,6 +4196,14 @@ def check_api_sequence_spec() -> int:
                 errors.append(f"{relative_sequence}: already follows the login standard, remove it from LEGACY_SEQUENCES")
         else:
             errors.extend(f"{relative_sequence}: login standard: {error}" for error in standard_errors)
+        spec_text = spec_path.read_text(encoding="utf-8")
+        errors.extend(f"{relative_sequence}: {error}" for error in sequence_heading_errors(sequence_text))
+        answer_errors = sequence_answer_errors(sequence_text, spec_needs_token(spec_text), spec_is_public(spec_text))
+        if folder in LEGACY_TOKEN_SEQUENCES:
+            if not answer_errors:
+                errors.append(f"{relative_sequence}: already has the token and timeout answers, remove it from LEGACY_TOKEN_SEQUENCES")
+        else:
+            errors.extend(f"{relative_sequence}: {error}" for error in answer_errors)
         declared_tables = re.findall(r'^\s*database "[^"]+" as (\w+)$', sequence_text, re.MULTILINE)
         errors.extend(f"{relative_sequence}: {error}" for error in sequence_block_errors(spec_operations, sequence_operations, declared_tables))
     if errors:
@@ -4129,7 +4211,7 @@ def check_api_sequence_spec() -> int:
     summary = ", ".join(
         f"{group} {filled}/{total}{'' if group in REQUIRED_GROUPS else ' pending' if filled < total else ''}" for group, (filled, total) in sorted(groups.items())
     )
-    print(f"OK: api-sequence-spec ({len(specs)} specs; filled/total per group: {summary}; {len(LEGACY_SEQUENCES)} legacy without the login standard)")
+    print(f"OK: api-sequence-spec ({len(specs)} specs; filled/total per group: {summary}; {len(LEGACY_SEQUENCES)} legacy without the login standard; {len(LEGACY_TOKEN_SEQUENCES)} legacy without the token and timeout answers)")
     return 0
 
 
@@ -6116,6 +6198,107 @@ def check_logout_flow() -> int:
 
 
 COMMANDS['logout-flow'] = check_logout_flow
+def check_create_password_flow() -> int:
+    """Check reset single-use serialization, password replacement and all-session revocation."""
+    path=AUTHEN_SPECS['04'];md=read(path);wsd=read(str(Path(path).with_name('sequence.wsd')));errors=[]
+    for needle in ('status: in-review','approved_by: null','approved_at: null','2026-11-07-api-review-design.md',
+                   'lookup is only a routing hint','fresh server UTC now after the lock','No reset/password/token UPDATE may run before the user lock',
+                   'resetId, userId, resetTokenHash, ACTIVE status','constant time','random 16 byte salt and 600,000 iterations',
+                   'reset token stays usable until it expires','TEMPORARY_PASSWORD and prior history rows are unchanged',
+                   'every session','Zero access/refresh rows is allowed','COMMIT must succeed before 200',
+                   'A lookup timeout/failure before BEGIN','A missing current password is an internal consistency failure',
+                   'A second reset waits','A refresh/login that commits first','Scenario correspondence with sequence.wsd'):
+        if needle not in md:errors.append(f'create-password spec missing {needle!r}')
+    operations=spec_database_operations(md)
+    expected=('QUERY - Find the reset token','QUERY - Lock the user','UPDATE - Use the reset token once','QUERY - Get current password','UPDATE - Make the current password INACTIVE','INSERT - Create password','UPDATE - Close the access tokens of the user','UPDATE - Close the refresh tokens of the user')
+    if tuple(h for _,h,_ in operations)!=expected:errors.append('reset SQL must follow routing, user lock, consume, password comparison/replacement, both revocations')
+    sql={h:re.sub(r'--[^\n]*','',s) for _,h,s in operations}
+    required={expected[0]:["rp.reset_token = '<sequence.resetTokenHash>'","rp.row_status = 'ACTIVE'","rp.expired_at > '<sequence.lookupNow>'",'rp.id as reset_id','rp.user_id'],
+              expected[1]:["u.id = '<sequence.userId>'","u.row_status = 'ACTIVE'",'FOR UPDATE'],
+              expected[2]:["WHERE id = '<sequence.resetId>'","AND user_id = '<sequence.userId>'","AND reset_token = '<sequence.resetTokenHash>'","AND row_status = 'ACTIVE'","AND expired_at > '<sequence.now>'",'RETURNING id as reset_id'],
+              expected[3]:['up.id as password_id','up.password,','up.password_salt',"up.user_id = '<sequence.userId>'","up.row_type = 'PASSWORD'","up.row_status = 'ACTIVE'"],
+              expected[4]:["WHERE id = '<sequence.passwordId>'","AND user_id = '<sequence.userId>'","AND row_type = 'PASSWORD'","AND row_status = 'ACTIVE'",'RETURNING id as password_id'],
+              expected[5]:['INSERT INTO authen.m_user_password','created_by,','row_type,','user_id,','password,','password_salt',"'PASSWORD'","'<sequence.passwordBytes>'","'<sequence.passwordSaltBytes>'"]}
+    for h in (expected[2],expected[4],expected[6],expected[7]):
+        required.setdefault(h,[]).extend(["updated_by = '<sequence.userId>'","updated_at = '<sequence.now>'","row_status = 'INACTIVE'"])
+    for h in expected[6:]:required[h].extend(["WHERE user_id = '<sequence.userId>'","AND row_status = 'ACTIVE'"])
+    for h,needles in required.items():
+        for needle in needles:
+            if needle not in sql.get(h,''):errors.append(f'{h} missing {needle}')
+    for h in expected[6:]:
+        if re.search(r'\bsession_id\b|\bexpired_at\b|\btoken\s*=',sql.get(h,'')):errors.append('reset must revoke every ACTIVE user session, including expired rows')
+    if 'NOW()' in '\n'.join(sql.values()) or any(t.startswith('author.') for t,_,_ in operations):errors.append('reset needs captured post-lock time and no role lookup')
+    actual,lifecycle=sequence_database_operations(wsd);errors+=lifecycle
+    # Compare every decoded character, including SQL whitespace; only PlantUML note indentation is removed.
+    if [(t.split('.')[-1],h,s) for t,h,s in operations]!=actual:errors.append('reset spec/sequence SQL differs character-for-character or order')
+    errors+=sequence_login_standard_errors(wsd)
+    for _,heading,_ in operations:
+        if f'app -> infra: {heading}' not in wsd:errors.append(f'{heading} needs Application request')
+        match=re.search(rf'infra -> (\w+): {re.escape(heading)}\n.*?deactivate \1\n([^\n]+)',wsd,re.S)
+        if not match or not match[2].strip().startswith('infra -> app: Return '):errors.append(f'{heading} needs Application result')
+    for needle in ('resetTokenHash = SHA-256 exact resetToken; capture server UTC lookupNow',
+                   'resetId/userId = returned row; never request userId',
+                   'Capture fresh server UTC now after user lock; do not reuse lookupNow',
+                   'alt Exactly one reset_id returned','alt Exactly one ACTIVE PASSWORD returned',
+                   'passwordId = returned password_id; candidate = PBKDF2-HMAC-SHA256(newPassword, stored salt, 600000); constant-time compare',
+                   'alt Candidate differs from current password','else Candidate equals current password',
+                   'Generate fresh cryptographically random 16-byte passwordSaltBytes; derive passwordBytes with PBKDF2-HMAC-SHA256 600000',
+                   'alt Exactly one password_id returned','else Unexpected zero old-password update',
+                   'accessClosedCount and refreshClosedCount may be zero; all changes remain atomic'):
+        if needle not in wsd:errors.append(f'reset sequence missing {needle!r}')
+    traces,structure=login_sequence_paths(wsd);errors+=structure
+    from collections import Counter
+    outcomes=[];early=[]
+    for trace in traces:
+        response=[e for e in trace if e.startswith('app -> api: HTTP ')]
+        if len(response)!=1:errors.append('reset trace needs exactly one outcome');continue
+        code=int(response[0].split('HTTP ')[1].split()[0]);outcomes.append(code)
+        def ordered(*parts):
+            pos=[next((i for i,e in enumerate(trace) if part in e),-1) for part in parts]
+            return -1 not in pos and pos==sorted(set(pos))
+        queries=[e for e in trace if e.startswith('infra -> ')]
+        writes=[e for e in queries if ': UPDATE' in e or ': INSERT' in e]
+        begun=any(e.startswith('app -> infra: BEGIN') for e in trace)
+        if queries and not ordered('resetTokenHash = SHA-256',expected[0]):errors.append('lookup must follow hash and lookup clock')
+        if any(expected[2] in e for e in trace) and not ordered(expected[0],'resetId/userId = returned row','BEGIN READ COMMITTED',expected[1],'Capture fresh server UTC now',expected[2]):errors.append('reset consumption must follow BEGIN/user lock/fresh clock')
+        if any(expected[4] in e for e in trace) and not ordered(expected[2],expected[3],'candidate = PBKDF2','Generate fresh cryptographically random',expected[4]):errors.append('password change must follow consumption, current password comparison and fresh derivation')
+        if code==200:
+            if not ordered(*expected,'app -> infra: COMMIT','HTTP 200') or len(writes)!=5:errors.append('success must consume once, replace password and revoke both token tables before COMMIT/200')
+            if 'status only, no data' not in response[0] or any('ROLLBACK' in e for e in trace):errors.append('reset success must have status only and no rollback')
+        elif begun:
+            if not ordered('BEGIN','ROLLBACK',f'HTTP {code}') or any(e=='app -> infra: COMMIT' for e in trace):errors.append('every transactional failure must roll back before response')
+            if code==400 and len(writes)>1:errors.append('invalid/same-password reset cannot reach password replacement')
+        else:
+            early.append((code,len(queries)))
+            if writes or any('ROLLBACK' in e for e in trace):errors.append('pre-BEGIN failures must not write or roll back a nonexistent transaction')
+        if code==400 and any('candidate = PBKDF2' in e for e in trace):
+            if len(writes)!=1 or 'New password must be different from the current password.' not in response[0]:errors.append('same-password failure must roll back its single reset consumption')
+    if Counter(outcomes)!=Counter({400:5,200:1,408:2,500:4}) or sorted(early)!=[(400,0),(400,1),(408,0),(500,0)]:errors.append(f'incomplete reset outcomes: {dict(Counter(outcomes))}; early={early}')
+    for title,code in {'Success':200,'Fail - Bad Request':400,'Fail - Bad Request Password Policy':400,'Fail - Bad Request Reset Token':400,'Fail - Bad Request Same Password':400,'Fail - Request Timeout':408,'Fail - Internal Server Error':500}.items():
+        try:
+            obj=authen_json(md,title);status=obj['status']
+            if status['code']!=code or code==500 and 'bizCode' in status:errors.append(f'incorrect reset {title} envelope')
+            if title=='Success' and 'data' in obj:errors.append('reset success has no data')
+        except (TypeError,KeyError,ValueError):errors.append(f'missing reset {title} example')
+    errors+=json_blocks_parse(md);errors+=table_lines_aligned(md)
+    if '--rendered-svg' in sys.argv:
+        import xml.etree.ElementTree as ET
+        try:
+            root=ET.parse(sys.argv[sys.argv.index('--rendered-svg')+1]).getroot()
+            expected_lines=Counter(' '.join(l.split()) for _,_,s in operations for l in s.splitlines() if l.strip())
+            visible=Counter(' '.join(''.join(e.itertext()).split()) for e in root.iter() if e.tag.endswith('}text'))
+            missing=expected_lines-visible
+            if missing:errors.append(f'rendered reset SQL missing {sum(missing.values())} lines')
+            else:print(f'OK: rendered reset SQL ({sum(expected_lines.values())}/{sum(expected_lines.values())} visible lines)')
+        except (IndexError,OSError,ET.ParseError) as exc:errors.append(f'cannot verify reset SVG: {exc}')
+    if errors:return fail('; '.join(errors))
+    print('OK: create-password-flow (12 terminal traces; exact SQL, post-lock single use and atomic all-session revocation)')
+    return 0
+
+
+COMMANDS['create-password-flow'] = check_create_password_flow
+
+
 # ---------------------------------------------------------------- integrity of this file: every check is a sub-command and ends with a return
 def check_registry() -> int:
     """A merge can cut the end of a checker or its COMMANDS line without a syntax error, and then the check does nothing.

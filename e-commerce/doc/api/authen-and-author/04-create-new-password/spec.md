@@ -1,3 +1,11 @@
+---
+name: Create New Password API Specification
+description: Defines public reset-token verification, user-first serialization, post-lock single-use consumption, password history and atomic all-session revocation for POST v1/auth/create-new-password.
+status: in-review
+approved_by: null
+approved_at: null
+---
+
 # [POST]: v1/auth/create-new-password
 
 | Title       | Description                                                                                                                                                                                                                      |
@@ -39,15 +47,33 @@
 
 ### Create New Password Rules
 
-- Public API: no `authorization` header. The reset token is the proof. Only the SHA-256 of the token is compared with `reset_token`.
-- The new password follows the password policy: 8 to 128 characters with an upper-case letter, a lower-case letter and a digit (400, E10001). The values are configurable.
-- **A reset token that does not exist, is INACTIVE (used or replaced), has expired, or belongs to a user that is not ACTIVE gets one answer: 400 (E10001) `Reset token is invalid or expired.`** The answer does not say which case it is.
-- The reset token is used once: the row is made INACTIVE by `UPDATE ... WHERE id = <id> AND row_status = 'ACTIVE' AND expired_at > <now> RETURNING id`. When the update returns no row (a second request used it first, or it expired meanwhile) the answer is the same 400 and nothing changes.
-- The new password must differ from the current one (400, E10001). The check hashes the new password with the salt of the current password row. A rejected request changes nothing, the reset token stays usable until it expires.
-- Password storage: PBKDF2-HMAC-SHA256 with a random 16 byte salt and 600,000 iterations, compared in constant time. The current PASSWORD row becomes INACTIVE (kept as history) and a new ACTIVE PASSWORD row is inserted (partial unique index `uq_m_user_password_user_id_password`).
-- All ACTIVE access tokens and refresh tokens of the user (every session) become INACTIVE in the same transaction. The API does not log the user in, the user calls login with the new password.
-- Lock order: look up the reset row, lock the `authen.m_user` row of its user (`FOR UPDATE`), then use the reset row, change the password and close the tokens, all in one transaction.
-- Execution order: validate the request and the password policy (400) -> find the reset row (400 when none) -> lock the user row -> use the reset row (400 when it returns nothing) -> check the new password differs (400) -> change the password -> close the tokens -> answer 200.
+- Governing behavior: [owner-confirmed review](../../../../../docs/superpowers/specs/2026-11-07-api-review-design.md), Q13, approved by the product owner, plus existing WP4 password reset rules. This detailed revision remains in-review; no backend implementation is included.
+- Public API: no `authorization` header. The reset token is the proof. Validate timestamp as UTC and body strings resetToken/newPassword before SQL; reject missing/empty/wrong-type fields with 400 E10001. Generate requestId when omitted. Never log or return either secret. Only the SHA-256 (32 bytes) of the exact resetToken is compared with reset_token; all SQL placeholders are typed bound bytes/UUIDs/timestamps, never interpolated text.
+- The new password follows the password policy: 8 to 128 characters with an upper-case letter, a lower-case letter and a digit (400, E10001). The values are configurable. Do not trim or normalize passwords. Policy validation precedes any reset lookup or write.
+- **A reset token that does not exist, is INACTIVE (used or replaced), has expired, or belongs to a user that is not ACTIVE gets one answer: 400 (E10001) `Reset token is invalid or expired.`** Do not disclose which case occurred. The 30-minute lifetime is set when the reset token is issued and is never extended here; expiry is strict expired_at > now, including rejection at equality.
+- Lock order: capture lookupNow from the server UTC clock and find resetId/userId by hash in an autocommit read -> BEGIN READ COMMITTED -> lock the ACTIVE authen.m_user row FOR UPDATE -> capture fresh server UTC now after the lock -> conditionally consume the same reset row -> read the current password -> compare -> replace password -> close all user access and refresh tokens -> COMMIT -> 200. userId/resetId come only from the lookup, never from the body. No reset/password/token UPDATE may run before the user lock.
+- The lookup is only a routing hint. Revalidate the reset token after the lock with one UPDATE guarded by resetId, userId, resetTokenHash, ACTIVE status and expiry > fresh now, RETURNING reset_id. A reset replaced/consumed or expired while waiting returns zero rows: ROLLBACK then the same generic 400. Do not authorize using lookupNow, a pre-lock row snapshot or transaction-start NOW(). Concurrent calls serialize on the user; only the first successful call consumes the token.
+- The new password must differ from the current one (400, E10001). Read the single ACTIVE PASSWORD row under the user lock. Application hashes the candidate with the stored salt using PBKDF2-HMAC-SHA256, 600,000 iterations and compares in constant time. If equal, ROLLBACK includes the reset consumption: the reset token stays usable until it expires. A missing current password is an internal consistency failure (500 with rollback), not a successful reset.
+- Password storage: PBKDF2-HMAC-SHA256 with a random 16 byte salt and 600,000 iterations. For a different password generate a fresh cryptographically random salt and derive passwordBytes in Application, never SQL/plaintext storage. The current PASSWORD row becomes INACTIVE (kept as history) and a new ACTIVE PASSWORD row is inserted (partial unique index `uq_m_user_password_user_id_password`). Guard the old-row UPDATE by passwordId, userId, PASSWORD and ACTIVE, RETURNING password_id; unexpected zero rows is 500 and rolls back. TEMPORARY_PASSWORD and prior history rows are unchanged.
+- All ACTIVE access tokens and refresh tokens of the user (every session) become INACTIVE in the same transaction, including expired ACTIVE rows. Revocation must not filter by session, presented token or expiry. Zero access/refresh rows is allowed. Other users and already INACTIVE history are unchanged. The API does not log the user in, issue replacement tokens or claims, or alter role/permission assignments; the user calls login with the new password.
+- The common user lock serializes reset with login, refresh, logout and reset issuance. A refresh/login that commits first has its new tokens revoked by this reset; one that waits must reread credentials/password after the lock and cannot reuse the revoked token/old password. A second reset waits and its guarded consumption returns zero rows. A failed same-password request releases the lock and leaves the token usable for a different-password retry.
+- Reset consumption, password history/replacement and both revocations are one transaction. COMMIT must succeed before 200 S10000 `Create New Password Success`, status only with no data. On timeout before commit, ROLLBACK then 408 E90001; on unexpected pre-commit failure, ROLLBACK then generic 500 without bizCode. A lookup timeout/failure before BEGIN returns 408/500 without a transaction to roll back. On any failure before commit nothing is saved; never partially consume the reset token or close only one token table. If a committed response is lost, retry finds the used token and returns the generic 400.
+- Execution order: validate input/policy -> hash reset token and capture lookupNow -> routing lookup -> BEGIN -> user lock -> fresh now -> guarded reset consumption -> current PASSWORD -> constant-time difference check -> fresh hash/salt -> guarded old-password closure -> insert PASSWORD -> close all access tokens -> close all refresh tokens -> COMMIT -> status-only 200. Every database result returns to Application before branching or deriving parameters.
+
+#### Scenario correspondence with sequence.wsd
+
+| Scenario                                          | Required sequence behavior                                        | HTTP                  | Durable effects                                      |
+| ------------------------------------------------- | ----------------------------------------------------------------- | --------------------- | ---------------------------------------------------- |
+| Invalid fields/timestamp/password policy          | No SQL or BEGIN                                                   | 400 E10001            | None                                                 |
+| Reset lookup has no valid row                     | No BEGIN or writes                                                | 400 E10001            | None                                                 |
+| Missing/inactive user after lookup                | User lock returns no row; ROLLBACK                                | 400 E10001            | None                                                 |
+| Used/replaced/expired token after lock wait       | Conditional consume returns zero; ROLLBACK                        | 400 E10001            | None                                                 |
+| Candidate equals current password                 | Compare with stored salt; ROLLBACK reset consumption              | 400 E10001            | Token remains usable                                 |
+| Missing password / unexpected zero old-row update | Abort before common success; ROLLBACK                             | 500                   | None                                                 |
+| Valid different password                          | Replace PASSWORD, close both token tables, COMMIT before response | 200 S10000            | Token used once; new password; every session revoked |
+| Concurrent reset / refresh                        | Common user lock, fresh guard and credential reread               | 400 or 200 per winner | No reset reuse; no surviving earlier refresh pair    |
+| Pre-BEGIN lookup timeout/failure                  | No ROLLBACK needed                                                | 408 E90001 / 500      | None                                                 |
+| Timeout / other pre-commit failure                | ROLLBACK every change                                             | 408 E90001 / 500      | None                                                 |
 
 #### Example Body Parameters
 
@@ -211,9 +237,26 @@ No `data`. Only the status object is returned.
 }
 ```
 
+#### Fail - Internal Server Error
+
+```JSON
+{
+    "status": {
+        "code": 500,
+        "message": "Internal Server Error",
+        "bizMessage": "An unexpected error occurred.",
+        "requestId": "req-reset-review",
+        "timestamp": "2026-11-07T12:00:00.123Z",
+        "status": "ERROR"
+    }
+}
+```
+
 ---
 
 ## Database Relations
+
+Statements are listed in execution order. Only the routing lookup is autocommit; all remaining SQL shares the user transaction lock. lookupNow precedes lookup; now is freshly captured after the lock. Returned counts/ids must be checked in Application.
 
 ### Table: [authen.t_user_reset_password](../../../schema/authen/t_user_reset_password.md)
 
@@ -226,21 +269,7 @@ SELECT
 FROM authen.t_user_reset_password rp
 WHERE rp.reset_token = '<sequence.resetTokenHash>' -- SHA-256 of resetToken
 AND rp.row_status = 'ACTIVE'
-AND rp.expired_at > NOW() AT TIME ZONE 'UTC'
-```
-
-#### UPDATE - Use the reset token once
-
-```SQL
-UPDATE authen.t_user_reset_password
-SET
-    updated_by = '<sequence.userId>',
-    updated_at = NOW() AT TIME ZONE 'UTC',
-    row_status = 'INACTIVE'
-WHERE id = '<sequence.resetId>'
-AND row_status = 'ACTIVE'
-AND expired_at > NOW() AT TIME ZONE 'UTC'
-RETURNING id as reset_id -- no row means the answer is 400
+AND rp.expired_at > '<sequence.lookupNow>'
 ```
 
 ### Table: [authen.m_user](../../../schema/authen/m_user.md)
@@ -254,6 +283,24 @@ FROM authen.m_user u
 WHERE u.id = '<sequence.userId>'
 AND u.row_status = 'ACTIVE'
 FOR UPDATE -- every authen API locks the user row first
+```
+
+### Table: [authen.t_user_reset_password](../../../schema/authen/t_user_reset_password.md)
+
+#### UPDATE - Use the reset token once
+
+```SQL
+UPDATE authen.t_user_reset_password
+SET
+    updated_by = '<sequence.userId>',
+    updated_at = '<sequence.now>',
+    row_status = 'INACTIVE'
+WHERE id = '<sequence.resetId>'
+AND user_id = '<sequence.userId>'
+AND reset_token = '<sequence.resetTokenHash>'
+AND row_status = 'ACTIVE'
+AND expired_at > '<sequence.now>'
+RETURNING id as reset_id -- no row means the answer is 400
 ```
 
 ### Table: [authen.m_user_password](../../../schema/authen/m_user_password.md)
@@ -271,16 +318,24 @@ AND up.row_type = 'PASSWORD'
 AND up.row_status = 'ACTIVE'
 ```
 
+### Table: [authen.m_user_password](../../../schema/authen/m_user_password.md)
+
 #### UPDATE - Make the current password INACTIVE
 
 ```SQL
 UPDATE authen.m_user_password
 SET
     updated_by = '<sequence.userId>',
-    updated_at = NOW() AT TIME ZONE 'UTC',
+    updated_at = '<sequence.now>',
     row_status = 'INACTIVE'
 WHERE id = '<sequence.passwordId>'
+AND user_id = '<sequence.userId>'
+AND row_type = 'PASSWORD'
+AND row_status = 'ACTIVE'
+RETURNING id as password_id
 ```
+
+### Table: [authen.m_user_password](../../../schema/authen/m_user_password.md)
 
 #### INSERT - Create password
 
@@ -309,7 +364,7 @@ VALUES (
 UPDATE authen.t_user_access_token
 SET
     updated_by = '<sequence.userId>',
-    updated_at = NOW() AT TIME ZONE 'UTC',
+    updated_at = '<sequence.now>',
     row_status = 'INACTIVE'
 WHERE user_id = '<sequence.userId>'
 AND row_status = 'ACTIVE'
@@ -323,7 +378,7 @@ AND row_status = 'ACTIVE'
 UPDATE authen.t_user_refresh_token
 SET
     updated_by = '<sequence.userId>',
-    updated_at = NOW() AT TIME ZONE 'UTC',
+    updated_at = '<sequence.now>',
     row_status = 'INACTIVE'
 WHERE user_id = '<sequence.userId>'
 AND row_status = 'ACTIVE'

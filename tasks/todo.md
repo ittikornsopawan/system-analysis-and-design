@@ -7,6 +7,23 @@ description: Shared checklist for planning and tracking non-trivial tasks withou
 
 Use one section per task, named `<scope>: <task-name>`. Preserve other task sections and mark an item complete only after its completion criterion is satisfied.
 
+## e-commerce: Migrate backend to a Component Repository
+
+Status: Implementation and verification complete; approved Showcase PR package prepared. Ittikorn explicitly approved M1–M8 in `docs/superpowers/specs/2026-11-07-e-commerce-component-migration.md` with “อนุมัติตามแผน ใช้ repository แบบ Public”. Approval was persisted at 2026-11-07T14:00:23Z before export/publication/moves. Continue as ordinary Codex in the current checkout under the earlier selected backend-developer perspective. The scope includes public `ittikornsopawan/e-commerce-backend`, filtered backend history, backup, manifest-managed checkout and a separate Showcase migration PR without merging. Actual remote PR delivery is verified through GitHub; PR #33 is merged.
+
+- [x] Read component-repository rules, bootstrap skill, ADR, project knowledge, current Git state and references; confirm missing manifest, 81 tracked backend files and migration-pending status.
+- [x] Verify the current backend baseline and prepare the concrete migration design without moving existing files or publishing a new repository.
+- [x] Confirm the proposed GitHub identity, visibility, history strategy and migration/delivery scope; persist approval before executing migration.
+- [x] Export only backend history in temporary storage, update cross-repository documentation links and prove source-tree preservation plus component verification.
+- [x] Create/deliver the new GitHub repository and verify its default-branch commit exists remotely before recording a manifest revision.
+- [x] Preserve the complete legacy checkout including ignored artifacts in an identified backup, replace tracked backend ownership with manifest/.gitkeep/ignore entries and bootstrap the declared component safely.
+- [x] Update live references and project knowledge, validate manifest/revision/ownership/link boundaries and record actual build/test/bootstrap evidence.
+- [x] Prepare the verified migration commit and authorized Showcase PR package; report actual remote delivery state from GitHub and leave merge to the owner.
+
+Progress: Export preserved 81/81 tracked files and four backend-only history commits. The component build passed with 0 warnings/errors and all 40 tests passed. Public child main is remotely verified at `d8255183cba54d0c2b218607456b895a70df32f0`. The shared primary checkout was externally switched/updated during export; the migration branch was reconciled with current origin/main, backend snapshot equality was checked and this task section was restored without replacing other task sections.
+
+Bootstrap/backup evidence: The actual GitHub clone is clean and detached at the manifest SHA with exact origin `https://github.com/ittikornsopawan/e-commerce-backend.git`. Restore, full solution build (0 warnings/errors) and 40/40 tests passed again from `e-commerce/repository/e-commerce-backend/`. The original directory is retained at `/private/tmp/ecommerce-component-migration-ofejl0ty/legacy-checkout` with all 591 file/directory entries hash-verified, including ignored artifacts. Cross-repository guide links were updated only in the component; source/tests/configuration are unchanged. No legacy backup or unrelated handoff was deleted.
+
 ## e-commerce: Backend code structure guide
 
 Status: Complete. Ittikorn requested a detailed `e-commerce/repository/code.md` for later diagram review and explicitly selected ordinary Codex in the current checkout, using the backend-developer perspective, without a commit. This assignment does not use named-agent delivery authority. The guide remains draft; writing it does not approve the architecture proposals it contains.
@@ -703,3 +720,28 @@ Status: Complete in the branch, waiting for review. Assignment: agent `tommy`, d
 - [x] Write `sequence.wsd` of `author/01` to `11` (role, permission and scope upsert and batch, the three inquiries, the user role upsert with the lock order and the last administrator rule, the user role inquiry) to the agreed standard.
 - [x] Check them with `api-sequence-spec`, the skeleton test, PlantUML and mutation tests.
 - [x] Open the PR with `commit-and-pr`; do not merge. With this set every one of the 83 API specs has a finished diagram.
+## Peter — API 9: create-new-password paired contract review (2026-11-07)
+
+Scope: authen-and-author/04-create-new-password; owner Q13 credential revocation and existing reset rules. One API per PR; continue from main without waiting for merge under Q15. No backend/schema implementation. Q18–Q19 remain pending for consent inquiry.
+
+- [x] Prepare a fresh authorized Peter branch from current main after preserving logout PR #44; baseline all doc commands, SQL audit and database suite.
+- [x] Read both existing files, password/reset/token schema, and shared login/refresh/logout locking rules; reproduce reset consumption before user lock in the old sequence.
+- [x] Revise spec and generated-then-completed sequence together: fresh post-lock single-use guard, password comparison/history, all-session revocation, 12 terminal traces and rollback.
+- [x] Complete final image inspection: scoped flow/character-for-character SQL checks pass; 59/59 mutations caught; synchronized SQL faults, whitespace drift and rendered omission rejected; exact PostgreSQL reset/refresh races and rollback fixtures passed.
+- [x] Run every current doc command (48/48), audit (53 tables, 0 findings), database suite (ALL PASSED) and authorized delivery preflight (5 files, no blockers).
+- [x] Commit paired files and support changes and open API PR #53; initial head 863d47a.
+- [ ] Retain branch/assignment history and continue from updated main under owner Q15.
+
+Integration: GitHub reported a conflict after main advanced. Preserve all upstream diagram, component-repository migration and task changes; conflict is only the shared todo append. Re-run all checks before the integration push; this PR changes only the five authorized task paths relative to current origin/main.
+## e-commerce: api-sequence-spec requires the 401 and 408 answers and matching headings
+
+Status: Implemented in the managed workspace of Marry on branch `test/marry-enforce-401-408-heading`; the pull request is opened after the checks and merged by the lead. Scope: `e-commerce/db/tests/check_docs.py` and `tasks/`. No spec and no `sequence.wsd` is changed. Decisions of the lead (chat, 2026-11-07): the token rule applies when the spec has a mandatory `authorization` header only; the verify step may say `JWT` or `access token`; the older diagrams that do not pass are listed by name.
+
+- [x] Measure the three rules on every non-empty diagram before writing the code: the heading rule passes on all 72, the token rule fails on 19 and the 408 rule on 11 (see the pull request).
+- [x] Rule 1: when the spec has a mandatory `authorization` header row, the diagram has `app -> app: Verify ... JWT / access token ...` followed by an `alt` with `app -> api: HTTP 401 E10002`, all before the first `app -> infra:` line; a public API (no authorization header and the words "Public API" or "API is public") must not answer 401. Login and refresh-token are not forced (their 401 is about credentials).
+- [x] Rule 2: every non-empty diagram has `app -> api: HTTP 408 E90001`.
+- [x] Rule 3: every `app -> infra: QUERY|INSERT|UPDATE|DELETE - X` line is followed at once by `infra -> <table>: X`.
+- [x] `LEGACY_TOKEN_SEQUENCES`: 11 older diagrams (`authen-and-author` 03, 04, 07, 08, 09, 10 and `consent` 02, 03, 06, 07, 08) are exempt from rules 1 and 2; an entry must be a real spec folder and must still fail one of the two rules, so a diagram that is fixed has to leave the list; the count is printed in the OK line. `consent/04` passed both rules and is not listed.
+- [x] Mutation tests: 15 cases of the harness on the three rules and the list, 13 cases that check which message fires (10 must fail, 3 controls must pass); the earlier mutation sets still behave (see the pull request).
+- [x] Run every `check_docs.py` sub-command, `audit_all.py`, `run_db_tests.sh`, `test_sequence_skeleton.py`.
+- [ ] Merge `main` into the branch, preflight, push, open the pull request, tell the lead; hold the lock until the merge, then release and park.
