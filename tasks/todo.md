@@ -576,3 +576,11 @@ Status: Complete in the branch, waiting for review. Assignment: agent `tommy`, d
 - [x] `shipping/06`: the endpoint, then the automatic completion job as a second section under `== Automatic completion job (caller: system scheduler, not an endpoint) ==` because its SQL blocks are in the spec and the checker needs every block (lead SA decision (a)).
 - [x] Check every file with `api-sequence-spec`, the skeleton test, PlantUML and mutation tests.
 - [x] Open the PR with `commit-and-pr`; do not merge.
+
+## repository-wide: Sequence diagrams of the shop and operations APIs (set C)
+
+Status: Complete in the branch, waiting for review. Assignment: agent `tommy`, delivery `open-pr`, authorized by `josh`, workspace `.workspace/tommy`, branch `feat/tommy-sequence-set-c`, scopes: the eight API folders below and `tasks`.
+
+- [x] Write `sequence.wsd` of `shipping/01-create-shipping`, `02-update-shipping-status`, `03-upsert-shipping-stop`, `04-inquiry-shop-shipping`, `sales/04-inquiry-shop-order`, `05-cancel-order`, `payment/04-inquiry-shop-payment`, `05-refund-payment` to the agreed standard (order row locked first where the spec says so).
+- [x] Check them with `api-sequence-spec`, the skeleton test, PlantUML and mutation tests.
+- [x] Open the PR with `commit-and-pr`; do not merge.
