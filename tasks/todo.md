@@ -408,6 +408,67 @@ Status: Implemented in the managed workspace of Marry on branch `fix/marry-rejec
 Verification: `python3 .agents/skills/agent-workspace/tests/test_agent_workspace.py` runs 15 tests OK (13 before).
 
 
+## e-commerce: Peter API review — register (API 3)
+
+Owner Q15 supersedes the earlier one-open-PR lifecycle: keep completed PRs open, preserve each branch/assignment history, return to main and begin the next API without waiting for merge. PR #23 is merged; refresh PR #24 was preserved separately and subsequently merged before register delivery. Register uses a fresh bounded assignment on fix/peter-register-contract.
+
+- [x] Verify clean main, preserve PR #24 and its assignment, and prepare register with all baseline checks.
+- [x] Read register spec/sequence, consent submission, migration/schema and prior lessons.
+- [x] Persist Q16 display/read semantics and settle explicit consent-version handling.
+- [x] Correct register validation, required consent coverage, optional writes and atomic transaction in spec.md and complete sequence.wsd.
+- [x] Add register-flow invariants and mutation-test old failures, branching and rendered SQL.
+- [x] Execute exact SQL against temporary PostgreSQL, render and inspect SVG/PNG, then run all documentation checks, audit, database tests and delivery preflight.
+- [ ] Deliver one-register-API PR with commit-and-pr; release editing lock and continue from main under Q15.
+
+Register verification: the original pair fails register-flow; the revised pair has ten identical SQL operations, 28 terminal traces (including optional-child combinations) and a whole-transaction retry path. Mutation testing caught 53/53 faults, including an actual SVG with a dropped quoted value. PlantUML syntax passes with 14 participants; SVG/PNG were rendered and visually inspected, with 123/123 SQL lines visible. Temporary PostgreSQL executed the exact queries/inserts and verified active/effective/type filtering, required-current coverage predicates, read-only evidence, omitted children, complete rollback on final-child failure, repeatable policy snapshots across two connections and one winning concurrent identifier insert (23505 for the loser). These checks validate the design/SQL, not backend conformance. All 40 current documentation commands pass and the audit reports 53 tables / 0 findings.
+
+Register delivery preflight: all 40 checks, audit 53/0 and database ALL PASSED; six paths in the authorized assignment, no blockers. Origin/main then advanced through PR #31, including refresh #24 and the repository-wide sequence checker. Integrate that base before opening the register PR, preserve every incoming checker and rerun the current checks.
+
+Register integration verified: preserved upstream refresh, shipping and sequence-checker changes; the task diff against origin/main remains the same six assignment paths. The global sequence check now covers 83 specs; register passes its standard, so its legacy exemption was removed. All 41 documentation commands pass, audit remains 53/0, database tests ALL PASSED, mutations 53/53 and rendered SQL 123/123. Final SVG/PNG were regenerated from the restored source after mutation tests and inspected.
+## e-commerce: Peter API review — submit consent (API 4)
+
+Status: Register delivered in PR #32 (six files; MERGEABLE when opened), branch/history preserved, clean main-based submit-consent assignment prepared under Q15. Owner Q16: display records reading, optional result answers later, already-read evidence keeps its read timestamp. Q17: require the displayed version. No next-API merge gate applies.
+
+- [x] Preserve register PR/history, return to main and prepare the scoped submit-consent assignment with passing baselines.
+- [x] Read existing submit spec/sequence, token/user revocation design and consent/evidence migrations.
+- [x] Persist Q16/Q17 and define read-only, answer, no-op and history behavior without a schema change.
+- [x] Correct the spec and complete sequence with user-first serialization, fresh token check, current/active-type validation, deterministic existing evidence and atomic batch branches.
+- [x] Add focused consent-submit-flow checks, reject the original pair and mutation-test guards/results/rendered SQL.
+- [x] Verify exact SQL/no-op/rollback/concurrency in temporary PostgreSQL, render/inspect the sequence and pass all current checks/audit/database tests.
+- [ ] Open one API PR through commit-and-pr, preserve its review record and continue from main under Q15.
+
+Submit verification: original pair rejected; six exact SQL operations, twelve terminal traces with distinct insert/update/no-op and aborted-update failure. The shared path parser now terminates an explicit PlantUML break, preventing failed updates from falling through to COMMIT/200; mutation coverage includes disabling that termination. All 52/52 deliberate faults are caught, including a real rendered SQL omission. PlantUML syntax reports ten participants; SVG/PNG generated and inspected, 75/75 visible SQL lines. Exact SQL in temporary PostgreSQL proves policy/type filtering, first-read preservation, no-op audit preservation, explicit false, legacy NULL timestamp and deterministic duplicates, ownership/old-version history, whole-batch rollback, two-call serialization to one evidence row, and fresh token revocation visibility after a lock wait. No backend implementation is claimed.
+
+Submit delivery preflight: six authorized task files, all 41 documentation commands OK, audit 53 tables / 0 findings, database ALL PASSED, managed assignment authorized for Peter, no blockers. Origin/main unchanged at the pre-delivery fetch; register remains a separate review PR.
+## e-commerce: Peter API review — pending consent (API 5)
+
+Status: Submit consent delivered as PR #34 (six files, MERGEABLE when opened); its branch/assignment was preserved, and a clean main-based pending-consent assignment passed baselines under Q15. Q8 governs required versus optional pending; Q3 hides inactive types; Q16/Q17 govern displayed/current-version evidence.
+
+- [x] Preserve PR #34/history and prepare the next bounded main-based API assignment without waiting for merge.
+- [x] Read pending spec/sequence, current consent schema and the confirmed display/acceptance rules.
+- [x] Persist shared Q16/Q17 decisions and define current-version canonical evidence and coherent response snapshot.
+- [x] Correct spec and full sequence with credential/user checks, required/optional predicate, active type visibility, stable history/name mapping and empty success.
+- [x] Add pending-consent-flow checks; reject the original pair and mutation-test SQL, outcome and rendered-text guards.
+- [x] Execute the documented SQL against adversarial PostgreSQL fixtures and snapshot races; render/inspect SVG/PNG and pass all current docs/audit/database/delivery checks.
+- [ ] Open one pending-consent API PR with commit-and-pr, preserve its review record and continue from main under Q15.
+
+Pending verification: original pair rejected; four identical SELECT operations and seven terminal traces. Mutation testing initially caught 42/43 because the canonical-order phrase could be found in the unrelated latest-history paragraph; scoping the guard to its canonical paragraph yields 43/43. Five synchronized spec/sequence faults (required acceptance, NULL default, active type, canonical order and projection alias) pass SQL parity but are rejected by the semantic checker. A genuine rendered omission is rejected independently with the correct source unchanged. Final SVG/PNG were generated and inspected; PlantUML reports ten participants and 60/60 visible SQL lines. Temporary PostgreSQL executed the exact queries against every required/optional read/result state, different user/version/status, duplicate canonical rows, type/time boundaries, complete response projection, latest evidence/null mapping and credential failures. Two connections prove policy/history/type-name enrichment remains coherent in one snapshot while the next inquiry sees changed policy; read-only mode rejects evidence writes. No backend conformity is claimed.
+
+Pending delivery preflight: five authorized task paths, all 41 documentation commands OK, audit 53 tables / 0 findings, database ALL PASSED, managed assignment delivery authorized for Peter, no blockers. Origin/main unchanged at the pre-delivery fetch.
+## e-commerce: Peter API review — active consent (API 6)
+
+Status: Pending consent delivered in PR #35 (five files; MERGEABLE when opened); branch/assignment history preserved. A clean main-based active-consent assignment passed baselines under Q15. Q3 requires hiding consent when its type is not ACTIVE.
+
+- [x] Preserve PR #35/history and prepare the bounded active-consent assignment from main without waiting for merge.
+- [x] Read both active-consent artifacts, schema/type rules and paired SQL/rendering lessons.
+- [x] Correct spec and full sequence for public visible consents, mandatory type-name mapping, consistent snapshot, stable order and explicit empty/error outcomes.
+- [x] Add active-consent-flow checks, reject the original pair, and mutation-test source and synchronized semantic faults.
+- [x] Execute exact SQL including time/type boundaries and a concurrent type/name change; render/inspect SVG/PNG and run all current docs/audit/database/delivery checks.
+- [ ] Open one active-consent API PR with commit-and-pr, preserve its review record and continue from main under Q15.
+
+Active-consent verification: two identical SELECT operations and five terminal traces. Original pair rejected; mutations caught 30/30. Three additional synchronized spec/sequence faults (active type, stable order and response alias) pass source parity but fail semantic checks; a genuine rendered omission is rejected with correct source unchanged. PlantUML reports eight participants, SVG/PNG generated and inspected, 29/29 visible SQL lines. Temporary PostgreSQL executed the exact queries against all non-ACTIVE type/consent states, future/expired/exact boundaries, stable id ties, required/optional projection, full eleven-field mapping, nulls/body/version preservation and empty typed arrays. Two connections prove the mandatory original type name remains coherent in the snapshot and the next request hides the disabled type. Read-only mode rejects writes; inquiry creates no user evidence. Backend conformity is not claimed.
+
+Active-consent delivery preflight: four authorized paths, 41/41 documentation commands OK, audit 53 tables / 0 findings, database ALL PASSED, Peter delivery authorized, no blockers. Origin/main unchanged at pre-delivery fetch.
 ## e-commerce: Peter API review — author/me (API 7)
 
 Status: Active consent delivered in PR #36 (four files; MERGEABLE when opened), branch/history preserved. A clean main-based author/me assignment passed baselines. Owner Q11 requires returning the calling token's roles/isPlatformAdmin; Q13 still checks current credential/user. Management-consent questions Q18/Q19 remain pending; work continues on this already-decided API.
@@ -437,3 +498,30 @@ Folders: `product/02-inquiry-product`, `05-inquiry-product-category`, `08-inquir
 - [ ] After the repair of `check_docs.py` is merged: merge `main` into the branch (no force push), rerun every checker and the preflight, push, open the pull request, tell the lead; hold the lock until the merge, then release and park.
 
 Verification: see the pull request.
+
+## repository-wide: Sequence phase 1, five prototype diagrams
+
+Status: Complete in the branch, waiting for review. Assignment: agent `tommy`, delivery `open-pr`, authorized by `josh` (the product owner ordered real diagrams instead of a notes document), workspace `.workspace/tommy`, branch `feat/tommy-sequence-cart-order-webhook`, scopes `e-commerce/doc/api/cart`, `e-commerce/doc/api/sales/02-create-order`, `e-commerce/doc/api/payment/02-stripe-webhook`, `e-commerce/db/tests/check_docs.py`, `tasks`.
+
+- [x] Close the earlier notes task (discarded by the lead SA; the note is kept in the scratchpad) and park the workspace.
+- [x] Write `sequence.wsd` of `cart/01`, `cart/02`, `cart/03`, `sales/02` to the login standard with no `TODO(author)` left: real order of checks (400, 404, 409, write), blocks placed on the branch where they run, every error after `BEGIN` after a `ROLLBACK`, every lock after `BEGIN`, participants in order of first use.
+- [x] Write `sequence.wsd` of `payment/02` with Stripe as `participant "Stripe" as stripe` in `box "External"`, and let `sequence_structure_errors` accept `External, Web API, Database` (no Frontend, no actor User, the External box holds a participant).
+- [x] Mutation-test the diagrams and the new rule, render every diagram with PlantUML, run all checkers.
+- [x] Open the PR with `commit-and-pr`; do not merge.
+
+Verification: see the PR. No `spec.md` and no `sequence_skeleton.py` was changed. Gaps of the specs found while writing are reported to the lead SA in the PR body.
+
+## repository-wide: Repair check_docs.py after the merge of PR 34
+
+Status: Complete in the branch, waiting for review. Assignment: agent `tommy`, delivery `open-pr`, authorized by `josh` (urgent repair, `main` could not run any `check_docs.py` command), workspace `.workspace/tommy`, branch `fix/tommy-check-docs-merge-syntax`, scopes `e-commerce/db/tests/check_docs.py` and `tasks`.
+
+- [x] Find the cause: the merge `f3505f9` (PR 34) interleaved two checkers that share a template (`check_consent_submit_flow` from the submit branch and `check_pending_consent_flow` from PR 35), so `required={` of the submit checker was never closed.
+- [x] Rebuild the region from the whole functions of each side (submit from `3f71d37`, pending from `4e6de08`), without deleting any needle.
+- [x] Find the damage that the earlier merges left without a syntax error: `check_pending_consent_flow` and `check_active_consent_flow` had lost their tail (JSON and table checks, the rendered SVG check, `print` and `return 0`) and their `COMMANDS[...]` registration; restore them from `6e721ce` and `80cfe22`, where the common beginning is identical line by line.
+- [x] Check that every `check_*` function returns and is registered or called.
+- [x] Run every sub-command, `audit_all.py`, `run_db_tests.sh`, the preflight and mutation tests (needles of every `required` of the submit and pending checkers, JSON and table checks of the three consent checkers).
+- [x] Open the PR with `commit-and-pr`; do not merge.
+
+Verification: see the PR. No spec, diagram or other checker is changed.
+
+Lesson for the team: a merge that keeps a file parseable can still drop the end of a function; after resolving a conflict in `check_docs.py`, run `python3 -c "import ast"` on it and run every sub-command, not only the one that was edited.

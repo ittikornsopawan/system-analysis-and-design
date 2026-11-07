@@ -3850,7 +3850,6 @@ REQUIRED_GROUPS = ("authen-and-author", "consent")
 # check fails when a listed diagram already passes (remove it) or no longer has a write.
 LEGACY_SEQUENCES = (
     # authen-and-author: waiting for a retrofit to the login standard
-    "authen-and-author/01-register",
     "authen-and-author/03-reset-password",
     "authen-and-author/04-create-new-password",
     "authen-and-author/06-logout",
@@ -3858,7 +3857,6 @@ LEGACY_SEQUENCES = (
     "authen-and-author/09-upsert-user-address",
     # consent: waiting for a retrofit to the login standard
     "consent/02-upsert-consent",
-    "consent/04-submit-consent",
     "consent/06-upsert-consent-type",
     "consent/07-upsert-consent-type-batch",
 )
@@ -3939,7 +3937,11 @@ def sequence_database_operations(wsd: str) -> tuple[list[tuple[str, str, str]], 
 
 
 SEQUENCE_PARTICIPANT_CHAIN = ('participant "API" as api', 'participant "Application" as app', 'participant "Domain" as domain', 'participant "Infrastructure" as infra')
-SEQUENCE_HEAD = ('skinparam defaultFontName "Sarabun"', "hide footbox", 'actor "User" as user')
+SEQUENCE_HEAD = ('skinparam defaultFontName "Sarabun"', "hide footbox")
+SEQUENCE_USER_HEAD = 'actor "User" as user'
+SEQUENCE_USER_BOXES = ["Frontend", "Web API", "Database"]
+# a caller that is an external system (the Stripe webhook): box External with its participants instead of actor User and box Frontend
+SEQUENCE_EXTERNAL_BOXES = ["External", "Web API", "Database"]
 SEQUENCE_BOXES = ('box "Frontend"', 'box "Web API"', 'box "Database"')
 SEQUENCE_LOCK = re.compile(r"FOR\s+(?:NO\s+KEY\s+)?UPDATE|FOR\s+(?:KEY\s+)?SHARE|pg_(?:try_)?advisory_(?:xact_)?lock", re.IGNORECASE)
 SEQUENCE_LOGIN_STANDARD = ("-> infra: BEGIN", "-> infra: COMMIT", "-> infra: ROLLBACK", "HTTP 400 E10001", "HTTP 408 E90001", "HTTP 500")
@@ -3956,8 +3958,17 @@ def sequence_structure_errors(text: str) -> list[str]:
         if needle not in text:
             errors.append(f"missing {needle!r}")
     boxes = re.findall(r'^box "([^"]+)"', text, re.MULTILINE)
-    if boxes != ["Frontend", "Web API", "Database"]:
-        errors.append(f"boxes must be Frontend, Web API, Database in that order, found {boxes}")
+    external = boxes == SEQUENCE_EXTERNAL_BOXES
+    if boxes != SEQUENCE_USER_BOXES and not external:
+        errors.append(f"boxes must be Frontend, Web API, Database in that order, or External, Web API, Database when the caller is an external system (never Frontend and External together), found {boxes}")
+    if external:
+        external_box = re.search(r'^box "External".*?^end box$', text, re.MULTILINE | re.DOTALL)
+        if not external_box or not re.search(r'^\s*participant "[^"]+" as \w+$', external_box.group(0), re.MULTILINE):
+            errors.append("the External box must hold the participant of the external caller")
+        if SEQUENCE_USER_HEAD in text:
+            errors.append(f"an external caller replaces {SEQUENCE_USER_HEAD!r}: remove the actor")
+    elif SEQUENCE_USER_HEAD not in text:
+        errors.append(f"missing {SEQUENCE_USER_HEAD!r}")
     if len(re.findall(r"^end box$", text, re.MULTILINE)) != 3:
         errors.append("every box must be closed with end box")
     positions = [text.find(chain) for chain in SEQUENCE_PARTICIPANT_CHAIN]
@@ -4975,7 +4986,7 @@ COMMANDS["author-schema"] = check_author_schema
 
 
 def login_sequence_paths(wsd: str) -> tuple[list[list[str]], list[str]]:
-    """Expand PlantUML alternatives, respecting the explicit attempt result."""
+    """Expand alternatives, prune explicit attempt guards and terminate break paths."""
     root: list = []
     current = root
     stack = []
@@ -5002,6 +5013,9 @@ def login_sequence_paths(wsd: str) -> tuple[list[list[str]], list[str]]:
             branch = stack[-1][1]
             branch.append((text[4:].strip(), []))
             current = branch[-1][1]
+        elif text == 'end break':
+            # A PlantUML break aborts the whole interaction, including common suffixes.
+            current.append('@terminate-interaction')
         elif text in ('end', 'end alt'):
             if not stack:
                 errors.append('end without alt')
@@ -5018,8 +5032,10 @@ def login_sequence_paths(wsd: str) -> tuple[list[list[str]], list[str]]:
     def expand(nodes, prefix):
         traces = [prefix]
         for node in nodes:
+            finished = [trace for trace in traces if '@terminate-interaction' in trace]
+            traces = [trace for trace in traces if '@terminate-interaction' not in trace]
             if isinstance(node, str):
-                traces = [trace + [node] for trace in traces]
+                traces = finished + [trace + [node] for trace in traces]
                 continue
             next_traces = []
             for trace in traces:
@@ -5032,10 +5048,10 @@ def login_sequence_paths(wsd: str) -> tuple[list[list[str]], list[str]]:
                     if guard == 'result = FAILED or REFUSED' and result not in ('FAILED', 'REFUSED'):
                         continue
                     next_traces.extend(expand(body, trace))
-            traces = next_traces
+            traces = finished + next_traces
         return traces
 
-    return expand(root, []), errors
+    return [[event for event in trace if event != '@terminate-interaction'] for trace in expand(root, [])], errors
 
 
 def check_login_flow() -> int:
@@ -5460,6 +5476,454 @@ def check_refresh_flow() -> int:
 
 
 COMMANDS['refresh-flow'] = check_refresh_flow
+
+
+def check_register_flow() -> int:
+    """Guard the owner-approved registration policy and atomic execution paths."""
+    path = AUTHEN_SPECS['01']
+    md = read(path)
+    wsd = read(str(Path(path).with_name('sequence.wsd')))
+    errors = []
+    for needle in ('2026-11-07-api-review-design.md', 'REPEATABLE READ', 'first read establishes the transaction snapshot',
+                   'Required means `t_consent.is_required`', 'Reject duplicate consentIds before SQL',
+                   'result=true', 'every supplied valid consent object represents the displayed version',
+                   'Omitted optional consent creates no row', 'SQLSTATE 23505', 'rolls back the whole transaction',
+                   'Serialization', '600,000 iterations', 'random 16 byte salt', 'Register does not log the user in',
+                   'not request input', 'never the string', 'one optional object, never an array',
+                   'keeps its original read', 'consentVersion'):
+        # The prior read timestamp belongs to authenticated submit, but must be explained here too.
+        if needle == 'keeps its original read':
+            needle = 'repeated reads preserve the first read_at'
+        if needle not in md:
+            errors.append(f'register rules missing {needle!r}')
+    fm = md.split('---', 2)[1] if md.startswith('---\n') else ''
+    state = re.search(r'^status: (draft|in-review|approved)$', fm, re.M)
+    if not state:
+        errors.append('register requires valid approval metadata')
+    for field in ('approved_by', 'approved_at'):
+        value = re.search(rf'^{field}: (.+)$', fm, re.M)
+        if not value or (state and ((state[1] == 'approved') == (value[1] == 'null'))):
+            errors.append(f'inconsistent register {field}')
+    version_row = re.search(r'^\|[^\n]*\| consentVersion\s*\|[^\n]+$', md, re.M)
+    if not version_row or 'MANDATORY' not in version_row[0] or 'never defaulted' not in version_row[0]:
+        errors.append('displayed consentVersion must be mandatory, not silently defaulted')
+    operations = spec_database_operations(md)
+    expected = ('QUERY - Check existing user', 'QUERY - Get effective consents', 'QUERY - Get active consent types',
+                'QUERY - Check referrer', 'INSERT - Create user', 'INSERT - Create password',
+                'INSERT - Create user information', 'INSERT - Create user address',
+                'INSERT - Create user consent', 'INSERT - Create user referral')
+    if tuple(h for _, h, _ in operations) != expected:
+        errors.append('registration must declare all ten validation/write operations in execution order')
+    sql = {h: re.sub(r'--[^\n]*', '', s) for _, h, s in operations}
+    required = {
+        expected[0]: ["u.username = '<sequence.usernameBytes>' OR u.email_address = '<sequence.emailAddressBytes>'"],
+        expected[1]: ['c.id as consent_id', 'c.consent_type_id', 'c.consent_version', 'c.is_required',
+                      "c.row_status = 'ACTIVE'", "c.effective_at <= '<sequence.now>'",
+                      "c.expired_at IS NULL OR c.expired_at > '<sequence.now>'", 'ORDER BY c.id'],
+        expected[2]: ['ct.id as consent_type_id', "ct.id = ANY ('<sequence.consentTypeIds>'::UUID[])", "ct.row_status = 'ACTIVE'"],
+        expected[3]: ["u.id = '<sequence.referrerId>'"],
+        expected[4]: ['username,', 'email_address,', '<sequence.createdBy>', '<sequence.usernameBytes>', '<sequence.emailAddressBytes>', 'RETURNING id as user_id'],
+        expected[5]: ['user_id,', 'password,', 'password_salt', "'PASSWORD'", '<sequence.userId>', '<sequence.passwordBytes>', '<sequence.passwordSaltBytes>'],
+        expected[6]: ['user_id,', '<sequence.userId>', '<sequence.phoneNumberBytes>', '<sequence.addressBytes>', '<sequence.dateOfBirth>', '<sequence.gender>'],
+        expected[7]: ['is_default,', 'TRUE,', '<sequence.userId>', '<sequence.addresses.title>', '<sequence.addresses.addressBytes>', '<sequence.addresses.cityBytes>', '<sequence.addresses.stateBytes>', '<sequence.addresses.postalCodeBytes>', '<sequence.addresses.countryBytes>'],
+        expected[8]: ['consent_id,', 'consent_version,', 'result,', 'is_read,', 'read_at', '<sequence.userId>', '<sequence.consents.consentId>', '<sequence.consents.consentVersion>', '<sequence.consents.result>', 'TRUE,', '<sequence.now>'],
+        expected[9]: ['user_id,', 'referrer_id', '<sequence.userId>', '<sequence.referrerId>'],
+    }
+    for heading, needles in required.items():
+        for needle in needles:
+            if needle not in sql.get(heading, ''):
+                errors.append(f'{heading} missing {needle}')
+    if 'row_status' in sql.get(expected[0], ''):
+        errors.append('duplicate check must include identifiers in all lifecycle states')
+    if any(t.startswith('author.') or '_token' in t for t, _, _ in operations):
+        errors.append('registration must not grant privileges or issue tokens')
+    actual, lifecycle = sequence_database_operations(wsd)
+    errors += lifecycle
+    if [(t.split('.')[-1],h,normalize(s)) for t,h,s in operations] != [(t,h,normalize(s)) for t,h,s in actual]:
+        errors.append('register spec/sequence SQL and execution order differ')
+    for _, heading, _ in operations:
+        if f'app -> infra: {heading}' not in wsd:
+            errors.append(f'{heading} requires Application request')
+        match = re.search(rf'infra -> (\w+): {re.escape(heading)}\n.*?deactivate \1\n([^\n]+)', wsd, re.S)
+        if not match or not match[2].strip().startswith('infra -> app: Return '):
+            errors.append(f'{heading} requires Infrastructure result to Application')
+    for needle in ('consentTypeIds = distinct effectiveConsents.consent_type_id',
+                   'applicableConsents = effectiveConsents with typeId in activeTypeIds',
+                   'userId = returned user_id', 'result = explicit result or false; isRead = true; readAt = now',
+                   'alt addresses object supplied', 'alt Validated consents list is non-empty',
+                   'loop Each supplied consent ordered by consentId', 'alt Validated referrerId supplied',
+                   'Displayed consentVersion differs from current version',
+                   'Required consent missing or result is not explicit true',
+                   'Retry whole transaction with new snapshot/now within request timeout'):
+        if needle not in wsd:
+            errors.append(f'sequence missing mapping/guard {needle!r}')
+    traces, structure = login_sequence_paths(wsd)
+    errors += structure
+    outcomes = []
+    retries = 0
+    for trace in traces:
+        responses = [e for e in trace if e.startswith('app -> api: HTTP ')]
+        def ordered(*parts):
+            positions = [next((i for i,e in enumerate(trace) if n in e), -1) for n in parts]
+            return -1 not in positions and positions == sorted(set(positions))
+        writes = [e for e in trace if e.startswith('infra -> ') and ': INSERT' in e]
+        if not responses and any('Retry whole transaction' in e for e in trace):
+            retries += 1
+            if writes or not ordered('BEGIN REPEATABLE READ', 'ROLLBACK', 'Retry whole transaction'):
+                errors.append('serialization retry must abandon the whole failed transaction')
+            continue
+        if len(responses) != 1:
+            errors.append('each terminal register trace needs exactly one HTTP outcome')
+            continue
+        code = int(responses[0].split('HTTP ')[1].split()[0]);outcomes.append(code)
+        begun = any('BEGIN' in e for e in trace)
+        if code == 201:
+            if not ordered('BEGIN REPEATABLE READ', 'Capture UTC now', expected[0], expected[1], expected[2],
+                           'applicableConsents =', 'Validate submitted ids/versions', expected[4],
+                           'userId = returned user_id', expected[5], expected[6], 'COMMIT', 'HTTP 201'):
+                errors.append('success must validate one snapshot, map new user id and atomically commit required children')
+            if 'data.userId = userId' not in responses[0]:
+                errors.append('success returns the newly created userId')
+            if any('ROLLBACK' in e for e in trace):
+                errors.append('success cannot roll back')
+        elif begun:
+            if not ordered('BEGIN REPEATABLE READ', 'ROLLBACK', f'HTTP {code}') or any('COMMIT' in e for e in trace):
+                errors.append('transaction failure must rollback before responding, with no commit')
+            if writes:
+                errors.append('normal validation failure must precede every write')
+        elif code != 400 or any(e.startswith('infra -> ') for e in trace):
+            errors.append('only malformed input may respond without a transaction; it must execute no SQL')
+    from collections import Counter
+    if Counter(outcomes) != Counter({201:16,400:5,404:3,409:2,408:1,500:1}) or retries != 1:
+        errors.append(f'expected complete terminal/optional paths and one retry; got {dict(Counter(outcomes))}, retry={retries}')
+    if '--rendered-svg' in sys.argv:
+        import xml.etree.ElementTree as ET
+        try:
+            root = ET.parse(Path(sys.argv[sys.argv.index('--rendered-svg')+1])).getroot()
+            expected_lines = Counter(' '.join(l.split()) for _,_,s in operations for l in s.splitlines() if l.strip())
+            visible = Counter(' '.join(''.join(e.itertext()).split()) for e in root.iter() if e.tag.endswith('}text'))
+            missing = expected_lines-visible
+            if missing:
+                errors.append(f'rendered register SQL missing {sum(missing.values())} lines: {dict(missing)}')
+            else:
+                print(f'OK: rendered register SQL ({sum(expected_lines.values())}/{sum(expected_lines.values())} visible lines)')
+        except (IndexError,OSError,ET.ParseError) as exc:
+            errors.append(f'cannot verify rendered register SVG: {exc}')
+    if errors:
+        return fail('; '.join(errors))
+    print(f'OK: register-flow ({len(outcomes)} terminal traces, whole-transaction retry, current consent coverage and atomic writes)')
+    return 0
+
+
+COMMANDS['register-flow'] = check_register_flow
+
+
+def check_consent_submit_flow() -> int:
+    """Check read/answer/no-op transitions, revocation serialization and atomic batch outcomes."""
+    path = 'e-commerce/doc/api/consent/04-submit-consent/spec.md'
+    md = read(path);wsd = read(str(Path(path).with_name('sequence.wsd')))
+    errors = []
+    for needle in ('2026-11-07-api-review-design.md', 'Q16/Q17', 'READ COMMITTED',
+                   'Duplicate consentIds return 400', 'resultSpecified records presence',
+                   'An existing answer survives a read-only request', 'performs no UPDATE at all',
+                   'preserve read_at even when NULL', 'newest created_at, then greatest id',
+                   'validate the complete current consent set', 'including all-no-op batches',
+                   'Return data.consents in original request order', 'A later item/DB failure rolls back earlier item changes',
+                   'current version', 'mandatory boolean isRead=true'):
+        if needle not in md:errors.append(f'submit rule missing {needle!r}')
+    front = re.match(r'---\n(.*?)\n---\n', md, re.S)
+    fm = front[1] if front else ''
+    state = re.search(r'^status: (draft|in-review|approved)$', fm, re.M)
+    if not state:errors.append('submit needs valid approval metadata')
+    for field in ('approved_by','approved_at'):
+        value = re.search(rf'^{field}: (.+)$', fm, re.M)
+        if not value or (state and ((state[1]=='approved')==(value[1]=='null'))):errors.append(f'inconsistent submit {field}')
+    operations = spec_database_operations(md)
+    expected = ('QUERY - Lock the user', 'QUERY - Check the active access token', 'QUERY - Get active consents',
+                'QUERY - Get existing user consent', 'INSERT - Create user consent', 'UPDATE - Update user consent')
+    if tuple(h for _,h,_ in operations)!=expected:errors.append('submit requires all six canonical SQL operations')
+    sql={h:re.sub(r'--[^\n]*','',s) for _,h,s in operations}
+    required={
+        expected[0]: ["u.id = '<sequence.userId>'", "u.row_status = 'ACTIVE'", 'FOR UPDATE'],
+        expected[1]: ["at.token = '<sequence.accessTokenHash>'", "at.user_id = '<sequence.userId>'", "at.row_status = 'ACTIVE'", "at.expired_at > '<sequence.now>'"],
+        expected[2]: ["c.id = ANY ('<sequence.consentIds>'::UUID[])", "c.row_status = 'ACTIVE'", "c.effective_at <= '<sequence.now>'", "c.expired_at IS NULL OR c.expired_at > '<sequence.now>'", 'AND EXISTS (', 'FROM consent.m_consent_type ct', 'ct.id = c.consent_type_id', "ct.row_status = 'ACTIVE'", 'ORDER BY c.id'],
+        expected[3]: ['uc.result,', 'uc.is_read,', 'uc.read_at', "uc.user_id = '<sequence.userId>'", "uc.consent_id = '<sequence.consents.consentId>'", "uc.consent_version = '<sequence.consents.consentVersion>'", "uc.row_status = 'ACTIVE'", 'ORDER BY uc.created_at DESC, uc.id DESC', 'LIMIT 1'],
+        expected[4]: ['created_by,', 'user_id,', 'consent_id,', 'consent_version,', 'result,', 'is_read,', 'read_at', '<sequence.userId>', '<sequence.consents.consentId>', '<sequence.consents.consentVersion>', '<sequence.consents.result>', 'TRUE,', '<sequence.now>'],
+        expected[5]: ["updated_by = '<sequence.userId>'", "updated_at = '<sequence.now>'", "result = CASE WHEN '<sequence.consents.resultSpecified>'::BOOLEAN THEN '<sequence.consents.result>'::BOOLEAN ELSE result END", "read_at = CASE WHEN is_read THEN read_at ELSE '<sequence.now>'::TIMESTAMP END", 'is_read = TRUE', "WHERE id = '<sequence.userConsentId>'", "AND user_id = '<sequence.userId>'", "AND consent_id = '<sequence.consents.consentId>'", "AND consent_version = '<sequence.consents.consentVersion>'", "AND row_status = 'ACTIVE'", "AND (NOT is_read OR ('<sequence.consents.resultSpecified>'::BOOLEAN AND result IS DISTINCT FROM '<sequence.consents.result>'::BOOLEAN))"],
+    }
+    for h,needles in required.items():
+        for needle in needles:
+            if needle not in sql.get(h,''):errors.append(f'{h} missing {needle}')
+    for h in expected[-2:]:
+        if 'RETURNING id as user_consent_id, consent_id, consent_version, result, is_read, read_at' not in sql.get(h,''):
+            errors.append(f'{h} must return actual persisted response values')
+    if 'NOW()' in '\n'.join(sql.values()):errors.append('submit must use fresh post-lock now')
+    if any(h.startswith('DELETE') or t.startswith('author.') for t,h,_ in operations):errors.append('submit must preserve history and require no role-assignment query')
+    actual,lifecycle=sequence_database_operations(wsd);errors+=lifecycle
+    if [(t.split('.')[-1],h,normalize(s)) for t,h,s in operations]!=[(t,h,normalize(s)) for t,h,s in actual]:errors.append('submit spec/sequence SQL differs')
+    for _,heading,_ in operations:
+        if f'app -> infra: {heading}' not in wsd:errors.append(f'{heading} needs Application request')
+        match=re.search(rf'infra -> (\w+): {re.escape(heading)}\n.*?deactivate \1\n([^\n]+)',wsd,re.S)
+        if not match or not match[2].strip().startswith('infra -> app: Return '):errors.append(f'{heading} must return data to Application')
+    for needle in ('userId = verified sub; accessTokenHash = SHA-256 exact JWT', 'Capture fresh UTC now after user lock; recheck JWT exp',
+                   'Compare complete eligible id set and all displayed versions before writes',
+                   'loop Each consent in ascending consentId order',
+                   'resultSpecified = property present; result = explicit boolean or false for insert',
+                   'alt No canonical ACTIVE row for user/consent/version',
+                   'else Canonical row already read and result omitted or unchanged',
+                   'responseItem = existing evidence; no INSERT or UPDATE; preserve result/readAt',
+                   'userConsentId = canonical evidence id; preserve first readAt if already read',
+                   'Collect responseItem by original request position',
+                   'break Abort entire request on internal consistency failure', 'end break'):
+        if needle not in wsd:errors.append(f'submit sequence missing guard/mapping {needle!r}')
+    traces,structure=login_sequence_paths(wsd);errors+=structure
+    from collections import Counter
+    outcomes=[];modes=Counter()
+    for trace in traces:
+        responses=[e for e in trace if e.startswith('app -> api: HTTP ')]
+        if len(responses)!=1:errors.append('each submit trace needs exactly one terminal outcome');continue
+        code=int(responses[0].split('HTTP ')[1].split()[0]);outcomes.append(code)
+        def ordered(*parts):
+            pos=[next((i for i,e in enumerate(trace) if part in e),-1) for part in parts]
+            return -1 not in pos and pos==sorted(set(pos))
+        writes=[e for e in trace if e.startswith('infra -> ') and ': INSERT' in e or e.startswith('infra -> ') and ': UPDATE' in e]
+        begun=any('BEGIN' in e for e in trace)
+        if code==200:
+            if not ordered('Verify Bearer JWT', 'BEGIN READ COMMITTED', expected[0], 'Capture fresh UTC now',expected[1],expected[2], 'Compare complete eligible id set',expected[3], 'Collect responseItem', 'app -> infra: COMMIT','HTTP 200'):
+                errors.append('success must serialize, freshly validate token/current policy, resolve evidence and commit before response')
+            if any('ROLLBACK' in e for e in trace):errors.append('success must not roll back')
+            if len(writes)>1:errors.append('one item cannot both INSERT and UPDATE')
+            mode='insert' if any(': INSERT' in e for e in writes) else 'update' if writes else 'noop';modes[mode]+=1
+            if mode=='noop' and not any('responseItem = existing evidence' in e for e in trace):errors.append('no-op must return existing evidence unchanged')
+            if mode=='update' and not ordered('userConsentId = canonical evidence id', expected[5], 'responseItem = updated evidence'):errors.append('update needs canonical ownership and actual returned values')
+            if 'data.consents = original request order' not in responses[0]:errors.append('success must retain original response order')
+        elif begun:
+            if not ordered('BEGIN','ROLLBACK',f'HTTP {code}') or any(e=='app -> infra: COMMIT' for e in trace):errors.append('failure must rollback and never fall through to common COMMIT')
+            if code in (401,404,409) and writes:errors.append('authentication/reference/version failures precede every write')
+        elif code not in (400,401) or any(e.startswith('infra -> ') for e in trace):errors.append('early validation/credential failure must execute no SQL')
+        if any(expected[1] in e for e in trace) and not ordered(expected[0],'Capture fresh UTC now',expected[1]):errors.append('active-token reread must follow user lock and fresh now')
+    if Counter(outcomes)!=Counter({200:3,400:1,401:3,404:1,409:1,408:1,500:2}) or modes!=Counter({'insert':1,'update':1,'noop':1}):errors.append(f'incomplete submit outcome/mode paths: {dict(Counter(outcomes))}, {dict(modes)}')
+    for title,code in {'Success':200,'Fail - Bad Request':400,'Fail - Unauthorized':401,'Fail - Not Found':404,'Fail - Conflict':409,'Fail - Request Timeout':408,'Fail - Internal Server Error':500}.items():
+        try:
+            status=authen_json(md,title)['status']
+            if status['code']!=code or code==500 and 'bizCode' in status:errors.append(f'incorrect {title} envelope')
+        except (TypeError,KeyError,ValueError):errors.append(f'missing {title} example')
+    errors+=json_blocks_parse(md);errors+=table_lines_aligned(md)
+    if '--rendered-svg' in sys.argv:
+        import xml.etree.ElementTree as ET
+        try:
+            root=ET.parse(sys.argv[sys.argv.index('--rendered-svg')+1]).getroot()
+            expected_lines=Counter(' '.join(l.split()) for _,_,s in operations for l in s.splitlines() if l.strip())
+            visible=Counter(' '.join(''.join(e.itertext()).split()) for e in root.iter() if e.tag.endswith('}text'))
+            missing=expected_lines-visible
+            if missing:errors.append(f'rendered submit SQL missing {sum(missing.values())} lines')
+            else:print(f'OK: rendered submit SQL ({sum(expected_lines.values())}/{sum(expected_lines.values())} visible lines)')
+        except (IndexError,OSError,ET.ParseError) as exc:errors.append(f'cannot verify submit SVG: {exc}')
+    if errors:return fail('; '.join(errors))
+    print('OK: consent-submit-flow (12 terminal traces; insert/update/no-op; first read, revocation and atomic batch)')
+    return 0
+
+
+COMMANDS['consent-submit-flow'] = check_consent_submit_flow
+
+
+def check_pending_consent_flow() -> int:
+    """Guard current canonical evidence, required/optional pending and one read-only response snapshot."""
+    path='e-commerce/doc/api/consent/05-inquiry-pending-consent/spec.md'
+    md=read(path);wsd=read(str(Path(path).with_name('sequence.wsd')));errors=[]
+    for needle in ('2026-11-07-api-review-design.md','Q16/Q17','REPEATABLE READ READ ONLY',
+                   'newest created_at, then greatest id', 'BOTH is_read=true AND result=true',
+                   'Optional consent is complete once canonical current-version is_read=true',
+                   'No evidence means pending', 'submittedVersion does not itself prove acceptance',
+                   'This GET never marks a consent read', 'same snapshot', 'effective_at ASC, id ASC',
+                   'already-authorized in-flight read', 'inactive/locked/archived/deleted type is hidden',
+                   'Required means c.is_required', 'No FOR UPDATE', 'A new current version is pending'):
+        if needle not in md:errors.append(f'pending rule missing {needle!r}')
+    canonical_rule=re.search(r'^- Select the canonical ACTIVE evidence row[^\n]+',md,re.M)
+    if not canonical_rule or 'newest created_at, then greatest id' not in canonical_rule[0]:
+        errors.append('canonical current-version evidence must explicitly use newest created_at then greatest id')
+    front=re.match(r'---\n(.*?)\n---\n',md,re.S);fm=front[1] if front else ''
+    state=re.search(r'^status: (draft|in-review|approved)$',fm,re.M)
+    if not state:errors.append('pending spec needs approval metadata')
+    for field in ('approved_by','approved_at'):
+        value=re.search(rf'^{field}: (.+)$',fm,re.M)
+        if not value or (state and ((state[1]=='approved')==(value[1]=='null'))):errors.append(f'inconsistent pending {field}')
+    operations=spec_database_operations(md)
+    expected=('QUERY - Check active credential and user','QUERY - Get pending consents','QUERY - Get latest submitted version','QUERY - Get consent type')
+    if tuple(h for _,h,_ in operations)!=expected:errors.append('pending requires credential, policy, history and type operations')
+    sql={h:re.sub(r'--[^\n]*','',s) for _,h,s in operations}
+    required={
+        expected[0]: ["at.token = '<sequence.accessTokenHash>'", "at.user_id = '<sequence.userId>'", "at.row_status = 'ACTIVE'", "at.expired_at > '<sequence.now>'", 'AND EXISTS (', 'u.id = at.user_id', "u.row_status = 'ACTIVE'"],
+        expected[1]: ["c.row_status = 'ACTIVE'", "c.effective_at <= '<sequence.now>'", "c.expired_at IS NULL OR c.expired_at > '<sequence.now>'", 'AND EXISTS (', 'ct.id = c.consent_type_id', "ct.row_status = 'ACTIVE'", 'AND NOT COALESCE((', 'SELECT uc.is_read AND (NOT c.is_required OR uc.result)', "uc.user_id = '<sequence.userId>'", 'uc.consent_id = c.id', 'uc.consent_version = c.consent_version', "uc.row_status = 'ACTIVE'", 'ORDER BY uc.created_at DESC, uc.id DESC', 'LIMIT 1', '), FALSE)', 'ORDER BY c.effective_at, c.id'],
+        expected[2]: ['SELECT DISTINCT ON (uc.consent_id)', 'uc.consent_version as submitted_version', "uc.user_id = '<sequence.userId>'", "uc.consent_id = ANY ('<sequence.consentIds>'::UUID[])", "uc.row_status = 'ACTIVE'", 'ORDER BY uc.consent_id, uc.created_at DESC, uc.id DESC'],
+        expected[3]: ['ct.id as consent_type_id', 'ct.name as consent_type_name', "ct.id = ANY ('<sequence.consentTypeIds>'::UUID[])", "ct.row_status = 'ACTIVE'"],
+    }
+    for h,needles in required.items():
+        for needle in needles:
+            if needle not in sql.get(h,''):errors.append(f'{h} missing {needle}')
+    projection=sql.get(expected[1],'').split('FROM consent.t_consent',1)[0]
+    for field in ('id as consent_id','code','consent_type_id','consent_version','consent_name','consent_description','effective_at','expired_at','is_required','body'):
+        if not re.search(r'^\s*'+re.escape('c.'+field)+r'\s*,?\s*$',projection,re.M):errors.append(f'pending projection missing exact c.{field}')
+    for table,heading,statement in operations:
+        if not heading.startswith('QUERY') or not statement.startswith('SELECT') or re.search(r'\b(?:INSERT|UPDATE|DELETE|pg_advisory_xact_lock)\b|\bNOW\s*\(',statement,re.I):errors.append('pending must be read-only with explicit now and no locks')
+        if table.startswith('author.'):errors.append('self inquiry requires no assignment-table query')
+    actual,lifecycle=sequence_database_operations(wsd);errors+=lifecycle
+    if [(t.split('.')[-1],h,normalize(s)) for t,h,s in operations]!=[(t,h,normalize(s)) for t,h,s in actual]:errors.append('pending spec/sequence SQL differs')
+    for _,heading,_ in operations:
+        if f'app -> infra: {heading}' not in wsd:errors.append(f'{heading} needs Application request')
+        match=re.search(rf'infra -> (\w+): {re.escape(heading)}\n.*?deactivate \1\n([^\n]+)',wsd,re.S)
+        if not match or not match[2].strip().startswith('infra -> app: Return '):errors.append(f'{heading} needs result returned to Application')
+    for needle in ('userId = verified sub; accessTokenHash = SHA-256 exact JWT',
+                   'Capture UTC now before first query; establish snapshot and recheck JWT exp',
+                   'alt pendingConsents is empty', 'data.consents = []; skip history/type lookups',
+                   'consentIds = pendingConsents.consent_id; consentTypeIds = distinct pending type ids',
+                   'submittedVersion = latest map or null; require every type name',
+                   'Return complete data.consents in effective_at ASC, id ASC order',
+                   'Mapping failure throws before COMMIT', 'without recording reading'):
+        if needle not in wsd:errors.append(f'pending sequence missing mapping/guard {needle!r}')
+    traces,structure=login_sequence_paths(wsd);errors+=structure
+    from collections import Counter
+    outcomes=[];history_modes=[]
+    for trace in traces:
+        responses=[e for e in trace if e.startswith('app -> api: HTTP ')]
+        if len(responses)!=1:errors.append('each pending trace needs one terminal outcome');continue
+        code=int(responses[0].split('HTTP ')[1].split()[0]);outcomes.append(code)
+        def ordered(*parts):
+            pos=[next((i for i,e in enumerate(trace) if part in e),-1) for part in parts]
+            return -1 not in pos and pos==sorted(set(pos))
+        begun=any(e.startswith('app -> infra: BEGIN') for e in trace)
+        if code==200:
+            if not ordered('Verify JWT','BEGIN ISOLATION LEVEL REPEATABLE READ READ ONLY','Capture UTC now',expected[0],expected[1],'app -> infra: COMMIT','HTTP 200'):errors.append('pending success must authorize/read one snapshot and commit before response')
+            if any('ROLLBACK' in e for e in trace):errors.append('pending success must not roll back')
+            has_history=any(expected[2] in e for e in trace);history_modes.append(has_history)
+            if has_history:
+                if not ordered(expected[1],'consentIds = pendingConsents.consent_id',expected[2],expected[3],'Merge twelve response fields','app -> infra: COMMIT'):errors.append('non-empty pending must map current history and type names from derived ids before commit')
+            elif any(expected[3] in e for e in trace) or not any('data.consents = []' in e for e in trace):errors.append('empty pending must skip enrichment and return explicit []')
+            if 'data.consents' not in responses[0]:errors.append('success must expose pending array')
+        elif begun:
+            if not ordered('BEGIN','ROLLBACK',f'HTTP {code}') or any(e=='app -> infra: COMMIT' for e in trace):errors.append('pending error must roll back before response with no commit')
+            if code==401 and any(expected[1] in e for e in trace):errors.append('invalid credential cannot read policy/history')
+        elif code not in (400,401) or any(e.startswith('infra -> ') for e in trace):errors.append('early error must execute no SQL')
+        if any(e.startswith('infra -> ') and ': QUERY' not in e for e in trace):errors.append('pending cannot mutate data')
+    if Counter(outcomes)!=Counter({200:2,400:1,401:2,408:1,500:1}) or sorted(history_modes)!=[False,True]:errors.append(f'incomplete pending outcome paths: {dict(Counter(outcomes))}, enrich={history_modes}')
+    for title,code in {'Success':200,'Success - No Pending Consent':200,'Fail - Bad Request':400,'Fail - Unauthorized':401,'Fail - Request Timeout':408,'Fail - Internal Server Error':500}.items():
+        try:
+            obj=authen_json(md,title);status=obj['status']
+            if status['code']!=code or code==500 and 'bizCode' in status:errors.append(f'incorrect pending {title} envelope')
+            if title=='Success - No Pending Consent' and obj['data']['consents']!=[]:errors.append('empty pending success must contain []')
+        except (TypeError,KeyError,ValueError):errors.append(f'missing pending {title} example')
+    for text in ('| isRead=false, result=true | Pending | Pending |','| isRead=true, result=false (read-only/rejected) | Pending | Complete |','| isRead=true, result=true | Complete | Complete |'):
+        if re.sub(r'\s+','',text) not in re.sub(r'\s+','',md):errors.append('pending truth table must distinguish read and accepted for both kinds')
+    errors+=json_blocks_parse(md);errors+=table_lines_aligned(md)
+    if '--rendered-svg' in sys.argv:
+        import xml.etree.ElementTree as ET
+        try:
+            root=ET.parse(sys.argv[sys.argv.index('--rendered-svg')+1]).getroot()
+            expected_lines=Counter(' '.join(l.split()) for _,_,s in operations for l in s.splitlines() if l.strip())
+            visible=Counter(' '.join(''.join(e.itertext()).split()) for e in root.iter() if e.tag.endswith('}text'))
+            missing=expected_lines-visible
+            if missing:errors.append(f'rendered pending SQL missing {sum(missing.values())} lines')
+            else:print(f'OK: rendered pending SQL ({sum(expected_lines.values())}/{sum(expected_lines.values())} visible lines)')
+        except (IndexError,OSError,ET.ParseError) as exc:errors.append(f'cannot verify pending SVG: {exc}')
+    if errors:return fail('; '.join(errors))
+    print('OK: pending-consent-flow (7 terminal traces; canonical required/optional truth table; read-only snapshot and complete mapping)')
+    return 0
+
+
+COMMANDS['pending-consent-flow'] = check_pending_consent_flow
+
+
+def check_active_consent_flow() -> int:
+    """Check the public visible-consent contract, complete type names and read-only paths."""
+    path='e-commerce/doc/api/consent/01-inquiry-active-consent/spec.md'
+    md=read(path);wsd=read(str(Path(path).with_name('sequence.wsd')));errors=[]
+    for needle in ('2026-11-07-api-review-design.md','Q3','Public endpoint','REPEATABLE READ READ ONLY',
+                   'isRequired comes from c.is_required','every visible current consent',
+                   'mandatory consentTypeName','effective_at ASC, id ASC','This GET never records reading',
+                   'skip the type-name lookup','A type deactivated after this snapshot is absent in the next request'):
+        if needle not in md:errors.append(f'active consent rule missing {needle!r}')
+    if 'authorization' in md.lower():errors.append('public active-consent contract must not require a credential header')
+    front=re.match(r'---\n(.*?)\n---\n',md,re.S);fm=front[1] if front else ''
+    state=re.search(r'^status: (draft|in-review|approved)$',fm,re.M)
+    if not state:errors.append('active-consent needs approval metadata')
+    for field in ('approved_by','approved_at'):
+        value=re.search(rf'^{field}: (.+)$',fm,re.M)
+        if not value or (state and ((state[1]=='approved')==(value[1]=='null'))):errors.append(f'inconsistent active consent {field}')
+    operations=spec_database_operations(md)
+    expected=('QUERY - Get active consents','QUERY - Get consent type')
+    if tuple(h for _,h,_ in operations)!=expected:errors.append('active consent must declare exactly definition and type-name queries')
+    sql={h:re.sub(r'--[^\n]*','',s) for _,h,s in operations}
+    required={expected[0]:["c.row_status = 'ACTIVE'", "c.effective_at <= '<sequence.now>'", "c.expired_at IS NULL OR c.expired_at > '<sequence.now>'", 'AND EXISTS (', 'FROM consent.m_consent_type ct', 'ct.id = c.consent_type_id', "ct.row_status = 'ACTIVE'", 'ORDER BY c.effective_at, c.id'],
+              expected[1]:['ct.id as consent_type_id','ct.name as consent_type_name',"ct.id = ANY ('<sequence.consentTypeIds>'::UUID[])","ct.row_status = 'ACTIVE'"]}
+    for h,needles in required.items():
+        for needle in needles:
+            if needle not in sql.get(h,''):errors.append(f'{h} missing {needle}')
+    projection=sql.get(expected[0],'').split('FROM consent.t_consent',1)[0]
+    for field in ('id as consent_id','code','consent_type_id','consent_version','consent_name','consent_description','effective_at','expired_at','is_required','body'):
+        if not re.search(r'^\s*'+re.escape('c.'+field)+r'\s*,?\s*$',projection,re.M):errors.append(f'active projection missing exact c.{field}')
+    for table,heading,statement in operations:
+        if table not in ('consent.t_consent','consent.m_consent_type') or 'authen.' in statement or 'author.' in statement:errors.append('public inquiry must not read user/credential/assignment data')
+        if not heading.startswith('QUERY') or not statement.startswith('SELECT') or re.search(r'\b(?:INSERT|UPDATE|DELETE|pg_advisory_xact_lock)\b|\bNOW\s*\(',statement,re.I):errors.append('active inquiry requires read-only SQL with server now parameter')
+    actual,lifecycle=sequence_database_operations(wsd);errors+=lifecycle
+    if [(t.split('.')[-1],h,normalize(s)) for t,h,s in operations]!=[(t,h,normalize(s)) for t,h,s in actual]:errors.append('active spec/sequence SQL differs')
+    for _,heading,_ in operations:
+        if f'app -> infra: {heading}' not in wsd:errors.append(f'{heading} needs Application request')
+        match=re.search(rf'infra -> (\w+): {re.escape(heading)}\n.*?deactivate \1\n([^\n]+)',wsd,re.S)
+        if not match or not match[2].strip().startswith('infra -> app: Return '):errors.append(f'{heading} needs Application result')
+    for needle in ('Capture server UTC now immediately before first query; establish snapshot','alt visibleConsents is empty',
+                   'data.consents = []; skip type-name lookup','consentTypeIds = distinct visibleConsents.consent_type_id',
+                   'Merge eleven public fields; require every consentTypeName; preserve nulls and current versions',
+                   'Return complete data.consents in effective_at ASC, id ASC order','Mapping failure throws before COMMIT',
+                   'without creating user evidence'):
+        if needle not in wsd:errors.append(f'active sequence missing mapping/guard {needle!r}')
+    traces,structure=login_sequence_paths(wsd);errors+=structure
+    from collections import Counter
+    outcomes=[];enrich=[]
+    for trace in traces:
+        response=[e for e in trace if e.startswith('app -> api: HTTP ')]
+        if len(response)!=1:errors.append('each active-consent path requires one outcome');continue
+        code=int(response[0].split('HTTP ')[1].split()[0]);outcomes.append(code)
+        def ordered(*parts):
+            pos=[next((i for i,e in enumerate(trace) if part in e),-1) for part in parts]
+            return -1 not in pos and pos==sorted(set(pos))
+        if code==200:
+            if not ordered('BEGIN ISOLATION LEVEL REPEATABLE READ READ ONLY','Capture server UTC now',expected[0],'app -> infra: COMMIT','HTTP 200'):errors.append('active success must query one snapshot and commit before response')
+            if any('ROLLBACK' in e for e in trace):errors.append('active success must not roll back')
+            has_type=any(expected[1] in e for e in trace);enrich.append(has_type)
+            if has_type:
+                if not ordered(expected[0],'consentTypeIds = distinct',expected[1],'Merge eleven public fields','app -> infra: COMMIT'):errors.append('non-empty active response must derive type ids, query names and map before commit')
+            elif not any('data.consents = []' in e for e in trace):errors.append('empty active response must expose []')
+        elif code==400:
+            if any('BEGIN' in e or e.startswith('infra -> ') for e in trace):errors.append('bad timestamp must execute no SQL or transaction')
+        elif code in (408,500):
+            if not ordered('BEGIN','ROLLBACK',f'HTTP {code}') or any(e=='app -> infra: COMMIT' for e in trace):errors.append('active failure must rollback and never commit')
+        if any(e.startswith('infra -> ') and ': QUERY' not in e for e in trace):errors.append('active inquiry cannot write')
+    if Counter(outcomes)!=Counter({200:2,400:1,408:1,500:1}) or sorted(enrich)!=[False,True]:errors.append(f'incomplete active outcomes: {dict(Counter(outcomes))}, enrich={enrich}')
+    response_fields={'consentId','code','consentTypeId','consentTypeName','consentVersion','consentName','consentDescription','effectiveAt','expiredAt','isRequired','body'}
+    for title,code in {'Success':200,'Success - No Active Consent':200,'Fail - Bad Request':400,'Fail - Request Timeout':408,'Fail - Internal Server Error':500}.items():
+        try:
+            obj=authen_json(md,title);status=obj['status']
+            if status['code']!=code or code==500 and 'bizCode' in status:errors.append(f'incorrect active {title} envelope')
+            if title=='Success - No Active Consent' and obj['data']['consents']!=[]:errors.append('empty active list must be []')
+            if title=='Success' and any(set(row)!=response_fields or not row['consentTypeName'] for row in obj['data']['consents']):errors.append('active response example needs all eleven public fields and a type name')
+        except (TypeError,KeyError,ValueError):errors.append(f'missing active {title} example')
+    errors+=json_blocks_parse(md);errors+=table_lines_aligned(md)
+    if '--rendered-svg' in sys.argv:
+        import xml.etree.ElementTree as ET
+        try:
+            root=ET.parse(sys.argv[sys.argv.index('--rendered-svg')+1]).getroot()
+            expected_lines=Counter(' '.join(l.split()) for _,_,s in operations for l in s.splitlines() if l.strip())
+            visible=Counter(' '.join(''.join(e.itertext()).split()) for e in root.iter() if e.tag.endswith('}text'))
+            missing=expected_lines-visible
+            if missing:errors.append(f'rendered active SQL missing {sum(missing.values())} lines')
+            else:print(f'OK: rendered active SQL ({sum(expected_lines.values())}/{sum(expected_lines.values())} visible lines)')
+        except (IndexError,OSError,ET.ParseError) as exc:errors.append(f'cannot verify active SVG: {exc}')
+    if errors:return fail('; '.join(errors))
+    print('OK: active-consent-flow (5 terminal traces; public type visibility, complete mapping and read-only snapshot)')
+    return 0
+
+
+COMMANDS['active-consent-flow'] = check_active_consent_flow
 
 
 def check_author_me_flow() -> int:

@@ -242,3 +242,10 @@ description: Repository-wide and project-specific lessons captured from user cor
 - **Correction**: `agent_workspace.py prepare` was called with `--scope "a,b,c"`. The option is `action="append"`, so the assignment record kept one string with commas and no changed file could be inside it; a second `prepare` was refused because the task branch was already active, and the record had to be reset by hand with the approval of the lead.
 - **Root cause**: The values were joined in the way the previous assignment message listed them and the usage line (`--scope SCOPE`) was not checked for how several scopes are given; the `scope` of the output was not read before the lock was used.
 - **Corrected behavior**: Pass one `--scope` per path, and read the `scope` list of the `prepare` output before starting; it must show every path as its own entry. If it does not, release the lock and stop to ask the assigner before touching the record.
+
+
+### 2026-11-07 — A displayed consent is read independently of its answer
+
+- **Correction**: The owner rejected inferring reading only from an explicit boolean result. Displaying triggers the submission endpoint without result; answering adds result later.
+- **Root cause**: Read state was inferred from answering rather than the owner's display event.
+- **Corrected behavior**: Record a supplied displayed version as read independently of result; preserve any answer on read-only calls and preserve the original read timestamp once read. Already-read read-only calls need no UPDATE. Review register, submit and pending together; each remains its own PR.

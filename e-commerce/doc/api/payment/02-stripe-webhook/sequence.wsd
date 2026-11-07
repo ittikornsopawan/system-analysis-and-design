@@ -1,0 +1,450 @@
+@startuml StripeWebhook Sequence
+
+title Stripe Webhook API Sequence
+
+' Leading SQL apostrophes use &#39; so PlantUML preserves literals; parity compares decoded SQL.
+
+' Visual style
+skinparam defaultFontName "Sarabun"
+skinparam defaultFontSize 14
+skinparam backgroundColor #FFFFFF
+skinparam shadowing false
+skinparam roundcorner 10
+skinparam sequence {
+    ArrowColor #475569
+    ArrowFontColor #334155
+    LifeLineBorderColor #CBD5E1
+    LifeLineBackgroundColor #F8FAFC
+    ParticipantBorderColor #94A3B8
+    ParticipantBackgroundColor #F1F5F9
+    ParticipantFontColor #0F172A
+    GroupBorderColor #94A3B8
+    GroupBackgroundColor #F8FAFC
+    GroupFontColor #334155
+}
+
+' Do not show participant footers at the bottom of the diagram
+hide footbox
+
+box "External" #F8FAFC
+    participant "Stripe" as stripe
+end box
+box "Web API" #F8FAFC
+    participant "API" as api
+    participant "Application" as app
+    participant "Domain" as domain
+    participant "Infrastructure" as infra
+end box
+box "Database" #F8FAFC
+    database "t_payment" as t_payment
+    database "t_order" as t_order
+    database "t_order_item" as t_order_item
+    database "t_shop_product_sku_lot" as t_shop_product_sku_lot
+    database "m_campaign_budget_ledger" as m_campaign_budget_ledger
+    database "m_campaign_budget" as m_campaign_budget
+end box
+
+stripe -> api: POST v1/payment/webhook/stripe (raw body and stripe-signature)
+activate stripe
+    activate api
+        api -> app: [**StripeWebhookCommandHandler**] Process request
+        activate app
+            app -> app: Create request context; generate requestId when omitted
+            app -> domain: Verify stripe-signature against the raw body with the signing secret; the timestamp is within 5 minutes and the body is JSON
+            activate domain
+            domain -> app: Valid or invalid
+            deactivate domain
+            alt Signature missing or wrong, body is not JSON, or timestamp is too old
+                app -> api: HTTP 400 E10001
+                api -> stripe: Bad request; nothing is changed
+            else Valid event
+                app -> app: Read the event type and its data (providerPaymentId, chargeId, eventAt, paymentName, failure, refundId)
+                alt The event type is not handled
+                    app -> api: HTTP 200 S10000 action IGNORED
+                    api -> stripe: Event received
+                else The event type is handled
+                    app -> infra: BEGIN READ COMMITTED
+                    activate infra
+                    alt Work completes before commit
+                        app -> infra: QUERY - Get the payment of the event
+                        infra -> t_payment: QUERY - Get the payment of the event
+                        activate t_payment
+                            note right of t_payment
+                                SELECT
+                                    p.id as payment_id,
+                                    p.order_id,
+                                    p.status,
+                                    p.payment_method,
+                                    p.amount
+                                FROM payment.t_payment p
+                                WHERE p.provider_payment_id = '<sequence.providerPaymentId>' -- the PaymentIntent id of the event, no row means the event is IGNORED
+                                AND p.row_status = 'ACTIVE'
+                            end note
+                            t_payment -> infra: Return query result
+                        deactivate t_payment
+                        infra -> app: Return the payment or no row
+                        alt No payment has this PaymentIntent id
+                            app -> infra: COMMIT
+                            app -> api: HTTP 200 S10000 action IGNORED
+                            api -> stripe: Event received
+                        else Payment found
+                            app -> infra: QUERY - Get the order of the payment and lock it
+                            infra -> t_order: QUERY - Get the order of the payment and lock it
+                            activate t_order
+                                note right of t_order
+                                    SELECT
+                                        o.id as order_id,
+                                        o.status
+                                    FROM sales.t_order o
+                                    WHERE o.id = '<sequence.orderId>'
+                                    FOR UPDATE -- taken before any update of the payment
+                                end note
+                                t_order -> infra: Return query result
+                            deactivate t_order
+                            infra -> app: Return the locked order
+                            alt PENDING and payment_intent.processing
+                                app -> infra: UPDATE - Mark the payment as processing
+                                infra -> t_payment: UPDATE - Mark the payment as processing
+                                activate t_payment
+                                    note right of t_payment
+                                        UPDATE payment.t_payment
+                                        SET
+                                            updated_by = 'system',
+                                            updated_at = NOW() AT TIME ZONE 'UTC',
+                                            status = 'PROCESSING'
+                                        WHERE id = '<sequence.paymentId>'
+                                        AND status = 'PENDING'
+                                        RETURNING id as payment_id, status
+                                    end note
+                                    t_payment -> infra: Return updated result
+                                deactivate t_payment
+                                infra -> app: Return the processing payment or no row
+                                alt A row changed
+                                    app -> infra: COMMIT
+                                    app -> api: HTTP 200 S10000 action PAYMENT_PROCESSING
+                                    api -> stripe: Event received
+                                else Nothing changed: the payment changed in the meantime
+                                    app -> infra: COMMIT
+                                    app -> api: HTTP 200 S10000 action IGNORED
+                                    api -> stripe: Event received
+                                end
+                            else PENDING or PROCESSING and payment_intent.succeeded
+                                app -> infra: UPDATE - Mark the payment as completed
+                                infra -> t_payment: UPDATE - Mark the payment as completed
+                                activate t_payment
+                                    note right of t_payment
+                                        UPDATE payment.t_payment
+                                        SET
+                                            updated_by = 'system',
+                                            updated_at = NOW() AT TIME ZONE 'UTC',
+                                            status = 'COMPLETED',
+                                            transaction_code = '<sequence.chargeId>',
+                                            transaction_at = '<sequence.eventAt>', -- the time of the event in UTC
+                                            payment_name = '<sequence.paymentName>'
+                                        WHERE id = '<sequence.paymentId>'
+                                        AND status IN ('PENDING', 'PROCESSING') -- another status means the event is IGNORED or a late payment
+                                        RETURNING id as payment_id, status
+                                    end note
+                                    t_payment -> infra: Return updated result
+                                deactivate t_payment
+                                infra -> app: Return the completed payment or no row
+                                alt A row changed
+                                    app -> infra: UPDATE - Confirm the order
+                                    infra -> t_order: UPDATE - Confirm the order
+                                    activate t_order
+                                        note right of t_order
+                                            UPDATE sales.t_order
+                                            SET
+                                                updated_by = 'system',
+                                                updated_at = NOW() AT TIME ZONE 'UTC',
+                                                status = 'PAYMENT_CONFIRMED'
+                                            WHERE id = '<sequence.orderId>'
+                                            AND status = 'WAIT_PAYMENT' -- no row changed means a late payment, the money is refunded
+                                            RETURNING id as order_id, status
+                                        end note
+                                        t_order -> infra: Return updated result
+                                    deactivate t_order
+                                    infra -> app: Return the confirmed order or no row
+                                    alt A row changed: the order was WAIT_PAYMENT
+                                        app -> infra: COMMIT
+                                        app -> api: HTTP 200 S10000 action PAYMENT_COMPLETED
+                                        api -> stripe: Event received
+                                    else No row changed: the order was cancelled or expired first (late payment)
+                                        app -> stripe: Ask for a full refund (Idempotency-Key = refund- + payment id)
+                                        stripe -> app: Return refundId
+                                        app -> infra: UPDATE - Mark the payment as refunded
+                                        infra -> t_payment: UPDATE - Mark the payment as refunded
+                                        activate t_payment
+                                            note right of t_payment
+                                                UPDATE payment.t_payment
+                                                SET
+                                                    updated_by = 'system',
+                                                    updated_at = NOW() AT TIME ZONE 'UTC',
+                                                    status = 'REFUNDED',
+                                                    transaction_code = COALESCE(transaction_code, '<sequence.chargeId>'),
+                                                    transaction_at = COALESCE(transaction_at, '<sequence.eventAt>'),
+                                                    provider_refund_id = '<sequence.refundId>',
+                                                    refunded_at = NOW() AT TIME ZONE 'UTC',
+                                                    refund_reason = '<sequence.refundReason>' -- 'Late payment: the order is not waiting for payment' for a late payment
+                                                WHERE id = '<sequence.paymentId>'
+                                                AND status IN ('COMPLETED', 'FAILED', 'CANCELLED') -- COMPLETED for charge.refunded, FAILED and CANCELLED for a late payment
+                                                RETURNING id as payment_id, status
+                                            end note
+                                            t_payment -> infra: Return updated result
+                                        deactivate t_payment
+                                        infra -> app: Return the refunded payment
+                                        app -> infra: COMMIT
+                                        app -> api: HTTP 200 S10000 action LATE_PAYMENT_REFUNDED
+                                        api -> stripe: Event received
+                                    end
+                                else Nothing changed: the payment changed in the meantime
+                                    app -> infra: COMMIT
+                                    app -> api: HTTP 200 S10000 action IGNORED
+                                    api -> stripe: Event received
+                                end
+                            else FAILED or CANCELLED and payment_intent.succeeded (late payment)
+                                app -> stripe: Ask for a full refund (Idempotency-Key = refund- + payment id)
+                                stripe -> app: Return refundId
+                                app -> infra: UPDATE - Mark the payment as refunded
+                                infra -> t_payment: UPDATE - Mark the payment as refunded
+                                activate t_payment
+                                    note right of t_payment
+                                        UPDATE payment.t_payment
+                                        SET
+                                            updated_by = 'system',
+                                            updated_at = NOW() AT TIME ZONE 'UTC',
+                                            status = 'REFUNDED',
+                                            transaction_code = COALESCE(transaction_code, '<sequence.chargeId>'),
+                                            transaction_at = COALESCE(transaction_at, '<sequence.eventAt>'),
+                                            provider_refund_id = '<sequence.refundId>',
+                                            refunded_at = NOW() AT TIME ZONE 'UTC',
+                                            refund_reason = '<sequence.refundReason>' -- 'Late payment: the order is not waiting for payment' for a late payment
+                                        WHERE id = '<sequence.paymentId>'
+                                        AND status IN ('COMPLETED', 'FAILED', 'CANCELLED') -- COMPLETED for charge.refunded, FAILED and CANCELLED for a late payment
+                                        RETURNING id as payment_id, status
+                                    end note
+                                    t_payment -> infra: Return updated result
+                                deactivate t_payment
+                                infra -> app: Return the refunded payment
+                                app -> infra: COMMIT
+                                app -> api: HTTP 200 S10000 action LATE_PAYMENT_REFUNDED
+                                api -> stripe: Event received
+                            else PENDING or PROCESSING and payment_intent.payment_failed
+                                app -> infra: UPDATE - Mark the payment as failed
+                                infra -> t_payment: UPDATE - Mark the payment as failed
+                                activate t_payment
+                                    note right of t_payment
+                                        UPDATE payment.t_payment
+                                        SET
+                                            updated_by = 'system',
+                                            updated_at = NOW() AT TIME ZONE 'UTC',
+                                            status = 'FAILED',
+                                            failure_code = '<sequence.failureCode>',
+                                            failure_message = '<sequence.failureMessage>'
+                                        WHERE id = '<sequence.paymentId>'
+                                        AND status IN ('PENDING', 'PROCESSING')
+                                        RETURNING id as payment_id, status
+                                    end note
+                                    t_payment -> infra: Return updated result
+                                deactivate t_payment
+                                infra -> app: Return the failed payment or no row
+                                alt A row changed
+                                    app -> infra: COMMIT
+                                    app -> api: HTTP 200 S10000 action PAYMENT_FAILED
+                                    api -> stripe: Event received
+                                else Nothing changed: the payment changed in the meantime
+                                    app -> infra: COMMIT
+                                    app -> api: HTTP 200 S10000 action IGNORED
+                                    api -> stripe: Event received
+                                end
+                            else PENDING and payment_intent.canceled
+                                app -> infra: UPDATE - Mark the payment as cancelled
+                                infra -> t_payment: UPDATE - Mark the payment as cancelled
+                                activate t_payment
+                                    note right of t_payment
+                                        UPDATE payment.t_payment
+                                        SET
+                                            updated_by = 'system',
+                                            updated_at = NOW() AT TIME ZONE 'UTC',
+                                            status = 'CANCELLED'
+                                        WHERE id = '<sequence.paymentId>'
+                                        AND status = 'PENDING'
+                                        RETURNING id as payment_id, status
+                                    end note
+                                    t_payment -> infra: Return updated result
+                                deactivate t_payment
+                                infra -> app: Return the cancelled payment or no row
+                                alt A row changed
+                                    app -> infra: COMMIT
+                                    app -> api: HTTP 200 S10000 action PAYMENT_CANCELLED
+                                    api -> stripe: Event received
+                                else Nothing changed: the payment changed in the meantime
+                                    app -> infra: COMMIT
+                                    app -> api: HTTP 200 S10000 action IGNORED
+                                    api -> stripe: Event received
+                                end
+                            else COMPLETED and charge.refunded
+                                app -> infra: UPDATE - Mark the payment as refunded
+                                infra -> t_payment: UPDATE - Mark the payment as refunded
+                                activate t_payment
+                                    note right of t_payment
+                                        UPDATE payment.t_payment
+                                        SET
+                                            updated_by = 'system',
+                                            updated_at = NOW() AT TIME ZONE 'UTC',
+                                            status = 'REFUNDED',
+                                            transaction_code = COALESCE(transaction_code, '<sequence.chargeId>'),
+                                            transaction_at = COALESCE(transaction_at, '<sequence.eventAt>'),
+                                            provider_refund_id = '<sequence.refundId>',
+                                            refunded_at = NOW() AT TIME ZONE 'UTC',
+                                            refund_reason = '<sequence.refundReason>' -- 'Late payment: the order is not waiting for payment' for a late payment
+                                        WHERE id = '<sequence.paymentId>'
+                                        AND status IN ('COMPLETED', 'FAILED', 'CANCELLED') -- COMPLETED for charge.refunded, FAILED and CANCELLED for a late payment
+                                        RETURNING id as payment_id, status
+                                    end note
+                                    t_payment -> infra: Return updated result
+                                deactivate t_payment
+                                infra -> app: Return the refunded payment or no row
+                                alt A row changed
+                                    app -> infra: UPDATE - Refund the order
+                                    infra -> t_order: UPDATE - Refund the order
+                                    activate t_order
+                                        note right of t_order
+                                            UPDATE sales.t_order
+                                            SET
+                                                updated_by = 'system',
+                                                updated_at = NOW() AT TIME ZONE 'UTC',
+                                                status = 'REFUNDED'
+                                            WHERE id = '<sequence.orderId>'
+                                            AND status = 'PAYMENT_CONFIRMED' -- no row changed means the order has started to ship, only the payment changes
+                                            RETURNING id as order_id, status
+                                        end note
+                                        t_order -> infra: Return updated result
+                                    deactivate t_order
+                                    infra -> app: Return the refunded order or no row
+                                    alt A row changed: the order was PAYMENT_CONFIRMED
+                                        app -> infra: QUERY - Get the items of the refunded order
+                                        infra -> t_order_item: QUERY - Get the items of the refunded order
+                                        activate t_order_item
+                                            note right of t_order_item
+                                                SELECT
+                                                    oi.id as order_item_id,
+                                                    oi.lot_id,
+                                                    oi.quantity
+                                                FROM sales.t_order_item oi
+                                                WHERE oi.order_id = '<sequence.orderId>'
+                                                AND oi.row_status <> 'DELETED'
+                                            end note
+                                            t_order_item -> infra: Return query result
+                                        deactivate t_order_item
+                                        infra -> app: Return the items with their lots and quantities
+                                        loop For every item in lot id order
+                                            app -> infra: UPDATE - Give the quantity back to the lot
+                                            infra -> t_shop_product_sku_lot: UPDATE - Give the quantity back to the lot
+                                            activate t_shop_product_sku_lot
+                                                note right of t_shop_product_sku_lot
+                                                    UPDATE shop.t_shop_product_sku_lot
+                                                    SET
+                                                        updated_by = 'system',
+                                                        updated_at = NOW() AT TIME ZONE 'UTC',
+                                                        quantity = quantity + '<sequence.quantity>' -- the lot may be DELETED or ARCHIVED, it still gets the quantity back
+                                                    WHERE id = '<sequence.lotId>'
+                                                    RETURNING id as lot_id, quantity
+                                                end note
+                                                t_shop_product_sku_lot -> infra: Return updated result
+                                            deactivate t_shop_product_sku_lot
+                                            infra -> app: Return the lot and its quantity
+                                        end
+                                        app -> infra: QUERY - Get the budget that the order took
+                                        infra -> m_campaign_budget_ledger: QUERY - Get the budget that the order took
+                                        activate m_campaign_budget_ledger
+                                            note right of m_campaign_budget_ledger
+                                                SELECT
+                                                    l.campaign_budget_id,
+                                                    l.campaign_id,
+                                                    l.usage,
+                                                    l.reference
+                                                FROM campaign.m_campaign_budget_ledger l
+                                                WHERE l.order_id = '<sequence.orderId>'
+                                                AND l.entry_type = 'RESERVE'
+                                                AND NOT EXISTS (
+                                                    SELECT 1
+                                                    FROM campaign.m_campaign_budget_ledger r
+                                                    WHERE r.order_id = l.order_id
+                                                    AND r.campaign_budget_id = l.campaign_budget_id
+                                                    AND r.entry_type = 'RELEASE'
+                                                ) -- a budget that was already given back is skipped, so nothing goes back twice
+                                                ORDER BY l.campaign_budget_id
+                                            end note
+                                            m_campaign_budget_ledger -> infra: Return query result
+                                        deactivate m_campaign_budget_ledger
+                                        infra -> app: Return the RESERVE rows that are not released yet
+                                        loop For every budget in budget id order
+                                            app -> infra: INSERT - Write the release in the ledger
+                                            infra -> m_campaign_budget_ledger: INSERT - Write the release in the ledger
+                                            activate m_campaign_budget_ledger
+                                                note right of m_campaign_budget_ledger
+                                                    INSERT INTO campaign.m_campaign_budget_ledger (created_by, campaign_budget_id, campaign_id, order_id, entry_type, reference, usage, remaining)
+                                                    VALUES ('<sequence.userId>', '<sequence.campaignBudgetId>', '<sequence.campaignId>', '<sequence.orderId>', 'RELEASE', '<sequence.reference>', '<sequence.usage>', '<sequence.remaining>')
+                                                    RETURNING id as ledger_id
+                                                end note
+                                                m_campaign_budget_ledger -> infra: Return inserted result
+                                            deactivate m_campaign_budget_ledger
+                                            infra -> app: Return ledger_id
+                                            app -> infra: UPDATE - Give the budget back
+                                            infra -> m_campaign_budget: UPDATE - Give the budget back
+                                            activate m_campaign_budget
+                                                note right of m_campaign_budget
+                                                    UPDATE campaign.m_campaign_budget
+                                                    SET
+                                                        updated_by = '<sequence.userId>',
+                                                        updated_at = NOW() AT TIME ZONE 'UTC',
+                                                        remaining = remaining + '<sequence.usage>' -- the budget may be INACTIVE, LOCKED or ARCHIVED by now, it still gets the amount back
+                                                    WHERE id = '<sequence.campaignBudgetId>'
+                                                    RETURNING id as budget_id, remaining
+                                                end note
+                                                m_campaign_budget -> infra: Return updated result
+                                            deactivate m_campaign_budget
+                                            infra -> app: Return the budget and what is left
+                                        end
+                                        app -> infra: COMMIT
+                                        app -> api: HTTP 200 S10000 action PAYMENT_REFUNDED
+                                        api -> stripe: Event received
+                                    else No row changed: the order has started to ship, only the payment changes
+                                        app -> app: Write the event to the log for a person to handle
+                                        app -> infra: COMMIT
+                                        app -> api: HTTP 200 S10000 action PAYMENT_REFUNDED
+                                        api -> stripe: Event received
+                                    end
+                                else Nothing changed: the payment changed in the meantime
+                                    app -> infra: COMMIT
+                                    app -> api: HTTP 200 S10000 action IGNORED
+                                    api -> stripe: Event received
+                                end
+                            else Any other status and event
+                                app -> infra: COMMIT
+                                app -> api: HTTP 200 S10000 action IGNORED
+                                api -> stripe: Event received
+                            end
+                        end
+                    else Timeout before COMMIT
+                        note over app, infra
+                            A timeout can interrupt any preceding SQL or domain step.
+                            No success response is sent without a successful COMMIT.
+                        end note
+                        app -> infra: ROLLBACK
+                        app -> api: HTTP 408 E90001
+                        api -> stripe: Request timeout
+                    else Unexpected failure before COMMIT
+                        app -> infra: ROLLBACK
+                        app -> api: HTTP 500 generic error; no new bizCode
+                        api -> stripe: Internal server error
+                    end
+                    deactivate infra
+                end
+            end
+        deactivate app
+    deactivate api
+deactivate stripe
+
+@enduml

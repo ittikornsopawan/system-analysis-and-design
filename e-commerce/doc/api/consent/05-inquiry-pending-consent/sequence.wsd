@@ -1,4 +1,4 @@
-@startuml InquiryPendingConsent Sequence
+@startuml PendingConsent
 
 title Inquiry Pending Consent API Sequence
 
@@ -23,74 +23,109 @@ skinparam sequence {
 
 ' Do not show participant footers at the bottom of the diagram
 hide footbox
-
-
 actor "User" as user
-
 box "Frontend" #F8FAFC
-    participant "Inquiry Pending Consent Page" as page
+    participant "Consent Page" as page
 end box
-
 box "Web API" #F8FAFC
     participant "API" as api
     participant "Application" as app
     participant "Domain" as domain
     participant "Infrastructure" as infra
 end box
-
 box "Database" #F8FAFC
+    database "t_user_access_token" as t_user_access_token
     database "t_consent" as t_consent
     database "t_user_consent" as t_user_consent
     database "m_consent_type" as m_consent_type
 end box
-
-user -> page: Request Inquiry Pending Consent
-
+user -> page: Request pending consents
 activate page
-    page -> api: Call GET v1/consent/pending
-    activate api
-        api -> app: [**InquiryPendingConsentQueryHandler**] Process request
-        activate app
-            app -> app: Validate request parameters and business rules
-            alt If request is invalid
-                app -> api: Return error response
-                api -> page: Return error response
-                page -> user: Display error message
-            else If request is valid
-                app -> infra: Execute database operations
-                activate infra
-                    infra -> t_consent: QUERY - Get pending consents
-                    activate t_consent
-                        note right of t_consent
-                            SELECT
-                                c.id as consent_id,
-                                c.code,
-                                c.consent_type_id,
-                                c.consent_version,
-                                c.consent_name,
-                                c.consent_description,
-                                c.effective_at,
-                                c.expired_at,
-                                c.is_required,
-                                c.body
-                            FROM consent.t_consent c
-                            WHERE c.row_status = 'ACTIVE'
-                            AND c.effective_at <= NOW() AT TIME ZONE 'UTC'
-                            AND (c.expired_at IS NULL OR c.expired_at > NOW() AT TIME ZONE 'UTC')
-                            AND NOT EXISTS (
-                                SELECT 1
-                                FROM authen.t_user_consent uc
-                                WHERE uc.user_id = '<sequence.userId>'
-                                AND uc.consent_id = c.id
-                                AND uc.consent_version = c.consent_version
-                                AND uc.is_read = TRUE
-                                AND uc.row_status = 'ACTIVE'
-                            )
-                            ORDER BY c.effective_at
-                        end note
-                        t_consent -> infra: Return query result
-                    deactivate t_consent
-
+page -> api: GET v1/consent/pending (Bearer JWT, timestamp, requestId)
+activate api
+api -> app: [**InquiryPendingConsentQueryHandler**] Process request
+activate app
+app -> app: Create requestId if omitted; validate mandatory UTC timestamp
+alt Missing or invalid timestamp
+    app -> api: HTTP 400 E10001
+    api -> page: Header validation error
+else Valid ordinary headers
+    app -> app: Verify JWT signature/issuer/audience/exp/UUID sub
+    alt Missing, malformed or invalid JWT
+        app -> api: HTTP 401 E10002 Invalid or expired access token.
+        api -> page: Authentication error
+    else Verified JWT
+        app -> app: userId = verified sub; accessTokenHash = SHA-256 exact JWT
+        app -> infra: BEGIN ISOLATION LEVEL REPEATABLE READ READ ONLY
+        alt Read-only work completes
+            app -> app: Capture UTC now before first query; establish snapshot and recheck JWT exp
+            app -> infra: QUERY - Check active credential and user
+            infra -> t_user_access_token: QUERY - Check active credential and user
+            activate t_user_access_token
+                note right of t_user_access_token
+                    SELECT
+                        at.user_id
+                    FROM authen.t_user_access_token at
+                    WHERE at.token = '<sequence.accessTokenHash>'
+                    AND at.user_id = '<sequence.userId>'
+                    AND at.row_status = 'ACTIVE'
+                    AND at.expired_at > '<sequence.now>'
+                    AND EXISTS (
+                        SELECT 1
+                        FROM authen.m_user u
+                        WHERE u.id = at.user_id
+                        AND u.row_status = 'ACTIVE'
+                    )
+                end note
+                t_user_access_token -> infra: Return ACTIVE matching token/user or no row
+            deactivate t_user_access_token
+            infra -> app: Return ACTIVE matching token/user or no row
+            alt Credential/user ACTIVE and stored/JWT expiry valid at now
+                app -> infra: QUERY - Get pending consents
+                infra -> t_consent: QUERY - Get pending consents
+                activate t_consent
+                    note right of t_consent
+                        SELECT
+                            c.id as consent_id,
+                            c.code,
+                            c.consent_type_id,
+                            c.consent_version,
+                            c.consent_name,
+                            c.consent_description,
+                            c.effective_at,
+                            c.expired_at,
+                            c.is_required,
+                            c.body
+                        FROM consent.t_consent c
+                        WHERE c.row_status = 'ACTIVE'
+                        AND c.effective_at <= '<sequence.now>'
+                        AND (c.expired_at IS NULL OR c.expired_at > '<sequence.now>')
+                        AND EXISTS (
+                            SELECT 1
+                            FROM consent.m_consent_type ct
+                            WHERE ct.id = c.consent_type_id
+                            AND ct.row_status = 'ACTIVE'
+                        )
+                        AND NOT COALESCE((
+                            SELECT uc.is_read AND (NOT c.is_required OR uc.result)
+                            FROM authen.t_user_consent uc
+                            WHERE uc.user_id = '<sequence.userId>'
+                            AND uc.consent_id = c.id
+                            AND uc.consent_version = c.consent_version
+                            AND uc.row_status = 'ACTIVE'
+                            ORDER BY uc.created_at DESC, uc.id DESC
+                            LIMIT 1
+                        ), FALSE)
+                        ORDER BY c.effective_at, c.id
+                    end note
+                    t_consent -> infra: Return ordered pendingConsents (all current fields, type ids)
+                deactivate t_consent
+                infra -> app: Return ordered pendingConsents (all current fields, type ids)
+                alt pendingConsents is empty
+                    app -> app: data.consents = []; skip history/type lookups
+                else pendingConsents is non-empty
+                    app -> app: consentIds = pendingConsents.consent_id; consentTypeIds = distinct pending type ids
+                    app -> infra: QUERY - Get latest submitted version
                     infra -> t_user_consent: QUERY - Get latest submitted version
                     activate t_user_consent
                         note right of t_user_consent
@@ -99,13 +134,14 @@ activate page
                                 uc.consent_version as submitted_version
                             FROM authen.t_user_consent uc
                             WHERE uc.user_id = '<sequence.userId>'
-                            AND uc.consent_id IN ('<sequence.consentIds>')
+                            AND uc.consent_id = ANY ('<sequence.consentIds>'::UUID[])
                             AND uc.row_status = 'ACTIVE'
-                            ORDER BY uc.consent_id, uc.created_at DESC
+                            ORDER BY uc.consent_id, uc.created_at DESC, uc.id DESC
                         end note
-                        t_user_consent -> infra: Return query result
+                        t_user_consent -> infra: Return latest ACTIVE submittedVersion by consentId
                     deactivate t_user_consent
-
+                    infra -> app: Return latest ACTIVE submittedVersion by consentId
+                    app -> infra: QUERY - Get consent type
                     infra -> m_consent_type: QUERY - Get consent type
                     activate m_consent_type
                         note right of m_consent_type
@@ -113,26 +149,39 @@ activate page
                                 ct.id as consent_type_id,
                                 ct.name as consent_type_name
                             FROM consent.m_consent_type ct
-                            WHERE ct.id IN ('<sequence.consentTypeIds>')
+                            WHERE ct.id = ANY ('<sequence.consentTypeIds>'::UUID[])
                             AND ct.row_status = 'ACTIVE'
+                            ORDER BY ct.id
                         end note
-                        m_consent_type -> infra: Return query result
+                        m_consent_type -> infra: Return ACTIVE type names by typeId
                     deactivate m_consent_type
-
-                    infra -> app: Return database result
-                deactivate infra
-
-                app -> domain: Apply domain rules and prepare response
-                activate domain
-                    domain -> app: Return response data
-                deactivate domain
-
-                app -> api: Return success response
-                api -> page: Return success response
-                page -> user: Display success result
-            end alt
-        deactivate app
-    deactivate api
+                    infra -> app: Return ACTIVE type names by typeId
+                    app -> domain: Merge twelve response fields; submittedVersion = latest map or null; require every type name
+                    domain -> app: Return complete data.consents in effective_at ASC, id ASC order
+                    app -> app: Mapping failure throws before COMMIT; use unexpected-failure path
+                end
+                app -> infra: COMMIT
+                infra -> app: Return completed read-only transaction
+                app -> api: HTTP 200 S10000 Inquiry Pending Consent Success; data.consents
+                api -> page: Return ordered list or [] without recording reading
+                page -> user: Display pending items; call submit separately when displaying content
+            else Credential/user inactive, revoked or expired
+                app -> infra: ROLLBACK
+                app -> api: HTTP 401 E10002 Invalid or expired access token.
+                api -> page: Authentication error
+            end
+        else Timeout before COMMIT
+            app -> infra: ROLLBACK
+            app -> api: HTTP 408 E90001
+            api -> page: Inquiry timed out
+        else Unexpected pre-commit failure including incomplete mapping
+            app -> infra: ROLLBACK
+            app -> api: HTTP 500 Internal Server Error; omit bizCode
+            api -> page: Generic inquiry failure
+        end
+    end
+end
+deactivate app
+deactivate api
 deactivate page
-
 @enduml
