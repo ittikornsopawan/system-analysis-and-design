@@ -1,0 +1,167 @@
+@startuml InquiryShopProductSKU Sequence
+
+title Inquiry Shop Product SKU API Sequence
+
+' Leading SQL apostrophes use &#39; so PlantUML preserves literals; parity compares decoded SQL.
+
+' Visual style
+skinparam defaultFontName "Sarabun"
+skinparam defaultFontSize 14
+skinparam backgroundColor #FFFFFF
+skinparam shadowing false
+skinparam roundcorner 10
+skinparam sequence {
+    ArrowColor #475569
+    ArrowFontColor #334155
+    LifeLineBorderColor #CBD5E1
+    LifeLineBackgroundColor #F8FAFC
+    ParticipantBorderColor #94A3B8
+    ParticipantBackgroundColor #F1F5F9
+    ParticipantFontColor #0F172A
+    GroupBorderColor #94A3B8
+    GroupBackgroundColor #F8FAFC
+    GroupFontColor #334155
+}
+
+' Do not show participant footers at the bottom of the diagram
+hide footbox
+
+actor "User" as user
+box "Frontend" #F8FAFC
+    participant "Inquiry Shop Product SKU Page" as page
+end box
+box "Web API" #F8FAFC
+    participant "API" as api
+    participant "Application" as app
+    participant "Domain" as domain
+    participant "Infrastructure" as infra
+end box
+box "Database" #F8FAFC
+    database "t_shop_product_sku" as t_shop_product_sku
+    database "t_shop_product_sku_lot" as t_shop_product_sku_lot
+end box
+
+user -> page: Request Inquiry Shop Product SKU
+activate page
+    page -> api: GET v1/shop/product-sku
+    activate api
+        api -> app: [**InquiryShopProductSKUQueryHandler**] Process request
+        activate app
+            app -> app: Create request context; generate requestId when omitted
+            app -> app: Validate headers and query parameters
+            alt Invalid input
+                app -> api: HTTP 400 E10001
+                api -> page: Bad request
+                page -> user: Display validation error
+            else Valid input
+                app -> app: Verify the access token (signature and expiry)
+                alt Access token is missing, invalid or expired
+                    app -> api: HTTP 401 E10002
+                    api -> page: Unauthorized
+                    page -> user: Display unauthorized error
+                else Access token is valid
+                    app -> infra: Execute database operations
+                    activate infra
+                        app -> infra: QUERY - Get shop product SKUs
+                        infra -> t_shop_product_sku: QUERY - Get shop product SKUs
+                        activate t_shop_product_sku
+                            note right of t_shop_product_sku
+                                SELECT
+                                    ssk.id as shop_product_sku_id,
+                                    sp.shop_id,
+                                    sp.product_id,
+                                    ssk.sku_id,
+                                    ssk.code,
+                                    ssk.name,
+                                    ssk.description,
+                                    ssk.row_status
+                                FROM shop.t_shop_product_sku ssk
+                                INNER JOIN shop.t_shop_product sp
+                                    ON sp.id = ssk.shop_product_id
+                                WHERE ssk.row_status <> 'DELETED'
+                                AND ssk.id = '<sequence.id>' -- only when id is specified
+                                AND sp.shop_id = '<sequence.shopId>' -- only when shopId is specified
+                                AND sp.product_id = '<sequence.productId>' -- only when productId is specified
+                                AND (ssk.code ILIKE '%<sequence.search>%' OR ssk.name ILIKE '%<sequence.search>%') -- only when search is specified
+                                ORDER BY ssk.created_at DESC
+                                LIMIT <sequence.pageSize> OFFSET (<sequence.pageIndex> - 1) * <sequence.pageSize>
+                            end note
+                            t_shop_product_sku -> infra: Return query result
+                        deactivate t_shop_product_sku
+                        infra -> app: Return result of Get shop product SKUs
+                        app -> infra: QUERY - Get total items
+                        infra -> t_shop_product_sku: QUERY - Get total items
+                        activate t_shop_product_sku
+                            note right of t_shop_product_sku
+                                SELECT
+                                    COUNT(ssk.id) as total_items
+                                FROM shop.t_shop_product_sku ssk
+                                INNER JOIN shop.t_shop_product sp
+                                    ON sp.id = ssk.shop_product_id
+                                WHERE ssk.row_status <> 'DELETED'
+                                AND ssk.id = '<sequence.id>' -- only when id is specified
+                                AND sp.shop_id = '<sequence.shopId>' -- only when shopId is specified
+                                AND sp.product_id = '<sequence.productId>' -- only when productId is specified
+                                AND (ssk.code ILIKE '%<sequence.search>%' OR ssk.name ILIKE '%<sequence.search>%') -- only when search is specified
+                            end note
+                            t_shop_product_sku -> infra: Return query result
+                        deactivate t_shop_product_sku
+                        infra -> app: Return result of Get total items
+                    deactivate infra
+                    alt No shop product SKU matches the filters
+                        app -> domain: Prepare the response with empty items
+                        activate domain
+                            domain -> app: Return response data
+                        deactivate domain
+                        app -> api: HTTP 200 S10000
+                        api -> page: Return success response
+                        page -> user: Display success result
+                    else Shop product SKUs found
+                        app -> infra: Execute database operations
+                        activate infra
+                            app -> infra: QUERY - Get lots
+                            infra -> t_shop_product_sku_lot: QUERY - Get lots
+                            activate t_shop_product_sku_lot
+                                note right of t_shop_product_sku_lot
+                                    SELECT
+                                        l.id as lot_id,
+                                        l.shop_product_sku_id,
+                                        l.lot_no,
+                                        l.cost_price,
+                                        l.selling_price,
+                                        l.gross_margin,
+                                        l.share_margin,
+                                        l.platform_margin,
+                                        l.quantity,
+                                        l.is_on_sale,
+                                        l.row_status
+                                    FROM shop.t_shop_product_sku_lot l
+                                    WHERE l.shop_product_sku_id IN ('<sequence.shopProductSkuIds>')
+                                    AND l.row_status <> 'DELETED'
+                                    ORDER BY l.is_on_sale DESC, l.created_at
+                                end note
+                                t_shop_product_sku_lot -> infra: Return query result
+                            deactivate t_shop_product_sku_lot
+                            infra -> app: Return result of Get lots
+                        deactivate infra
+                        alt Processing times out
+                            app -> api: HTTP 408 E90001
+                            api -> page: Request timeout
+                            page -> user: Display timeout error
+                        else Processing completes in time
+                            app -> domain: Apply domain rules and prepare response
+                            activate domain
+                                domain -> app: Return response data
+                            deactivate domain
+                            app -> api: HTTP 200 S10000
+                            api -> page: Return success response
+                            page -> user: Display success result
+                        end
+                    end
+                end
+            end
+        deactivate app
+    deactivate api
+deactivate page
+
+@enduml
