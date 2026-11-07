@@ -164,12 +164,18 @@ Verification: `preflight.py --base main --run-checks`: `check_docs.py` 28/28 OK,
 
 ## e-commerce: Shipping automatic completion (WP3b)
 
-Status: Not started (starts after WP7 round 2, no hurry; the lead SA asked for it on 2026-11-06 after the owner answered S3)
+Status: Round 2 done and reported to the lead SA for gate 2 (gate 1 passed on 2026-11-07 with two fixes, both done); not committed. Assignment: agent `tommy`, delivery `open-pr`, authorized by `josh`, workspace `.workspace/tommy`, branch `feat/tommy-shipping-auto-complete`.
 
-- [ ] Write an appendix to `docs/superpowers/specs/2026-11-06-shipping-design.md` with decisions S23 and up: which orders qualify (PROCESSING, every item allocated in shippings that are SHIPPED or DELIVERED, no PENDING shipping left, latest `shipped_at` older than 7 days) and the stuck case of a partial shipment.
-- [ ] Decide the effect on the shipping rows (the system sets SHIPPED to DELIVERED as `system`, or a separate state) with the cost if wrong.
-- [ ] Decide the lock order (order row first), the clash with refund and with S9, and where the rule is written (spec 06 or a new job section, not an endpoint) as a proposal to the lead SA because spec 06 is already merged.
-- [ ] Send the document to the lead SA for gate 1 before any change to a spec, schema or checker.
+- [x] Prepare the managed workspace (registry scope of `tommy` widened by PR #18; baseline `audit_all.py` 0 findings and `run_db_tests.sh` ALL PASSED).
+- [x] Appendix S23 to S32 in `docs/superpowers/specs/2026-11-06-shipping-design.md` (eligibility, stuck partial shipment, effect on the rows, lock order and clashes, where the rule is written, the scan index, the `deliveredAt` wording); C17 to C22 of the campaign design relabelled as decided by the lead SA.
+- [x] Gate 1 fixes: the partial index `ix_t_shipping_shipped_at` (S31, SQL test 7 red then green, migration 08, schema doc) and `deliveredAt` as "the customer or the system confirmed" in `shipping/04`, `05`, `06` (S32).
+- [x] Spec `shipping/06`: Automatic Completion Rules, the Automatic Completion Example (7 cases) and three queries; the seven days are inclusive (a shipping that is exactly 7 days old qualifies).
+- [x] Checkers: `shipping-spec` (needles, `deliveredAt` wording, the example is judged again with the five conditions) and `shipping-schema` (the index, test 7); mutation-tested with deliberate mistakes.
+- [x] Run every `check_docs.py` sub-command, `audit_all.py` and `run_db_tests.sh`.
+- [x] Gate 2 fix (lead SA, 2026-11-07): the scan query of the job now applies conditions 1, 2, 4 and 5 (a dead-end order no longer fills the batch and starves the others); S26, the rules, the example text and the checker `check_shipping_scan_query` (12 mutations caught) are updated.
+- [ ] Gate 2 result of the fix: the lead SA reads the short result; then merge the current `main` into the branch, commit and open the PR with `commit-and-pr` from `.workspace/tommy` (delivery is authorized), without merging.
+
+Verification: see the gate 2 report; mutation tests on a copy of the tree: spec 30/30, schema doc and test file 3/3, migration through the checker 4/4 and through `run_db_tests.sh` 4/4. No backend was run against the specs.
 
 ## repository-wide: Add named-agent workspace lifecycle
 
