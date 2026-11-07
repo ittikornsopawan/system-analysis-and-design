@@ -334,6 +334,50 @@ class WorkspaceIntegrationTests(unittest.TestCase):
             self.git(workspace, "branch", "--show-current").stdout.strip(),
         )
 
+    def prepare_args(self, *scopes: str) -> list[str]:
+        args = [
+            "prepare",
+            "--agent",
+            "tommy",
+            "--type",
+            "docs",
+            "--topic",
+            "scope-task",
+            "--delivery",
+            "open-pr",
+            "--authorized-by",
+            "josh",
+            "--task",
+            "Check how several scopes are given",
+        ]
+        for scope in scopes:
+            args += ["--scope", scope]
+        return args
+
+    def test_comma_in_a_scope_blocks_before_branch_and_metadata(self) -> None:
+        workspace = self.create_tommy()
+        state = self.host / ".workspace" / ".state"
+        before = sorted(path.name for path in state.glob("*")) if state.exists() else []
+        blocked = self.cli(*self.prepare_args("e-commerce/doc,e-commerce/db"), expected=2)
+        self.assertIn("comma", str(blocked["reason"]))
+        self.assertIn("repeat --scope once per path", str(blocked["reason"]))
+        self.assertIn("--scope e-commerce/doc --scope", str(blocked["reason"]))
+        self.assertEqual("main", self.git(workspace, "branch", "--show-current").stdout.strip())
+        self.assertEqual("", self.git(workspace, "branch", "--list", "docs/tommy-scope-task").stdout.strip())
+        after = sorted(path.name for path in state.glob("*")) if state.exists() else []
+        self.assertEqual(before, after)
+        self.assertFalse((state / "tommy.json").exists())
+        # one of several values with a comma blocks as well
+        mixed = self.cli(*self.prepare_args("e-commerce/doc", "e-commerce/db,tasks"), expected=2)
+        self.assertIn("comma", str(mixed["reason"]))
+        self.assertFalse((state / "tommy.json").exists())
+
+    def test_separate_scope_flags_are_recorded_one_by_one(self) -> None:
+        self.create_tommy()
+        prepared = self.cli(*self.prepare_args("e-commerce/doc", "e-commerce/db"))
+        self.assertEqual("prepared", prepared["status"])
+        self.assertEqual(["e-commerce/doc", "e-commerce/db"], prepared["scope"])
+
     def test_untrusted_authority_and_dirty_workspace_block(self) -> None:
         local_registry = REGISTRY.rsplit("    capabilities: []", 1)[0] + """\
     capabilities:

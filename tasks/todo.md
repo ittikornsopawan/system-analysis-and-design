@@ -377,3 +377,15 @@ Status: Implemented in the managed workspace of Marry on branch `feat/marry-sequ
 - [ ] Preflight, commit, push, open the pull request, tell the lead; hold the lock until the merge, then release and park.
 
 Verification: `api-sequence-spec` prints `OK: api-sequence-spec (83 specs; ... 10 legacy without the login standard)`; the 18 diagrams of the earlier round pass; on a copy of the repository the 65 skeletons of the generator fail only with `TODO(author)` (0 other errors); harness 35 of 35 caught; on `02-login` these fail as they must: a block removed, one letter of the SQL changed, an extra block with a new heading, an extra block with the same heading and other SQL, a changed heading, a participant missing, an extra participant, a participant declared twice, participants in the wrong order, two blocks swapped with the participants left in the old order, a write moved before BEGIN; these pass as they must: two blocks swapped together with their participants, one block repeated right after itself, one block repeated in another branch; 40 of 40 sub-commands OK; audit 53 tables, 0 findings; database tests ALL PASSED; `test_sequence_skeleton.py` 11 tests OK.
+
+## repository-wide: agent_workspace.py rejects a comma in --scope
+
+Status: Implemented in the managed workspace of Marry on branch `fix/marry-reject-comma-scope`; the pull request is opened after the preflight and merged by the lead. Scope: `.agents/skills/agent-workspace` and `tasks/`. Reason: a `--scope "a,b,c"` was recorded as one path and blocked the next `prepare` (see the lesson of 2026-11-07 about repeated options).
+
+- [x] `normalize_scopes` blocks any value with a comma, before the lock, the branch and the metadata, and says to repeat `--scope` once per path with an example.
+- [x] Two tests in `test_agent_workspace.py`: a comma (alone or in one of several values) blocks and leaves no branch and no `.state` file; separate `--scope` flags are recorded one by one.
+- [x] One sentence in `SKILL.md` next to the `prepare` example.
+- [x] Mutation tests: 7 of 7 caught (check removed, only the first value checked, only `", "` checked, message without the instruction, message without the example, scopes collapsed into one, comma accepted as one scope).
+- [ ] Preflight, commit, push, open the pull request, tell the lead; hold the lock until the merge, then release and park.
+
+Verification: `python3 .agents/skills/agent-workspace/tests/test_agent_workspace.py` runs 15 tests OK (13 before).

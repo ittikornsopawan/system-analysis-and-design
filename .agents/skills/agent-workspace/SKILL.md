@@ -42,7 +42,7 @@ python3 .agents/skills/agent-workspace/scripts/agent_workspace.py prepare \
   --baseline-command '<argv-style command>'
 ```
 
-Repeat `--scope` when the assignment owns several path prefixes. `prepare` records the task, normalized scopes, delivery mode, authorizer, and branch in ignored local metadata, and blocks when that agent already has assignment metadata or an open PR.
+Repeat `--scope` when the assignment owns several path prefixes (`--scope a --scope b`); never join paths with commas in one `--scope`, `prepare` blocks a value that has a comma. `prepare` records the task, normalized scopes, delivery mode, authorizer, and branch in ignored local metadata, and blocks when that agent already has assignment metadata or an open PR.
 
 `prepare` prints a lock token. Keep it private to the active session, work only in the returned workspace, and release it whenever that editing session ends:
 
