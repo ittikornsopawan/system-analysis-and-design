@@ -218,3 +218,15 @@ description: Repository-wide and project-specific lessons captured from user cor
 - **Correction**: The scan query of the automatic completion job selected the orders by the age of a `SHIPPED` parcel only, sorted by `order_id` and limited to one batch. The lead SA found at gate 2 that an order that can never qualify (a partial shipment that cannot be finished, a `PENDING` parcel left) stays a candidate in every run and, with more such orders than the batch size, the orders with a larger id that qualify are never selected.
 - **Root cause**: The scan was treated as a loose pre-filter because the conditions are checked again under the lock, and the effect of `ORDER BY ... LIMIT` over rows that are always skipped was not considered.
 - **Corrected behavior**: When a job takes a limited, ordered batch, put every condition that can be tested without a lock into the scan (the check under the lock stays as the guard), write the reason in the rule, and add a checker needle with a mutation for each condition.
+
+### 2026-11-07 — Test a standard against every file it will govern, not only the model file
+
+- **Correction**: The first login standard of the sequence checker required BEGIN before the first database interaction. Running it on all 83 specs showed that `05-refresh-token` reads the refresh token row before BEGIN on purpose (the row decides which user to lock).
+- **Root cause**: The rule was copied from `02-login`, which has no read before BEGIN, and was not run on the other finished diagrams before it was called a standard.
+- **Corrected behavior**: Run a new structural rule on every finished file first; when a design decision explains the exception, write the rule at the exact point that matters (here: BEGIN before the first INSERT, UPDATE or DELETE), say so in the report to the lead, and never solve it by adding the file to the legacy list.
+
+### 2026-11-07 — A mutation case must break the property, not only touch the line
+
+- **Correction**: The first run of the manual case "BEGIN after the first write" passed the checker and looked like a miss. The case itself was wrong: it removed BEGIN and put it back immediately before the first write, which is still before it.
+- **Root cause**: The mutation was written from the name of the case and its result was not compared with the property (order of two lines) before the checker was blamed.
+- **Corrected behavior**: When a mutation is not caught, first print the mutated lines and check that they really break the property; fix the case if it does not, and fix the checker only if it does.

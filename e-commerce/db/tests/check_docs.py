@@ -3840,9 +3840,27 @@ COMMANDS["authen-schema"] = check_authen_schema
 
 
 # ---------------------------------------------------------------- API sequence diagrams: spec SQL parity and table lifecycle
-SEQUENCE_SPEC_DIRS = (
-    "e-commerce/doc/api/authen-and-author",
-    "e-commerce/doc/api/consent",
+SEQUENCE_API_ROOT = "e-commerce/doc/api"
+# Groups whose sequence diagrams are all filled: an empty sequence.wsd in one of them fails the check.
+# Every other group may still be empty (pending), but each spec needs a sequence.wsd beside it.
+# The owner of the sequence work adds a group here when the group is complete.
+REQUIRED_GROUPS = ("authen-and-author", "consent")
+# Specs with INSERT, UPDATE or DELETE whose diagram does not follow the login standard yet (BEGIN, COMMIT, ROLLBACK,
+# HTTP 400 E10001, 408 E90001 and 500). They wait for a retrofit; an entry is an exact folder, never a wildcard, and the
+# check fails when a listed diagram already passes (remove it) or no longer has a write.
+LEGACY_SEQUENCES = (
+    # authen-and-author: waiting for a retrofit to the login standard
+    "authen-and-author/01-register",
+    "authen-and-author/03-reset-password",
+    "authen-and-author/04-create-new-password",
+    "authen-and-author/06-logout",
+    "authen-and-author/07-upsert-user-profile",
+    "authen-and-author/09-upsert-user-address",
+    # consent: waiting for a retrofit to the login standard
+    "consent/02-upsert-consent",
+    "consent/04-submit-consent",
+    "consent/06-upsert-consent-type",
+    "consent/07-upsert-consent-type-batch",
 )
 
 
@@ -3920,32 +3938,111 @@ def sequence_database_operations(wsd: str) -> tuple[list[tuple[str, str, str]], 
     return operations, errors
 
 
+SEQUENCE_PARTICIPANT_CHAIN = ('participant "API" as api', 'participant "Application" as app', 'participant "Domain" as domain', 'participant "Infrastructure" as infra')
+SEQUENCE_HEAD = ('skinparam defaultFontName "Sarabun"', "hide footbox", 'actor "User" as user')
+SEQUENCE_BOXES = ('box "Frontend"', 'box "Web API"', 'box "Database"')
+SEQUENCE_LOGIN_STANDARD = ("-> infra: BEGIN", "-> infra: COMMIT", "-> infra: ROLLBACK", "HTTP 400 E10001", "HTTP 408 E90001", "HTTP 500")
+
+
+def sequence_structure_errors(text: str) -> list[str]:
+    """Structure every filled sequence diagram follows (the login diagram is the model)."""
+    errors = []
+    if not text.startswith("@startuml ") or not text.rstrip().endswith("@enduml"):
+        errors.append("must have @startuml and @enduml")
+    if not re.search(r"^title .+$", text, re.MULTILINE):
+        errors.append("must have a title")
+    for needle in SEQUENCE_HEAD:
+        if needle not in text:
+            errors.append(f"missing {needle!r}")
+    boxes = re.findall(r'^box "([^"]+)"', text, re.MULTILINE)
+    if boxes != ["Frontend", "Web API", "Database"]:
+        errors.append(f"boxes must be Frontend, Web API, Database in that order, found {boxes}")
+    if len(re.findall(r"^end box$", text, re.MULTILINE)) != 3:
+        errors.append("every box must be closed with end box")
+    positions = [text.find(chain) for chain in SEQUENCE_PARTICIPANT_CHAIN]
+    if -1 in positions or positions != sorted(positions):
+        errors.append("the Web API box must hold the participants API, Application, Domain, Infrastructure in that order")
+    if not re.search(r"^\s*api -> app: \[\*\*\w+Handler\*\*\] .+$", text, re.MULTILINE):
+        errors.append("missing the handler line 'api -> app: [**XxxHandler**] ...'")
+    if "TODO(author)" in text:
+        errors.append("still has a TODO(author) marker")
+    return errors
+
+
+def sequence_login_standard_errors(text: str) -> list[str]:
+    """Transaction and error standard of the login diagram, for a diagram whose spec writes data."""
+    errors = [f"missing {needle!r}" for needle in SEQUENCE_LOGIN_STANDARD if needle not in text]
+    if errors:
+        return errors
+    interactions = [m.start() for m in re.finditer(r"^\s*infra -> \w+: (?:QUERY|INSERT|UPDATE|DELETE)", text, re.MULTILINE)]
+    writes = [m.start() for m in re.finditer(r"^\s*infra -> \w+: (?:INSERT|UPDATE|DELETE)", text, re.MULTILINE)]
+    # A read that only finds the row to lock (05-refresh-token) may come before BEGIN; every write must come after it.
+    lines = text.splitlines()
+    for position, line in enumerate(lines):
+        failure = re.match(r"^(\s*)app -> api: HTTP (408 E90001|500)\b", line)
+        if failure and (position == 0 or lines[position - 1] != failure.group(1) + "app -> infra: ROLLBACK"):
+            errors.append(f"line {position + 1}: HTTP {failure.group(2)} must follow 'app -> infra: ROLLBACK' on the line before")
+    for needle in ("HTTP 400 E10001", "HTTP 408 E90001", "HTTP 500"):
+        if not re.search(rf"^\s*app -> api: {re.escape(needle)}", text, re.MULTILINE):
+            errors.append(f"missing the answer line 'app -> api: {needle}'")
+    if "-> infra: BEGIN" in text and "HTTP 400 E10001" in text and text.index("HTTP 400 E10001") > text.index("-> infra: BEGIN"):
+        errors.append("the HTTP 400 E10001 answer belongs to the validation step before BEGIN")
+    if writes and text.index("-> infra: BEGIN") > writes[0]:
+        errors.append("BEGIN must come before the first INSERT, UPDATE or DELETE")
+    if interactions and text.rindex("-> infra: COMMIT") < interactions[-1]:
+        errors.append("COMMIT must come after the last SQL interaction")
+    return errors
+
+
 def check_api_sequence_spec() -> int:
     errors = []
-    pairs = []
-    for directory in SEQUENCE_SPEC_DIRS:
-        pairs.extend(sorted((ROOT / directory).glob("*/spec.md")))
-    if len(pairs) != 18:
-        errors.append(f"expected 18 API specs in authen-and-author and consent, found {len(pairs)}")
-    for spec_path in pairs:
+    api_root = ROOT / SEQUENCE_API_ROOT
+    specs = sorted(api_root.glob("*/*/spec.md"))
+    groups: dict[str, list[int]] = {}
+    legacy_seen = set()
+    for group in REQUIRED_GROUPS:
+        if not (api_root / group).is_dir():
+            errors.append(f"required group {group} does not exist")
+    for entry in LEGACY_SEQUENCES:
+        if not (api_root / entry / "spec.md").exists():
+            errors.append(f"LEGACY_SEQUENCES lists {entry}, which is not a spec folder")
+    for spec_path in specs:
+        group = spec_path.parent.parent.name
+        folder = f"{group}/{spec_path.parent.name}"
+        counts = groups.setdefault(group, [0, 0])
+        counts[1] += 1
         sequence_path = spec_path.with_name("sequence.wsd")
         relative_spec = spec_path.relative_to(ROOT)
         relative_sequence = sequence_path.relative_to(ROOT)
-        if not sequence_path.exists() or not sequence_path.read_text(encoding="utf-8").strip():
-            errors.append(f"{relative_sequence}: missing or empty")
+        if not sequence_path.exists():
+            errors.append(f"{relative_sequence}: missing (create an empty file while the group is pending)")
             continue
-        spec_operations = spec_database_operations(spec_path.read_text(encoding="utf-8"))
         sequence_text = sequence_path.read_text(encoding="utf-8")
+        if not sequence_text.strip():
+            if group in REQUIRED_GROUPS:
+                errors.append(f"{relative_sequence}: empty, but {group} is a required group")
+            continue
+        counts[0] += 1
+        spec_operations = spec_database_operations(spec_path.read_text(encoding="utf-8"))
         sequence_operations, lifecycle_errors = sequence_database_operations(sequence_text)
         errors.extend(f"{relative_sequence}: {error}" for error in lifecycle_errors)
+        errors.extend(f"{relative_sequence}: {error}" for error in sequence_structure_errors(sequence_text))
+        has_write = any(heading.split(" - ")[0] in ("INSERT", "UPDATE", "DELETE") for _, heading, _ in spec_operations)
+        standard_errors = sequence_login_standard_errors(sequence_text) if has_write else []
+        if folder in LEGACY_SEQUENCES:
+            legacy_seen.add(folder)
+            if not has_write:
+                errors.append(f"{relative_sequence}: listed in LEGACY_SEQUENCES but its spec has no INSERT, UPDATE or DELETE")
+            elif not standard_errors:
+                errors.append(f"{relative_sequence}: already follows the login standard, remove it from LEGACY_SEQUENCES")
+        else:
+            errors.extend(f"{relative_sequence}: login standard: {error}" for error in standard_errors)
         declared_tables = re.findall(r'^\s*database "[^"]+" as (\w+)$', sequence_text, re.MULTILINE)
         expected_tables = list(dict.fromkeys(table.split(".")[-1] for table, _, _ in spec_operations))
         if declared_tables != expected_tables:
             errors.append(
                 f"{relative_sequence}: database participants {declared_tables} differ from spec tables {expected_tables}"
             )
-        if not sequence_text.startswith("@startuml ") or not sequence_text.rstrip().endswith("@enduml"):
-            errors.append(f"{relative_sequence}: must have @startuml and @enduml")
         if len(spec_operations) != len(sequence_operations):
             errors.append(
                 f"{relative_sequence}: has {len(sequence_operations)} table interactions but {relative_spec} has {len(spec_operations)} SQL blocks"
@@ -3962,7 +4059,10 @@ def check_api_sequence_spec() -> int:
                 errors.append(f"{relative_sequence}: interaction {position} SQL differs from {relative_spec}")
     if errors:
         return fail("; ".join(errors))
-    print("OK: api-sequence-spec (18 specs, SQL parity and table lifecycle)")
+    summary = ", ".join(
+        f"{group} {filled}/{total}{'' if group in REQUIRED_GROUPS else ' pending' if filled < total else ''}" for group, (filled, total) in sorted(groups.items())
+    )
+    print(f"OK: api-sequence-spec ({len(specs)} specs; filled/total per group: {summary}; {len(LEGACY_SEQUENCES)} legacy without the login standard)")
     return 0
 
 
