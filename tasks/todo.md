@@ -526,3 +526,12 @@ Status: Complete in the branch, waiting for review. Assignment: agent `tommy`, d
 Verification: see the PR. No spec, diagram or other checker is changed.
 
 Lesson for the team: a merge that keeps a file parseable can still drop the end of a function; after resolving a conflict in `check_docs.py`, run `python3 -c "import ast"` on it and run every sub-command, not only the one that was edited.
+
+## repository-wide: Make the skeleton test read finished diagrams like the checker
+
+Status: Complete in the branch, waiting for review. Assignment: agent `tommy`, delivery `open-pr`, authorized by `josh`, workspace `.workspace/tommy`, branch `test/tommy-sequence-skeleton-order-free`, scopes `.agents/skills/api-contract-design/scripts` and `tasks`.
+
+- [x] Replace the comparison of a finished diagram with the skeleton in spec order by the checker's reading: the blocks (table, heading, SQL) as a set, repeated blocks allowed, no block that the spec lacks, database participants in the order of first use.
+- [x] Add a test of the comparison itself (reordered and repeated blocks pass; a missing block, a changed SQL letter, a block with another heading, a broken lifecycle, participants out of order and an extra participant fail).
+- [x] Mutation-test the test (7 changes of the test, 5 changes of real diagrams): 12/12 caught.
+- [x] Open the PR with `commit-and-pr`; do not merge.
