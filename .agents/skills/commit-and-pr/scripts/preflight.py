@@ -13,6 +13,7 @@ commit (on main/master, a secret-looking line, build output, a file over 1 MB, a
 failing project checker). Exit code 0 means "nothing blocks"; the choice of files is still yours.
 """
 import argparse
+import ast
 import json
 import os
 import re
@@ -176,11 +177,18 @@ def run_project_checks():
     check = "e-commerce/db/tests/check_docs.py"
     if not os.path.exists(check):
         return ["project checkers not found at " + check]
+    # A file that does not parse lists no sub-commands, which used to read as "0/0 OK": say it first and stop here.
+    try:
+        ast.parse(open(check, encoding="utf-8").read(), check)
+    except SyntaxError as error:
+        return [f"{check} does not parse (line {error.lineno}: {error.msg}): no project checker can run"]
     listing = run(["python3", check]).stdout + run(["python3", check]).stderr
     subs = []
     for line in listing.split("\n"):
         if line.startswith("subcommands:"):
             subs = [s.strip() for s in line.split(":", 1)[1].split(",") if s.strip()]
+    if not subs:
+        return [f"{check} lists no sub-commands, so nothing was checked"]
     print(f"\nrunning {len(subs)} check_docs.py sub-commands")
     bad = []
     for s in subs:

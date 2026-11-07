@@ -535,3 +535,14 @@ Status: Complete in the branch, waiting for review. Assignment: agent `tommy`, d
 - [x] Add a test of the comparison itself (reordered and repeated blocks pass; a missing block, a changed SQL letter, a block with another heading, a broken lifecycle, participants out of order and an extra participant fail).
 - [x] Mutation-test the test (7 changes of the test, 5 changes of real diagrams): 12/12 caught.
 - [x] Open the PR with `commit-and-pr`; do not merge.
+
+## repository-wide: Guard check_docs.py against a merge that cuts it
+
+Status: Complete in the branch, waiting for review. Assignment: agent `tommy`, delivery `open-pr`, authorized by `josh` (queue item 1.5 after the repair of PR 39), workspace `.workspace/tommy`, branch `feat/tommy-check-docs-integrity`, scopes `e-commerce/db/tests/check_docs.py`, `.agents/skills/commit-and-pr/scripts`, `.agents/skills/commit-and-pr/references` and `tasks`.
+
+- [x] Find why the preflight let a file that does not parse pass: the list of sub-commands came back empty and the report said `0/0 OK`.
+- [x] Make the preflight parse `check_docs.py` first and report a blocker with the line, and report a blocker when no sub-command is listed.
+- [x] Add the sub-command `check-registry`: every top-level `check_*` function ends with `return` or `raise` and is registered in `COMMANDS` or called, and no sub-command is registered twice.
+- [x] Say it in `references/checklist.md`.
+- [x] Mutation-test it (6 changes of `check_docs.py`) and show the old preflight passing a broken file and the new one failing.
+- [x] Open the PR with `commit-and-pr`; do not merge.
