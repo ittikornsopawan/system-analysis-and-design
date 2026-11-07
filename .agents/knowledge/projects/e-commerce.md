@@ -9,13 +9,13 @@ description: Project index agents load when the active project is e-commerce to 
 
 Load this document only when the active project is `e-commerce`. It is an index, not a copy of project facts that can be read from their authoritative files.
 
-## Component Repository Migration
+## Component Repositories
 
-Status: `migration-pending`
+Status: `manifest-managed`
 
-- The backend currently lives directly in `e-commerce/repository/` and remains tracked by the Showcase Repository.
-- `e-commerce/REPOS.md` does not exist yet, so `repository-bootstrap` must stop without changing the directory.
-- Do not move, delete, overwrite, clone into, or create nested Git metadata in `e-commerce/repository/` until an explicitly approved migration task resolves the remote URL, repository name, and history strategy.
+- Read `e-commerce/REPOS.md` for the authoritative repository identities, remotes and pinned revisions before accessing component code.
+- Use `repository-bootstrap` to validate the manifest and materialize declared repositories. Each checkout has its own Git metadata, remote and delivery lifecycle; it is ignored by the Showcase Repository.
+- The approved ownership migration and verification are recorded in `docs/superpowers/specs/2026-11-07-e-commerce-component-migration.md`. This migration preserves the legacy Authen baseline and does not close its known API-specification gaps.
 
 ## Source Map
 
@@ -27,10 +27,11 @@ Status: `migration-pending`
 | Diagrams                                         | `e-commerce/diagram/` and project-specific diagram directories                          |
 | Database migrations                              | `e-commerce/db/migrations/up/` and `e-commerce/db/migrations/down/`                     |
 | Database tests                                   | `e-commerce/db/tests/`                                                                  |
-| C# backend                                       | `e-commerce/repository/`                                                                |
-| Backend architecture and feature conventions     | `e-commerce/repository/project-structure.md`                                            |
-| Backend build configuration and target framework | `e-commerce/repository/Directory.Build.props` and `e-commerce/repository/Ecommerce.sln` |
-| Backend tests                                    | `e-commerce/repository/tests/`                                                          |
+| Repository Manifest                             | `e-commerce/REPOS.md`                                                                    |
+| C# backend                                       | `e-commerce/repository/e-commerce-backend/`                                                                |
+| Backend architecture and feature conventions     | `e-commerce/repository/e-commerce-backend/project-structure.md`                                            |
+| Backend build configuration and target framework | `e-commerce/repository/e-commerce-backend/Directory.Build.props` and `e-commerce/repository/e-commerce-backend/Ecommerce.sln` |
+| Backend tests                                    | `e-commerce/repository/e-commerce-backend/tests/`                                                          |
 
 ## Templates
 
@@ -41,5 +42,6 @@ Status: `migration-pending`
 ## Working Boundary
 
 - Keep e-commerce changes inside `e-commerce/` unless the approved task explicitly changes shared agent resources.
-- Read `e-commerce/repository/project-structure.md` before modifying backend code.
+- Read `e-commerce/repository/e-commerce-backend/project-structure.md` before modifying backend code.
+- Backend changes belong to the declared Component Repository; commit and open its pull requests against its own remote. Deliver and verify a component commit before updating the Showcase manifest revision.
 - Inspect project files directly for changing facts such as framework versions, current endpoints, commands, and directory contents.
