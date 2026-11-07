@@ -176,3 +176,16 @@ description: Repository-wide and project-specific lessons captured from user cor
 - **Correction**: `api-sequence-spec` forces `sequence.wsd` to match the SQL of its spec; adding the permission queries to the nine specs almost missed the sequence diagram of `consent/02`.
 - **Root cause**: The search for affected files stopped at the specs.
 - **Corrected behavior**: After adding SQL to a spec, search for every file read from the same spec (sequence diagram, schema doc) and run all the checkers before saying the work is complete.
+
+
+### 2026-11-07 — Prove specification and sequence correctness together
+
+- **Correction**: The owner challenged whether sequence.wsd had been checked alongside spec.md. Both files were changed in PR #23, but the handoff did not make the paired evidence easy to inspect. The subsequent render exposed a real gap: PlantUML treated SQL value lines beginning with a single quote as comments, so VALUES were missing in the image even though source SQL parity passed.
+- **Root cause**: Source equality, table activation and branch checks were treated as sufficient diagram evidence without verifying the renderer's interpretation of the same SQL text.
+- **Corrected behavior**: Review each scenario against both files, including validation, input/result mapping, permissions, SQL order, transaction effects and HTTP outcomes; preserve visible SQL values with renderer-safe escaping and compare the decoded SQL; render and inspect the diagram before claiming the diagram is verified, and show paired paths plus a scenario correspondence table in the handoff.
+
+### 2026-11-07 — Discover installed runtimes beyond PATH
+
+- **Correction**: The handoff said Java was unavailable after /usr/bin/java failed. OpenJDK was already installed under Homebrew, and a PlantUML JAR existed in the VS Code extension.
+- **Root cause**: A failing system launcher was mistaken for the absence of an installed runtime; common installation locations were not checked.
+- **Corrected behavior**: Inspect the selected tool path and known installation locations before reporting a missing capability. Use the existing runtime by absolute path and report precisely what was tried when rendering truly cannot run.

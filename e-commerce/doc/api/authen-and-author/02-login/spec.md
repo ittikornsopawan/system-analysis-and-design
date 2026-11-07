@@ -125,6 +125,22 @@ The example grants `OWN` only for `catalog.manage` and `ALL` only for `order.vie
 - Success commits both token hashes and SUCCESS together; pre-commit failure rolls back all of them. No secret is logged or returned except the newly issued raw tokens in the successful TLS response.
 - The sequence contains the same SQL as this spec and shows every validation, failed/refused, success, timeout and internal-error path explicitly.
 
+#### Scenario correspondence with sequence.wsd
+
+Read this table alongside [sequence.wsd](sequence.wsd). These are seven control-flow paths; empty grants and invalid scope bindings are additional data cases inside the successful path. SQL parity, branch checks and rendered-text checks provide separate evidence.
+
+| Scenario                                  | Required sequence branch and data handoff                                                                                     | HTTP                | Durable effects                                  |
+| ----------------------------------------- | ----------------------------------------------------------------------------------------------------------------------------- | ------------------- | ------------------------------------------------ |
+| Malformed headers/body                    | Invalid input; no BEGIN or SQL                                                                                                | 400 E10001          | None                                             |
+| Failure limit reached                     | failed_attempts >= 5; no user/password lookup; result REFUSED                                                                 | 401 E10002          | Attempt commits; no token rows                   |
+| Unknown, inactive or ambiguous identifier | user_count != 1 after matchedUsers return; dummy verification; result FAILED                                                  | 401 E10002          | Attempt commits with NULL user_id; no token rows |
+| Missing password or mismatch              | user_count = 1; passwordRow return; password verification; result FAILED                                                      | 401 E10002          | Attempt commits; no token rows                   |
+| Valid credentials                         | Password matches; all role/direct/scope results return to Application; claims built before both token inserts; result SUCCESS | 200 S10000          | Both token hashes and attempt commit together    |
+| Timeout before commit                     | Timeout alternative; ROLLBACK before response                                                                                 | 408 E90001          | No uncommitted token/attempt writes persist      |
+| Unexpected failure before commit          | Failure alternative; ROLLBACK before generic response                                                                         | 500, no new bizCode | No uncommitted token/attempt writes persist      |
+
+Every SQL interaction has an Application request, Infrastructure/database execution, database return while active, and an Infrastructure result returned to Application before that result is used. The role/permission-id arrays are derived explicitly. Success names all four response data fields in the sequence.
+
 #### Example Body Parameters
 
 ```JSON

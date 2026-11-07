@@ -2,6 +2,8 @@
 
 title Login API Sequence
 
+' Leading SQL apostrophes use &#39; so PlantUML preserves literals; parity compares decoded SQL.
+
 ' Visual style
 skinparam defaultFontName "Sarabun"
 skinparam defaultFontSize 14
@@ -56,6 +58,7 @@ activate page
     activate api
         api -> app: [**LoginCommandHandler**] Process request
         activate app
+            app -> app: Create request context; generate requestId when omitted
             app -> app: Validate headers and body
             alt Invalid input
                 app -> api: HTTP 400 E10001
@@ -66,6 +69,7 @@ activate page
                 app -> infra: BEGIN READ COMMITTED
                 activate infra
                 alt Work completes before commit
+                    app -> infra: QUERY - Serialize identifier
                     infra -> l_user_login_attempt: QUERY - Serialize identifier
                     activate l_user_login_attempt
                         note right of l_user_login_attempt
@@ -73,7 +77,9 @@ activate page
                         end note
                         l_user_login_attempt -> infra: Return query result
                     deactivate l_user_login_attempt
+                    infra -> app: Return identifier lock acquired
                     app -> app: Capture now and windowStart after acquiring the identifier lock
+                    app -> infra: QUERY - Count failed attempts
                     infra -> l_user_login_attempt: QUERY - Count failed attempts
                     activate l_user_login_attempt
                         note right of l_user_login_attempt
@@ -86,10 +92,12 @@ activate page
                         end note
                         l_user_login_attempt -> infra: Return query result
                     deactivate l_user_login_attempt
+                    infra -> app: Return failed_attempts
                     alt failed_attempts >= 5
                         app -> app: userId = NULL; skip user/password lookup
                         app -> app: result = REFUSED
                     else failed_attempts < 5
+                        app -> infra: QUERY - Lock the user
                         infra -> m_user: QUERY - Lock the user
                         activate m_user
                             note right of m_user
@@ -103,13 +111,18 @@ activate page
                             end note
                             m_user -> infra: Return query result
                         deactivate m_user
+                        infra -> app: Return matchedUsers
+                        app -> app: user_count = length(matchedUsers)
                         alt user_count != 1
                             app -> domain: Perform dummy password verification
-                            domain -> app: Discard dummy result
+                            activate domain
+                                domain -> app: Discard dummy result
+                            deactivate domain
                             app -> app: userId = NULL; never choose an ambiguous account
                             app -> app: result = FAILED
                         else user_count = 1
                             app -> app: userId = the single locked user
+                            app -> infra: QUERY - Get current password
                             infra -> m_user_password: QUERY - Get current password
                             activate m_user_password
                                 note right of m_user_password
@@ -124,11 +137,15 @@ activate page
                                 end note
                                 m_user_password -> infra: Return query result
                             deactivate m_user_password
+                            infra -> app: Return passwordRow (password_hash, password_salt) or no row
                             app -> domain: Verify password with PBKDF2 and constant-time comparison
-                            domain -> app: Match, mismatch, or missing password (dummy hash)
+                            activate domain
+                                domain -> app: Match, mismatch, or missing password (dummy hash)
+                            deactivate domain
                             alt Password row missing or mismatch
                                 app -> app: result = FAILED
                             else Password matches
+                                app -> infra: QUERY - Get active role ids
                                 infra -> t_user_role: QUERY - Get active role ids
                                 activate t_user_role
                                     note right of t_user_role
@@ -140,6 +157,8 @@ activate page
                                     end note
                                     t_user_role -> infra: Return query result
                                 deactivate t_user_role
+                                infra -> app: Return roleIds
+                                app -> infra: QUERY - Get active roles
                                 infra -> m_role: QUERY - Get active roles
                                 activate m_role
                                     note right of m_role
@@ -152,6 +171,9 @@ activate page
                                     end note
                                     m_role -> infra: Return query result
                                 deactivate m_role
+                                infra -> app: Return activeRoles (role_id, role_name)
+                                app -> app: activeRoleIds = activeRoles.role_id
+                                app -> infra: QUERY - Get active role permissions
                                 infra -> t_role_permission: QUERY - Get active role permissions
                                 activate t_role_permission
                                     note right of t_role_permission
@@ -164,6 +186,9 @@ activate page
                                     end note
                                     t_role_permission -> infra: Return query result
                                 deactivate t_role_permission
+                                infra -> app: Return rolePermissions (role_permission_id, permission_id)
+                                app -> app: rolePermissionIds = rolePermissions.role_permission_id
+                                app -> infra: QUERY - Get active role permission scopes
                                 infra -> t_role_permission_scope: QUERY - Get active role permission scopes
                                 activate t_role_permission_scope
                                     note right of t_role_permission_scope
@@ -176,6 +201,8 @@ activate page
                                     end note
                                     t_role_permission_scope -> infra: Return query result
                                 deactivate t_role_permission_scope
+                                infra -> app: Return roleScopeLinks
+                                app -> infra: QUERY - Get active direct permissions
                                 infra -> t_user_permission: QUERY - Get active direct permissions
                                 activate t_user_permission
                                     note right of t_user_permission
@@ -188,6 +215,9 @@ activate page
                                     end note
                                     t_user_permission -> infra: Return query result
                                 deactivate t_user_permission
+                                infra -> app: Return directPermissionGrants
+                                app -> app: permissionIds = union of role and direct permission ids
+                                app -> infra: QUERY - Get permission scope definitions
                                 infra -> t_permission_scope: QUERY - Get permission scope definitions
                                 activate t_permission_scope
                                     note right of t_permission_scope
@@ -202,6 +232,8 @@ activate page
                                     end note
                                     t_permission_scope -> infra: Return query result
                                 deactivate t_permission_scope
+                                infra -> app: Return permissionScopeDefinitions
+                                app -> infra: QUERY - Get active permissions
                                 infra -> m_permission: QUERY - Get active permissions
                                 activate m_permission
                                     note right of m_permission
@@ -214,7 +246,9 @@ activate page
                                     end note
                                     m_permission -> infra: Return query result
                                 deactivate m_permission
+                                infra -> app: Return activePermissions
                                 app -> app: Derive assignedScopeIds by exact assignment/definition and permission match
+                                app -> infra: QUERY - Get active scopes
                                 infra -> m_scope: QUERY - Get active scopes
                                 activate m_scope
                                     note right of m_scope
@@ -227,12 +261,14 @@ activate page
                                     end note
                                     m_scope -> infra: Return query result
                                 deactivate m_scope
+                                infra -> app: Return activeScopes
                                 app -> domain: Build verified authorization claims
                                 activate domain
                                     domain -> domain: Filter ACTIVE masters; retain permission-specific scopes; deduplicate and sort
                                     domain -> app: roles, permissions, scopes (empty arrays are valid)
                                 deactivate domain
                                 app -> app: Create new session; sign JWT; create refresh token; hash both
+                                app -> infra: INSERT - Create access token
                                 infra -> t_user_access_token: INSERT - Create access token
                                 activate t_user_access_token
                                     note right of t_user_access_token
@@ -244,15 +280,17 @@ activate page
                                             expired_at
                                         )
                                         VALUES (
-                                            '<sequence.userId>',
-                                            '<sequence.userId>',
-                                            '<sequence.sessionId>', -- a new session id for every login
-                                            '<sequence.accessTokenHash>', -- SHA-256 of the JWT
-                                            '<sequence.accessExpiredAt>' -- now plus 15 minutes (configurable)
+                                            &#39;<sequence.userId>',
+                                            &#39;<sequence.userId>',
+                                            &#39;<sequence.sessionId>', -- a new session id for every login
+                                            &#39;<sequence.accessTokenHash>', -- SHA-256 of the JWT
+                                            &#39;<sequence.accessExpiredAt>' -- now plus 15 minutes (configurable)
                                         )
                                     end note
                                     t_user_access_token -> infra: Return inserted result
                                 deactivate t_user_access_token
+                                infra -> app: Return access token row inserted
+                                app -> infra: INSERT - Create refresh token
                                 infra -> t_user_refresh_token: INSERT - Create refresh token
                                 activate t_user_refresh_token
                                     note right of t_user_refresh_token
@@ -264,19 +302,21 @@ activate page
                                             expired_at
                                         )
                                         VALUES (
-                                            '<sequence.userId>',
-                                            '<sequence.userId>',
-                                            '<sequence.sessionId>',
-                                            '<sequence.refreshTokenHash>', -- SHA-256 of the refresh token
-                                            '<sequence.refreshExpiredAt>' -- now plus 14 days (configurable)
+                                            &#39;<sequence.userId>',
+                                            &#39;<sequence.userId>',
+                                            &#39;<sequence.sessionId>',
+                                            &#39;<sequence.refreshTokenHash>', -- SHA-256 of the refresh token
+                                            &#39;<sequence.refreshExpiredAt>' -- now plus 14 days (configurable)
                                         )
                                     end note
                                     t_user_refresh_token -> infra: Return inserted result
                                 deactivate t_user_refresh_token
+                                infra -> app: Return refresh token row inserted
                                 app -> app: result = SUCCESS
                             end
                         end
                     end
+                    app -> infra: INSERT - Record attempt
                     infra -> l_user_login_attempt: INSERT - Record attempt
                     activate l_user_login_attempt
                         note right of l_user_login_attempt
@@ -288,18 +328,19 @@ activate page
                                 result
                             )
                             VALUES (
-                                'system',
-                                '<sequence.now>', -- UTC time captured after the identifier lock
-                                '<sequence.identifierHash>',
-                                '<sequence.userId>', -- NULL when the username is unknown, ambiguous or REFUSED
-                                '<sequence.result>' -- SUCCESS, FAILED or REFUSED
+                                &#39;system',
+                                &#39;<sequence.now>', -- UTC time captured after the identifier lock
+                                &#39;<sequence.identifierHash>',
+                                &#39;<sequence.userId>', -- NULL when the username is unknown, ambiguous or REFUSED
+                                &#39;<sequence.result>' -- SUCCESS, FAILED or REFUSED
                             )
                         end note
                         l_user_login_attempt -> infra: Return inserted result
                     deactivate l_user_login_attempt
+                    infra -> app: Return attempt row inserted
                     app -> infra: COMMIT
                     alt result = SUCCESS
-                        app -> api: HTTP 200 S10000 and four token fields
+                        app -> api: HTTP 200 S10000: tokenType, accessToken, refreshAccessToken, expiresIn
                         api -> page: Return committed token pair
                         page -> user: Login succeeded
                     else result = FAILED or REFUSED

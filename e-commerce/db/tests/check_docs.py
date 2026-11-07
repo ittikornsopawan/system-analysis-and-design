@@ -3798,7 +3798,11 @@ def sequence_database_operations(wsd: str) -> tuple[list[tuple[str, str, str]], 
         cursor = index + 3
         sql = []
         while cursor < len(lines) and lines[cursor].strip() != "end note":
-            sql.append(lines[cursor][indent + 8:] if lines[cursor].startswith(" " * (indent + 8)) else lines[cursor].lstrip())
+            sql_line = lines[cursor][indent + 8:] if lines[cursor].startswith(" " * (indent + 8)) else lines[cursor].lstrip()
+            # A literal leading apostrophe is a PlantUML comment, even inside a note.
+            if sql_line.lstrip().startswith("&#39;"):
+                sql_line = sql_line.replace("&#39;", "'", 1)
+            sql.append(sql_line)
             cursor += 1
         if cursor >= len(lines):
             errors.append(f"line {index + 1}: {table} SQL note is not closed")
@@ -4747,6 +4751,9 @@ def login_sequence_paths(wsd: str) -> tuple[list[list[str]], list[str]]:
                 continue
             current, _ = stack.pop()
         elif re.match(r'(?:infra -> \w+: (?:QUERY|INSERT|UPDATE)|app -> (?:infra|api|app|domain):)', text):
+            # Orchestration requests are distinct from the actual database operations.
+            if text.startswith('app -> infra:') and not text.startswith(('app -> infra: BEGIN', 'app -> infra: COMMIT', 'app -> infra: ROLLBACK')):
+                continue
             current.append(text)
     if stack or in_note:
         errors.append('unclosed alternative or note')
@@ -4867,6 +4874,44 @@ def check_login_flow() -> int:
                 errors.append(f'{title}: wrong HTTP status or unexpected internal-error bizCode')
         except (KeyError, TypeError, AttributeError, ValueError):
             errors.append(f'{title}: missing or invalid response example')
+    for note in re.finditer(r'(?m)^([ \t]*)note right of \w+\n(.*?)^\1end note$', wsd, re.DOTALL):
+        if any(line.lstrip().startswith("'") for line in note.group(2).splitlines()):
+            errors.append('leading SQL apostrophe would disappear as a PlantUML comment; use &#39;')
+    sequence_lines = wsd.splitlines()
+    for index, line in enumerate(sequence_lines):
+        exchange = re.match(r'^(\s*)infra -> (\w+): ((?:QUERY|INSERT|UPDATE)[^\n]*)$', line)
+        if not exchange:
+            continue
+        pad, table, heading = exchange.groups()
+        if index == 0 or sequence_lines[index - 1].strip() != 'app -> infra: ' + heading:
+            errors.append(f'{heading}: Application must request the Infrastructure operation')
+        end = next((i for i in range(index + 1, len(sequence_lines)) if sequence_lines[i] == pad + 'deactivate ' + table), None)
+        if end is None or end + 1 >= len(sequence_lines) or not sequence_lines[end + 1].startswith(pad + 'infra -> app: Return '):
+            errors.append(f'{heading}: Infrastructure must return its result to Application')
+    for mapping in ('app -> app: user_count = length(matchedUsers)',
+                    'app -> app: activeRoleIds = activeRoles.role_id',
+                    'app -> app: rolePermissionIds = rolePermissions.role_permission_id',
+                    'app -> app: permissionIds = union of role and direct permission ids',
+                    'app -> app: Derive assignedScopeIds by exact assignment/definition and permission match'):
+        if mapping not in wsd:
+            errors.append(f'missing result-to-parameter mapping: {mapping}')
+    if '--rendered-svg' in sys.argv:
+        from collections import Counter
+        import xml.etree.ElementTree as ET
+        try:
+            svg_path = Path(sys.argv[sys.argv.index('--rendered-svg') + 1])
+            svg = ET.parse(svg_path).getroot()
+            expected = Counter(' '.join(line.split()) for _, _, statement in operations
+                               for line in statement.splitlines() if line.strip())
+            visible = Counter(' '.join(''.join(element.itertext()).split()) for element in svg.iter()
+                              if element.tag.endswith('}text'))
+            missing = expected - visible
+            if missing:
+                errors.append(f'rendered SQL is missing {sum(missing.values())}/{sum(expected.values())} lines: {dict(missing)}')
+            else:
+                print(f'OK: rendered login SQL ({sum(expected.values())}/{sum(expected.values())} visible lines)')
+        except (IndexError, OSError, ET.ParseError) as exc:
+            errors.append(f'cannot verify rendered SVG: {exc}')
     traces, structure_errors = login_sequence_paths(wsd)
     errors.extend(structure_errors)
     outcomes = []
@@ -4903,6 +4948,9 @@ def check_login_flow() -> int:
             if code == 401 and 'result = FAILED' not in joined and 'result = REFUSED' not in joined:
                 errors.append('401 must record FAILED or REFUSED')
             if code == 200:
+                for field in ('tokenType', 'accessToken', 'refreshAccessToken', 'expiresIn'):
+                    if not re.search(r'\b' + field + r'\b', response[0]):
+                        errors.append(f'success sequence must name response field {field}')
                 for heading in required:
                     if heading.startswith('QUERY - Get active') or heading == 'QUERY - Get permission scope definitions':
                         if not ordered(heading, 'Build verified authorization claims'):
