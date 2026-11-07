@@ -726,3 +726,15 @@ Scope: authen-and-author/04-create-new-password; owner Q13 credential revocation
 - [ ] Retain branch/assignment history and continue from updated main under owner Q15.
 
 Integration: GitHub reported a conflict after main advanced. Preserve all upstream diagram, component-repository migration and task changes; conflict is only the shared todo append. Re-run all checks before the integration push; this PR changes only the five authorized task paths relative to current origin/main.
+## e-commerce: api-sequence-spec requires the 401 and 408 answers and matching headings
+
+Status: Implemented in the managed workspace of Marry on branch `test/marry-enforce-401-408-heading`; the pull request is opened after the checks and merged by the lead. Scope: `e-commerce/db/tests/check_docs.py` and `tasks/`. No spec and no `sequence.wsd` is changed. Decisions of the lead (chat, 2026-11-07): the token rule applies when the spec has a mandatory `authorization` header only; the verify step may say `JWT` or `access token`; the older diagrams that do not pass are listed by name.
+
+- [x] Measure the three rules on every non-empty diagram before writing the code: the heading rule passes on all 72, the token rule fails on 19 and the 408 rule on 11 (see the pull request).
+- [x] Rule 1: when the spec has a mandatory `authorization` header row, the diagram has `app -> app: Verify ... JWT / access token ...` followed by an `alt` with `app -> api: HTTP 401 E10002`, all before the first `app -> infra:` line; a public API (no authorization header and the words "Public API" or "API is public") must not answer 401. Login and refresh-token are not forced (their 401 is about credentials).
+- [x] Rule 2: every non-empty diagram has `app -> api: HTTP 408 E90001`.
+- [x] Rule 3: every `app -> infra: QUERY|INSERT|UPDATE|DELETE - X` line is followed at once by `infra -> <table>: X`.
+- [x] `LEGACY_TOKEN_SEQUENCES`: 11 older diagrams (`authen-and-author` 03, 04, 07, 08, 09, 10 and `consent` 02, 03, 06, 07, 08) are exempt from rules 1 and 2; an entry must be a real spec folder and must still fail one of the two rules, so a diagram that is fixed has to leave the list; the count is printed in the OK line. `consent/04` passed both rules and is not listed.
+- [x] Mutation tests: 15 cases of the harness on the three rules and the list, 13 cases that check which message fires (10 must fail, 3 controls must pass); the earlier mutation sets still behave (see the pull request).
+- [x] Run every `check_docs.py` sub-command, `audit_all.py`, `run_db_tests.sh`, `test_sequence_skeleton.py`.
+- [ ] Merge `main` into the branch, preflight, push, open the pull request, tell the lead; hold the lock until the merge, then release and park.
