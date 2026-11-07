@@ -236,3 +236,9 @@ description: Repository-wide and project-specific lessons captured from user cor
 - **Correction**: The lead found in review of PR #27 that a lock taken before BEGIN and an error answer without ROLLBACK were not caught. My first fix for the second one looked for the nearest earlier `app -> infra:` line, and the ROLLBACK of a sibling branch still satisfied it.
 - **Root cause**: The checker read the diagram as a flat list of lines, while an `alt` / `else` diagram has branches; the transaction standard was only compared with the lines the login diagram happens to have (408 and 500) and not with every way a transaction can fail (400 to 409, a lock before BEGIN).
 - **Corrected behavior**: When a checker reasons about order inside a diagram with branches, follow the nesting (indentation) so closed branches do not count, and write the mutation for each ROLLBACK or COMMIT one by one, not for one example. For a transaction rule, list every statement that must be inside it (writes and locks) and every exit that must end it.
+
+### 2026-11-07 — Read how a repeated option is parsed before passing several values
+
+- **Correction**: `agent_workspace.py prepare` was called with `--scope "a,b,c"`. The option is `action="append"`, so the assignment record kept one string with commas and no changed file could be inside it; a second `prepare` was refused because the task branch was already active, and the record had to be reset by hand with the approval of the lead.
+- **Root cause**: The values were joined in the way the previous assignment message listed them and the usage line (`--scope SCOPE`) was not checked for how several scopes are given; the `scope` of the output was not read before the lock was used.
+- **Corrected behavior**: Pass one `--scope` per path, and read the `scope` list of the `prepare` output before starting; it must show every path as its own entry. If it does not, release the lock and stop to ask the assigner before touching the record.
