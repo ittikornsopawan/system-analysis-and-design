@@ -566,3 +566,13 @@ Folders (`e-commerce/doc/api/product/`): `01-upsert-product`, `03-upsert-product
 - [x] Every SQL block is copied letter for letter and used exactly once; blocks are put in the order of the work and the participants follow the first use.
 - [x] Checks: `api-sequence-spec` (`product` 15/15), PlantUML `-checkonly` and `-syntax` for all ten, SVG: every SQL line visible and no strike-through, mutation test of the new files (see the pull request).
 - [ ] Merge `main` into the branch, run every checker and the preflight, push, open the pull request, tell the lead; hold the lock until the merge, then release and park.
+
+## repository-wide: Sequence diagrams of the remaining customer APIs (set B)
+
+Status: Complete in the branch, waiting for review. Assignment: agent `tommy`, delivery `open-pr`, authorized by `josh`, workspace `.workspace/tommy`, branch `feat/tommy-sequence-remaining-seven`, scopes `e-commerce/doc/api/cart`, `sales/01-inquiry-checkout`, `sales/02-create-order`, `sales/03-inquiry-order`, `payment/01-start-payment`, `payment/03-inquiry-payment`, `shipping/05-inquiry-shipping`, `shipping/06-confirm-delivery`, `shop/15-upsert-shop-product-review` and `tasks`.
+
+- [x] Move the 401 of `cart/01`, `02`, `03` and `sales/02` into the Application (400, verify the JWT, 401 in an `alt`), the way `consent/05` and `author/12` draw it (lead SA decision).
+- [x] Write `sequence.wsd` of `payment/01`, `payment/03`, `sales/01`, `sales/03`, `shipping/05`, `shipping/06`, `shop/15` to the same standard.
+- [x] `shipping/06`: the endpoint, then the automatic completion job as a second section under `== Automatic completion job (caller: system scheduler, not an endpoint) ==` because its SQL blocks are in the spec and the checker needs every block (lead SA decision (a)).
+- [x] Check every file with `api-sequence-spec`, the skeleton test, PlantUML and mutation tests.
+- [x] Open the PR with `commit-and-pr`; do not merge.

@@ -1,0 +1,352 @@
+@startuml StartPayment Sequence
+
+title Start Payment API Sequence
+
+' Leading SQL apostrophes use &#39; so PlantUML preserves literals; parity compares decoded SQL.
+
+' Visual style
+skinparam defaultFontName "Sarabun"
+skinparam defaultFontSize 14
+skinparam backgroundColor #FFFFFF
+skinparam shadowing false
+skinparam roundcorner 10
+skinparam sequence {
+    ArrowColor #475569
+    ArrowFontColor #334155
+    LifeLineBorderColor #CBD5E1
+    LifeLineBackgroundColor #F8FAFC
+    ParticipantBorderColor #94A3B8
+    ParticipantBackgroundColor #F1F5F9
+    ParticipantFontColor #0F172A
+    GroupBorderColor #94A3B8
+    GroupBackgroundColor #F8FAFC
+    GroupFontColor #334155
+}
+
+' Do not show participant footers at the bottom of the diagram
+hide footbox
+
+actor "User" as user
+box "Frontend" #F8FAFC
+    participant "Start Payment Page" as page
+end box
+box "Web API" #F8FAFC
+    participant "API" as api
+    participant "Application" as app
+    participant "Domain" as domain
+    participant "Infrastructure" as infra
+end box
+box "Database" #F8FAFC
+    database "t_order" as t_order
+    database "t_payment" as t_payment
+end box
+
+user -> page: Submit the payment
+activate page
+    page -> api: POST v1/payment
+    activate api
+        api -> app: [**StartPaymentCommandHandler**] Process request
+        activate app
+            app -> app: Create request context; generate requestId when omitted
+            app -> app: Validate headers and body: orderId is a UUID, paymentMethod is CREDIT_CARD or THAI_QR (the other methods are not supported), shippingMethod is STANDARD, EXPRESS or SAME_DAY
+            alt Invalid input
+                app -> api: HTTP 400 E10001
+                api -> page: Bad request
+                page -> user: Display validation error
+            else Valid input
+                app -> app: Verify JWT signature, issuer, audience, exp and UUID sub
+                alt Missing, malformed or invalid JWT
+                    app -> api: HTTP 401 E10002 Invalid or expired access token.
+                    api -> page: Authentication error
+                    page -> user: Ask the user to sign in again
+                else Verified JWT
+                    app -> app: userId = verified sub
+                    app -> infra: BEGIN READ COMMITTED
+                    activate infra
+                    alt Work completes before commit
+                        app -> infra: QUERY - Get the order of the user and lock it
+                        infra -> t_order: QUERY - Get the order of the user and lock it
+                        activate t_order
+                            note right of t_order
+                                SELECT
+                                    o.id as order_id,
+                                    o.code,
+                                    o.status,
+                                    o.total_price,
+                                    o.total_discount,
+                                    o.total_tax,
+                                    o.expires_at
+                                FROM sales.t_order o
+                                WHERE o.id = '<sequence.orderId>'
+                                AND o.user_id = '<sequence.userId>' -- an order of another user counts as not found
+                                AND o.row_status <> 'DELETED'
+                                FOR UPDATE
+                            end note
+                            t_order -> infra: Return query result
+                        deactivate t_order
+                        infra -> app: Return the locked order or no row
+                        alt Order not found for this user (another user's order or a deleted order)
+                            app -> infra: ROLLBACK
+                            app -> api: HTTP 404 E10004 Order not found.
+                            api -> page: Not found
+                            page -> user: Display the order is not found
+                        else Order found
+                            alt The order is not WAIT_PAYMENT or expires_at has passed
+                                app -> infra: ROLLBACK
+                                app -> api: HTTP 409 E10006 Only an order that is waiting for payment can be paid, the order is <status>.
+                                api -> page: Conflict
+                                page -> user: Display the order cannot be paid
+                            else The order is waiting for payment
+                                app -> domain: Calculate the shipping fee of shippingMethod (STANDARD 40.00, EXPRESS 80.00, SAME_DAY 150.00, a config) and amount = totalPrice - totalDiscount + totalTax + shippingFee
+                                activate domain
+                                domain -> app: Return the shipping fee and the amount
+                                deactivate domain
+                                alt amount is below 10.00 THB, or above 2,000,000.00 THB for THAI_QR
+                                    app -> infra: ROLLBACK
+                                    app -> api: HTTP 409 E10006 The amount is outside the limit of the payment method.
+                                    api -> page: Conflict
+                                    page -> user: Display the amount limit
+                                else The amount is within the limits
+                                    app -> infra: QUERY - Get the live payment of the order
+                                    infra -> t_payment: QUERY - Get the live payment of the order
+                                    activate t_payment
+                                        note right of t_payment
+                                            SELECT
+                                                p.id as payment_id,
+                                                p.provider_payment_id,
+                                                p.status,
+                                                p.payment_method,
+                                                p.shipping_method
+                                            FROM payment.t_payment p
+                                            WHERE p.order_id = '<sequence.orderId>'
+                                            AND p.status IN ('PENDING', 'PROCESSING')
+                                            AND p.row_status = 'ACTIVE' -- PROCESSING answers 409 (E10006), the same methods are reused without a write
+                                        end note
+                                        t_payment -> infra: Return query result
+                                    deactivate t_payment
+                                    infra -> app: Return the live payment or no row
+                                    alt A payment of the order is PROCESSING
+                                        app -> infra: ROLLBACK
+                                        app -> api: HTTP 409 E10006 A payment of the order is in progress.
+                                        api -> page: Conflict
+                                        page -> user: Display the payment is in progress
+                                    else A PENDING payment has the same paymentMethod and shippingMethod (reuse)
+                                        app -> infra: Read the PaymentIntent of the payment at Stripe to get a new client secret
+                                        alt Stripe does not answer or refuses the request
+                                            app -> infra: ROLLBACK
+                                            app -> api: HTTP 408 E90001
+                                            api -> page: Request timeout
+                                            page -> user: Retry if needed
+                                        else Client secret read
+                                            infra -> app: Return clientSecret
+                                            app -> infra: COMMIT
+                                            app -> api: HTTP 200 S10000 Start Payment Success: no row written
+                                            api -> page: Return the client secret
+                                            page -> user: Open the payment form of Stripe
+                                        end
+                                    else A PENDING payment has another paymentMethod or shippingMethod (replace)
+                                        app -> infra: UPDATE - Cancel the pending payment that is replaced
+                                        infra -> t_payment: UPDATE - Cancel the pending payment that is replaced
+                                        activate t_payment
+                                            note right of t_payment
+                                                UPDATE payment.t_payment
+                                                SET
+                                                    updated_by = '<sequence.userId>',
+                                                    updated_at = NOW() AT TIME ZONE 'UTC',
+                                                    status = 'CANCELLED'
+                                                WHERE id = '<sequence.paymentId>'
+                                                AND status = 'PENDING' -- no row changed means the payment moved on in the meantime, answer 409 (E10006)
+                                                RETURNING id as payment_id, status
+                                            end note
+                                            t_payment -> infra: Return updated result
+                                        deactivate t_payment
+                                        infra -> app: Return the cancelled payment or no row
+                                        alt No row changed: the payment moved on in the meantime
+                                            app -> infra: ROLLBACK
+                                            app -> api: HTTP 409 E10006 The payment changed in the meantime.
+                                            api -> page: Conflict
+                                            page -> user: Display the payment changed
+                                        else Payment cancelled in the table
+                                            app -> infra: Cancel the PaymentIntent of the old payment at Stripe
+                                            alt Stripe does not answer or refuses the request
+                                                app -> infra: ROLLBACK
+                                                app -> api: HTTP 408 E90001
+                                                api -> page: Request timeout
+                                                page -> user: Retry if needed
+                                            else Old PaymentIntent cancelled
+                                                app -> app: Generate paymentId; it is the Idempotency-Key
+                                                app -> infra: Create the Stripe PaymentIntent (amount x 100 in satang, THB, metadata orderId and paymentId, Idempotency-Key = paymentId)
+                                                alt Stripe does not answer or refuses the request
+                                                    app -> infra: ROLLBACK
+                                                    app -> api: HTTP 408 E90001
+                                                    api -> page: Request timeout
+                                                    page -> user: Retry if needed
+                                                else PaymentIntent created
+                                                    infra -> app: Return providerPaymentId and clientSecret
+                                                    app -> infra: UPDATE - Set the shipping fee and the amount of the order
+                                                    infra -> t_order: UPDATE - Set the shipping fee and the amount of the order
+                                                    activate t_order
+                                                        note right of t_order
+                                                            UPDATE sales.t_order
+                                                            SET
+                                                                updated_by = '<sequence.userId>',
+                                                                updated_at = NOW() AT TIME ZONE 'UTC',
+                                                                total_shipping = '<sequence.shippingFee>',
+                                                                total_amount = total_price - total_discount + total_tax + '<sequence.shippingFee>'
+                                                            WHERE id = '<sequence.orderId>'
+                                                            AND status = 'WAIT_PAYMENT' -- no row changed means the status changed in the meantime, answer 409 (E10006)
+                                                            RETURNING id as order_id, total_shipping, total_amount
+                                                        end note
+                                                        t_order -> infra: Return updated result
+                                                    deactivate t_order
+                                                    infra -> app: Return order_id, total_shipping and total_amount or no row
+                                                    alt No row changed: the order is no longer WAIT_PAYMENT
+                                                        app -> infra: ROLLBACK
+                                                        app -> api: HTTP 409 E10006 The order status changed in the meantime.
+                                                        api -> page: Conflict
+                                                        page -> user: Display the order cannot be paid
+                                                    else Order updated
+                                                        app -> infra: INSERT - Create the payment
+                                                        infra -> t_payment: INSERT - Create the payment
+                                                        activate t_payment
+                                                            note right of t_payment
+                                                                INSERT INTO payment.t_payment (
+                                                                    id,
+                                                                    created_by,
+                                                                    order_id,
+                                                                    provider,
+                                                                    provider_payment_id,
+                                                                    amount,
+                                                                    currency,
+                                                                    shipping_method,
+                                                                    shipping_fee,
+                                                                    status,
+                                                                    payment_method
+                                                                )
+                                                                VALUES (
+                                                                    &#39;<sequence.paymentId>', -- generated before the PaymentIntent is created, it is the Idempotency-Key
+                                                                    &#39;<sequence.userId>',
+                                                                    &#39;<sequence.orderId>',
+                                                                    &#39;STRIPE',
+                                                                    &#39;<sequence.providerPaymentId>', -- id of the PaymentIntent that Stripe returned
+                                                                    &#39;<sequence.amount>',
+                                                                    &#39;THB',
+                                                                    &#39;<sequence.shippingMethod>',
+                                                                    &#39;<sequence.shippingFee>',
+                                                                    &#39;PENDING',
+                                                                    &#39;<sequence.paymentMethod>'
+                                                                )
+                                                                RETURNING id as payment_id, status
+                                                            end note
+                                                            t_payment -> infra: Return inserted result
+                                                        deactivate t_payment
+                                                        infra -> app: Return payment_id and status
+                                                        app -> infra: COMMIT
+                                                        app -> api: HTTP 201 S10000 Start Payment Success: payment, amount, shipping fee and clientSecret
+                                                        api -> page: Return the client secret
+                                                        page -> user: Open the payment form of Stripe
+                                                    end
+                                                end
+                                            end
+                                        end
+                                    else The order has no live payment
+                                        app -> app: Generate paymentId; it is the Idempotency-Key
+                                        app -> infra: Create the Stripe PaymentIntent (amount x 100 in satang, THB, metadata orderId and paymentId, Idempotency-Key = paymentId)
+                                        alt Stripe does not answer or refuses the request
+                                            app -> infra: ROLLBACK
+                                            app -> api: HTTP 408 E90001
+                                            api -> page: Request timeout
+                                            page -> user: Retry if needed
+                                        else PaymentIntent created
+                                            infra -> app: Return providerPaymentId and clientSecret
+                                            app -> infra: UPDATE - Set the shipping fee and the amount of the order
+                                            infra -> t_order: UPDATE - Set the shipping fee and the amount of the order
+                                            activate t_order
+                                                note right of t_order
+                                                    UPDATE sales.t_order
+                                                    SET
+                                                        updated_by = '<sequence.userId>',
+                                                        updated_at = NOW() AT TIME ZONE 'UTC',
+                                                        total_shipping = '<sequence.shippingFee>',
+                                                        total_amount = total_price - total_discount + total_tax + '<sequence.shippingFee>'
+                                                    WHERE id = '<sequence.orderId>'
+                                                    AND status = 'WAIT_PAYMENT' -- no row changed means the status changed in the meantime, answer 409 (E10006)
+                                                    RETURNING id as order_id, total_shipping, total_amount
+                                                end note
+                                                t_order -> infra: Return updated result
+                                            deactivate t_order
+                                            infra -> app: Return order_id, total_shipping and total_amount or no row
+                                            alt No row changed: the order is no longer WAIT_PAYMENT
+                                                app -> infra: ROLLBACK
+                                                app -> api: HTTP 409 E10006 The order status changed in the meantime.
+                                                api -> page: Conflict
+                                                page -> user: Display the order cannot be paid
+                                            else Order updated
+                                                app -> infra: INSERT - Create the payment
+                                                infra -> t_payment: INSERT - Create the payment
+                                                activate t_payment
+                                                    note right of t_payment
+                                                        INSERT INTO payment.t_payment (
+                                                            id,
+                                                            created_by,
+                                                            order_id,
+                                                            provider,
+                                                            provider_payment_id,
+                                                            amount,
+                                                            currency,
+                                                            shipping_method,
+                                                            shipping_fee,
+                                                            status,
+                                                            payment_method
+                                                        )
+                                                        VALUES (
+                                                            &#39;<sequence.paymentId>', -- generated before the PaymentIntent is created, it is the Idempotency-Key
+                                                            &#39;<sequence.userId>',
+                                                            &#39;<sequence.orderId>',
+                                                            &#39;STRIPE',
+                                                            &#39;<sequence.providerPaymentId>', -- id of the PaymentIntent that Stripe returned
+                                                            &#39;<sequence.amount>',
+                                                            &#39;THB',
+                                                            &#39;<sequence.shippingMethod>',
+                                                            &#39;<sequence.shippingFee>',
+                                                            &#39;PENDING',
+                                                            &#39;<sequence.paymentMethod>'
+                                                        )
+                                                        RETURNING id as payment_id, status
+                                                    end note
+                                                    t_payment -> infra: Return inserted result
+                                                deactivate t_payment
+                                                infra -> app: Return payment_id and status
+                                                app -> infra: COMMIT
+                                                app -> api: HTTP 201 S10000 Start Payment Success: payment, amount, shipping fee and clientSecret
+                                                api -> page: Return the client secret
+                                                page -> user: Open the payment form of Stripe
+                                            end
+                                        end
+                                    end
+                                end
+                            end
+                        end
+                    else Timeout before COMMIT
+                        note over app, infra
+                            A timeout can interrupt any preceding SQL or domain step.
+                            No success response is sent without a successful COMMIT.
+                        end note
+                        app -> infra: ROLLBACK
+                        app -> api: HTTP 408 E90001
+                        api -> page: Request timeout
+                        page -> user: Retry if needed
+                    else Unexpected failure before COMMIT
+                        app -> infra: ROLLBACK
+                        app -> api: HTTP 500 generic error; no new bizCode
+                        api -> page: Internal server error
+                        page -> user: Display generic failure
+                    end
+                    deactivate infra
+                end
+            end
+        deactivate app
+    deactivate api
+deactivate page
+
+@enduml

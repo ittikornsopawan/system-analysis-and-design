@@ -1,0 +1,209 @@
+@startuml InquiryOrder Sequence
+
+title Inquiry Order API Sequence
+
+' Leading SQL apostrophes use &#39; so PlantUML preserves literals; parity compares decoded SQL.
+
+' Visual style
+skinparam defaultFontName "Sarabun"
+skinparam defaultFontSize 14
+skinparam backgroundColor #FFFFFF
+skinparam shadowing false
+skinparam roundcorner 10
+skinparam sequence {
+    ArrowColor #475569
+    ArrowFontColor #334155
+    LifeLineBorderColor #CBD5E1
+    LifeLineBackgroundColor #F8FAFC
+    ParticipantBorderColor #94A3B8
+    ParticipantBackgroundColor #F1F5F9
+    ParticipantFontColor #0F172A
+    GroupBorderColor #94A3B8
+    GroupBackgroundColor #F8FAFC
+    GroupFontColor #334155
+}
+
+' Do not show participant footers at the bottom of the diagram
+hide footbox
+
+actor "User" as user
+box "Frontend" #F8FAFC
+    participant "Inquiry Order Page" as page
+end box
+box "Web API" #F8FAFC
+    participant "API" as api
+    participant "Application" as app
+    participant "Domain" as domain
+    participant "Infrastructure" as infra
+end box
+box "Database" #F8FAFC
+    database "t_order" as t_order
+    database "t_order_item" as t_order_item
+    database "m_product" as m_product
+    database "m_product_sku_option_value" as m_product_sku_option_value
+end box
+
+user -> page: Request the orders
+activate page
+    page -> api: GET v1/order
+    activate api
+        api -> app: [**InquiryOrderQueryHandler**] Process request
+        activate app
+            app -> app: Create request context; generate requestId when omitted
+            app -> app: Validate headers and query parameters: pageSize 1 to 100, id is a UUID, status is an order status
+            alt Invalid input
+                app -> api: HTTP 400 E10001
+                api -> page: Bad request
+                page -> user: Display validation error
+            else Valid input
+                app -> app: Verify JWT signature, issuer, audience, exp and UUID sub
+                alt Missing, malformed or invalid JWT
+                    app -> api: HTTP 401 E10002 Invalid or expired access token.
+                    api -> page: Authentication error
+                    page -> user: Ask the user to sign in again
+                else Verified JWT
+                    app -> app: userId = verified sub
+                    app -> infra: Execute database operations
+                    activate infra
+                    alt Work completes
+                        app -> infra: QUERY - Get the orders of the user
+                        infra -> t_order: QUERY - Get the orders of the user
+                        activate t_order
+                            note right of t_order
+                                SELECT
+                                    o.id as order_id,
+                                    o.code,
+                                    o.shop_id,
+                                    s.name as shop_name,
+                                    o.status,
+                                    o.ship_title,
+                                    o.total_price,
+                                    o.total_discount,
+                                    o.total_tax,
+                                    o.total_shipping,
+                                    o.total_amount,
+                                    o.expires_at,
+                                    o.created_at
+                                FROM sales.t_order o
+                                INNER JOIN shop.m_shop s
+                                    ON s.id = o.shop_id
+                                WHERE o.user_id = '<sequence.userId>'
+                                AND o.row_status <> 'DELETED'
+                                AND o.id = '<sequence.id>' -- only when id is specified
+                                AND o.status = '<sequence.status>' -- only when status is specified
+                                AND (o.code ILIKE '%<sequence.search>%' OR s.name ILIKE '%<sequence.search>%') -- only when search is specified
+                                ORDER BY o.created_at DESC, o.id
+                                LIMIT <sequence.pageSize> OFFSET (<sequence.pageIndex> - 1) * <sequence.pageSize>
+                            end note
+                            t_order -> infra: Return query result
+                        deactivate t_order
+                        infra -> app: Return the page of orders of the user
+                        app -> infra: QUERY - Count the orders of the user
+                        infra -> t_order: QUERY - Count the orders of the user
+                        activate t_order
+                            note right of t_order
+                                SELECT
+                                    COUNT(o.id) as total_items
+                                FROM sales.t_order o
+                                INNER JOIN shop.m_shop s
+                                    ON s.id = o.shop_id
+                                WHERE o.user_id = '<sequence.userId>'
+                                AND o.row_status <> 'DELETED'
+                                AND o.id = '<sequence.id>' -- only when id is specified
+                                AND o.status = '<sequence.status>' -- only when status is specified
+                                AND (o.code ILIKE '%<sequence.search>%' OR s.name ILIKE '%<sequence.search>%') -- only when search is specified
+                            end note
+                            t_order -> infra: Return query result
+                        deactivate t_order
+                        infra -> app: Return total_items
+                        alt No order matches
+                            app -> domain: Build the empty page
+                            activate domain
+                            domain -> app: Return the empty page
+                            deactivate domain
+                            app -> api: HTTP 200 S10000
+                            api -> page: Return an empty list
+                            page -> user: Display no order
+                        else Orders found
+                            app -> infra: QUERY - Get the items of the orders
+                            infra -> t_order_item: QUERY - Get the items of the orders
+                            activate t_order_item
+                                note right of t_order_item
+                                    SELECT
+                                        oi.id as order_item_id,
+                                        oi.order_id,
+                                        oi.product_id,
+                                        oi.sku_id,
+                                        oi.quantity,
+                                        oi.price,
+                                        oi.discount,
+                                        oi.total_price
+                                    FROM sales.t_order_item oi
+                                    WHERE oi.order_id IN ('<sequence.orderIds>')
+                                    AND oi.row_status <> 'DELETED'
+                                    ORDER BY oi.created_at, oi.id
+                                end note
+                                t_order_item -> infra: Return query result
+                            deactivate t_order_item
+                            infra -> app: Return the items of the orders
+                            app -> infra: QUERY - Get the product and SKU names of the items
+                            infra -> m_product: QUERY - Get the product and SKU names of the items
+                            activate m_product
+                                note right of m_product
+                                    SELECT
+                                        p.id as product_id,
+                                        p.name as product_name,
+                                        ps.id as sku_id,
+                                        ps.name as sku_name
+                                    FROM product.m_product p
+                                    INNER JOIN product.m_product_sku ps
+                                        ON ps.product_id = p.id
+                                    WHERE ps.id IN ('<sequence.skuIds>')
+                                end note
+                                m_product -> infra: Return query result
+                            deactivate m_product
+                            infra -> app: Return the product and SKU names
+                            app -> infra: QUERY - Get the chosen option values of the SKUs
+                            infra -> m_product_sku_option_value: QUERY - Get the chosen option values of the SKUs
+                            activate m_product_sku_option_value
+                                note right of m_product_sku_option_value
+                                    SELECT
+                                        psov.sku_id,
+                                        po.name as option_name,
+                                        pov.value
+                                    FROM product.m_product_sku_option_value psov
+                                    INNER JOIN product.m_product_option_value pov
+                                        ON pov.id = psov.option_value_id
+                                    INNER JOIN product.m_product_option po
+                                        ON po.id = pov.option_id
+                                    WHERE psov.sku_id IN ('<sequence.skuIds>')
+                                    ORDER BY psov.sku_id, po.level_no
+                                end note
+                                m_product_sku_option_value -> infra: Return query result
+                            deactivate m_product_sku_option_value
+                            infra -> app: Return the chosen option values
+                            app -> domain: Build the orders with their items: the locked price only, never the cost, the lot, the margin or the profit, the address only by its title
+                            activate domain
+                            domain -> app: Return the orders and the paging
+                            deactivate domain
+                            app -> api: HTTP 200 S10000
+                            api -> page: Return the orders
+                            page -> user: Display the orders
+                        end
+                    else Timeout
+                        app -> api: HTTP 408 E90001
+                        api -> page: Request timeout
+                        page -> user: Retry if needed
+                    else Unexpected failure
+                        app -> api: HTTP 500 generic error; no new bizCode
+                        api -> page: Internal server error
+                        page -> user: Display generic failure
+                    end
+                    deactivate infra
+                end
+            end
+        deactivate app
+    deactivate api
+deactivate page
+
+@enduml
