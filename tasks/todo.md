@@ -408,6 +408,21 @@ Status: Implemented in the managed workspace of Marry on branch `fix/marry-rejec
 Verification: `python3 .agents/skills/agent-workspace/tests/test_agent_workspace.py` runs 15 tests OK (13 before).
 
 
+## e-commerce: Peter API review — submit consent (API 4)
+
+Status: Register delivered in PR #32 (six files; MERGEABLE when opened), branch/history preserved, clean main-based submit-consent assignment prepared under Q15. Owner Q16: display records reading, optional result answers later, already-read evidence keeps its read timestamp. Q17: require the displayed version. No next-API merge gate applies.
+
+- [x] Preserve register PR/history, return to main and prepare the scoped submit-consent assignment with passing baselines.
+- [x] Read existing submit spec/sequence, token/user revocation design and consent/evidence migrations.
+- [x] Persist Q16/Q17 and define read-only, answer, no-op and history behavior without a schema change.
+- [x] Correct the spec and complete sequence with user-first serialization, fresh token check, current/active-type validation, deterministic existing evidence and atomic batch branches.
+- [x] Add focused consent-submit-flow checks, reject the original pair and mutation-test guards/results/rendered SQL.
+- [x] Verify exact SQL/no-op/rollback/concurrency in temporary PostgreSQL, render/inspect the sequence and pass all current checks/audit/database tests.
+- [ ] Open one API PR through commit-and-pr, preserve its review record and continue from main under Q15.
+
+Submit verification: original pair rejected; six exact SQL operations, twelve terminal traces with distinct insert/update/no-op and aborted-update failure. The shared path parser now terminates an explicit PlantUML break, preventing failed updates from falling through to COMMIT/200; mutation coverage includes disabling that termination. All 52/52 deliberate faults are caught, including a real rendered SQL omission. PlantUML syntax reports ten participants; SVG/PNG generated and inspected, 75/75 visible SQL lines. Exact SQL in temporary PostgreSQL proves policy/type filtering, first-read preservation, no-op audit preservation, explicit false, legacy NULL timestamp and deterministic duplicates, ownership/old-version history, whole-batch rollback, two-call serialization to one evidence row, and fresh token revocation visibility after a lock wait. No backend implementation is claimed.
+
+Submit delivery preflight: six authorized task files, all 41 documentation commands OK, audit 53 tables / 0 findings, database ALL PASSED, managed assignment authorized for Peter, no blockers. Origin/main unchanged at the pre-delivery fetch; register remains a separate review PR.
 ## e-commerce: Peter API review — pending consent (API 5)
 
 Status: Submit consent delivered as PR #34 (six files, MERGEABLE when opened); its branch/assignment was preserved, and a clean main-based pending-consent assignment passed baselines under Q15. Q8 governs required versus optional pending; Q3 hides inactive types; Q16/Q17 govern displayed/current-version evidence.
