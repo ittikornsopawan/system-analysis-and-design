@@ -4024,6 +4024,46 @@ def sequence_login_standard_errors(text: str) -> list[str]:
     return errors
 
 
+def sequence_block_errors(spec_operations, sequence_operations, declared_tables) -> list[str]:
+    """Blocks of a sequence against the blocks of its spec: every block exactly once or more, in any order.
+
+    A block is its table, its heading and its SQL (normalized). The diagram may put the blocks in the order the work runs
+    and repeat a block in several branches; it may not add a block, drop one or change one letter of its SQL. The database
+    participants are the tables of the spec, declared in the order of their first use in the diagram.
+    """
+    errors = []
+    spec_blocks = [(table.split(".")[-1], heading, normalize(sql)) for table, heading, sql in spec_operations]
+    spec_set = set(spec_blocks)
+    used = set()
+    for position, (table, heading, sql) in enumerate(sequence_operations, start=1):
+        key = (table, heading, normalize(sql))
+        if key in spec_set:
+            used.add(key)
+        elif any(block[:2] == (table, heading) for block in spec_blocks):
+            errors.append(f"interaction {position} {table} / {heading}: the SQL is not the SQL of any block of the spec with that table and heading")
+        else:
+            errors.append(f"interaction {position} {table} / {heading}: no block of the spec has this table and heading")
+    for table, heading, sql in dict.fromkeys(spec_blocks):
+        if (table, heading, sql) in used:
+            continue
+        same_name = [block for block in spec_blocks if block[:2] == (table, heading)]
+        detail = f" (the one whose SQL starts with {sql.splitlines()[0][:60]!r})" if len(set(same_name)) > 1 else ""
+        errors.append(f"the block {table} / {heading} of the spec{detail} is missing from the diagram")
+    spec_tables = list(dict.fromkeys(block[0] for block in spec_blocks))
+    first_use = list(dict.fromkeys(table for table, _, _ in sequence_operations))
+    for table in spec_tables:
+        if table not in declared_tables:
+            errors.append(f"database participant {table} of the spec is not declared")
+    for table in dict.fromkeys(declared_tables):
+        if table not in spec_tables:
+            errors.append(f"database participant {table} is not a table of the spec")
+    if len(set(declared_tables)) != len(declared_tables):
+        errors.append(f"database participants {declared_tables} declare a table twice")
+    elif set(declared_tables) == set(first_use) and declared_tables != first_use:
+        errors.append(f"database participants {declared_tables} must be declared in the order of first use in the diagram {first_use}")
+    return errors
+
+
 def check_api_sequence_spec() -> int:
     errors = []
     api_root = ROOT / SEQUENCE_API_ROOT
@@ -4072,25 +4112,7 @@ def check_api_sequence_spec() -> int:
         else:
             errors.extend(f"{relative_sequence}: login standard: {error}" for error in standard_errors)
         declared_tables = re.findall(r'^\s*database "[^"]+" as (\w+)$', sequence_text, re.MULTILINE)
-        expected_tables = list(dict.fromkeys(table.split(".")[-1] for table, _, _ in spec_operations))
-        if declared_tables != expected_tables:
-            errors.append(
-                f"{relative_sequence}: database participants {declared_tables} differ from spec tables {expected_tables}"
-            )
-        if len(spec_operations) != len(sequence_operations):
-            errors.append(
-                f"{relative_sequence}: has {len(sequence_operations)} table interactions but {relative_spec} has {len(spec_operations)} SQL blocks"
-            )
-            continue
-        for position, (spec_operation, sequence_operation) in enumerate(zip(spec_operations, sequence_operations), start=1):
-            table, heading, sql = spec_operation
-            sequence_table, sequence_heading, sequence_sql = sequence_operation
-            if sequence_table != table.split(".")[-1] or sequence_heading != heading:
-                errors.append(
-                    f"{relative_sequence}: interaction {position} is {sequence_table} / {sequence_heading}, expected {table} / {heading}"
-                )
-            if normalize(sequence_sql) != normalize(sql):
-                errors.append(f"{relative_sequence}: interaction {position} SQL differs from {relative_spec}")
+        errors.extend(f"{relative_sequence}: {error}" for error in sequence_block_errors(spec_operations, sequence_operations, declared_tables))
     if errors:
         return fail("; ".join(errors))
     summary = ", ".join(

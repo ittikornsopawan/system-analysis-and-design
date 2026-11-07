@@ -361,3 +361,19 @@ Status: Complete in the branch, waiting for gate review. Assignment: agent `tomm
 - [x] Run the project checkers and open the PR with `commit-and-pr`; do not merge.
 
 Verification: see the PR. Not run: the script was not used to fill the 65 empty diagrams (that is the next step of phase 0 and changes `e-commerce/doc/api`, outside this scope).
+
+## e-commerce: api-sequence-spec accepts the blocks of a diagram in any order
+
+Status: Implemented in the managed workspace of Marry on branch `feat/marry-sequence-any-order`; the pull request is opened after the preflight and merged by the lead, not by the author. Scope: `e-commerce/db/tests/check_docs.py`, `.agents/skills/api-contract-design/references/api-conventions.md` and `tasks/`. No spec, no `sequence.wsd` and no `sequence_skeleton.py` is changed. Decision of the lead (owner order): most specs order the SQL by table, not by execution (for example `sales/05-cancel-order` checks the shop permission after the UPDATE in the document, but runs it before), so the checker stops forcing the order of the spec instead of reordering 65 specs that the API review is working on. If wrong: force the order again and reorder the specs.
+
+- [x] Prepare the workspace from `main` (e132139) with the baseline `check_docs.py api-sequence-spec`; the first prepare recorded the three scope paths as one string, so the assignment record was reset with the approval of the lead and prepared again with three `--scope` flags.
+- [x] Every interaction of a diagram must be a block of the spec: table, heading and normalized SQL all equal; an interaction that is not in the spec fails.
+- [x] Every block of the spec must appear at least once, in any order, and may repeat in several branches; two blocks with the same table and heading are matched by their full SQL and the report says which one is missing.
+- [x] Database participants: the tables of the spec, declared in the order of first use in the diagram (missing, extra, declared twice and wrong order are separate messages).
+- [x] Keep the earlier rules: lifecycle, structure, `TODO(author)`, BEGIN before a write or a lock, ROLLBACK or COMMIT before an error answer, `LEGACY_SEQUENCES`, `REQUIRED_GROUPS`.
+- [x] Update `api-conventions.md` (intro and steps 1 and 2 of the sequence section): move blocks to the order of the work and into every branch that needs them, and move the participants with them.
+- [x] Mutation and control tests: 35 cases of `mutation_harness.py` and 14 cases on `02-login` plus 4 direct cases for the same-heading rule.
+- [x] Run every `check_docs.py` sub-command (40), `audit_all.py`, `run_db_tests.sh` and `test_sequence_skeleton.py`; 65 skeletons from the generator are checked on a copy.
+- [ ] Preflight, commit, push, open the pull request, tell the lead; hold the lock until the merge, then release and park.
+
+Verification: `api-sequence-spec` prints `OK: api-sequence-spec (83 specs; ... 10 legacy without the login standard)`; the 18 diagrams of the earlier round pass; on a copy of the repository the 65 skeletons of the generator fail only with `TODO(author)` (0 other errors); harness 35 of 35 caught; on `02-login` these fail as they must: a block removed, one letter of the SQL changed, an extra block with a new heading, an extra block with the same heading and other SQL, a changed heading, a participant missing, an extra participant, a participant declared twice, participants in the wrong order, two blocks swapped with the participants left in the old order, a write moved before BEGIN; these pass as they must: two blocks swapped together with their participants, one block repeated right after itself, one block repeated in another branch; 40 of 40 sub-commands OK; audit 53 tables, 0 findings; database tests ALL PASSED; `test_sequence_skeleton.py` 11 tests OK.
