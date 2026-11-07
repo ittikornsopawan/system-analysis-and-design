@@ -4651,8 +4651,7 @@ AUTHOR_OTHER_NEEDLES = {
            "The last administrator rule below still applies in full.", "existence checks (404, the row of `id`, and the user and the role only when the request gives the role)"],
     "11": ["# [GET]: v1/author/user/role", "### User Role Inquiry Rules", "ORDER BY r.name, u.display_name, ur.id", f"Request: `GET v1/author/user/role?id={AUTHOR_USER_ROLE}`", "Only a platform administrator can read the roles of users",
            "#### Fail - Forbidden", "E10009", *AUTHOR_ADMIN],
-    "12": ["# [GET]: v1/author/me", "### Me Rules", "not stored in the access token", "ORDER BY r.name, r.id", "AND r.row_status = 'ACTIVE'", "AND ur.row_status = 'ACTIVE'", "Any caller with a valid access token can call this API",
-           "Success - Platform Administrator", "Success - No Role"],
+    "12": ["# [GET]: v1/author/me", "### Me Rules", "calling token's role snapshot", "Any caller with a valid access token can call this API", "Do not query author.t_user_role or author.m_role", "Success - Platform Administrator", "Success - No Role"],
 }
 
 
@@ -5537,6 +5536,83 @@ def check_active_consent_flow() -> int:
             if title=='Success - No Active Consent' and obj['data']['consents']!=[]:errors.append('empty active list must be []')
             if title=='Success' and any(set(row)!=response_fields or not row['consentTypeName'] for row in obj['data']['consents']):errors.append('active response example needs all eleven public fields and a type name')
         except (TypeError,KeyError,ValueError):errors.append(f'missing active {title} example')
+def check_author_me_flow() -> int:
+    """Check the calling-token role snapshot while preserving live credential/user revocation."""
+    path='e-commerce/doc/api/author/12-me/spec.md'
+    md=read(path);wsd=read(str(Path(path).with_name('sequence.wsd')));errors=[]
+    for needle in ('2026-11-07-api-review-design.md','Q4/Q11/Q13',"calling token's role snapshot",
+                   'Do not query author.t_user_role or author.m_role','duplicate roleIds',
+                   'roles must be an array, including explicit []','ordinal case-sensitive comparison, then by roleId',
+                   'isPlatformAdmin is true exactly when one returned role has name equal to PLATFORM_ADMIN',
+                   'Do not trust an independent isPlatformAdmin token claim',
+                   'Role/assignment changes after issuance do not change this token',
+                   'Every refresh resolves latest ACTIVE grants','one read-only autocommit SELECT',
+                   'stored token for that hash/userId and an ACTIVE user','There is no 403',
+                   'Permissions and scopes are not returned'):
+        if needle not in md:errors.append(f'me rule missing {needle!r}')
+    front=re.match(r'---\n(.*?)\n---\n',md,re.S);fm=front[1] if front else ''
+    state=re.search(r'^status: (draft|in-review|approved)$',fm,re.M)
+    if not state:errors.append('me requires approval metadata')
+    for field in ('approved_by','approved_at'):
+        value=re.search(rf'^{field}: (.+)$',fm,re.M)
+        if not value or (state and ((state[1]=='approved')==(value[1]=='null'))):errors.append(f'inconsistent me {field}')
+    operations=spec_database_operations(md)
+    if len(operations)!=1 or operations[0][:2]!=('authen.t_user_access_token','QUERY - Check active credential and user'):
+        errors.append('me must execute only the current credential/user query, never live role queries')
+    statement=operations[0][2] if len(operations)==1 else ''
+    for needle in ('SELECT\n    at.user_id',"at.token = '<sequence.accessTokenHash>'", "at.user_id = '<sequence.userId>'", "at.row_status = 'ACTIVE'", "at.expired_at > '<sequence.now>'", 'AND EXISTS (','FROM authen.m_user u','u.id = at.user_id',"u.row_status = 'ACTIVE'"):
+        if needle not in statement:errors.append(f'me credential SQL missing {needle}')
+    if re.search(r'\b(?:INSERT|UPDATE|DELETE)\b|\bNOW\s*\(|\bFOR\s+(?:UPDATE|SHARE)\b',statement,re.I) or 'author.' in statement:
+        errors.append('me SQL must not write, lock, use stale NOW() or read authorization assignments')
+    actual,lifecycle=sequence_database_operations(wsd);errors+=lifecycle
+    if [(t.split('.')[-1],h,normalize(s)) for t,h,s in operations]!=[(t,h,normalize(s)) for t,h,s in actual]:errors.append('me spec/sequence SQL differs')
+    for needle in ('app -> infra: QUERY - Check active credential and user',
+                   'infra -> app: Return ACTIVE matching token/user or no row',
+                   'Verify JWT signature/issuer/audience/exp/UUID sub and structured roles; reject duplicate roleIds',
+                   'userId = verified sub; accessTokenHash = SHA-256 exact JWT',
+                   'Capture fresh server UTC now before credential query; recheck JWT exp',
+                   'roles = copy roleId/name from verifiedJwt.roles; sort ordinal name then roleId',
+                   'alt Token roles is empty','data.roles = []; isPlatformAdmin = false',
+                   'else Returned token roles contain exact name PLATFORM_ADMIN',
+                   'data.roles = sorted token roles; isPlatformAdmin = true',
+                   'else Other token roles','data.roles = sorted token roles; isPlatformAdmin = false',
+                   'data.userId = verified sub; ignore independent admin flag; no live role-table lookup'):
+        if needle not in wsd:errors.append(f'me sequence missing guard/mapping {needle!r}')
+    if 'TODO(author)' in wsd or re.search(r'app -> infra: (?:BEGIN|COMMIT|ROLLBACK)',wsd):errors.append('me requires a finished single-read autocommit sequence')
+    traces,structure=login_sequence_paths(wsd);errors+=structure
+    from collections import Counter
+    outcomes=[];modes=Counter()
+    for trace in traces:
+        responses=[e for e in trace if e.startswith('app -> api: HTTP ')]
+        if len(responses)!=1:errors.append('each me trace needs one terminal outcome');continue
+        code=int(responses[0].split('HTTP ')[1].split()[0]);outcomes.append(code)
+        queries=[e for e in trace if e.startswith('infra -> ')]
+        def ordered(*parts):
+            pos=[next((i for i,e in enumerate(trace) if part in e),-1) for part in parts]
+            return -1 not in pos and pos==sorted(set(pos))
+        if queries and not ordered('Verify JWT','userId = verified sub','Capture fresh server UTC now','QUERY - Check active credential and user'):
+            errors.append('every credential lookup must follow verified identity and captured current time')
+        if code==200:
+            if not ordered('Verify JWT','userId = verified sub','Capture fresh server UTC now','QUERY - Check active credential and user','roles = copy roleId/name','data.userId = verified sub','HTTP 200') or len(queries)!=1:
+                errors.append('me success must verify JWT and live credential/user before mapping token roles')
+            if any('data.roles = []' in e for e in trace):modes['empty']+=1
+            elif any(e.endswith('isPlatformAdmin = true') for e in trace):modes['admin']+=1
+            else:modes['other']+=1
+            for field in ('data.userId','data.isPlatformAdmin','data.roles'):
+                if field not in responses[0]:errors.append(f'me success missing {field}')
+        elif code==400 and queries:errors.append('invalid header must execute no SQL')
+        elif code==401 and len(queries)>1:errors.append('invalid me credential must not query roles')
+        if any(': QUERY' not in e for e in queries):errors.append('me must not write')
+    if Counter(outcomes)!=Counter({200:3,400:1,401:2,408:1,500:1}) or modes!=Counter({'empty':1,'admin':1,'other':1}):errors.append(f'incomplete me outcomes/modes: {dict(Counter(outcomes))}, {dict(modes)}')
+    for title,code in {'Success':200,'Success - Platform Administrator':200,'Success - No Role':200,'Fail - Bad Request':400,'Fail - Unauthorized':401,'Fail - Request Timeout':408,'Fail - Internal Server Error':500}.items():
+        try:
+            obj=author_json(md,title);status=obj['status']
+            if status['code']!=code or code==500 and 'bizCode' in status:errors.append(f'incorrect me {title} envelope')
+            if code==200:
+                data=obj['data'];roles=data['roles']
+                if set(data)!={'userId','isPlatformAdmin','roles'} or any(set(r)!={'roleId','name'} for r in roles):errors.append('me examples must preserve the three response fields and roleId/name only')
+                if roles!=sorted(roles,key=lambda r:(r['name'],r['roleId'])) or data['isPlatformAdmin']!=any(r['name']=='PLATFORM_ADMIN' for r in roles):errors.append('me example role ordering/admin flag is inconsistent')
+        except (TypeError,KeyError,ValueError):errors.append(f'missing me {title} example')
     errors+=json_blocks_parse(md);errors+=table_lines_aligned(md)
     if '--rendered-svg' in sys.argv:
         import xml.etree.ElementTree as ET
@@ -5545,15 +5621,15 @@ def check_active_consent_flow() -> int:
             expected_lines=Counter(' '.join(l.split()) for _,_,s in operations for l in s.splitlines() if l.strip())
             visible=Counter(' '.join(''.join(e.itertext()).split()) for e in root.iter() if e.tag.endswith('}text'))
             missing=expected_lines-visible
-            if missing:errors.append(f'rendered active SQL missing {sum(missing.values())} lines')
-            else:print(f'OK: rendered active SQL ({sum(expected_lines.values())}/{sum(expected_lines.values())} visible lines)')
-        except (IndexError,OSError,ET.ParseError) as exc:errors.append(f'cannot verify active SVG: {exc}')
+            if missing:errors.append(f'rendered me SQL missing {sum(missing.values())} lines')
+            else:print(f'OK: rendered me SQL ({sum(expected_lines.values())}/{sum(expected_lines.values())} visible lines)')
+        except (IndexError,OSError,ET.ParseError) as exc:errors.append(f'cannot verify me SVG: {exc}')
     if errors:return fail('; '.join(errors))
-    print('OK: active-consent-flow (5 terminal traces; public type visibility, complete mapping and read-only snapshot)')
+    print('OK: author-me-flow (8 terminal traces; calling-token roles and current credential/user checks)')
     return 0
 
 
-COMMANDS['active-consent-flow'] = check_active_consent_flow
+COMMANDS['author-me-flow'] = check_author_me_flow
 
 
 def main(argv: list[str]) -> int:

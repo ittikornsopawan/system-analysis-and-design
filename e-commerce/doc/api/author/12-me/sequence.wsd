@@ -1,0 +1,110 @@
+@startuml AuthorMe
+
+title Me API Sequence
+
+' Leading SQL apostrophes use &#39; so PlantUML preserves literals; parity compares decoded SQL.
+
+' Visual style
+skinparam defaultFontName "Sarabun"
+skinparam defaultFontSize 14
+skinparam backgroundColor #FFFFFF
+skinparam shadowing false
+skinparam roundcorner 10
+skinparam sequence {
+    ArrowColor #475569
+    ArrowFontColor #334155
+    LifeLineBorderColor #CBD5E1
+    LifeLineBackgroundColor #F8FAFC
+    ParticipantBorderColor #94A3B8
+    ParticipantBackgroundColor #F1F5F9
+    ParticipantFontColor #0F172A
+    GroupBorderColor #94A3B8
+    GroupBackgroundColor #F8FAFC
+    GroupFontColor #334155
+}
+
+' Do not show participant footers at the bottom of the diagram
+hide footbox
+actor "User" as user
+box "Frontend" #F8FAFC
+    participant "Me Page" as page
+end box
+box "Web API" #F8FAFC
+    participant "API" as api
+    participant "Application" as app
+    participant "Domain" as domain
+    participant "Infrastructure" as infra
+end box
+box "Database" #F8FAFC
+    database "t_user_access_token" as t_user_access_token
+end box
+user -> page: Request own effective token roles
+activate page
+page -> api: GET v1/author/me (Bearer JWT, timestamp, requestId)
+activate api
+api -> app: [**MeQueryHandler**] Process request
+activate app
+app -> app: Generate requestId if omitted; validate mandatory UTC timestamp
+alt Missing or malformed timestamp
+    app -> api: HTTP 400 E10001
+    api -> page: Header validation error
+else Valid ordinary headers
+    app -> app: Verify JWT signature/issuer/audience/exp/UUID sub and structured roles; reject duplicate roleIds
+    alt Missing/invalid JWT or malformed roles claim
+        app -> api: HTTP 401 E10002 Invalid or expired access token.
+        api -> page: Authentication error
+    else Verified JWT and roles array
+        app -> app: userId = verified sub; accessTokenHash = SHA-256 exact JWT
+        alt Read-only processing completes
+            app -> app: Capture fresh server UTC now before credential query; recheck JWT exp
+            app -> infra: QUERY - Check active credential and user
+            infra -> t_user_access_token: QUERY - Check active credential and user
+            activate t_user_access_token
+                note right of t_user_access_token
+                    SELECT
+                        at.user_id
+                    FROM authen.t_user_access_token at
+                    WHERE at.token = '<sequence.accessTokenHash>'
+                    AND at.user_id = '<sequence.userId>'
+                    AND at.row_status = 'ACTIVE'
+                    AND at.expired_at > '<sequence.now>'
+                    AND EXISTS (
+                        SELECT 1
+                        FROM authen.m_user u
+                        WHERE u.id = at.user_id
+                        AND u.row_status = 'ACTIVE'
+                    )
+                end note
+                t_user_access_token -> infra: Return ACTIVE matching token/user or no row
+            deactivate t_user_access_token
+            infra -> app: Return ACTIVE matching token/user or no row
+            alt Credential/user ACTIVE and stored/JWT expiry valid at now
+                app -> app: roles = copy roleId/name from verifiedJwt.roles; sort ordinal name then roleId
+                alt Token roles is empty
+                    app -> app: data.roles = []; isPlatformAdmin = false
+                else Returned token roles contain exact name PLATFORM_ADMIN
+                    app -> app: data.roles = sorted token roles; isPlatformAdmin = true
+                else Other token roles
+                    app -> app: data.roles = sorted token roles; isPlatformAdmin = false
+                end
+                app -> app: data.userId = verified sub; ignore independent admin flag; no live role-table lookup
+                app -> api: HTTP 200 S10000 Inquiry Me Success; data.userId, data.isPlatformAdmin, data.roles
+                api -> page: Return calling-token role snapshot
+                page -> user: Display privileges of this token
+            else Credential/user inactive, revoked, mismatched or expired
+                app -> api: HTTP 401 E10002 Invalid or expired access token.
+                api -> page: Authentication error
+            end
+        else Timeout during read-only processing
+            app -> api: HTTP 408 E90001
+            api -> page: Inquiry timed out; no writes
+        else Unexpected read-only failure
+            app -> api: HTTP 500 Internal Server Error; omit bizCode
+            api -> page: Generic inquiry failure; no writes
+        end
+    end
+end
+deactivate app
+deactivate api
+deactivate page
+@enduml

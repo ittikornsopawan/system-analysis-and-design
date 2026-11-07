@@ -1,3 +1,11 @@
+---
+name: Author Me API Specification
+description: Defines the calling JWT role snapshot and platform-administrator flag, current credential/user validation, deterministic mapping, read-only SQL and complete outcomes for GET v1/author/me.
+status: in-review
+approved_by: null
+approved_at: null
+---
+
 # [GET]: v1/author/me
 
 | Title       | Description                                                                                                                    |
@@ -36,10 +44,30 @@ No query parameters. The answer is about the caller.
 
 ### Me Rules
 
-- The caller is the user of the access token (never a request field). Any caller with a valid access token can call this API, it shows only the caller's own roles.
-- `roles` lists the roles of the caller that are ACTIVE, from ACTIVE `author.t_user_role` rows of ACTIVE roles, sorted by name and then by `roleId`. `isPlatformAdmin` is true when one of them is `PLATFORM_ADMIN`. A user without a role gets `isPlatformAdmin` false and an empty `roles`.
-- The permissions and scopes of the user are not returned yet (the assignment of permissions is a later work package); the field will be added when it exists. The roles are read from the database on every call, they are not stored in the access token.
-- Execution order: check the access token (401) -> read.
+- Governing decisions: [owner-confirmed review](../../../../../docs/superpowers/specs/2026-11-07-api-review-design.md), Q4/Q11/Q13, approved by the product owner. This detailed endpoint revision remains in-review; no backend implementation is included. Any caller with a valid access token can call this API, and sees only the caller's own snapshot.
+- No body or query parameters are accepted as a target user. Validate mandatory timestamp as a UTC timestamp before SQL; missing/malformed timestamp returns 400 E10001. Generate requestId if omitted. Missing/malformed Bearer credentials or a failed JWT signature/issuer/audience/expiry/sub/role-claim validation return the same 401 E10002 `Invalid or expired access token.` before SQL.
+- Verify signature using server configuration, issuer, audience, exp and a UUID sub. Validate the structured roles claim defined by [login](../../authen-and-author/02-login/spec.md#claim-resolution-and-payload): roles must be an array, including explicit [] for no roles; each object has a UUID roleId and non-empty string name. Missing/non-array roles, malformed objects or duplicate roleIds make the credential invalid (401); never silently replace malformed claims with an empty list or recover privileges from the database. Extra token claims are not extra response fields.
+- userId comes only from verified sub; accessTokenHash is SHA-256 (32 bytes) of the exact presented JWT. Capture fresh server UTC now immediately before the one credential query and recheck JWT expiry at now. The query must find the ACTIVE, unexpired stored token for that hash/userId and an ACTIVE user. Missing/revoked/expired token, mismatched owner or inactive user returns the same 401. No request userId, role, role name or isPlatformAdmin value controls this lookup or the response.
+- The SQL is one read-only autocommit SELECT; no explicit BEGIN, COMMIT, ROLLBACK or locking read is required. It checks credential and user together in one statement snapshot and creates no writes. An already-authorized in-flight read may finish; a credential revoked before the query is rejected. No response revives an inactive credential. Do not reuse a pre-lock snapshot for another API's writes.
+- **Role source:** return the calling token's role snapshot. Do not query author.t_user_role or author.m_role to reload, filter, rename or replace those roles. Role/assignment changes after issuance do not change this token's response; an old PLATFORM_ADMIN token may still report true until its own expiry, exactly as its privileges remain usable under Q4. The current token/user status check still allows logout/password reset to revoke credentials immediately (Q13).
+- Copy only roleId/name from verified roles; sort roles by name using ordinal case-sensitive comparison, then by roleId. isPlatformAdmin is true exactly when one returned role has name equal to PLATFORM_ADMIN (case-sensitive). Do not trust an independent isPlatformAdmin token claim or a request flag. roles=[] returns isPlatformAdmin=false. Database rows are not needed to sort or compute this flag.
+- Every refresh resolves latest ACTIVE grants for the newly issued token. Calling this endpoint with that refreshed token reports the refreshed snapshot, while an older still-valid token keeps its own prior roles. The endpoint never refreshes a token or alters role assignments itself. Current profile/lifecycle data is not substituted for role claims.
+- Preserve the response shape: data.userId, data.isPlatformAdmin and data.roles containing roleId/name only. Permissions and scopes are not returned by this endpoint even though login/refresh carry them; no permission grant is inferred from the response. Never return stored token hashes or internal credential ids.
+- After valid input/JWT, perform the single credential query, then map the snapshot and return 200 S10000. There is no 403 for a non-admin or no-role token. Timeout returns 408 E90001; unexpected failure returns generic 500 with no new bizCode. No outcome writes data and no 200 is sent before credential validation and snapshot mapping complete.
+
+#### Scenario correspondence with sequence.wsd
+
+| Scenario                                    | Required sequence behavior                                                   | HTTP             | Role result                      |
+| ------------------------------------------- | ---------------------------------------------------------------------------- | ---------------- | -------------------------------- |
+| Invalid timestamp                           | Before SQL                                                                   | 400 E10001       | None                             |
+| Missing/invalid JWT or malformed roles      | Signature/payload validation before SQL                                      | 401 E10002       | None                             |
+| Inactive/revoked/expired credential or user | One credential lookup; no role-table query                                   | 401 E10002       | None                             |
+| Valid token with roles                      | Sort roleId/name from that token                                             | 200 S10000       | Token snapshot only              |
+| Valid token with PLATFORM_ADMIN             | Derive true from exact returned role name                                    | 200 S10000       | Token snapshot only              |
+| Valid token with []                         | Return empty roles and false                                                 | 200 S10000       | Empty snapshot                   |
+| Assignment revoked after issuance           | Keep old token's role snapshot until expiry if credential/user remain ACTIVE | 200 S10000       | May still contain PLATFORM_ADMIN |
+| Refreshed token after revocation            | Use the refreshed token's newly resolved snapshot                            | 200 S10000       | May be []/false                  |
+| Timeout / unexpected failure                | Read-only error; no transaction writes                                       | 408 E90001 / 500 | None                             |
 
 ## Example Request
 
@@ -85,11 +113,11 @@ curl --location --request GET 'https://www.domain.com/api-dev/v1/author/me' \
 
 ### Data Object
 
-|     | Parameter Name  | Data Type                     | M/O       | Source           | Field                | Description                                       | Example                              |
-| --- | --------------- | ----------------------------- | --------- | ---------------- | -------------------- | ------------------------------------------------- | ------------------------------------ |
-| 1   | userId          | String: UUID                  | MANDATORY | Sequence Diagram | data.userId          | User Id (the caller)                              | b1c2d3e4-f5a6-4b7c-8d9e-0f1a2b3c4d5e |
-| 2   | isPlatformAdmin | Boolean                       | MANDATORY | Sequence Diagram | data.isPlatformAdmin | TRUE when the caller has the role PLATFORM_ADMIN  | false                                |
-| 3   | roles           | [Array of Role](#role-object) | MANDATORY | Sequence Diagram | data.roles           | ACTIVE roles of the caller, Empty array when none |                                      |
+|     | Parameter Name  | Data Type                     | M/O       | Source           | Field                | Description                                                              | Example                              |
+| --- | --------------- | ----------------------------- | --------- | ---------------- | -------------------- | ------------------------------------------------------------------------ | ------------------------------------ |
+| 1   | userId          | String: UUID                  | MANDATORY | Sequence Diagram | data.userId          | User Id (the caller)                                                     | b1c2d3e4-f5a6-4b7c-8d9e-0f1a2b3c4d5e |
+| 2   | isPlatformAdmin | Boolean                       | MANDATORY | Sequence Diagram | data.isPlatformAdmin | TRUE when the caller has the role PLATFORM_ADMIN                         | false                                |
+| 3   | roles           | [Array of Role](#role-object) | MANDATORY | Sequence Diagram | data.roles           | Role snapshot in the calling token; empty array when that token has none |                                      |
 
 #### Role Object
 
@@ -209,23 +237,59 @@ curl --location --request GET 'https://www.domain.com/api-dev/v1/author/me' \
 }
 ```
 
+#### Fail - Bad Request
+
+```JSON
+{
+    "status": {
+        "code": 400,
+        "message": "Bad Request",
+        "bizCode": "E10001",
+        "bizMessage": "Timestamp is a required header and must be a valid UTC timestamp.",
+        "requestId": "req-me-review",
+        "timestamp": "2026-11-07T12:00:00.123Z",
+        "status": "ERROR"
+    }
+}
+```
+
+#### Fail - Internal Server Error
+
+```JSON
+{
+    "status": {
+        "code": 500,
+        "message": "Internal Server Error",
+        "bizMessage": "An unexpected error occurred.",
+        "requestId": "req-me-review",
+        "timestamp": "2026-11-07T12:00:00.123Z",
+        "status": "ERROR"
+    }
+}
+```
+
 ---
 
 ## Database Relations
 
-### Table: [author.t_user_role](../../../schema/author/t_user_role.md)
+One typed, bound, read-only SELECT validates the stored credential and user. Roles and the administrator flag come from the already-verified JWT, not a role lookup. No explicit transaction or mutation is needed.
 
-#### QUERY - Get the roles of the caller
+### Table: [authen.t_user_access_token](../../../schema/authen/t_user_access_token.md)
+
+#### QUERY - Check active credential and user
 
 ```SQL
 SELECT
-    r.id as role_id,
-    r.name
-FROM author.t_user_role ur
-INNER JOIN author.m_role r
-    ON r.id = ur.role_id
-        AND r.row_status = 'ACTIVE'
-WHERE ur.user_id = '<sequence.userId>'
-AND ur.row_status = 'ACTIVE'
-ORDER BY r.name, r.id
+    at.user_id
+FROM authen.t_user_access_token at
+WHERE at.token = '<sequence.accessTokenHash>'
+AND at.user_id = '<sequence.userId>'
+AND at.row_status = 'ACTIVE'
+AND at.expired_at > '<sequence.now>'
+AND EXISTS (
+    SELECT 1
+    FROM authen.m_user u
+    WHERE u.id = at.user_id
+    AND u.row_status = 'ACTIVE'
+)
 ```
