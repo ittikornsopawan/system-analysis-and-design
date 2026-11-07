@@ -1,0 +1,337 @@
+@startuml UpsertProductCategoryBatch Sequence
+
+title Upsert Product Category Batch API Sequence
+
+' Leading SQL apostrophes use &#39; so PlantUML preserves literals; parity compares decoded SQL.
+
+' Visual style
+skinparam defaultFontName "Sarabun"
+skinparam defaultFontSize 14
+skinparam backgroundColor #FFFFFF
+skinparam shadowing false
+skinparam roundcorner 10
+skinparam sequence {
+    ArrowColor #475569
+    ArrowFontColor #334155
+    LifeLineBorderColor #CBD5E1
+    LifeLineBackgroundColor #F8FAFC
+    ParticipantBorderColor #94A3B8
+    ParticipantBackgroundColor #F1F5F9
+    ParticipantFontColor #0F172A
+    GroupBorderColor #94A3B8
+    GroupBackgroundColor #F8FAFC
+    GroupFontColor #334155
+}
+
+' Do not show participant footers at the bottom of the diagram
+hide footbox
+
+actor "User" as user
+box "Frontend" #F8FAFC
+    participant "Upsert Product Category Batch Page" as page
+end box
+box "Web API" #F8FAFC
+    participant "API" as api
+    participant "Application" as app
+    participant "Domain" as domain
+    participant "Infrastructure" as infra
+end box
+box "Database" #F8FAFC
+    database "m_product_category" as m_product_category
+    database "m_role" as m_role
+    database "t_user_role" as t_user_role
+    database "m_product" as m_product
+    database "t_campaign_product" as t_campaign_product
+end box
+
+user -> page: Submit Upsert Product Category Batch
+activate page
+    page -> api: POST v1/product-category/upsert/batch
+    activate api
+        api -> app: [**UpsertProductCategoryBatchCommandHandler**] Process request
+        activate app
+            app -> app: Create request context; generate requestId when omitted
+            app -> app: Validate headers and body
+            alt Invalid input
+                app -> api: HTTP 400 E10001
+                api -> page: Bad request
+                page -> user: Display validation error
+            else Valid input
+                app -> app: Verify JWT signature/issuer/audience/exp/UUID sub
+                alt Missing, malformed or invalid JWT
+                    app -> api: HTTP 401 E10002 Invalid or expired access token.
+                    api -> page: Authentication error
+                    page -> user: Display authentication error
+                else Verified JWT
+                    app -> app: userId = verified sub
+                    app -> infra: BEGIN READ COMMITTED
+                    activate infra
+                    alt Work completes before commit
+                            loop For each item (request order)
+                                alt parentId is specified
+                                    app -> infra: QUERY - Check parent category
+                                    infra -> m_product_category: QUERY - Check parent category
+                                    activate m_product_category
+                                        note right of m_product_category
+                                            SELECT
+                                                pc.id as parent_id
+                                            FROM product.m_product_category pc
+                                            WHERE pc.id = '<sequence.categories.parentId>' -- only when parentId is specified
+                                            AND pc.row_status = 'ACTIVE'
+                                        end note
+                                        m_product_category -> infra: Return query result
+                                    deactivate m_product_category
+                                    infra -> app: Return result of Check parent category
+                                    alt items[i]: parent category not found or not ACTIVE
+                                        app -> infra: ROLLBACK
+                                        app -> api: HTTP 404 E10005 items[i]: Parent product category not found.
+                                        api -> page: Not found
+                                        page -> user: Display error message
+                                    end
+                                end
+                                alt id is specified
+                                    app -> infra: QUERY - Check existing category
+                                    infra -> m_product_category: QUERY - Check existing category
+                                    activate m_product_category
+                                        note right of m_product_category
+                                            SELECT
+                                                pc.id as category_id
+                                            FROM product.m_product_category pc
+                                            WHERE pc.id = '<sequence.categories.id>'
+                                        end note
+                                        m_product_category -> infra: Return query result
+                                    deactivate m_product_category
+                                    infra -> app: Return result of Check existing category
+                                    alt items[i]: product category not found
+                                        app -> infra: ROLLBACK
+                                        app -> api: HTTP 404 E10004 items[i]: Product category not found.
+                                        api -> page: Not found
+                                        page -> user: Display error message
+                                    end
+                                end
+                            end
+                            app -> infra: QUERY - Get the platform administrator role
+                            infra -> m_role: QUERY - Get the platform administrator role
+                            activate m_role
+                                note right of m_role
+                                    SELECT
+                                        r.id as role_id
+                                    FROM author.m_role r
+                                    WHERE r.name = 'PLATFORM_ADMIN'
+                                    AND r.row_status = 'ACTIVE'
+                                end note
+                                m_role -> infra: Return query result
+                            deactivate m_role
+                            infra -> app: Return result of Get the platform administrator role
+                            app -> infra: QUERY - Check platform administrator
+                            infra -> t_user_role: QUERY - Check platform administrator
+                            activate t_user_role
+                                note right of t_user_role
+                                    SELECT
+                                        ur.id as user_role_id
+                                    FROM author.t_user_role ur
+                                    WHERE ur.user_id = '<sequence.userId>'
+                                    AND ur.role_id = '<sequence.roleId>'
+                                    AND ur.row_status = 'ACTIVE'
+                                end note
+                                t_user_role -> infra: Return query result
+                            deactivate t_user_role
+                            infra -> app: Return result of Check platform administrator
+                            alt No ACTIVE PLATFORM_ADMIN role or the caller does not hold it
+                                app -> infra: ROLLBACK
+                                app -> api: HTTP 403 E10009 You do not have permission to manage product categories.
+                                api -> page: Forbidden
+                                page -> user: Display error message
+                            end
+                            loop For each item (request order, one transaction)
+                                app -> infra: QUERY - Check duplicate name
+                                infra -> m_product_category: QUERY - Check duplicate name
+                                activate m_product_category
+                                    note right of m_product_category
+                                        SELECT
+                                            pc.id as category_id
+                                        FROM product.m_product_category pc
+                                        WHERE pc.name = '<sequence.categories.name>'
+                                        AND pc.id <> '<sequence.categories.id>' -- only when id is specified
+                                    end note
+                                    m_product_category -> infra: Return query result
+                                deactivate m_product_category
+                                infra -> app: Return result of Check duplicate name
+                                alt items[i]: name is held by another product category
+                                    app -> infra: ROLLBACK
+                                    app -> api: HTTP 409 E10003 items[i]: Product category name already exists.
+                                    api -> page: Conflict
+                                    page -> user: Display error message
+                                end
+                                alt id and parentId are specified
+                                    app -> infra: QUERY - Check parent is not the category itself or its sub category
+                                    infra -> m_product_category: QUERY - Check parent is not the category itself or its sub category
+                                    activate m_product_category
+                                        note right of m_product_category
+                                            WITH RECURSIVE descendants AS (
+                                                SELECT pc.id
+                                                FROM product.m_product_category pc
+                                                WHERE pc.id = '<sequence.categories.id>'
+                                                UNION ALL
+                                                SELECT pc.id
+                                                FROM product.m_product_category pc
+                                                INNER JOIN descendants d
+                                                    ON pc.parent_id = d.id
+                                            )
+                                            SELECT
+                                                d.id as category_id
+                                            FROM descendants d
+                                            WHERE d.id = '<sequence.categories.parentId>'
+                                        end note
+                                        m_product_category -> infra: Return query result
+                                    deactivate m_product_category
+                                    infra -> app: Return result of Check parent is not the category itself or its sub category
+                                    alt items[i]: parent is the category itself or its sub category
+                                        app -> infra: ROLLBACK
+                                        app -> api: HTTP 400 E10001 items[i]: Parent category must not be the category itself or its sub category.
+                                        api -> page: Bad request
+                                        page -> user: Display error message
+                                    end
+                                end
+                                alt rowStatus is DELETED or ARCHIVED
+                                    app -> infra: QUERY - Check sub category in use
+                                    infra -> m_product_category: QUERY - Check sub category in use
+                                    activate m_product_category
+                                        note right of m_product_category
+                                            SELECT
+                                                pc.id as category_id
+                                            FROM product.m_product_category pc
+                                            WHERE pc.parent_id = '<sequence.categories.id>'
+                                            AND pc.row_status <> 'DELETED'
+                                        end note
+                                        m_product_category -> infra: Return query result
+                                    deactivate m_product_category
+                                    infra -> app: Return result of Check sub category in use
+                                    alt items[i]: sub categories that are not DELETED exist
+                                        app -> infra: ROLLBACK
+                                        app -> api: HTTP 409 E10006 items[i]: Product category is used by products or sub categories.
+                                        api -> page: Conflict
+                                        page -> user: Display error message
+                                    end
+                                    app -> infra: QUERY - Check product in use
+                                    infra -> m_product: QUERY - Check product in use
+                                    activate m_product
+                                        note right of m_product
+                                            SELECT
+                                                p.id as product_id
+                                            FROM product.m_product p
+                                            WHERE p.category_id = '<sequence.categories.id>'
+                                            AND p.row_status <> 'DELETED'
+                                        end note
+                                        m_product -> infra: Return query result
+                                    deactivate m_product
+                                    infra -> app: Return result of Check product in use
+                                    alt items[i]: a product that is not DELETED uses the category
+                                        app -> infra: ROLLBACK
+                                        app -> api: HTTP 409 E10006 items[i]: Product category is used by products or sub categories.
+                                        api -> page: Conflict
+                                        page -> user: Display error message
+                                    end
+                                end
+                                alt rowStatus is DELETED
+                                    app -> infra: QUERY - Check product category campaigns in use
+                                    infra -> t_campaign_product: QUERY - Check product category campaigns in use
+                                    activate t_campaign_product
+                                        note right of t_campaign_product
+                                            SELECT
+                                                cp.id as campaign_product_id,
+                                                c.name
+                                            FROM campaign.t_campaign_product cp
+                                            INNER JOIN campaign.m_campaign c
+                                                ON c.id = cp.campaign_id
+                                            WHERE cp.product_category_id = '<sequence.id>'
+                                            AND cp.row_status <> 'DELETED'
+                                            AND c.row_status <> 'DELETED'
+                                            AND c.end_at > NOW() AT TIME ZONE 'UTC' -- a campaign that ended or was deleted does not block, answer 409 (E10006) when a row is found
+                                            LIMIT 1
+                                        end note
+                                        t_campaign_product -> infra: Return query result
+                                    deactivate t_campaign_product
+                                    infra -> app: Return result of Check product category campaigns in use
+                                    alt items[i]: the category is in a campaign that has not ended
+                                        app -> infra: ROLLBACK
+                                        app -> api: HTTP 409 E10006 items[i]: The product category is in a campaign that has not ended and cannot be deleted.
+                                        api -> page: Conflict
+                                        page -> user: Display error message
+                                    end
+                                end
+                                alt id is not specified (insert)
+                                    app -> infra: INSERT - Create category
+                                    infra -> m_product_category: INSERT - Create category
+                                    activate m_product_category
+                                        note right of m_product_category
+                                            INSERT INTO product.m_product_category (
+                                                created_by,
+                                                row_status,
+                                                parent_id,
+                                                name,
+                                                description,
+                                                slug
+                                            )
+                                            VALUES (
+                                                &#39;<sequence.createdBy>',
+                                                &#39;<sequence.categories.rowStatus>',
+                                                &#39;<sequence.categories.parentId>',
+                                                &#39;<sequence.categories.name>',
+                                                &#39;<sequence.categories.description>',
+                                                &#39;<sequence.categories.slug>'
+                                            )
+                                            RETURNING id as category_id
+                                        end note
+                                        m_product_category -> infra: Return inserted result
+                                    deactivate m_product_category
+                                    infra -> app: Return result of Create category
+                                else id is specified (update, delete or archive)
+                                    app -> infra: UPDATE - Update or delete category
+                                    infra -> m_product_category: UPDATE - Update or delete category
+                                    activate m_product_category
+                                        note right of m_product_category
+                                            UPDATE product.m_product_category
+                                            SET
+                                                updated_by = '<sequence.updatedBy>',
+                                                updated_at = NOW() AT TIME ZONE 'UTC',
+                                                row_status = '<sequence.categories.rowStatus>',
+                                                parent_id = '<sequence.categories.parentId>',
+                                                name = '<sequence.categories.name>',
+                                                description = '<sequence.categories.description>',
+                                                slug = '<sequence.categories.slug>' -- only when slug is specified
+                                            WHERE id = '<sequence.categories.id>'
+                                            RETURNING id as category_id
+                                        end note
+                                        m_product_category -> infra: Return updated result
+                                    deactivate m_product_category
+                                    infra -> app: Return result of Update or delete category
+                                end
+                            end
+                            app -> infra: COMMIT
+                            app -> api: HTTP 200 S10000 with the result of every item
+                            api -> page: Return committed result
+                            page -> user: Display success result
+                    else Timeout before COMMIT
+                        note over app, infra
+                            A timeout can interrupt any preceding SQL or domain step.
+                            No success response is sent without a successful COMMIT.
+                        end note
+                        app -> infra: ROLLBACK
+                        app -> api: HTTP 408 E90001
+                        api -> page: Request timeout
+                        page -> user: Retry if needed
+                    else Unexpected failure before COMMIT
+                        app -> infra: ROLLBACK
+                        app -> api: HTTP 500 generic error; no new bizCode
+                        api -> page: Internal server error
+                        page -> user: Display generic failure
+                    end
+                    deactivate infra
+                end
+            end
+        deactivate app
+    deactivate api
+deactivate page
+
+@enduml

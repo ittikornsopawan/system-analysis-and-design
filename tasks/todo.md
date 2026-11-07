@@ -554,3 +554,15 @@ Status: Implemented in the managed workspace of Marry on branch `docs/marry-rewo
 - [x] Reword the five lines in one form with one `--`: `-- ORDER BY p.name, p.id (sort NAME_ASC)`; the needles stay valid and the sequence equals the spec letter for letter.
 - [x] Check: 45 of 45 `check_docs.py` sub-commands, `api-sequence-spec`, `audit_all.py`, database tests, `test_sequence_skeleton.py` (12 tests); the skeleton script prints no struck-through warning for any spec; no `sequence.wsd` of the repository has a SQL line with two `--`; the rendered SVGs show 115 of 115 (`shop/14`) and 57 of 57 (`shop/16`) SQL lines with no strike-through mark.
 - [ ] Preflight, commit, push, open the pull request, tell the lead; hold the lock until the merge, then release and park.
+
+## e-commerce: Sequence diagrams of 10 product write APIs (set A)
+
+Status: Diagrams written in the managed workspace of Marry on branch `docs/marry-product-write-sequences`; the pull request is opened after the checks and merged by the lead. Scope: the ten folders below and `tasks/`. No `spec.md` is changed.
+
+Folders (`e-commerce/doc/api/product/`): `01-upsert-product`, `03-upsert-product-batch`, `04-upsert-product-category`, `06-upsert-product-category-batch`, `07-upsert-product-category-attribute`, `09-upsert-product-category-attribute-batch`, `10-upsert-product-type`, `11-upsert-product-type-batch`, `13-upsert-product-brand`, `14-upsert-product-brand-batch`.
+
+- [x] Skeletons from `sequence_skeleton.py`; every `TODO(author)` replaced. Flow of every diagram: 400 in Application -> `Verify JWT` -> 401 E10002 -> BEGIN READ COMMITTED -> existence checks (404) -> platform administrator (403 E10009) -> duplicate, in-use and other conflicts (409, and the 400 for a parent that is the category itself or its sub category) -> write -> COMMIT -> 201 / 200 / 204 (single) or 200 with every item (batch); every error after BEGIN has a ROLLBACK before it; 408 and 500 as in `02-login`.
+- [x] Batch diagrams: loops in request order inside one transaction (all or nothing), the existence checks of all items first, the permission check once, then the per-item conflict checks and writes; the errors carry `items[i]`. `09` checks categories, existing attributes and attributes in use for all items in one query each, because the spec writes those blocks in the plural.
+- [x] Every SQL block is copied letter for letter and used exactly once; blocks are put in the order of the work and the participants follow the first use.
+- [x] Checks: `api-sequence-spec` (`product` 15/15), PlantUML `-checkonly` and `-syntax` for all ten, SVG: every SQL line visible and no strike-through, mutation test of the new files (see the pull request).
+- [ ] Merge `main` into the branch, run every checker and the preflight, push, open the pull request, tell the lead; hold the lock until the merge, then release and park.
