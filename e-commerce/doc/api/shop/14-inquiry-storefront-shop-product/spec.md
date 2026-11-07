@@ -595,9 +595,9 @@ AND p.category_id IN ('<sequence.categoryIds>') -- only when categoryId is speci
 AND (p.name ILIKE '%<sequence.search>%' OR p.description ILIKE '%<sequence.search>%') -- only when search is specified
 AND v.price_from IS NOT NULL -- only when inStock is true
 ORDER BY v.listed_at DESC, p.id -- sort NEWEST (default)
--- ORDER BY (v.price_from IS NULL), v.price_from, p.id -- sort PRICE_ASC, the products out of stock last
--- ORDER BY (v.price_from IS NULL), v.price_from DESC, p.id -- sort PRICE_DESC, the products out of stock last
--- ORDER BY p.name, p.id -- sort NAME_ASC
+-- ORDER BY (v.price_from IS NULL), v.price_from, p.id (sort PRICE_ASC, the products out of stock last)
+-- ORDER BY (v.price_from IS NULL), v.price_from DESC, p.id (sort PRICE_DESC, the products out of stock last)
+-- ORDER BY p.name, p.id (sort NAME_ASC)
 LIMIT <sequence.pageSize> OFFSET (<sequence.pageIndex> - 1) * <sequence.pageSize>
 ```
 
