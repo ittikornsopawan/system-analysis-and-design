@@ -3,7 +3,7 @@ name: Peter API Review Decisions
 description: Owner-confirmed JWT authorization, consent behavior, review scope and delivery rules; read before revising the affected e-commerce API specifications and sequences.
 status: approved
 approved_by: Ittikorn (product owner, directly in Peter chat)
-approved_at: 2026-11-07T07:03:54+07:00
+approved_at: 2026-11-07T08:31:05+07:00
 ---
 
 # Peter API review decisions
@@ -12,26 +12,30 @@ The owner confirmed Q13 in this chat on 2026-11-07 with the exact answer **“�
 
 ## Approved decisions
 
-| Decision | Owner-confirmed behavior                                                                                                                                                                                                                                                                                                |
-| -------- | ----------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------- |
-| Q1       | Register Peter and retain the existing managed-clone lifecycle. Originally one active API task or PR at a time; this waiting rule is superseded by Q15 below. One API (complete spec and sequence) per PR remains required.                                                                                             |
-| Q2, Q4   | JWT claims are the authorization source. Changes to role, permission or scope assignments do not revoke an existing access token's claims: former privileges may remain until its expiry (15 minutes by the existing configuration). This supersedes WP5 A16 and the immediate authorization-revocation portion of A18. |
-| Q7       | Resolve current ACTIVE role, permission and assigned scope data for every new access token at login and refresh. A refresh must not perpetuate the original login's claims.                                                                                                                                             |
-| Q12      | Retain the association between each permission and its granted scopes; a scope of one permission never grants that scope to another permission.                                                                                                                                                                         |
-| Q11      | `author/me` returns the caller's effective role snapshot from the access token used for that call. A refreshed token reflects the newly resolved assignments.                                                                                                                                                           |
-| Q13      | Keep signature/issuer/audience/expiry checks and the ACTIVE access-token/user database checks from WP4. Logout and password reset still revoke tokens immediately; this is distinct from assignment changes.                                                                                                            |
-| Q3       | Hide consents whose consent type is not ACTIVE, even if the consent itself is ACTIVE and within its effective period.                                                                                                                                                                                                   |
-| Q5       | Registration and submission reject new answers for a consent whose type is not ACTIVE; preserve previously stored answers.                                                                                                                                                                                              |
-| Q6       | Registration requires acceptance of the current version of every required consent that is ACTIVE, currently effective, and belongs to an ACTIVE type. Optional consents may be rejected or omitted.                                                                                                                     |
-| Q8       | A required consent remains pending until the current version is both read and accepted; an optional consent stops being pending once the current version is read, including an explicit rejection or omitted answer.                                                                                                    |
-| Q9       | Existing users may still log in when a new required consent or version appears. Expose the pending list; this review does not add service-access gates.                                                                                                                                                                 |
-| Q10      | Include APIs outside the original three folders where JWT authorization changes affect the contract. Preserve ownership, shop membership, and business invariant checks.                                                                                                                                                |
+| Decision               | Owner-confirmed behavior                                                                                                                                                                                                                                                                                                |
+| ---------------------- | ----------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------- |
+| Q1 (superseded by Q15) | Register Peter and retain the existing managed-clone lifecycle. One active API task or PR at a time; one API (complete spec and sequence) per PR. Read-only analysis of the next API may continue while a PR is open.                                                                                                   |
+| Q2, Q4                 | JWT claims are the authorization source. Changes to role, permission or scope assignments do not revoke an existing access token's claims: former privileges may remain until its expiry (15 minutes by the existing configuration). This supersedes WP5 A16 and the immediate authorization-revocation portion of A18. |
+| Q7                     | Resolve current ACTIVE role, permission and assigned scope data for every new access token at login and refresh. A refresh must not perpetuate the original login's claims.                                                                                                                                             |
+| Q12                    | Retain the association between each permission and its granted scopes; a scope of one permission never grants that scope to another permission.                                                                                                                                                                         |
+| Q11                    | `author/me` returns the caller's effective role snapshot from the access token used for that call. A refreshed token reflects the newly resolved assignments.                                                                                                                                                           |
+| Q13                    | Keep signature/issuer/audience/expiry checks and the ACTIVE access-token/user database checks from WP4. Logout and password reset still revoke tokens immediately; this is distinct from assignment changes.                                                                                                            |
+| Q3                     | Hide consents whose consent type is not ACTIVE, even if the consent itself is ACTIVE and within its effective period.                                                                                                                                                                                                   |
+| Q5                     | Registration and submission reject new answers for a consent whose type is not ACTIVE; preserve previously stored answers.                                                                                                                                                                                              |
+| Q6                     | Registration requires acceptance of the current version of every required consent that is ACTIVE, currently effective, and belongs to an ACTIVE type. Optional consents may be rejected or omitted.                                                                                                                     |
+| Q8                     | A required consent remains pending until the current version is both read and accepted; an optional consent stops being pending once the current version is read, including an explicit rejection or omitted answer.                                                                                                    |
+| Q9                     | Existing users may still log in when a new required consent or version appears. Expose the pending list; this review does not add service-access gates.                                                                                                                                                                 |
+| Q10                    | Include APIs outside the original three folders where JWT authorization changes affect the contract. Preserve ownership, shop membership, and business invariant checks.                                                                                                                                                |
 
 Acceptance submitted at registration also records that submitted version as read, so an accepted required consent does not immediately reappear as pending. This follows Q6 and Q8 together; timestamp and SQL details belong in the registration revision.
 
 ## Additional confirmed decision
 
 Q14: The owner answered **“ใช่ ปฏิเสธกรณีตรงกับสองบัญชี”** on 2026-11-07. If a login identifier matches the username of one ACTIVE account and the email of another ACTIVE account, refuse with the same 401, record FAILED and do not choose an account.
+
+## Current delivery override (Q15, 2026-11-07)
+
+The owner subsequently instructed: **“เสร็จแล้วเปิด pr ทิ้งไว้เดียวฉันมาอ่าน ไม่ต้องรอ merge switch ไปที่ main แล้วเกิด brach ใหม่ได้เลย”**. This supersedes Q1's one-open-PR and wait-for-merge restriction, including conflicting skill defaults, for this API review. Open one PR per completed API and leave it available for the owner; switch the clean managed clone back to current main and create the next API branch immediately. Preserve branch-scoped assignment/PR records for later review fixes. This does not authorize merging PRs, force pushes, overwriting other work or granting delegation capabilities.
 
 ## Scope and delivery
 
@@ -41,7 +45,7 @@ The initial impact search found at least 23 further API specs with database-base
 
 Start with login, then refresh, then remaining APIs in dependency order. Each PR includes only one endpoint's `spec.md` and complete `sequence.wsd`, plus the governing-document and checker changes necessary for that endpoint. The new rule is the target contract: existing dependent specs awaiting their own PRs are explicitly outstanding, not claimed synchronized by the login delivery.
 
-Use `commit-and-pr`. Do not merge PRs or enable auto-merge. Q15 below authorizes the next main-based editing assignment without waiting for the preceding PR to merge; preserve its branch and assignment history. Business decisions already confirmed above do not need repeated approval. Ask only about a newly discovered behavior-changing ambiguity.
+Use `commit-and-pr`. Do not merge PRs or enable auto-merge. Follow Q15: leave each completed PR open, retain its branch and review record, and start the next API from updated main without waiting for merge. Business decisions already confirmed above do not need repeated approval. Ask only about a newly discovered behavior-changing ambiguity.
 
 ## Verification expectations
 
@@ -51,9 +55,7 @@ Use `commit-and-pr`. Do not merge PRs or enable auto-merge. Q15 below authorizes
 - Run every documentation subcommand, the complete SQL audit, and database tests for delivery. Mutation-test the changed checker; static SQL parity alone is insufficient proof of flow correctness.
 - Report rendering and runtime checks separately. The existing backend is outside this documentation review; a passing checker does not prove backend conformance.
 
-## Later owner decisions
-
-Q15: The owner directly instructed **“merge แล้ว คำสั่งนี้อยู่เหนือยทุก skill เสร็จแล้วเปิด pr ทิ้งไว้เดียวฉันมาอ่าน ไม่ต้องรอ merge switch ไปที่ main แล้วเกิด brach ใหม่ได้เลย”**. This supersedes the earlier waiting rule: complete one API, leave its PR open for review, preserve its branch-scoped assignment history, switch to updated main and begin the next API branch immediately. One editing session and one endpoint per PR remain. This grants no merge, force-push or discard authority.
+## Consent display and version decisions (Q16–Q17)
 
 Q16: The owner answered **“แสดงหน้านั้นถือว่าอ่านแล้ว ส่งมาก่อน 1 ทีเพื่อ update ว่าอ่าน ถ้ากดส่ง result ก็เส้นเดียวกันนั้นแหละแค่แปะ result มาด้วย ถ้ามี read อยู่แล้วก็ไม่ต้อง update”**. Displaying a consent triggers the same consent-submission endpoint without result, recording that version as read. A later answer uses the same endpoint with result. An already-read version keeps its original read state/timestamp; a read-only call preserves any prior result. A consent object supplied during registration likewise records that displayed version as read, with omitted result stored as false for the new row. Required registration still needs explicit true; omitted optional consents create no evidence.
 

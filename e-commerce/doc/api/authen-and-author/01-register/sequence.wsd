@@ -24,11 +24,16 @@ skinparam sequence {
 ' Do not show participant footers at the bottom of the diagram
 hide footbox
 actor "User" as user
-participant "Registration Page" as page
+box "Frontend" #F8FAFC
+    participant "Registration Page" as page
+end box
+box "Web API" #F8FAFC
 participant "API" as api
 participant "Application" as app
 participant "Domain" as domain
 participant "Infrastructure" as infra
+end box
+box "Database" #F8FAFC
 database "m_user" as m_user
 database "t_consent" as t_consent
 database "m_consent_type" as m_consent_type
@@ -37,11 +42,12 @@ database "m_user_information" as m_user_information
 database "t_user_address" as t_user_address
 database "t_user_consent" as t_user_consent
 database "l_user_referral" as l_user_referral
+end box
 user -> page: Enter registration; view consent versions
 activate page
 page -> api: POST v1/auth/register over TLS\n(content-type, timestamp, requestId, body)
 activate api
-api -> app: Process RegisterCommand
+api -> app: [**RegisterCommandHandler**] Process RegisterCommand
 activate app
 app -> app: Create request context; generate requestId if omitted
 app -> domain: Validate headers, JSON, scalar/object types, password policy, unique consentIds

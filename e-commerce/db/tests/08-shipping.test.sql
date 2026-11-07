@@ -181,4 +181,34 @@ BEGIN
     RAISE NOTICE 'PASS test 6: order and order item are ON DELETE RESTRICT, shipping children are CASCADE';
 END $$;
 
+-- test 7: the automatic completion job (S26, S31) finds the old SHIPPED parcels through a partial index on shipped_at
+DO $$
+DECLARE
+    r RECORD; line TEXT; plan TEXT := '';
+BEGIN
+    SELECT i.indisunique AS is_unique, pg_get_expr(i.indpred, i.indrelid) AS predicate, a.attname AS first_column INTO r
+    FROM pg_index i
+    JOIN pg_class c ON c.oid = i.indexrelid
+    JOIN pg_namespace n ON n.oid = c.relnamespace
+    JOIN pg_attribute a ON a.attrelid = i.indrelid AND a.attnum = i.indkey[0]
+    WHERE n.nspname = 'shipping' AND c.relname = 'ix_t_shipping_shipped_at' AND i.indrelid = 'shipping.t_shipping'::regclass;
+    IF NOT FOUND THEN
+        RAISE EXCEPTION 'FAIL: the index ix_t_shipping_shipped_at on shipping.t_shipping does not exist';
+    END IF;
+    IF r.is_unique THEN RAISE EXCEPTION 'FAIL: ix_t_shipping_shipped_at must not be unique'; END IF;
+    IF r.first_column <> 'shipped_at' THEN RAISE EXCEPTION 'FAIL: ix_t_shipping_shipped_at must start with shipped_at, found %', r.first_column; END IF;
+    IF r.predicate IS NULL OR r.predicate NOT LIKE '%SHIPPED%' OR r.predicate NOT LIKE '%DELETED%' THEN
+        RAISE EXCEPTION 'FAIL: ix_t_shipping_shipped_at must be partial on status SHIPPED and row_status not DELETED, found %', r.predicate;
+    END IF;
+    -- the scan of the job can use it (the planner is not allowed to read the whole table here)
+    SET LOCAL enable_seqscan = off;
+    FOR line IN EXECUTE 'EXPLAIN SELECT id FROM shipping.t_shipping WHERE status = ''SHIPPED'' AND row_status <> ''DELETED'' AND shipped_at < NOW() - INTERVAL ''7 days''' LOOP
+        plan := plan || line || E'\n';
+    END LOOP;
+    IF plan NOT LIKE '%ix_t_shipping_shipped_at%' THEN
+        RAISE EXCEPTION 'FAIL: the scan of old SHIPPED parcels does not use ix_t_shipping_shipped_at: %', plan;
+    END IF;
+    RAISE NOTICE 'PASS test 7: partial index on shipped_at for the SHIPPED parcels';
+END $$;
+
 ROLLBACK;

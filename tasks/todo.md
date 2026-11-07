@@ -164,12 +164,18 @@ Verification: `preflight.py --base main --run-checks`: `check_docs.py` 28/28 OK,
 
 ## e-commerce: Shipping automatic completion (WP3b)
 
-Status: Not started (starts after WP7 round 2, no hurry; the lead SA asked for it on 2026-11-06 after the owner answered S3)
+Status: Round 2 done and reported to the lead SA for gate 2 (gate 1 passed on 2026-11-07 with two fixes, both done); not committed. Assignment: agent `tommy`, delivery `open-pr`, authorized by `josh`, workspace `.workspace/tommy`, branch `feat/tommy-shipping-auto-complete`.
 
-- [ ] Write an appendix to `docs/superpowers/specs/2026-11-06-shipping-design.md` with decisions S23 and up: which orders qualify (PROCESSING, every item allocated in shippings that are SHIPPED or DELIVERED, no PENDING shipping left, latest `shipped_at` older than 7 days) and the stuck case of a partial shipment.
-- [ ] Decide the effect on the shipping rows (the system sets SHIPPED to DELIVERED as `system`, or a separate state) with the cost if wrong.
-- [ ] Decide the lock order (order row first), the clash with refund and with S9, and where the rule is written (spec 06 or a new job section, not an endpoint) as a proposal to the lead SA because spec 06 is already merged.
-- [ ] Send the document to the lead SA for gate 1 before any change to a spec, schema or checker.
+- [x] Prepare the managed workspace (registry scope of `tommy` widened by PR #18; baseline `audit_all.py` 0 findings and `run_db_tests.sh` ALL PASSED).
+- [x] Appendix S23 to S32 in `docs/superpowers/specs/2026-11-06-shipping-design.md` (eligibility, stuck partial shipment, effect on the rows, lock order and clashes, where the rule is written, the scan index, the `deliveredAt` wording); C17 to C22 of the campaign design relabelled as decided by the lead SA.
+- [x] Gate 1 fixes: the partial index `ix_t_shipping_shipped_at` (S31, SQL test 7 red then green, migration 08, schema doc) and `deliveredAt` as "the customer or the system confirmed" in `shipping/04`, `05`, `06` (S32).
+- [x] Spec `shipping/06`: Automatic Completion Rules, the Automatic Completion Example (7 cases) and three queries; the seven days are inclusive (a shipping that is exactly 7 days old qualifies).
+- [x] Checkers: `shipping-spec` (needles, `deliveredAt` wording, the example is judged again with the five conditions) and `shipping-schema` (the index, test 7); mutation-tested with deliberate mistakes.
+- [x] Run every `check_docs.py` sub-command, `audit_all.py` and `run_db_tests.sh`.
+- [x] Gate 2 fix (lead SA, 2026-11-07): the scan query of the job now applies conditions 1, 2, 4 and 5 (a dead-end order no longer fills the batch and starves the others); S26, the rules, the example text and the checker `check_shipping_scan_query` (12 mutations caught) are updated.
+- [ ] Gate 2 result of the fix: the lead SA reads the short result; then merge the current `main` into the branch, commit and open the PR with `commit-and-pr` from `.workspace/tommy` (delivery is authorized), without merging.
+
+Verification: see the gate 2 report; mutation tests on a copy of the tree: spec 30/30, schema doc and test file 3/3, migration through the checker 4/4 and through `run_db_tests.sh` 4/4. No backend was run against the specs.
 
 ## repository-wide: Add named-agent workspace lifecycle
 
@@ -237,13 +243,15 @@ Verification: when the pull request was opened `check_docs.py` passed 24 of 24, 
 
 ## e-commerce: Lead review of the SA work packages
 
-Status: In progress. Merged after the lead's review: WP3 shipping (pull request 10), WP6 master tables (11), WP4 authen (12), WP7 campaign (15), WP5 step 5a (17). Open work: WP3b (Tommy, waiting to prepare after the registry change in pull request 18) and WP5 step 5c (Marry, narrow scope under `e-commerce`).
+Status: In progress. Merged after the lead's review: WP3 shipping (pull request 10), WP6 master tables (11), WP4 authen (12), WP7 campaign (15), WP5 step 5a (17) and step 5c (20). Open work: WP3b (Tommy; gate 1 passed on 2026-11-07, round 2 in progress).
 
-- [x] Review gate 1 and gate 2 of WP3, WP6, WP4, WP7 and WP5 5a, run the checkers in each analyst's tree and read the changed specs.
+- [x] Review gate 1 and gate 2 of WP3, WP6, WP4, WP7 and WP5 5a and 5c, run the checkers in each analyst's tree and read the changed specs.
 - [x] Fix the first team protocol so that the analysts write `tasks/todo.md` and `tasks/lessons.md` as `CLAUDE.md` requires.
 - [x] Move the analysts' assignments to managed workspaces and widen the registry scope of tommy and marry (pull request 18) after the named-agent rule was merged.
-- [ ] Review gate 1 of WP3b and gate 2 of WP3b and WP5 5c.
-- [ ] Backlog for the owner's order: merge the two `er_name_rows` helpers of `check_docs.py`, extend `audit_all.py` to a column without an alias in the `WHERE` of an `UPDATE`, retrofit the plain `UNIQUE` and `CASCADE` of the older master tables, decide the 409 of `01-register`, decide whether the login sequence diagram keeps permission claims in the JWT (A16 says no), name who runs `grant-platform-admin.sql` at the first deployment, rewrite the team protocol in `docs/handoff/` to match the named-agent rule.
+- [x] Decide the 409 of `01-register` (owner on 2026-11-07: "เลือกให้เลย", the choice is the lead's). Decision: keep the 409 with its single message that does not say whether the username or the email exists, no change to the spec. Why: there is no email verification, so a neutral answer would leave a real user without a way to know why registration failed; the login answer is already the same for every failure and the lock limits guessing. Cost if wrong: add email verification and answer every registration the same way, which is a new work package. The registration rate limit belongs to the gateway and is not specified.
+- [x] First platform administrator (owner on 2026-11-07, answered the lead's recommendation that the system operator runs `grant-platform-admin.sql` after confirming the user id: "แค่เก็บ data ไว้ เดี๋ยว dba มา export ให้การเงิน"). The lead reads this as: the database administrator is the system operator who runs the command, and the data is only stored, with no API for finance because the DBA exports it directly. This reading is not confirmed by the owner. Nothing in the specs changes.
+- [ ] Review gate 2 of WP3b.
+- [ ] Backlog for the owner's order: merge the two `er_name_rows` helpers of `check_docs.py` (check first that the API review did not already do it), extend `audit_all.py` to a column without an alias in the `WHERE` of an `UPDATE`, retrofit the plain `UNIQUE` and `CASCADE` of the older master tables, rewrite the team protocol in `docs/handoff/` to match the named-agent rule. Decided elsewhere: JWT claims are the authorization source (owner with Peter, 2026-11-07).
 
 Verification: each gate was checked by running every `check_docs.py` sub-command, `audit_all.py` and `run_db_tests.sh` in the analyst's tree and by reading the changed specs. The analysts' own mutation tests were not rerun by the lead.
 
@@ -259,7 +267,7 @@ Status: Complete. PR #21 merged into origin/main at eee8add on 2026-11-07 (Asia/
 - [x] Prepare the commit and registration PR package using commit-and-pr; keep API changes out of this prerequisite PR.
 - [x] After the owner merges registration into origin/main, create Peter's managed workspace with agent-workspace and record the bounded first-API assignment before edits.
 
-Verification: The canonical registry test failed before adding Peter (expected four entries, found three). After registration, `python3 -B -m unittest discover -s .agents/skills/agent-workspace/tests -v` passed all 12 tests, including Peter's direct-user delivery authorization and inability to delegate. `preflight.py --base main` reported three in-scope files and no blockers; `git diff --check` passed. API/database tests were not rerun for this registry-only change. Registration takes effect only after merge into origin/main. Peter may hold one active API task or pull request; while it is open, the next API can be examined read-only from the primary checkout. Each API delivery will contain its spec.md and complete sequence.wsd, with the verification changes required for that API.
+Verification: The canonical registry test failed before adding Peter (expected four entries, found three). After registration, `python3 -B -m unittest discover -s .agents/skills/agent-workspace/tests -v` passed all 12 tests, including Peter's direct-user delivery authorization and inability to delegate. `preflight.py --base main` reported three in-scope files and no blockers; `git diff --check` passed. API/database tests were not rerun for this registry-only change. Registration takes effect only after merge into origin/main. The initial one-open-PR rule was superseded for this review by the owner's Q15 instruction; completed API PRs may stay open while Peter starts the next branch from main. Each API delivery will contain its spec.md and complete sequence.wsd, with the verification changes required for that API.
 
 
 ## e-commerce: Peter API review — login (API 1)
@@ -274,11 +282,11 @@ Status: Login artifacts verified and ready for one-API PR delivery. Owner confir
 - [x] Extend SQL/sequence and login-behavior checks; prove the old defects fail and mutation-test the changed checker.
 - [x] Run every documentation check, SQL audit and database test; verify source structure and review the exact diff.
 - [x] Prepare the one-login-API commit-and-pr package; verify actual PR/lock state through GitHub and agent-workspace during delivery.
-- [ ] After the owner merges the login PR, verify/park Peter's workspace and prepare refresh as a fresh assignment. Release the session lock whenever delivery ends.
+- [x] Verify login PR #23 merged, park the completed workspace and prepare refresh as a fresh assignment. Subsequent APIs follow the owner's newer continue-without-merge instruction below.
 
 Baseline: all 37 documentation subcommands passed, audit reported 53 tables and 0 findings, and database tests reported ALL PASSED during agent-workspace prepare. The initial PATH-only Java probe failed; the paired-review follow-up below discovered the installed OpenJDK and PlantUML JAR and records completed rendering verification.
 
-Queue after login: refresh, then the remaining original 30 APIs and the additional APIs affected by JWT authorization. Each API owns one PR; no new editing assignment begins until the preceding PR is reconciled under the existing lifecycle. The existing registration worktree was retained because Codex's archive tool refused to remove the chat's primary checkout; Peter's API edits use only his managed full clone.
+Queue after login: refresh, then the remaining original 30 APIs and the additional APIs affected by JWT authorization. Each API owns one PR; after opening it, owner decision Q15 permits the next editing assignment from current main without waiting for merge. The existing registration worktree was retained because Codex's archive tool refused to remove the chat's primary checkout; Peter's API edits use only his managed full clone.
 
 Login verification evidence: the new login-flow check rejected the old files before correction. Final mutation run caught 56/56 deliberate faults (the first 53-case run caught 48/53; selectors and projection/threshold checks were tightened before rerunning). The SQL and sequence now contain 15 exact operations and seven outcome paths. The delivery preflight ran 38/38 documentation checks, audited 53 tables with 0 findings, ran database tests with ALL PASSED, and found no blockers. PostgreSQL verification executed the specification's exact queries against adversarial role/direct-scope fixtures, empty arrays and ambiguous identifiers, proved token/attempt rollback, and used two connections to verify serialized counting. No backend or published OpenAPI was changed; the detailed login and revised WP4/WP5 documents remain in-review, while the separate owner-decision record is approved. The initial delivery did not render PlantUML; the paired-review follow-up below now records real rendering and visible-SQL verification.
 
@@ -304,9 +312,88 @@ PR #23 integration: origin/main advanced to 01a5e41 with the already merged Jinn
 Integration verification: both checker registrations are present, all 39 documentation commands pass, the audit reports 53 tables / 0 findings, database tests report ALL PASSED, login mutations remain 67/67, and the rendered SVG still contains 113/113 SQL lines. The working-tree PR diff against the updated main was checked before the reconciliation commit: all eight changed paths match Peter's original assignment.
 
 
+## e-commerce: Peter API review — refresh token (API 2)
+
+Status: In progress. Login PR #23 merged at 9ae6b6d; branch `fix/peter-refresh-token-contract` was prepared in Peter's managed clone with all 39 baseline documentation commands, audit and database tests. Direct delivery authorization remains ittikorn.
+
+Owner delivery override (2026-11-07): “เสร็จแล้วเปิด pr ทิ้งไว้เดียวฉันมาอ่าน ไม่ต้องรอ merge switch ไปที่ main แล้วเกิด brach ใหม่ได้เลย”. This supersedes the earlier one-open-PR/wait-for-merge choice and skill defaults for this API review. Finish each API, open its own PR, preserve the branch/assignment for review, return to updated main and begin the next API immediately. Keep explicit scope, one active editing session, clean transitions and no force pushes or PR merging. Do not ask again whether to continue after opening a PR.
+
+- [x] Verify/park merged login, read refresh spec and sequence together, and prepare the scoped refresh assignment with passing baselines.
+- [x] Persist the superseding delivery decision and capture the workflow lesson without changing unrelated team capabilities.
+- [x] Correct refresh ownership lookup, user-first lock, post-lock token reread/time capture, single-use update, fresh claims and distinct old/new token hashes.
+- [x] Rewrite sequence with every request/result, SQL, rotation, recent duplicate, older replay, invalid/expired/inactive, rollback and timeout outcome.
+- [x] Add paired flow/SQL/render checks and mutation-test them; validate concurrent refresh/replay SQL in temporary PostgreSQL.
+- [x] Render and inspect SVG/PNG; pass all documentation commands, audit, database tests and preflight.
+- [x] Prepare the refresh-only commit-and-pr package with paired verification evidence and owner decision Q15. After opening, preserve its branch/assignment record and continue immediately on main; actual delivery state is verified through GitHub and the local history record.
+
+Refresh verification so far: the old spec/sequence pair is rejected by refresh-flow. The corrected pair has 16 exact SQL operations, 10 outcome paths and 128/128 SQL lines visible in the rendered SVG. Mutations caught 44/44 (43/44 initially; the consume ownership check was tightened to require the WHERE user_id predicate rather than merely seeing userId in updated_by). Temporary PostgreSQL checks passed concurrent post-lock reread/recent duplicate, newly assigned role reads, single-use consume, older replay revoking both tables while preserving other sessions/users, atomic rollback, inactive user and expiry while waiting for the user lock.
+
+Refresh delivery verification: preflight ran 40/40 documentation checks, audit 53 tables / 0 findings and database tests ALL PASSED. Its first run flagged a bytecode file generated by the temporary builder; only that generated file was removed, and all six intended task paths then passed. PlantUML syntax reports 17 participants; SVG/PNG were rendered and inspected, and refresh-flow confirms 128/128 visible SQL lines and ten outcome paths. No backend implementation or schema changes are included.
+
+## e-commerce: Sequence phase 0 — api-sequence-spec checker for all 83 specs
+
+Status: Implemented in the managed workspace of Marry on branch `feat/marry-sequence-checker`; the pull request is opened after the preflight and merged by the lead, not by the author. Scope: `e-commerce/db/tests/check_docs.py` and `tasks/`. No spec and no `sequence.wsd` is changed.
+
+- [x] Remove the fixed list of 18 specs and the fixed list of directories; check every spec folder under `e-commerce/doc/api` and require a `sequence.wsd` in each of them.
+- [x] For every non-empty `sequence.wsd`: the SQL is identical to the spec, the lifecycle (activate, note, return, deactivate) is complete and the database participants are in the order of the spec.
+- [x] Add `REQUIRED_GROUPS` (`authen-and-author`, `consent`) that must have no empty file; other groups may be empty (pending) and the output prints filled/total per group.
+- [x] Add the structure check modelled on `02-login`: `@startuml`, title, `skinparam` Sarabun, `hide footbox`, actor `User`, boxes Frontend / Web API / Database, participant chain API -> Application -> Domain -> Infrastructure, the handler line and no `TODO(author)` marker.
+- [x] Add the login standard for every spec with INSERT, UPDATE or DELETE (BEGIN, COMMIT, ROLLBACK, HTTP 400 `E10001`, HTTP 408 `E90001`, HTTP 500) with the explicit named list `LEGACY_SEQUENCES` for the 10 diagrams that do not follow it yet.
+- [x] Mutation-test the checker: 35 cases of `mutation_harness.py` and 10 special cases (empty file, only blanks, missing file, pending group, moved BEGIN, moved COMMIT, TODO marker).
+- [x] Run every `check_docs.py` sub-command (40), `audit_all.py` and `run_db_tests.sh`.
+- [x] Preflight, commit, push, open the pull request (PR #27), tell the lead.
+- [x] Lead review of PR #27, fix 1: a locking statement (`FOR UPDATE`, `pg_advisory_xact_lock`) must come after BEGIN.
+- [x] Lead review of PR #27, fix 2: every `HTTP 4xx/5xx` answer after the first BEGIN follows ROLLBACK or COMMIT in its own block (by indentation, so the ROLLBACK of a sibling branch does not count).
+- [x] Lead review of PR #27, fix 3: fail when no spec is found or a required group has no spec; mutation-test the three fixes and rerun every check.
+- [ ] Push the fixes to the same branch, tell the lead; hold the lock until the merge, then release and park.
+
+Verification: `api-sequence-spec` prints `OK: api-sequence-spec (83 specs; ... 10 legacy without the login standard)`; harness 35 of 35 caught; special cases 10 of 10 as expected after the BEGIN case was rebuilt (see the lesson of 2026-11-07); 40 of 40 sub-commands OK; audit 53 tables, 0 findings; database tests ALL PASSED.
+
+## repository-wide: Sequence phase 0, generator side (`sequence_skeleton.py`)
+
+Status: Complete in the branch, waiting for gate review. Assignment: agent `tommy`, delivery `open-pr`, authorized by `josh` (the product owner ordered phase 0 and the split of the work), workspace `.workspace/tommy`, branch `feat/tommy-sequence-skeleton-generator`, scope `.agents/skills/api-contract-design` and `tasks`. Marry owns the checker side (`check_docs.py`, PR 27 merged).
+
+- [x] Read the login and consent diagrams and `spec_database_operations` / `sequence_database_operations` of `check_docs.py`.
+- [x] Write `.agents/skills/api-contract-design/scripts/sequence_skeleton.py` (stdout, `--write`, `--force`, refuses a file with content).
+- [x] Write `scripts/test_sequence_skeleton.py`: all 83 specs through the parser and the structure and login-standard checks of `check_docs.py`, the 18 hand-written diagrams against the generated database blocks and participants, the command line.
+- [x] Mutation-test the script with `mutation_harness.py` (24 cases) and parse every skeleton with PlantUML.
+- [x] Update `SKILL.md` and `references/api-conventions.md` (no empty `sequence.wsd`: generator, checker, no `TODO(author)` left).
+- [x] Run the project checkers and open the PR with `commit-and-pr`; do not merge.
+
+Verification: see the PR. Not run: the script was not used to fill the 65 empty diagrams (that is the next step of phase 0 and changes `e-commerce/doc/api`, outside this scope).
+
+## e-commerce: api-sequence-spec accepts the blocks of a diagram in any order
+
+Status: Implemented in the managed workspace of Marry on branch `feat/marry-sequence-any-order`; the pull request is opened after the preflight and merged by the lead, not by the author. Scope: `e-commerce/db/tests/check_docs.py`, `.agents/skills/api-contract-design/references/api-conventions.md` and `tasks/`. No spec, no `sequence.wsd` and no `sequence_skeleton.py` is changed. Decision of the lead (owner order): most specs order the SQL by table, not by execution (for example `sales/05-cancel-order` checks the shop permission after the UPDATE in the document, but runs it before), so the checker stops forcing the order of the spec instead of reordering 65 specs that the API review is working on. If wrong: force the order again and reorder the specs.
+
+- [x] Prepare the workspace from `main` (e132139) with the baseline `check_docs.py api-sequence-spec`; the first prepare recorded the three scope paths as one string, so the assignment record was reset with the approval of the lead and prepared again with three `--scope` flags.
+- [x] Every interaction of a diagram must be a block of the spec: table, heading and normalized SQL all equal; an interaction that is not in the spec fails.
+- [x] Every block of the spec must appear at least once, in any order, and may repeat in several branches; two blocks with the same table and heading are matched by their full SQL and the report says which one is missing.
+- [x] Database participants: the tables of the spec, declared in the order of first use in the diagram (missing, extra, declared twice and wrong order are separate messages).
+- [x] Keep the earlier rules: lifecycle, structure, `TODO(author)`, BEGIN before a write or a lock, ROLLBACK or COMMIT before an error answer, `LEGACY_SEQUENCES`, `REQUIRED_GROUPS`.
+- [x] Update `api-conventions.md` (intro and steps 1 and 2 of the sequence section): move blocks to the order of the work and into every branch that needs them, and move the participants with them.
+- [x] Mutation and control tests: 35 cases of `mutation_harness.py` and 14 cases on `02-login` plus 4 direct cases for the same-heading rule.
+- [x] Run every `check_docs.py` sub-command (40), `audit_all.py`, `run_db_tests.sh` and `test_sequence_skeleton.py`; 65 skeletons from the generator are checked on a copy.
+- [ ] Preflight, commit, push, open the pull request, tell the lead; hold the lock until the merge, then release and park.
+
+Verification: `api-sequence-spec` prints `OK: api-sequence-spec (83 specs; ... 10 legacy without the login standard)`; the 18 diagrams of the earlier round pass; on a copy of the repository the 65 skeletons of the generator fail only with `TODO(author)` (0 other errors); harness 35 of 35 caught; on `02-login` these fail as they must: a block removed, one letter of the SQL changed, an extra block with a new heading, an extra block with the same heading and other SQL, a changed heading, a participant missing, an extra participant, a participant declared twice, participants in the wrong order, two blocks swapped with the participants left in the old order, a write moved before BEGIN; these pass as they must: two blocks swapped together with their participants, one block repeated right after itself, one block repeated in another branch; 40 of 40 sub-commands OK; audit 53 tables, 0 findings; database tests ALL PASSED; `test_sequence_skeleton.py` 11 tests OK.
+
+## repository-wide: agent_workspace.py rejects a comma in --scope
+
+Status: Implemented in the managed workspace of Marry on branch `fix/marry-reject-comma-scope`; the pull request is opened after the preflight and merged by the lead. Scope: `.agents/skills/agent-workspace` and `tasks/`. Reason: a `--scope "a,b,c"` was recorded as one path and blocked the next `prepare` (see the lesson of 2026-11-07 about repeated options).
+
+- [x] `normalize_scopes` blocks any value with a comma, before the lock, the branch and the metadata, and says to repeat `--scope` once per path with an example.
+- [x] Two tests in `test_agent_workspace.py`: a comma (alone or in one of several values) blocks and leaves no branch and no `.state` file; separate `--scope` flags are recorded one by one.
+- [x] One sentence in `SKILL.md` next to the `prepare` example.
+- [x] Mutation tests: 7 of 7 caught (check removed, only the first value checked, only `", "` checked, message without the instruction, message without the example, scopes collapsed into one, comma accepted as one scope).
+- [ ] Preflight, commit, push, open the pull request, tell the lead; hold the lock until the merge, then release and park.
+
+Verification: `python3 .agents/skills/agent-workspace/tests/test_agent_workspace.py` runs 15 tests OK (13 before).
+
+
 ## e-commerce: Peter API review — register (API 3)
 
-Owner Q15 supersedes the earlier one-open-PR lifecycle: keep completed PRs open, preserve each branch/assignment history, return to main and begin the next API without waiting for merge. PR #23 is merged; refresh PR #24 remains separately reviewable. Register uses a fresh bounded assignment on fix/peter-register-contract.
+Owner Q15 supersedes the earlier one-open-PR lifecycle: keep completed PRs open, preserve each branch/assignment history, return to main and begin the next API without waiting for merge. PR #23 is merged; refresh PR #24 was preserved separately and subsequently merged before register delivery. Register uses a fresh bounded assignment on fix/peter-register-contract.
 
 - [x] Verify clean main, preserve PR #24 and its assignment, and prepare register with all baseline checks.
 - [x] Read register spec/sequence, consent submission, migration/schema and prior lessons.
@@ -319,3 +406,5 @@ Owner Q15 supersedes the earlier one-open-PR lifecycle: keep completed PRs open,
 Register verification: the original pair fails register-flow; the revised pair has ten identical SQL operations, 28 terminal traces (including optional-child combinations) and a whole-transaction retry path. Mutation testing caught 53/53 faults, including an actual SVG with a dropped quoted value. PlantUML syntax passes with 14 participants; SVG/PNG were rendered and visually inspected, with 123/123 SQL lines visible. Temporary PostgreSQL executed the exact queries/inserts and verified active/effective/type filtering, required-current coverage predicates, read-only evidence, omitted children, complete rollback on final-child failure, repeatable policy snapshots across two connections and one winning concurrent identifier insert (23505 for the loser). These checks validate the design/SQL, not backend conformance. All 40 current documentation commands pass and the audit reports 53 tables / 0 findings.
 
 Register delivery preflight: all 40 checks, audit 53/0 and database ALL PASSED; six paths in the authorized assignment, no blockers. Origin/main then advanced through PR #31, including refresh #24 and the repository-wide sequence checker. Integrate that base before opening the register PR, preserve every incoming checker and rerun the current checks.
+
+Register integration verified: preserved upstream refresh, shipping and sequence-checker changes; the task diff against origin/main remains the same six assignment paths. The global sequence check now covers 83 specs; register passes its standard, so its legacy exemption was removed. All 41 documentation commands pass, audit remains 53/0, database tests ALL PASSED, mutations 53/53 and rendered SQL 123/123. Final SVG/PNG were regenerated from the restored source after mutation tests and inspected.

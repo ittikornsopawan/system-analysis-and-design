@@ -177,7 +177,6 @@ description: Repository-wide and project-specific lessons captured from user cor
 - **Root cause**: The search for affected files stopped at the specs.
 - **Corrected behavior**: After adding SQL to a spec, search for every file read from the same spec (sequence diagram, schema doc) and run all the checkers before saying the work is complete.
 
-
 ### 2026-11-07 — Prove specification and sequence correctness together
 
 - **Correction**: The owner challenged whether sequence.wsd had been checked alongside spec.md. Both files were changed in PR #23, but the handoff did not make the paired evidence easy to inspect. The subsequent render exposed a real gap: PlantUML treated SQL value lines beginning with a single quote as comments, so VALUES were missing in the image even though source SQL parity passed.
@@ -190,15 +189,63 @@ description: Repository-wide and project-specific lessons captured from user cor
 - **Root cause**: A failing system launcher was mistaken for the absence of an installed runtime; common installation locations were not checked.
 - **Corrected behavior**: Inspect the selected tool path and known installation locations before reporting a missing capability. Use the existing runtime by absolute path and report precisely what was tried when rendering truly cannot run.
 
+### 2026-11-07 — Apply the owner's latest delivery override
+
+- **Correction**: The owner replaced the earlier one-open-PR workflow with an explicit instruction to leave each completed API PR open, switch back to main and start a fresh branch immediately, without waiting for merge.
+- **Root cause**: A previously selected workflow or a tool default can remain in effect after the user has superseded it unless the current assignment records the new authority explicitly.
+- **Corrected behavior**: For this API review, persist the exact override, preserve branch-scoped PR/assignment records and edit one branch at a time in Peter's managed clone, then continue to the next API after opening its PR. Do not use the old merge gate to stop, and do not infer merge, force-push or delegation authority from this override.
+
+### 2026-11-07 — A design that scans a table must name the index, or say why none is needed
+
+- **Correction**: The first WP3b appendix (S26) scanned the `SHIPPED` shipping rows by `shipped_at` for the automatic completion job but also said that the schema does not change (S30). The lead SA pointed out the contradiction at gate 1.
+- **Root cause**: The scan was designed from the rules and the data model was not read for the access path of a query that runs all the time.
+- **Corrected behavior**: When a job or an inquiry filters a growing table by a column, write the index (a partial index when the filtered state is small), its test and its documents in the same design, or write the reason it is not needed.
+
+### 2026-11-07 — A status that gets a new meaning must change every field that shows it
+
+- **Correction**: Letting the system set `DELIVERED` (S25) changed what `deliveredAt` means in `shipping/04`, `05` and `06`, but the first appendix did not touch their field descriptions. The lead SA found it at gate 1.
+- **Root cause**: The change was designed at the rules level and the specs that display the value were not listed.
+- **Corrected behavior**: List every spec and field that shows a status or a timestamp whose meaning changes, change their descriptions in the same round and make the checker catch the new wording.
+
+### 2026-11-07 — Write the boundary of a time limit once and use it everywhere
+
+- **Correction**: The rule said "older than 7 days" while the SQL used `shipped_at <= now - 7 days` and the example said "day 3 or earlier"; a mutation test showed that the checker agreed with the wrong reading.
+- **Root cause**: The words, the SQL and the checker were written separately.
+- **Corrected behavior**: Decide whether the limit includes the boundary, write it in the rule ("at least 7 days old, exactly 7 days qualifies"), the SQL comment, the example and the checker, and add a mutation at the boundary.
+
+### 2026-11-07 — A scan with a limit must filter by everything that decides the result
+
+- **Correction**: The scan query of the automatic completion job selected the orders by the age of a `SHIPPED` parcel only, sorted by `order_id` and limited to one batch. The lead SA found at gate 2 that an order that can never qualify (a partial shipment that cannot be finished, a `PENDING` parcel left) stays a candidate in every run and, with more such orders than the batch size, the orders with a larger id that qualify are never selected.
+- **Root cause**: The scan was treated as a loose pre-filter because the conditions are checked again under the lock, and the effect of `ORDER BY ... LIMIT` over rows that are always skipped was not considered.
+- **Corrected behavior**: When a job takes a limited, ordered batch, put every condition that can be tested without a lock into the scan (the check under the lock stays as the guard), write the reason in the rule, and add a checker needle with a mutation for each condition.
+
+### 2026-11-07 — Test a standard against every file it will govern, not only the model file
+
+- **Correction**: The first login standard of the sequence checker required BEGIN before the first database interaction. Running it on all 83 specs showed that `05-refresh-token` reads the refresh token row before BEGIN on purpose (the row decides which user to lock).
+- **Root cause**: The rule was copied from `02-login`, which has no read before BEGIN, and was not run on the other finished diagrams before it was called a standard.
+- **Corrected behavior**: Run a new structural rule on every finished file first; when a design decision explains the exception, write the rule at the exact point that matters (here: BEGIN before the first INSERT, UPDATE or DELETE), say so in the report to the lead, and never solve it by adding the file to the legacy list.
+
+### 2026-11-07 — A mutation case must break the property, not only touch the line
+
+- **Correction**: The first run of the manual case "BEGIN after the first write" passed the checker and looked like a miss. The case itself was wrong: it removed BEGIN and put it back immediately before the first write, which is still before it.
+- **Root cause**: The mutation was written from the name of the case and its result was not compared with the property (order of two lines) before the checker was blamed.
+- **Corrected behavior**: When a mutation is not caught, first print the mutated lines and check that they really break the property; fix the case if it does not, and fix the checker only if it does.
+
+### 2026-11-07 — A rule about "the line before" must follow the block, not the text
+
+- **Correction**: The lead found in review of PR #27 that a lock taken before BEGIN and an error answer without ROLLBACK were not caught. My first fix for the second one looked for the nearest earlier `app -> infra:` line, and the ROLLBACK of a sibling branch still satisfied it.
+- **Root cause**: The checker read the diagram as a flat list of lines, while an `alt` / `else` diagram has branches; the transaction standard was only compared with the lines the login diagram happens to have (408 and 500) and not with every way a transaction can fail (400 to 409, a lock before BEGIN).
+- **Corrected behavior**: When a checker reasons about order inside a diagram with branches, follow the nesting (indentation) so closed branches do not count, and write the mutation for each ROLLBACK or COMMIT one by one, not for one example. For a transaction rule, list every statement that must be inside it (writes and locks) and every exit that must end it.
+
+### 2026-11-07 — Read how a repeated option is parsed before passing several values
+
+- **Correction**: `agent_workspace.py prepare` was called with `--scope "a,b,c"`. The option is `action="append"`, so the assignment record kept one string with commas and no changed file could be inside it; a second `prepare` was refused because the task branch was already active, and the record had to be reset by hand with the approval of the lead.
+- **Root cause**: The values were joined in the way the previous assignment message listed them and the usage line (`--scope SCOPE`) was not checked for how several scopes are given; the `scope` of the output was not read before the lock was used.
+- **Corrected behavior**: Pass one `--scope` per path, and read the `scope` list of the `prepare` output before starting; it must show every path as its own entry. If it does not, release the lock and stop to ask the assigner before touching the record.
+
 
 ### 2026-11-07 — A displayed consent is read independently of its answer
 
 - **Correction**: The owner rejected the proposed rule that only an explicit boolean result proves reading. Displaying the consent triggers a request on the same submission endpoint without result; answering sends result later.
 - **Root cause**: Read state was inferred from answering rather than the UI event the owner intended.
 - **Corrected behavior**: A submitted displayed consent/version records read=true even when result is omitted; preserve the existing answer on a later read-only call, and preserve the first read timestamp when already read. Required registration still needs explicit true. Review register, submission and pending together.
-
-### 2026-11-07 — Apply the owner's later delivery override
-
-- **Correction**: The owner explicitly superseded the earlier one-open-PR skill lifecycle and instructed Peter to leave completed PRs open, return to main and start the next branch immediately.
-- **Root cause**: The earlier process would have kept the review queue waiting for merges despite the owner's later authorization.
-- **Corrected behavior**: Preserve each completed branch and its durable assignment/PR history; use one editing session at a time and a fresh main-based branch for every API. Do not wait for merge or ask the same permission again.

@@ -2656,6 +2656,9 @@ SHIPPING_INDEXES = {
     "t_shipping_stop": ("CREATE UNIQUE INDEX IF NOT EXISTS uq_t_shipping_stop_shipping_id_stop_number ON shipping.t_shipping_stop "
                         "(shipping_id, stop_number) WHERE row_status <> 'DELETED'"),
 }
+# the index that the automatic completion job needs (S26, S31): not unique, partial on the SHIPPED parcels
+SHIPPING_SCAN_INDEX = ("CREATE INDEX IF NOT EXISTS ix_t_shipping_shipped_at ON shipping.t_shipping (shipped_at) "
+                       "WHERE status = 'SHIPPED' AND row_status <> 'DELETED'")
 SHIPPING_TABLE_PARTS = {
     "t_shipping": [
         "order_id UUID NOT NULL REFERENCES sales.t_order (id) ON DELETE RESTRICT",
@@ -2677,7 +2680,7 @@ SHIPPING_TABLE_PARTS = {
     ],
 }
 SHIPPING_DOC_NEEDLES = {
-    "t_shipping": ["uq_t_shipping_carrier_name_tracking_number", "ck_t_shipping_shipped_has_tracking", "ck_t_shipping_delivered_at",
+    "t_shipping": ["uq_t_shipping_carrier_name_tracking_number", "ix_t_shipping_shipped_at", "ck_t_shipping_shipped_has_tracking", "ck_t_shipping_delivered_at",
                    "ON DELETE RESTRICT", "carrier_name", "Unique among rows where row_status <> 'DELETED' and tracking_number is not null"],
     "t_shipping_item": ["uq_t_shipping_item_shipping_id_order_item_id", "ON DELETE RESTRICT", "Unique among rows where row_status <> 'DELETED'"],
     "t_shipping_stop": ["uq_t_shipping_stop_shipping_id_stop_number", "TRANSIT", "arrived_at", "Unique among rows where row_status <> 'DELETED'"],
@@ -2715,6 +2718,12 @@ def check_shipping_schema() -> int:
         for needle in SHIPPING_DOC_NEEDLES[table]:
             if needle not in md:
                 errors.append(f"{path} missing: {needle}")
+    migration_statements = [normalize(x) for x in sql.split(";")]
+    if SHIPPING_SCAN_INDEX not in migration_statements:
+        errors.append("migration 08: the partial index ix_t_shipping_shipped_at on shipped_at is missing or different")
+    doc_sql = [normalize(x) for x in " ".join(SQL_BLOCK.findall(read(f"{SHIPPING_SCHEMA_DOC}/t_shipping.md"))).split(";")]
+    if SHIPPING_SCAN_INDEX not in doc_sql:
+        errors.append("t_shipping.md: the SQL block does not hold ix_t_shipping_shipped_at")
     readme = read("e-commerce/doc/schema/README.md")
     for table, row in SHIPPING_README_ROWS.items():
         if row not in readme:
@@ -2730,7 +2739,7 @@ def check_shipping_schema() -> int:
         errors.append("db/tests/08-shipping.test.sql does not exist")
     else:
         text = test.read_text(encoding="utf-8")
-        for n in range(1, 7):
+        for n in range(1, 8):
             if f"PASS test {n}:" not in text:
                 errors.append(f"08-shipping.test.sql has no test {n}")
     if errors:
@@ -2782,7 +2791,15 @@ SHIPPING_NEEDLES = {
     "06": ["### Confirm Delivery Rules", "#### UPDATE - Confirm the delivery", "AND status = 'SHIPPED' -- no row changed means the status changed in the meantime",
            "#### UPDATE - Complete the order", "AND status = 'PROCESSING'", "#### QUERY - Get the delivered quantity of every item", "s.status = 'DELIVERED'",
            "o.user_id = '<sequence.userId>'", "#### QUERY - Lock the order", "FOR UPDATE", "#### Fail - Conflict Status", "E10006",
-           "approved by the product owner"],
+           "approved by the product owner",
+           "### Automatic Completion Rules", "### Automatic Completion Example", "#### QUERY - Get the orders with an old SHIPPED parcel",
+           "#### UPDATE - Confirm the delivery as the system", "#### QUERY - Check that the order qualifies", "updated_by = 'system'",
+           "AND status = 'SHIPPED' -- no row changed means the shippings changed in the meantime", "`completion_days`",
+           "AND s.shipped_at > NOW() AT TIME ZONE 'UTC' - INTERVAL '<sequence.completionDays> days'", "AND s2.status IN ('SHIPPED', 'DELIVERED')",
+           "AND s.shipped_at <= NOW() AT TIME ZONE 'UTC' - INTERVAL '<sequence.completionDays> days'", "ix_t_shipping_shipped_at", "never by the shop",
+           "so the shop has to record a returned parcel before the seven days are over", "A partial shipment that cannot be finished",
+           "locks the order row first (`SELECT ... FOR UPDATE`), checks the five conditions again under the lock",
+           "and by the automatic completion below (the system confirms after `completion_days`", "at least `completion_days` days old"],
 }
 # phrases that must appear at least n times (a rule or a guard that two statements share must not lose one copy unnoticed)
 SHIPPING_COUNTS = {
@@ -2792,7 +2809,7 @@ SHIPPING_COUNTS = {
     "03": {"approved by the product owner": 2},
     "04": {"o.shop_id = '<sequence.shopId>'": 2, "approved by the product owner": 2, "-- only when search is specified": 2},
     "05": {"o.user_id = '<sequence.userId>'": 2, "approved by the product owner": 1, "-- only when search is specified": 2},
-    "06": {"approved by the product owner": 1},
+    "06": {"approved by the product owner": 1, "AND s.row_status <> 'DELETED'": 6, "AND s.status = 'SHIPPED'": 2, "AND s.status = 'PENDING'": 1},
 }
 SHIPPING_STATUSES = ("PENDING", "SHIPPED", "DELIVERED", "CANCELLED", "RETURNED")
 SHIPPING_STOP_TYPES = ("PICKUP", "TRANSIT", "DROPOFF")
@@ -2976,6 +2993,82 @@ def check_shipping_actions(mds: dict) -> list[str]:
     return errors
 
 
+SHIPPING_JOB_PHRASE = "Time the customer or the system confirmed the parcel (UTC)"
+
+
+def check_shipping_job_example(md: str) -> list[str]:
+    """The Automatic Completion Example of spec 06: every case is judged again with the five conditions and compared with the result that is written."""
+    m = re.search(r"### Automatic Completion Example\n\n(.*?)\n\n((?:\|[^\n]*\n)+)", md, re.DOTALL)
+    if not m:
+        return ["06: the Automatic Completion Example table is missing"]
+    day = re.search(r"runs on day (\d+) with `completion_days` (\d+)", m.group(1))
+    quantity = re.search(r"quantity (\d+)", m.group(1))
+    if not day or not quantity:
+        return ["06: the example must say the day of the job, completion_days and the quantity of the item"]
+    now, days, ordered = int(day.group(1)), int(day.group(2)), int(quantity.group(1))
+    rows = [[c.strip() for c in line.strip().strip("|").split("|")] for line in m.group(2).strip().split("\n")][2:]
+    errors, results = [], set()
+    for case, parcels, result, reason in rows:
+        items = []
+        for part in parcels.split(";"):
+            tokens = part.split()
+            status = tokens[1]
+            shipped = next((int(t[1:]) for t in tokens if re.fullmatch(r"d\d+", t)), None)
+            qty = next(int(t[1:]) for t in tokens if re.fullmatch(r"q\d+", t))
+            items.append((status, shipped, qty))
+        statuses = [x[0] for x in items]
+        allocated = sum(q for st, _, q in items if st in ("SHIPPED", "DELIVERED"))
+        if "SHIPPED" not in statuses:
+            expected = "NOT A CANDIDATE"
+        elif "PENDING" in statuses:
+            expected = "WAITS"
+        elif allocated != ordered:
+            expected = "NOT ELIGIBLE"
+        elif any(st == "SHIPPED" and now - d < days for st, d, _ in items):
+            expected = "WAITS"
+        else:
+            expected = "COMPLETES"
+        results.add(expected)
+        if result != expected:
+            errors.append(f"06 automatic completion case {case}: the five conditions give {expected}, the example says {result}")
+        if expected == "COMPLETES" and "COMPLETED" not in reason:
+            errors.append(f"06 automatic completion case {case}: a case that completes must say that the order is COMPLETED")
+        if result == "COMPLETES" and any(st == "DELIVERED" for st in statuses) and "only" not in reason.lower():
+            errors.append(f"06 automatic completion case {case}: a shipping that is already DELIVERED is not changed, the reason must say that only the SHIPPED ones change")
+    if results != {"COMPLETES", "WAITS", "NOT ELIGIBLE", "NOT A CANDIDATE"}:
+        errors.append("06: the example must show the four results COMPLETES, WAITS, NOT ELIGIBLE and NOT A CANDIDATE")
+    return errors
+
+
+# the scan query of the job must hold every condition that can be tested without a lock, or an order that can never qualify
+# keeps an old SHIPPED parcel, is selected in every run and fills the batch before an order with a larger id (the job starves)
+SHIPPING_SCAN_PARTS = {
+    "the order must be PROCESSING": "o.status = 'PROCESSING'",
+    "the order must not be DELETED": "o.row_status <> 'DELETED'",
+    "a SHIPPED shipping at least completion_days old": "AND s.shipped_at <= NOW() AT TIME ZONE 'UTC' - INTERVAL '<sequence.completionDays> days'",
+    "no PENDING shipping (condition 2)": "AND NOT EXISTS (\n    SELECT 1\n    FROM shipping.t_shipping s\n    WHERE s.order_id = o.id\n    AND s.row_status <> 'DELETED'\n    AND s.status = 'PENDING'\n)",
+    "no SHIPPED shipping younger than completion_days (condition 5)": "AND s.shipped_at > NOW() AT TIME ZONE 'UTC' - INTERVAL '<sequence.completionDays> days'",
+    "every item allocated in full (condition 4)": "AND oi.quantity <> (",
+    "the allocation counts only SHIPPED and DELIVERED shippings": "AND s2.status IN ('SHIPPED', 'DELIVERED')",
+    "a fixed ascending order and one batch": "ORDER BY o.id\nLIMIT <sequence.batchSize>",
+}
+
+
+def check_shipping_scan_query(md: str) -> list[str]:
+    m = re.search(r"#### QUERY - Get the orders with an old SHIPPED parcel\n\n```SQL\n(.*?)\n```", md, re.DOTALL)
+    if not m:
+        return ["06: the scan query 'Get the orders with an old SHIPPED parcel' is missing"]
+    sql = m.group(1)
+    errors = [f"06 scan query: {why} is missing, an order that never qualifies would fill the batch and starve the others"
+              for why, part in SHIPPING_SCAN_PARTS.items() if part not in sql]
+    if "s.shipped_at > NOW()" in sql and sql.count("NOT EXISTS") < 3:
+        errors.append("06 scan query: the three NOT EXISTS (PENDING, young SHIPPED, item not allocated) must stay NOT EXISTS")
+    for needle in ("so a dead-end order like case 4 cannot block the orders after it", "(the job starves)"):
+        if needle not in md:
+            errors.append(f"06: the reason why the scan applies every condition is missing: {needle}")
+    return errors
+
+
 def check_shipping_spec() -> int:
     errors = []
     mds = {}
@@ -3019,6 +3112,15 @@ def check_shipping_spec() -> int:
         rules = mds[key].split("#### Example Body Parameters")[0]
         if "SELECT ... FOR UPDATE" not in rules:
             errors.append(f"{SHIPPING_SPECS[key]}: the rules must say that the order row is locked with SELECT ... FOR UPDATE")
+    for key in ("04", "05", "06"):
+        if SHIPPING_JOB_PHRASE not in mds[key]:
+            errors.append(f"{SHIPPING_SPECS[key]}: deliveredAt must be described as '{SHIPPING_JOB_PHRASE}' (the system can confirm too)")
+        if "Time the receiver confirmed the parcel (UTC)" in mds[key]:
+            errors.append(f"{SHIPPING_SPECS[key]}: the old deliveredAt wording (only the receiver confirms) must not stay")
+    if "There is no automatic completion" in mds["06"]:
+        errors.append("06: the sentence that there is no automatic completion must not stay")
+    errors.extend(check_shipping_job_example(mds["06"]))
+    errors.extend(check_shipping_scan_query(mds["06"]))
     errors.extend(check_shipping_inquiry(mds["04"], "04"))
     errors.extend(check_shipping_inquiry(mds["05"], "05"))
     errors.extend(check_shipping_actions(mds))
@@ -3418,8 +3520,8 @@ AUTHEN_NEEDLES = {
            "when the row was a reuse older than 10 seconds the session is closed and committed first", "are one transaction: when any of them fails nothing is saved",
            "RETURNING session_id -- no row means the answer is 401", "#### INSERT - Create refresh token", "#### INSERT - Create access token",
            "#### UPDATE - Close the refresh tokens of the session (reuse)", "#### UPDATE - Close the access tokens of the session (reuse)", AUTHEN_LOCK, "Lock order:",
-           '"expiresIn": 900', "AND row_status = 'ACTIVE'\nAND expired_at > NOW() AT TIME ZONE 'UTC'\nRETURNING session_id", "SHA-256 (32 bytes), never as the token itself",
-           "WHERE session_id = '<sequence.sessionId>'\nAND row_status = 'ACTIVE'"],
+           '"expiresIn": 900', "AND row_status = 'ACTIVE'\nAND expired_at > '<sequence.now>'\nRETURNING session_id", "SHA-256 (32 bytes), never as the token itself",
+           "WHERE session_id = '<sequence.sessionId>'\nAND user_id = '<sequence.userId>'\nAND row_status = 'ACTIVE'"],
     "06": ["# [POST]: v1/auth/logout", "### Logout Rules", "every ACTIVE access token and refresh token that has the same `session_id`", "#### UPDATE - Close the access tokens of the session",
            "#### UPDATE - Close the refresh tokens of the session", "WHERE session_id = '<sequence.sessionId>'\nAND user_id = '<sequence.userId>'\nAND row_status = 'ACTIVE'",
            "Logout Success", AUTHEN_LOCK, "Lock order:", "Sessions of other devices are not changed."],
@@ -3440,7 +3542,7 @@ AUTHEN_COUNTED = {
     "10": [("WHERE ua.user_id = '<sequence.userId>'\nAND ua.row_status <> 'DELETED'", 2), ("AND ua.title ILIKE '%<sequence.search>%' -- only when search is specified", 2),
            ("AND ua.row_status = '<sequence.rowStatus>' -- only when rowStatus is specified", 2)],
     "05": [("INSERT INTO authen.t_user_access_token (", 1), ("INSERT INTO authen.t_user_refresh_token (", 1),
-           ("AND row_status = 'ACTIVE' -- only when the used token became INACTIVE more than 10 seconds ago", 2)],
+           ("AND row_status = 'ACTIVE' -- only on replay outside the 10-second grace window", 2)],
     "06": [("WHERE session_id = '<sequence.sessionId>'\nAND user_id = '<sequence.userId>'\nAND row_status = 'ACTIVE'", 2)],
     "02": [("INSERT INTO authen.t_user_access_token (", 1), ("INSERT INTO authen.t_user_refresh_token (", 1), ("INSERT INTO authen.l_user_login_attempt (", 1)],
     "09": [("ua.user_id = '<sequence.userId>'", 4)],
@@ -3738,9 +3840,26 @@ COMMANDS["authen-schema"] = check_authen_schema
 
 
 # ---------------------------------------------------------------- API sequence diagrams: spec SQL parity and table lifecycle
-SEQUENCE_SPEC_DIRS = (
-    "e-commerce/doc/api/authen-and-author",
-    "e-commerce/doc/api/consent",
+SEQUENCE_API_ROOT = "e-commerce/doc/api"
+# Groups whose sequence diagrams are all filled: an empty sequence.wsd in one of them fails the check.
+# Every other group may still be empty (pending), but each spec needs a sequence.wsd beside it.
+# The owner of the sequence work adds a group here when the group is complete.
+REQUIRED_GROUPS = ("authen-and-author", "consent")
+# Specs with INSERT, UPDATE or DELETE whose diagram does not follow the login standard yet (BEGIN, COMMIT, ROLLBACK,
+# HTTP 400 E10001, 408 E90001 and 500). They wait for a retrofit; an entry is an exact folder, never a wildcard, and the
+# check fails when a listed diagram already passes (remove it) or no longer has a write.
+LEGACY_SEQUENCES = (
+    # authen-and-author: waiting for a retrofit to the login standard
+    "authen-and-author/03-reset-password",
+    "authen-and-author/04-create-new-password",
+    "authen-and-author/06-logout",
+    "authen-and-author/07-upsert-user-profile",
+    "authen-and-author/09-upsert-user-address",
+    # consent: waiting for a retrofit to the login standard
+    "consent/02-upsert-consent",
+    "consent/04-submit-consent",
+    "consent/06-upsert-consent-type",
+    "consent/07-upsert-consent-type-batch",
 )
 
 
@@ -3818,49 +3937,187 @@ def sequence_database_operations(wsd: str) -> tuple[list[tuple[str, str, str]], 
     return operations, errors
 
 
+SEQUENCE_PARTICIPANT_CHAIN = ('participant "API" as api', 'participant "Application" as app', 'participant "Domain" as domain', 'participant "Infrastructure" as infra')
+SEQUENCE_HEAD = ('skinparam defaultFontName "Sarabun"', "hide footbox", 'actor "User" as user')
+SEQUENCE_BOXES = ('box "Frontend"', 'box "Web API"', 'box "Database"')
+SEQUENCE_LOCK = re.compile(r"FOR\s+(?:NO\s+KEY\s+)?UPDATE|FOR\s+(?:KEY\s+)?SHARE|pg_(?:try_)?advisory_(?:xact_)?lock", re.IGNORECASE)
+SEQUENCE_LOGIN_STANDARD = ("-> infra: BEGIN", "-> infra: COMMIT", "-> infra: ROLLBACK", "HTTP 400 E10001", "HTTP 408 E90001", "HTTP 500")
+
+
+def sequence_structure_errors(text: str) -> list[str]:
+    """Structure every filled sequence diagram follows (the login diagram is the model)."""
+    errors = []
+    if not text.startswith("@startuml ") or not text.rstrip().endswith("@enduml"):
+        errors.append("must have @startuml and @enduml")
+    if not re.search(r"^title .+$", text, re.MULTILINE):
+        errors.append("must have a title")
+    for needle in SEQUENCE_HEAD:
+        if needle not in text:
+            errors.append(f"missing {needle!r}")
+    boxes = re.findall(r'^box "([^"]+)"', text, re.MULTILINE)
+    if boxes != ["Frontend", "Web API", "Database"]:
+        errors.append(f"boxes must be Frontend, Web API, Database in that order, found {boxes}")
+    if len(re.findall(r"^end box$", text, re.MULTILINE)) != 3:
+        errors.append("every box must be closed with end box")
+    positions = [text.find(chain) for chain in SEQUENCE_PARTICIPANT_CHAIN]
+    if -1 in positions or positions != sorted(positions):
+        errors.append("the Web API box must hold the participants API, Application, Domain, Infrastructure in that order")
+    if not re.search(r"^\s*api -> app: \[\*\*\w+Handler\*\*\] .+$", text, re.MULTILINE):
+        errors.append("missing the handler line 'api -> app: [**XxxHandler**] ...'")
+    if "TODO(author)" in text:
+        errors.append("still has a TODO(author) marker")
+    return errors
+
+
+def sequence_login_standard_errors(text: str) -> list[str]:
+    """Transaction and error standard of the login diagram, for a diagram whose spec writes data."""
+    errors = [f"missing {needle!r}" for needle in SEQUENCE_LOGIN_STANDARD if needle not in text]
+    if errors:
+        return errors
+    interactions = [m.start() for m in re.finditer(r"^\s*infra -> \w+: (?:QUERY|INSERT|UPDATE|DELETE)", text, re.MULTILINE)]
+    writes = [m.start() for m in re.finditer(r"^\s*infra -> \w+: (?:INSERT|UPDATE|DELETE)", text, re.MULTILINE)]
+    # A read that only finds the row to lock (05-refresh-token) may come before BEGIN; every write must come after it.
+    lines = text.splitlines()
+    for position, line in enumerate(lines):
+        failure = re.match(r"^(\s*)app -> api: HTTP (408 E90001|500)\b", line)
+        if failure and (position == 0 or lines[position - 1] != failure.group(1) + "app -> infra: ROLLBACK"):
+            errors.append(f"line {position + 1}: HTTP {failure.group(2)} must follow 'app -> infra: ROLLBACK' on the line before")
+    for needle in ("HTTP 400 E10001", "HTTP 408 E90001", "HTTP 500"):
+        if not re.search(rf"^\s*app -> api: {re.escape(needle)}", text, re.MULTILINE):
+            errors.append(f"missing the answer line 'app -> api: {needle}'")
+    if "-> infra: BEGIN" in text and "HTTP 400 E10001" in text and text.index("HTTP 400 E10001") > text.index("-> infra: BEGIN"):
+        errors.append("the HTTP 400 E10001 answer belongs to the validation step before BEGIN")
+    begin = text.index("-> infra: BEGIN")
+    if writes and begin > writes[0]:
+        errors.append("BEGIN must come before the first INSERT, UPDATE or DELETE")
+    # A lock taken outside the transaction is released at once, so every locking statement comes after BEGIN
+    # (05-refresh-token reads the row to lock before BEGIN, but that read takes no lock).
+    for match in re.finditer(r"^\s*infra -> \w+: (?:QUERY|INSERT|UPDATE|DELETE)", text, re.MULTILINE):
+        following = re.search(r"^\s*(?:app|infra) -> ", text[match.end():], re.MULTILINE)
+        statement = text[match.start(): match.end() + following.start() if following else len(text)]
+        if match.start() < begin and SEQUENCE_LOCK.search(statement):
+            errors.append(f"line {text.count(chr(10), 0, match.start()) + 1}: a locking statement (FOR UPDATE / advisory lock) must come after BEGIN")
+    # Every error answer inside the transaction ends it first: the closest 'app -> infra:' line that leads to it is
+    # ROLLBACK or COMMIT. "Leads to it" follows the nesting by indentation: lines of closed branches (deeper) are skipped
+    # and a lower indent moves out to the enclosing block, so the ROLLBACK of a sibling branch does not count.
+    offset = 0
+    for position, line in enumerate(lines):
+        line_start, offset = offset, offset + len(line) + 1
+        if not re.match(r"^\s*app -> api: HTTP [45]\d\d\b", line) or line_start < begin:
+            continue
+        indent = len(line) - len(line.lstrip())
+        previous = ""
+        for item in reversed(lines[:position]):
+            if not item.strip():
+                continue
+            item_indent = len(item) - len(item.lstrip())
+            if item_indent < indent:
+                indent = item_indent
+            if item_indent == indent and item.lstrip().startswith("app -> infra:"):
+                previous = item.strip()
+                break
+        if previous not in ("app -> infra: ROLLBACK", "app -> infra: COMMIT"):
+            errors.append(f"line {position + 1}: {line.strip().split(': ', 1)[1]} inside the transaction must follow 'app -> infra: ROLLBACK' or 'COMMIT' (found {previous!r})")
+    if interactions and text.rindex("-> infra: COMMIT") < interactions[-1]:
+        errors.append("COMMIT must come after the last SQL interaction")
+    return errors
+
+
+def sequence_block_errors(spec_operations, sequence_operations, declared_tables) -> list[str]:
+    """Blocks of a sequence against the blocks of its spec: every block exactly once or more, in any order.
+
+    A block is its table, its heading and its SQL (normalized). The diagram may put the blocks in the order the work runs
+    and repeat a block in several branches; it may not add a block, drop one or change one letter of its SQL. The database
+    participants are the tables of the spec, declared in the order of their first use in the diagram.
+    """
+    errors = []
+    spec_blocks = [(table.split(".")[-1], heading, normalize(sql)) for table, heading, sql in spec_operations]
+    spec_set = set(spec_blocks)
+    used = set()
+    for position, (table, heading, sql) in enumerate(sequence_operations, start=1):
+        key = (table, heading, normalize(sql))
+        if key in spec_set:
+            used.add(key)
+        elif any(block[:2] == (table, heading) for block in spec_blocks):
+            errors.append(f"interaction {position} {table} / {heading}: the SQL is not the SQL of any block of the spec with that table and heading")
+        else:
+            errors.append(f"interaction {position} {table} / {heading}: no block of the spec has this table and heading")
+    for table, heading, sql in dict.fromkeys(spec_blocks):
+        if (table, heading, sql) in used:
+            continue
+        same_name = [block for block in spec_blocks if block[:2] == (table, heading)]
+        detail = f" (the one whose SQL starts with {sql.splitlines()[0][:60]!r})" if len(set(same_name)) > 1 else ""
+        errors.append(f"the block {table} / {heading} of the spec{detail} is missing from the diagram")
+    spec_tables = list(dict.fromkeys(block[0] for block in spec_blocks))
+    first_use = list(dict.fromkeys(table for table, _, _ in sequence_operations))
+    for table in spec_tables:
+        if table not in declared_tables:
+            errors.append(f"database participant {table} of the spec is not declared")
+    for table in dict.fromkeys(declared_tables):
+        if table not in spec_tables:
+            errors.append(f"database participant {table} is not a table of the spec")
+    if len(set(declared_tables)) != len(declared_tables):
+        errors.append(f"database participants {declared_tables} declare a table twice")
+    elif set(declared_tables) == set(first_use) and declared_tables != first_use:
+        errors.append(f"database participants {declared_tables} must be declared in the order of first use in the diagram {first_use}")
+    return errors
+
+
 def check_api_sequence_spec() -> int:
     errors = []
-    pairs = []
-    for directory in SEQUENCE_SPEC_DIRS:
-        pairs.extend(sorted((ROOT / directory).glob("*/spec.md")))
-    if len(pairs) != 18:
-        errors.append(f"expected 18 API specs in authen-and-author and consent, found {len(pairs)}")
-    for spec_path in pairs:
+    api_root = ROOT / SEQUENCE_API_ROOT
+    specs = sorted(api_root.glob("*/*/spec.md"))
+    groups: dict[str, list[int]] = {}
+    legacy_seen = set()
+    if not specs:
+        errors.append(f"no spec.md found under {SEQUENCE_API_ROOT}")
+    for group in REQUIRED_GROUPS:
+        if not (api_root / group).is_dir():
+            errors.append(f"required group {group} does not exist")
+        elif not any(spec.parent.parent.name == group for spec in specs):
+            errors.append(f"required group {group} has no spec")
+    for entry in LEGACY_SEQUENCES:
+        if not (api_root / entry / "spec.md").exists():
+            errors.append(f"LEGACY_SEQUENCES lists {entry}, which is not a spec folder")
+    for spec_path in specs:
+        group = spec_path.parent.parent.name
+        folder = f"{group}/{spec_path.parent.name}"
+        counts = groups.setdefault(group, [0, 0])
+        counts[1] += 1
         sequence_path = spec_path.with_name("sequence.wsd")
         relative_spec = spec_path.relative_to(ROOT)
         relative_sequence = sequence_path.relative_to(ROOT)
-        if not sequence_path.exists() or not sequence_path.read_text(encoding="utf-8").strip():
-            errors.append(f"{relative_sequence}: missing or empty")
+        if not sequence_path.exists():
+            errors.append(f"{relative_sequence}: missing (create an empty file while the group is pending)")
             continue
-        spec_operations = spec_database_operations(spec_path.read_text(encoding="utf-8"))
         sequence_text = sequence_path.read_text(encoding="utf-8")
+        if not sequence_text.strip():
+            if group in REQUIRED_GROUPS:
+                errors.append(f"{relative_sequence}: empty, but {group} is a required group")
+            continue
+        counts[0] += 1
+        spec_operations = spec_database_operations(spec_path.read_text(encoding="utf-8"))
         sequence_operations, lifecycle_errors = sequence_database_operations(sequence_text)
         errors.extend(f"{relative_sequence}: {error}" for error in lifecycle_errors)
+        errors.extend(f"{relative_sequence}: {error}" for error in sequence_structure_errors(sequence_text))
+        has_write = any(heading.split(" - ")[0] in ("INSERT", "UPDATE", "DELETE") for _, heading, _ in spec_operations)
+        standard_errors = sequence_login_standard_errors(sequence_text) if has_write else []
+        if folder in LEGACY_SEQUENCES:
+            legacy_seen.add(folder)
+            if not has_write:
+                errors.append(f"{relative_sequence}: listed in LEGACY_SEQUENCES but its spec has no INSERT, UPDATE or DELETE")
+            elif not standard_errors:
+                errors.append(f"{relative_sequence}: already follows the login standard, remove it from LEGACY_SEQUENCES")
+        else:
+            errors.extend(f"{relative_sequence}: login standard: {error}" for error in standard_errors)
         declared_tables = re.findall(r'^\s*database "[^"]+" as (\w+)$', sequence_text, re.MULTILINE)
-        expected_tables = list(dict.fromkeys(table.split(".")[-1] for table, _, _ in spec_operations))
-        if declared_tables != expected_tables:
-            errors.append(
-                f"{relative_sequence}: database participants {declared_tables} differ from spec tables {expected_tables}"
-            )
-        if not sequence_text.startswith("@startuml ") or not sequence_text.rstrip().endswith("@enduml"):
-            errors.append(f"{relative_sequence}: must have @startuml and @enduml")
-        if len(spec_operations) != len(sequence_operations):
-            errors.append(
-                f"{relative_sequence}: has {len(sequence_operations)} table interactions but {relative_spec} has {len(spec_operations)} SQL blocks"
-            )
-            continue
-        for position, (spec_operation, sequence_operation) in enumerate(zip(spec_operations, sequence_operations), start=1):
-            table, heading, sql = spec_operation
-            sequence_table, sequence_heading, sequence_sql = sequence_operation
-            if sequence_table != table.split(".")[-1] or sequence_heading != heading:
-                errors.append(
-                    f"{relative_sequence}: interaction {position} is {sequence_table} / {sequence_heading}, expected {table} / {heading}"
-                )
-            if normalize(sequence_sql) != normalize(sql):
-                errors.append(f"{relative_sequence}: interaction {position} SQL differs from {relative_spec}")
+        errors.extend(f"{relative_sequence}: {error}" for error in sequence_block_errors(spec_operations, sequence_operations, declared_tables))
     if errors:
         return fail("; ".join(errors))
-    print("OK: api-sequence-spec (18 specs, SQL parity and table lifecycle)")
+    summary = ", ".join(
+        f"{group} {filled}/{total}{'' if group in REQUIRED_GROUPS else ' pending' if filled < total else ''}" for group, (filled, total) in sorted(groups.items())
+    )
+    print(f"OK: api-sequence-spec ({len(specs)} specs; filled/total per group: {summary}; {len(LEGACY_SEQUENCES)} legacy without the login standard)")
     return 0
 
 
@@ -5063,6 +5320,146 @@ def check_admin_write_spec() -> int:
 
 
 COMMANDS["admin-write-spec"] = check_admin_write_spec
+
+
+def check_refresh_flow() -> int:
+    """Check refresh rotation and replay as distinct committed/rolled-back paths."""
+    path = AUTHEN_SPECS['05']
+    md = read(path)
+    wsd = read(str(Path(path).with_name('sequence.wsd')))
+    errors = []
+    operations = spec_database_operations(md)
+    sql = {heading: statement for _, heading, statement in operations}
+    required = {
+        'QUERY - Find the refresh token': ['rt.id', 'rt.user_id', '<sequence.presentedRefreshTokenHash>', '<sequence.lookupNow>'],
+        'QUERY - Lock the user': ["u.row_status = 'ACTIVE'", 'FOR UPDATE', '<sequence.userId>'],
+        'QUERY - Reread the refresh token after user lock': ['rt.row_status', 'rt.updated_at', 'rt.expired_at', 'rt.session_id', '<sequence.refreshTokenId>', '<sequence.userId>', '<sequence.presentedRefreshTokenHash>'],
+        'UPDATE - Use the refresh token once': ["row_status = 'INACTIVE'", "updated_at = '<sequence.now>'", "AND row_status = 'ACTIVE'", "AND expired_at > '<sequence.now>'", "AND user_id = '<sequence.userId>'", "AND session_id = '<sequence.sessionId>'", "AND token = '<sequence.presentedRefreshTokenHash>'", 'RETURNING session_id'],
+        'INSERT - Create access token': ['<sequence.accessTokenHash>', '<sequence.sessionId>', '<sequence.accessExpiredAt>'],
+        'INSERT - Create refresh token': ['<sequence.newRefreshTokenHash>', '<sequence.sessionId>', '<sequence.refreshExpiredAt>'],
+        'UPDATE - Close the refresh tokens of the session (reuse)': ["WHERE session_id = '<sequence.sessionId>'", "AND user_id = '<sequence.userId>'", "AND row_status = 'ACTIVE'", "updated_at = '<sequence.now>'"],
+        'UPDATE - Close the access tokens of the session (reuse)': ["WHERE session_id = '<sequence.sessionId>'", "AND user_id = '<sequence.userId>'", "AND row_status = 'ACTIVE'", "updated_at = '<sequence.now>'"],
+    }
+    for heading, needles in required.items():
+        statement = re.sub(r'--[^\n]*', '', sql.get(heading, ''))
+        for needle in needles:
+            if needle not in statement:
+                errors.append(f'{heading}: missing {needle}')
+    if '<sequence.presentedRefreshTokenHash>' in sql.get('INSERT - Create refresh token', ''):
+        errors.append('replacement refresh must not reuse the presented credential hash')
+    if 'NOW()' in sql.get('UPDATE - Use the refresh token once', ''):
+        errors.append('consume must use post-lock now, not transaction-start NOW()')
+    login_claims = [o for o in spec_database_operations(read(AUTHEN_SPECS['02'])) if o[0].startswith('author.')]
+    refresh_claims = [o for o in operations if o[0].startswith('author.')]
+    if [(t,h,normalize(s)) for t,h,s in login_claims] != [(t,h,normalize(s)) for t,h,s in refresh_claims]:
+        errors.append('refresh must resolve current claims using all eight canonical login queries')
+    for needle in ('2026-11-07-api-review-design.md', 'permission-specific',
+                   'at exactly 10 seconds', 'updated_at', 'issuedAt'):
+        if needle.lower() not in md.lower():
+            errors.append(f'refresh spec missing {needle}')
+    front = re.match(r'---\n(.*?)\n---\n', md, re.DOTALL)
+    if not front:
+        errors.append('refresh spec needs approval metadata')
+    else:
+        state = re.search(r'^status: (draft|in-review|approved)$', front.group(1), re.MULTILINE)
+        if not state:
+            errors.append('refresh spec has invalid status')
+        for field in ('approved_by', 'approved_at'):
+            value = re.search(rf'^{field}: (.+)$', front.group(1), re.MULTILINE)
+            if not value or (state and ((state.group(1) == 'approved') == (value.group(1) == 'null'))):
+                errors.append(f'refresh spec has inconsistent {field}')
+    guards = ('alt Owner lookup returned no row', 'alt ACTIVE user row returned',
+              'alt Fresh row is ACTIVE and expired_at > now',
+              'alt Conditional consume returned session_id',
+              'else Conditional consume returned no row',
+              'else Fresh row is INACTIVE, unexpired, updated_at known and now < updated_at + 10 seconds',
+              'else Fresh row is INACTIVE, unexpired and outside grace (or updated_at is NULL)',
+              'else Fresh row missing, expired or another status')
+    for guard in guards:
+        if not re.search(r'^\s*' + re.escape(guard) + r'\s*$', wsd, re.MULTILINE):
+            errors.append(f'refresh sequence missing branch {guard}')
+    for note in re.finditer(r'(?m)^([ \t]*)note right of \w+\n(.*?)^\1end note$', wsd, re.DOTALL):
+        if any(line.lstrip().startswith("'") for line in note.group(2).splitlines()):
+            errors.append('leading SQL literal would be hidden by PlantUML')
+    lines = wsd.splitlines()
+    for i,line in enumerate(lines):
+        request = re.match(r'^(\s*)infra -> (\w+): ((?:QUERY|INSERT|UPDATE)[^\n]*)$', line)
+        if not request: continue
+        pad, table, heading = request.groups()
+        if i == 0 or lines[i-1].strip() != 'app -> infra: ' + heading:
+            errors.append(f'{heading}: missing Application request')
+        end = next((j for j in range(i+1,len(lines)) if lines[j] == pad+'deactivate '+table), None)
+        if end is None or end+1 >= len(lines) or not lines[end+1].startswith(pad+'infra -> app: Return '):
+            errors.append(f'{heading}: missing result returned to Application')
+    if '--rendered-svg' in sys.argv:
+        from collections import Counter
+        import xml.etree.ElementTree as ET
+        try:
+            root = ET.parse(sys.argv[sys.argv.index('--rendered-svg')+1]).getroot()
+            expected = Counter(' '.join(line.split()) for _,_,statement in operations for line in statement.splitlines() if line.strip())
+            visible = Counter(' '.join(''.join(e.itertext()).split()) for e in root.iter() if e.tag.endswith('}text'))
+            missing = expected-visible
+            if missing: errors.append(f'rendered refresh SQL missing {sum(missing.values())}/{sum(expected.values())} lines')
+            else: print(f'OK: rendered refresh SQL ({sum(expected.values())}/{sum(expected.values())} visible lines)')
+        except (IndexError, OSError, ET.ParseError) as exc:
+            errors.append(f'cannot verify rendered refresh SVG: {exc}')
+    for title,code in {'Success':200,'Fail - Bad Request':400,'Fail - Unauthorized':401,'Fail - Request Timeout':408,'Fail - Internal Server Error':500}.items():
+        try:
+            status=authen_json(md,title)['status']
+            if status['code'] != code or (code==500 and 'bizCode' in status):
+                errors.append(f'{title}: incorrect HTTP example or invented internal bizCode')
+        except (KeyError,TypeError,AttributeError,ValueError):
+            errors.append(f'{title}: missing response example')
+    traces, structure = login_sequence_paths(wsd)
+    errors.extend(structure)
+    outcomes=[]
+    for trace in traces:
+        response=[e for e in trace if e.startswith('app -> api: HTTP ')]
+        if len(response)!=1:
+            errors.append('each refresh trace needs exactly one HTTP outcome');continue
+        code=int(response[0].split('HTTP ')[1].split()[0]);outcomes.append(code)
+        joined='\n'.join(trace)
+        def ordered(*needles):
+            pos=[next((i for i,e in enumerate(trace) if n in e),-1) for n in needles]
+            return -1 not in pos and pos==sorted(set(pos))
+        begins=any(e.startswith('app -> infra: BEGIN') for e in trace)
+        commits=any(e=='app -> infra: COMMIT' for e in trace)
+        rolls_back=any(e=='app -> infra: ROLLBACK' for e in trace)
+        inserts=[e for e in trace if e.startswith('infra -> ') and ': INSERT' in e]
+        closes=['UPDATE - Close the refresh tokens of the session (reuse)' in joined,
+                'UPDATE - Close the access tokens of the session (reuse)' in joined]
+        if code==400:
+            if begins or any(e.startswith('infra -> ') for e in trace): errors.append('400 must have no SQL or transaction')
+        elif code in (408,500):
+            if commits or not ordered('BEGIN','ROLLBACK',f'HTTP {code}'): errors.append('pre-commit failure must roll back')
+        elif code==200:
+            if closes!=[False,False] or rolls_back or not ordered('QUERY - Find the refresh token','BEGIN','QUERY - Lock the user','Capture UTC now','QUERY - Reread the refresh token after user lock','UPDATE - Use the refresh token once','Build verified authorization claims','INSERT - Create access token','INSERT - Create refresh token','app -> infra: COMMIT','HTTP 200'):
+                errors.append('rotation must reread/consume under lock, reload claims, issue both tokens and commit without replay revocation')
+            for _,heading,_ in login_claims:
+                if not ordered('UPDATE - Use the refresh token once',heading,'Build verified authorization claims'):
+                    errors.append('current claim queries must follow the successful consume and precede claim construction')
+            for field in ('tokenType','accessToken','refreshAccessToken','expiresIn'):
+                if not re.search(r'\b'+field+r'\b',response[0]): errors.append(f'success omits {field}')
+        elif code==401:
+            if inserts: errors.append('401 must not create replacement token rows')
+            if any(closes):
+                if closes!=[True,True] or rolls_back or not ordered('QUERY - Lock the user','QUERY - Reread the refresh token after user lock','UPDATE - Close the refresh tokens of the session (reuse)','UPDATE - Close the access tokens of the session (reuse)','app -> infra: COMMIT','HTTP 401'):
+                    errors.append('older replay must durably close both token tables before 401')
+                if 'UPDATE - Use the refresh token once' in joined: errors.append('replay must not execute normal rotation')
+            elif begins:
+                if commits or not ordered('BEGIN','ROLLBACK','HTTP 401'): errors.append('invalid/recent-duplicate paths must roll back without committing')
+            elif not ordered('QUERY - Find the refresh token','HTTP 401'):
+                errors.append('missing owner must fail after lookup without a transaction')
+        if 'QUERY - Reread the refresh token after user lock' in joined and not ordered('QUERY - Lock the user','Capture UTC now','QUERY - Reread the refresh token after user lock'):
+            errors.append('replay classification requires the post-lock reread and timestamp')
+    if sorted(outcomes)!=[200,400,401,401,401,401,401,401,408,500]:
+        errors.append(f'expected ten refresh paths, got {sorted(outcomes)}')
+    if errors: return fail('; '.join(errors))
+    print('OK: refresh-flow (10 outcome paths, fresh claims, post-lock reread and replay commit)')
+    return 0
+
+
+COMMANDS['refresh-flow'] = check_refresh_flow
 
 
 def check_register_flow() -> int:
