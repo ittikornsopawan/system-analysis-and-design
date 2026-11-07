@@ -237,13 +237,15 @@ Verification: when the pull request was opened `check_docs.py` passed 24 of 24, 
 
 ## e-commerce: Lead review of the SA work packages
 
-Status: In progress. Merged after the lead's review: WP3 shipping (pull request 10), WP6 master tables (11), WP4 authen (12), WP7 campaign (15), WP5 step 5a (17). Open work: WP3b (Tommy, waiting to prepare after the registry change in pull request 18) and WP5 step 5c (Marry, narrow scope under `e-commerce`).
+Status: In progress. Merged after the lead's review: WP3 shipping (pull request 10), WP6 master tables (11), WP4 authen (12), WP7 campaign (15), WP5 step 5a (17) and step 5c (20). Open work: WP3b (Tommy; gate 1 passed on 2026-11-07, round 2 in progress).
 
-- [x] Review gate 1 and gate 2 of WP3, WP6, WP4, WP7 and WP5 5a, run the checkers in each analyst's tree and read the changed specs.
+- [x] Review gate 1 and gate 2 of WP3, WP6, WP4, WP7 and WP5 5a and 5c, run the checkers in each analyst's tree and read the changed specs.
 - [x] Fix the first team protocol so that the analysts write `tasks/todo.md` and `tasks/lessons.md` as `CLAUDE.md` requires.
 - [x] Move the analysts' assignments to managed workspaces and widen the registry scope of tommy and marry (pull request 18) after the named-agent rule was merged.
-- [ ] Review gate 1 of WP3b and gate 2 of WP3b and WP5 5c.
-- [ ] Backlog for the owner's order: merge the two `er_name_rows` helpers of `check_docs.py`, extend `audit_all.py` to a column without an alias in the `WHERE` of an `UPDATE`, retrofit the plain `UNIQUE` and `CASCADE` of the older master tables, decide the 409 of `01-register`, decide whether the login sequence diagram keeps permission claims in the JWT (A16 says no), name who runs `grant-platform-admin.sql` at the first deployment, rewrite the team protocol in `docs/handoff/` to match the named-agent rule.
+- [x] Decide the 409 of `01-register` (owner on 2026-11-07: "เลือกให้เลย", the choice is the lead's). Decision: keep the 409 with its single message that does not say whether the username or the email exists, no change to the spec. Why: there is no email verification, so a neutral answer would leave a real user without a way to know why registration failed; the login answer is already the same for every failure and the lock limits guessing. Cost if wrong: add email verification and answer every registration the same way, which is a new work package. The registration rate limit belongs to the gateway and is not specified.
+- [x] First platform administrator (owner on 2026-11-07, answered the lead's recommendation that the system operator runs `grant-platform-admin.sql` after confirming the user id: "แค่เก็บ data ไว้ เดี๋ยว dba มา export ให้การเงิน"). The lead reads this as: the database administrator is the system operator who runs the command, and the data is only stored, with no API for finance because the DBA exports it directly. This reading is not confirmed by the owner. Nothing in the specs changes.
+- [ ] Review gate 2 of WP3b.
+- [ ] Backlog for the owner's order: merge the two `er_name_rows` helpers of `check_docs.py` (check first that the API review did not already do it), extend `audit_all.py` to a column without an alias in the `WHERE` of an `UPDATE`, retrofit the plain `UNIQUE` and `CASCADE` of the older master tables, rewrite the team protocol in `docs/handoff/` to match the named-agent rule. Decided elsewhere: JWT claims are the authorization source (owner with Peter, 2026-11-07).
 
 Verification: each gate was checked by running every `check_docs.py` sub-command, `audit_all.py` and `run_db_tests.sh` in the analyst's tree and by reading the changed specs. The analysts' own mutation tests were not rerun by the lead.
 
