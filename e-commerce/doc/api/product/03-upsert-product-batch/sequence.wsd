@@ -1,0 +1,986 @@
+@startuml UpsertProductBatch Sequence
+
+title Upsert Product Batch API Sequence
+
+' Leading SQL apostrophes use &#39; so PlantUML preserves literals; parity compares decoded SQL.
+
+' Visual style
+skinparam defaultFontName "Sarabun"
+skinparam defaultFontSize 14
+skinparam backgroundColor #FFFFFF
+skinparam shadowing false
+skinparam roundcorner 10
+skinparam sequence {
+    ArrowColor #475569
+    ArrowFontColor #334155
+    LifeLineBorderColor #CBD5E1
+    LifeLineBackgroundColor #F8FAFC
+    ParticipantBorderColor #94A3B8
+    ParticipantBackgroundColor #F1F5F9
+    ParticipantFontColor #0F172A
+    GroupBorderColor #94A3B8
+    GroupBackgroundColor #F8FAFC
+    GroupFontColor #334155
+}
+
+' Do not show participant footers at the bottom of the diagram
+hide footbox
+
+actor "User" as user
+box "Frontend" #F8FAFC
+    participant "Upsert Product Batch Page" as page
+end box
+box "Web API" #F8FAFC
+    participant "API" as api
+    participant "Application" as app
+    participant "Domain" as domain
+    participant "Infrastructure" as infra
+end box
+box "Database" #F8FAFC
+    database "m_product_type" as m_product_type
+    database "m_product_category" as m_product_category
+    database "m_product_brand" as m_product_brand
+    database "m_product" as m_product
+    database "m_product_category_attribute" as m_product_category_attribute
+    database "m_product_attribute" as m_product_attribute
+    database "m_product_option" as m_product_option
+    database "m_product_option_value" as m_product_option_value
+    database "m_product_image" as m_product_image
+    database "m_role" as m_role
+    database "t_user_role" as t_user_role
+    database "m_product_sku" as m_product_sku
+    database "t_campaign_product" as t_campaign_product
+    database "m_product_sku_option_value" as m_product_sku_option_value
+end box
+
+user -> page: Submit Upsert Product Batch
+activate page
+    page -> api: POST v1/product/upsert/batch
+    activate api
+        api -> app: [**UpsertProductBatchCommandHandler**] Process request
+        activate app
+            app -> app: Create request context; generate requestId when omitted
+            app -> app: Validate headers and body
+            alt Invalid input
+                app -> api: HTTP 400 E10001
+                api -> page: Bad request
+                page -> user: Display validation error
+            else Valid input
+                app -> app: Verify JWT signature/issuer/audience/exp/UUID sub
+                alt Missing, malformed or invalid JWT
+                    app -> api: HTTP 401 E10002 Invalid or expired access token.
+                    api -> page: Authentication error
+                    page -> user: Display authentication error
+                else Verified JWT
+                    app -> app: userId = verified sub
+                    app -> infra: BEGIN READ COMMITTED
+                    activate infra
+                    alt Work completes before commit
+                            app -> infra: QUERY - Check product types
+                            infra -> m_product_type: QUERY - Check product types
+                            activate m_product_type
+                                note right of m_product_type
+                                    SELECT
+                                        pt.id as type_id
+                                    FROM product.m_product_type pt
+                                    WHERE pt.id IN ('<sequence.products.typeIds>')
+                                    AND pt.row_status = 'ACTIVE'
+                                end note
+                                m_product_type -> infra: Return query result
+                            deactivate m_product_type
+                            infra -> app: Return result of Check product types
+                            app -> infra: QUERY - Check product categories
+                            infra -> m_product_category: QUERY - Check product categories
+                            activate m_product_category
+                                note right of m_product_category
+                                    SELECT
+                                        pc.id as category_id
+                                    FROM product.m_product_category pc
+                                    WHERE pc.id IN ('<sequence.products.categoryIds>')
+                                    AND pc.row_status = 'ACTIVE'
+                                end note
+                                m_product_category -> infra: Return query result
+                            deactivate m_product_category
+                            infra -> app: Return result of Check product categories
+                            app -> infra: QUERY - Check product brands
+                            infra -> m_product_brand: QUERY - Check product brands
+                            activate m_product_brand
+                                note right of m_product_brand
+                                    SELECT
+                                        pb.id as brand_id
+                                    FROM product.m_product_brand pb
+                                    WHERE pb.id IN ('<sequence.products.brandIds>')
+                                    AND pb.row_status = 'ACTIVE'
+                                end note
+                                m_product_brand -> infra: Return query result
+                            deactivate m_product_brand
+                            infra -> app: Return result of Check product brands
+                            alt items[i]: product type, category or brand not found or not ACTIVE
+                                app -> infra: ROLLBACK
+                                app -> api: HTTP 404 E10005 items[i]: Product type, category or brand not found.
+                                api -> page: Not found
+                                page -> user: Display error message
+                            end
+                            loop For each product (request order)
+                                alt id is specified
+                                    app -> infra: QUERY - Check existing products
+                                    infra -> m_product: QUERY - Check existing products
+                                    activate m_product
+                                        note right of m_product
+                                            SELECT
+                                                p.id as product_id,
+                                                p.category_id
+                                            FROM product.m_product p
+                                            WHERE p.id IN ('<sequence.products.ids>')
+                                        end note
+                                        m_product -> infra: Return query result
+                                    deactivate m_product
+                                    infra -> app: Return result of Check existing products
+                                    alt items[i]: product not found or DELETED
+                                        app -> infra: ROLLBACK
+                                        app -> api: HTTP 404 E10004 items[i]: Product not found.
+                                        api -> page: Not found
+                                        page -> user: Display error message
+                                    end
+                                end
+                                alt attributes are specified
+                                    app -> infra: QUERY - Check product category attributes
+                                    infra -> m_product_category_attribute: QUERY - Check product category attributes
+                                    activate m_product_category_attribute
+                                        note right of m_product_category_attribute
+                                            SELECT
+                                                pca.id as attribute_id
+                                            FROM product.m_product_category_attribute pca
+                                            WHERE pca.id IN ('<sequence.products.attributes.attributeIds>')
+                                            AND pca.category_id = '<sequence.products.categoryId>'
+                                            AND pca.row_status = 'ACTIVE'
+                                        end note
+                                        m_product_category_attribute -> infra: Return query result
+                                    deactivate m_product_category_attribute
+                                    infra -> app: Return result of Check product category attributes
+                                    alt items[i]: attribute of the category not found
+                                        app -> infra: ROLLBACK
+                                        app -> api: HTTP 404 E10005 items[i]: Product category attribute not found.
+                                        api -> page: Not found
+                                        page -> user: Display error message
+                                    end
+                                end
+                                alt id is specified
+                                    app -> infra: QUERY - Get existing product attributes
+                                    infra -> m_product_attribute: QUERY - Get existing product attributes
+                                    activate m_product_attribute
+                                        note right of m_product_attribute
+                                            SELECT
+                                                pa.id as product_attribute_id,
+                                                pa.attribute_id
+                                            FROM product.m_product_attribute pa
+                                            WHERE pa.product_id = '<sequence.products.id>'
+                                            AND pa.row_status <> 'DELETED'
+                                        end note
+                                        m_product_attribute -> infra: Return query result
+                                    deactivate m_product_attribute
+                                    infra -> app: Return result of Get existing product attributes
+                                end
+                                alt options are specified and id is specified
+                                    app -> infra: QUERY - Get existing product options
+                                    infra -> m_product_option: QUERY - Get existing product options
+                                    activate m_product_option
+                                        note right of m_product_option
+                                            SELECT
+                                                po.id as option_id,
+                                                po.name,
+                                                po.level_no,
+                                                po.row_status
+                                            FROM product.m_product_option po
+                                            WHERE po.product_id = '<sequence.products.id>'
+                                            AND po.row_status <> 'DELETED'
+                                            ORDER BY po.level_no
+                                        end note
+                                        m_product_option -> infra: Return query result
+                                    deactivate m_product_option
+                                    infra -> app: Return result of Get existing product options
+                                    alt items[i]: option id not found or DELETED
+                                        app -> infra: ROLLBACK
+                                        app -> api: HTTP 404 E10004 items[i]: Product option not found.
+                                        api -> page: Not found
+                                        page -> user: Display error message
+                                    end
+                                    app -> infra: QUERY - Get existing product option values
+                                    infra -> m_product_option_value: QUERY - Get existing product option values
+                                    activate m_product_option_value
+                                        note right of m_product_option_value
+                                            SELECT
+                                                pov.id as option_value_id,
+                                                pov.option_id,
+                                                pov.value,
+                                                pov.sort_order,
+                                                pov.row_status
+                                            FROM product.m_product_option_value pov
+                                            INNER JOIN product.m_product_option po ON po.id = pov.option_id
+                                            WHERE po.product_id = '<sequence.products.id>'
+                                            AND pov.row_status <> 'DELETED'
+                                        end note
+                                        m_product_option_value -> infra: Return query result
+                                    deactivate m_product_option_value
+                                    infra -> app: Return result of Get existing product option values
+                                    alt items[i]: option value id not found or DELETED
+                                        app -> infra: ROLLBACK
+                                        app -> api: HTTP 404 E10004 items[i]: Product option value not found.
+                                        api -> page: Not found
+                                        page -> user: Display error message
+                                    end
+                                end
+                                alt images are specified
+                                    app -> infra: QUERY - Check existing product images
+                                    infra -> m_product_image: QUERY - Check existing product images
+                                    activate m_product_image
+                                        note right of m_product_image
+                                            SELECT
+                                                pi.id as image_id
+                                            FROM product.m_product_image pi
+                                            WHERE pi.id IN ('<sequence.products.images.ids>')
+                                            AND pi.product_id = '<sequence.products.id>'
+                                            AND pi.option_value_id IS NULL
+                                        end note
+                                        m_product_image -> infra: Return query result
+                                    deactivate m_product_image
+                                    infra -> app: Return result of Check existing product images
+                                    app -> infra: QUERY - Check existing product option value images
+                                    infra -> m_product_image: QUERY - Check existing product option value images
+                                    activate m_product_image
+                                        note right of m_product_image
+                                            SELECT
+                                                pi.id as image_id
+                                            FROM product.m_product_image pi
+                                            WHERE pi.id IN ('<sequence.products.options.values.images.ids>')
+                                            AND pi.option_value_id = '<sequence.optionValueId>'
+                                        end note
+                                        m_product_image -> infra: Return query result
+                                    deactivate m_product_image
+                                    infra -> app: Return result of Check existing product option value images
+                                    alt items[i]: image id not found
+                                        app -> infra: ROLLBACK
+                                        app -> api: HTTP 404 E10004 items[i]: Product image not found.
+                                        api -> page: Not found
+                                        page -> user: Display error message
+                                    end
+                                end
+                            end
+                            app -> infra: QUERY - Get the platform administrator role
+                            infra -> m_role: QUERY - Get the platform administrator role
+                            activate m_role
+                                note right of m_role
+                                    SELECT
+                                        r.id as role_id
+                                    FROM author.m_role r
+                                    WHERE r.name = 'PLATFORM_ADMIN'
+                                    AND r.row_status = 'ACTIVE'
+                                end note
+                                m_role -> infra: Return query result
+                            deactivate m_role
+                            infra -> app: Return result of Get the platform administrator role
+                            app -> infra: QUERY - Check platform administrator
+                            infra -> t_user_role: QUERY - Check platform administrator
+                            activate t_user_role
+                                note right of t_user_role
+                                    SELECT
+                                        ur.id as user_role_id
+                                    FROM author.t_user_role ur
+                                    WHERE ur.user_id = '<sequence.userId>'
+                                    AND ur.role_id = '<sequence.roleId>'
+                                    AND ur.row_status = 'ACTIVE'
+                                end note
+                                t_user_role -> infra: Return query result
+                            deactivate t_user_role
+                            infra -> app: Return result of Check platform administrator
+                            alt No ACTIVE PLATFORM_ADMIN role or the caller does not hold it
+                                app -> infra: ROLLBACK
+                                app -> api: HTTP 403 E10009 You do not have permission to manage products.
+                                api -> page: Forbidden
+                                page -> user: Display error message
+                            end
+                            loop For each product (request order, one transaction)
+                                alt levels are added, removed or reordered
+                                    app -> infra: QUERY - Check product SKUs in use
+                                    infra -> m_product_sku: QUERY - Check product SKUs in use
+                                    activate m_product_sku
+                                        note right of m_product_sku
+                                            SELECT
+                                                s.id as sku_id
+                                            FROM product.m_product_sku s
+                                            WHERE s.product_id = '<sequence.productId>'
+                                            AND s.row_status <> 'DELETED'
+                                            AND (
+                                                EXISTS (SELECT 1 FROM shop.t_shop_product_sku tsps WHERE tsps.sku_id = s.id)
+                                                OR EXISTS (SELECT 1 FROM cart.t_cart c WHERE c.sku_id = s.id)
+                                                OR EXISTS (SELECT 1 FROM sales.t_order_item oi WHERE oi.sku_id = s.id)
+                                            )
+                                        end note
+                                        m_product_sku -> infra: Return query result
+                                    deactivate m_product_sku
+                                    infra -> app: Return result of Check product SKUs in use
+                                    alt items[i]: a SKU of the product is used in a shop product SKU, a cart or an order item
+                                        app -> infra: ROLLBACK
+                                        app -> api: HTTP 409 E10006 items[i]: Product options cannot be changed because SKUs are used.
+                                        api -> page: Conflict
+                                        page -> user: Display error message
+                                    end
+                                end
+                                alt rowStatus is DELETED
+                                    app -> infra: QUERY - Check product campaigns in use
+                                    infra -> t_campaign_product: QUERY - Check product campaigns in use
+                                    activate t_campaign_product
+                                        note right of t_campaign_product
+                                            SELECT
+                                                cp.id as campaign_product_id,
+                                                c.name
+                                            FROM campaign.t_campaign_product cp
+                                            INNER JOIN campaign.m_campaign c
+                                                ON c.id = cp.campaign_id
+                                            WHERE cp.product_id = '<sequence.id>'
+                                            AND cp.row_status <> 'DELETED'
+                                            AND c.row_status <> 'DELETED'
+                                            AND c.end_at > NOW() AT TIME ZONE 'UTC' -- a campaign that ended or was deleted does not block, answer 409 (E10006) when a row is found
+                                            LIMIT 1
+                                        end note
+                                        t_campaign_product -> infra: Return query result
+                                    deactivate t_campaign_product
+                                    infra -> app: Return result of Check product campaigns in use
+                                    alt items[i]: the product is in a campaign that has not ended
+                                        app -> infra: ROLLBACK
+                                        app -> api: HTTP 409 E10006 items[i]: The product is in a campaign that has not ended and cannot be deleted.
+                                        api -> page: Conflict
+                                        page -> user: Display error message
+                                    end
+                                end
+                                alt id is not specified (insert)
+                                    app -> infra: INSERT - Create product
+                                    infra -> m_product: INSERT - Create product
+                                    activate m_product
+                                        note right of m_product
+                                            INSERT INTO product.m_product (
+                                                created_by,
+                                                row_status,
+                                                type_id,
+                                                category_id,
+                                                brand_id,
+                                                name,
+                                                slug,
+                                                description,
+                                                body
+                                            )
+                                            VALUES (
+                                                &#39;<sequence.createdBy>',
+                                                &#39;<sequence.products.rowStatus>',
+                                                &#39;<sequence.products.typeId>',
+                                                &#39;<sequence.products.categoryId>',
+                                                &#39;<sequence.products.brandId>',
+                                                &#39;<sequence.products.name>',
+                                                &#39;<sequence.products.slug>',
+                                                &#39;<sequence.products.description>',
+                                                &#39;<sequence.products.body>'
+                                            )
+                                            RETURNING id as product_id
+                                        end note
+                                        m_product -> infra: Return inserted result
+                                    deactivate m_product
+                                    infra -> app: Return result of Create product
+                                else id is specified (update, delete or archive)
+                                    app -> infra: UPDATE - Update or delete product
+                                    infra -> m_product: UPDATE - Update or delete product
+                                    activate m_product
+                                        note right of m_product
+                                            UPDATE product.m_product
+                                            SET
+                                                updated_by = '<sequence.updatedBy>',
+                                                updated_at = NOW() AT TIME ZONE 'UTC',
+                                                row_status = '<sequence.products.rowStatus>',
+                                                type_id = '<sequence.products.typeId>',
+                                                category_id = '<sequence.products.categoryId>',
+                                                brand_id = '<sequence.products.brandId>',
+                                                name = '<sequence.products.name>',
+                                                slug = '<sequence.products.slug>', -- only when slug is specified
+                                                description = '<sequence.products.description>',
+                                                body = '<sequence.products.body>'
+                                            WHERE id = '<sequence.products.id>'
+                                            RETURNING id as product_id
+                                        end note
+                                        m_product -> infra: Return updated result
+                                    deactivate m_product
+                                    infra -> app: Return result of Update or delete product
+                                end
+                                alt attributes are specified
+                                    app -> infra: INSERT - Create product attribute
+                                    infra -> m_product_attribute: INSERT - Create product attribute
+                                    activate m_product_attribute
+                                        note right of m_product_attribute
+                                            INSERT INTO product.m_product_attribute (
+                                                created_by,
+                                                product_id,
+                                                attribute_id,
+                                                value
+                                            )
+                                            VALUES (
+                                                &#39;<sequence.createdBy>',
+                                                &#39;<sequence.productId>',
+                                                &#39;<sequence.products.attributes.attributeId>',
+                                                &#39;<sequence.products.attributes.value>'
+                                            )
+                                            RETURNING id as product_attribute_id
+                                        end note
+                                        m_product_attribute -> infra: Return inserted result
+                                    deactivate m_product_attribute
+                                    infra -> app: Return result of Create product attribute
+                                    app -> infra: UPDATE - Update product attribute
+                                    infra -> m_product_attribute: UPDATE - Update product attribute
+                                    activate m_product_attribute
+                                        note right of m_product_attribute
+                                            UPDATE product.m_product_attribute
+                                            SET
+                                                updated_by = '<sequence.updatedBy>',
+                                                updated_at = NOW() AT TIME ZONE 'UTC',
+                                                value = '<sequence.products.attributes.value>'
+                                            WHERE id = '<sequence.productAttributeId>'
+                                            RETURNING id as product_attribute_id
+                                        end note
+                                        m_product_attribute -> infra: Return updated result
+                                    deactivate m_product_attribute
+                                    infra -> app: Return result of Update product attribute
+                                    app -> infra: UPDATE - Delete product attributes that are not in the list
+                                    infra -> m_product_attribute: UPDATE - Delete product attributes that are not in the list
+                                    activate m_product_attribute
+                                        note right of m_product_attribute
+                                            UPDATE product.m_product_attribute
+                                            SET
+                                                updated_by = '<sequence.updatedBy>',
+                                                updated_at = NOW() AT TIME ZONE 'UTC',
+                                                row_status = 'DELETED'
+                                            WHERE product_id = '<sequence.productId>'
+                                            AND attribute_id NOT IN ('<sequence.products.attributes.attributeIds>')
+                                            AND row_status <> 'DELETED'
+                                        end note
+                                        m_product_attribute -> infra: Return updated result
+                                    deactivate m_product_attribute
+                                    infra -> app: Return result of Delete product attributes that are not in the list
+                                end
+                                alt options are specified
+                                    app -> infra: UPDATE - Move product option levels aside
+                                    infra -> m_product_option: UPDATE - Move product option levels aside
+                                    activate m_product_option
+                                        note right of m_product_option
+                                            UPDATE product.m_product_option
+                                            SET
+                                                updated_by = '<sequence.updatedBy>',
+                                                updated_at = NOW() AT TIME ZONE 'UTC',
+                                                level_no = level_no + 1000 -- temporary level, avoids the unique (product_id, level_no) conflict while renumbering
+                                            WHERE product_id = '<sequence.productId>'
+                                            AND row_status <> 'DELETED'
+                                        end note
+                                        m_product_option -> infra: Return updated result
+                                    deactivate m_product_option
+                                    infra -> app: Return result of Move product option levels aside
+                                    app -> infra: UPDATE - Delete product options that are not in the list
+                                    infra -> m_product_option: UPDATE - Delete product options that are not in the list
+                                    activate m_product_option
+                                        note right of m_product_option
+                                            UPDATE product.m_product_option
+                                            SET
+                                                updated_by = '<sequence.updatedBy>',
+                                                updated_at = NOW() AT TIME ZONE 'UTC',
+                                                row_status = 'DELETED'
+                                            WHERE product_id = '<sequence.productId>'
+                                            AND id NOT IN ('<sequence.products.options.ids>') -- all options when options is an empty array
+                                            AND row_status <> 'DELETED'
+                                        end note
+                                        m_product_option -> infra: Return updated result
+                                    deactivate m_product_option
+                                    infra -> app: Return result of Delete product options that are not in the list
+                                    app -> infra: UPDATE - Delete product option values of deleted options
+                                    infra -> m_product_option_value: UPDATE - Delete product option values of deleted options
+                                    activate m_product_option_value
+                                        note right of m_product_option_value
+                                            UPDATE product.m_product_option_value
+                                            SET
+                                                updated_by = '<sequence.updatedBy>',
+                                                updated_at = NOW() AT TIME ZONE 'UTC',
+                                                row_status = 'DELETED'
+                                            WHERE option_id IN (
+                                                SELECT po.id
+                                                FROM product.m_product_option po
+                                                WHERE po.product_id = '<sequence.productId>'
+                                                AND po.row_status = 'DELETED' -- options deleted by rowStatus and options that are not in the list
+                                            )
+                                            AND row_status <> 'DELETED'
+                                        end note
+                                        m_product_option_value -> infra: Return updated result
+                                    deactivate m_product_option_value
+                                    infra -> app: Return result of Delete product option values of deleted options
+                                    app -> infra: UPDATE - Delete product option values that are not in the list
+                                    infra -> m_product_option_value: UPDATE - Delete product option values that are not in the list
+                                    activate m_product_option_value
+                                        note right of m_product_option_value
+                                            UPDATE product.m_product_option_value
+                                            SET
+                                                updated_by = '<sequence.updatedBy>',
+                                                updated_at = NOW() AT TIME ZONE 'UTC',
+                                                row_status = 'DELETED'
+                                            WHERE option_id = '<sequence.optionId>'
+                                            AND id NOT IN ('<sequence.products.options.values.ids>')
+                                            AND row_status <> 'DELETED'
+                                        end note
+                                        m_product_option_value -> infra: Return updated result
+                                    deactivate m_product_option_value
+                                    infra -> app: Return result of Delete product option values that are not in the list
+                                    app -> infra: UPDATE - Set temporary names for renamed product options
+                                    infra -> m_product_option: UPDATE - Set temporary names for renamed product options
+                                    activate m_product_option
+                                        note right of m_product_option
+                                            UPDATE product.m_product_option
+                                            SET
+                                                updated_by = '<sequence.updatedBy>',
+                                                updated_at = NOW() AT TIME ZONE 'UTC',
+                                                name = '~' || id -- temporary name, avoids the unique (product_id, name) conflict, the final name is set by the update below
+                                            WHERE product_id = '<sequence.productId>'
+                                            AND id IN ('<sequence.products.options.renamedIds>') -- listed options that are renamed to a name currently held by another listed option (swap or chain of renames)
+                                            AND row_status <> 'DELETED'
+                                        end note
+                                        m_product_option -> infra: Return updated result
+                                    deactivate m_product_option
+                                    infra -> app: Return result of Set temporary names for renamed product options
+                                    app -> infra: UPDATE - Update or delete product option
+                                    infra -> m_product_option: UPDATE - Update or delete product option
+                                    activate m_product_option
+                                        note right of m_product_option
+                                            UPDATE product.m_product_option
+                                            SET
+                                                updated_by = '<sequence.updatedBy>',
+                                                updated_at = NOW() AT TIME ZONE 'UTC',
+                                                row_status = '<sequence.products.options.rowStatus>', -- ACTIVE or DELETED only
+                                                name = '<sequence.products.options.name>',
+                                                level_no = CASE WHEN '<sequence.products.options.rowStatus>' = 'DELETED' THEN level_no ELSE '<sequence.products.options.levelNo>' END -- renumbered from 1 in the order of options, a DELETED option keeps its current level_no, DELETED options are outside the unique index
+                                            WHERE id = '<sequence.products.options.id>'
+                                            AND product_id = '<sequence.productId>'
+                                            AND row_status <> 'DELETED' -- a DELETED option is never reopened
+                                            RETURNING id as option_id
+                                        end note
+                                        m_product_option -> infra: Return updated result
+                                    deactivate m_product_option
+                                    infra -> app: Return result of Update or delete product option
+                                    app -> infra: INSERT - Create product option
+                                    infra -> m_product_option: INSERT - Create product option
+                                    activate m_product_option
+                                        note right of m_product_option
+                                            INSERT INTO product.m_product_option (
+                                                created_by,
+                                                row_status,
+                                                product_id,
+                                                name,
+                                                level_no
+                                            )
+                                            VALUES (
+                                                &#39;<sequence.createdBy>',
+                                                &#39;<sequence.products.options.rowStatus>',
+                                                &#39;<sequence.productId>',
+                                                &#39;<sequence.products.options.name>',
+                                                &#39;<sequence.products.options.levelNo>' -- position in options ignoring DELETED options
+                                            )
+                                            RETURNING id as option_id
+                                        end note
+                                        m_product_option -> infra: Return inserted result
+                                    deactivate m_product_option
+                                    infra -> app: Return result of Create product option
+                                    app -> infra: UPDATE - Set temporary names for renamed product option values
+                                    infra -> m_product_option_value: UPDATE - Set temporary names for renamed product option values
+                                    activate m_product_option_value
+                                        note right of m_product_option_value
+                                            UPDATE product.m_product_option_value
+                                            SET
+                                                updated_by = '<sequence.updatedBy>',
+                                                updated_at = NOW() AT TIME ZONE 'UTC',
+                                                value = '~' || id -- temporary value, avoids the unique (option_id, value) conflict, the final value is set by the update below
+                                            WHERE option_id = '<sequence.optionId>'
+                                            AND id IN ('<sequence.products.options.values.renamedIds>') -- listed values that are renamed to a value currently held by another listed value (swap or chain of renames)
+                                            AND row_status <> 'DELETED'
+                                        end note
+                                        m_product_option_value -> infra: Return updated result
+                                    deactivate m_product_option_value
+                                    infra -> app: Return result of Set temporary names for renamed product option values
+                                    app -> infra: UPDATE - Update or delete product option value
+                                    infra -> m_product_option_value: UPDATE - Update or delete product option value
+                                    activate m_product_option_value
+                                        note right of m_product_option_value
+                                            UPDATE product.m_product_option_value
+                                            SET
+                                                updated_by = '<sequence.updatedBy>',
+                                                updated_at = NOW() AT TIME ZONE 'UTC',
+                                                row_status = '<sequence.products.options.values.rowStatus>',
+                                                value = '<sequence.products.options.values.value>',
+                                                sort_order = '<sequence.products.options.values.sortOrder>' -- position in values, counted from 1
+                                            WHERE id = '<sequence.products.options.values.id>'
+                                            AND option_id = '<sequence.optionId>'
+                                            AND row_status <> 'DELETED' -- a DELETED value is never reopened
+                                            RETURNING id as option_value_id
+                                        end note
+                                        m_product_option_value -> infra: Return updated result
+                                    deactivate m_product_option_value
+                                    infra -> app: Return result of Update or delete product option value
+                                    app -> infra: INSERT - Create product option value
+                                    infra -> m_product_option_value: INSERT - Create product option value
+                                    activate m_product_option_value
+                                        note right of m_product_option_value
+                                            INSERT INTO product.m_product_option_value (
+                                                created_by,
+                                                row_status,
+                                                option_id,
+                                                value,
+                                                sort_order
+                                            )
+                                            VALUES (
+                                                &#39;<sequence.createdBy>',
+                                                &#39;<sequence.products.options.values.rowStatus>',
+                                                &#39;<sequence.optionId>',
+                                                &#39;<sequence.products.options.values.value>',
+                                                &#39;<sequence.products.options.values.sortOrder>' -- position in values, counted from 1
+                                            )
+                                            RETURNING id as option_value_id
+                                        end note
+                                        m_product_option_value -> infra: Return inserted result
+                                    deactivate m_product_option_value
+                                    infra -> app: Return result of Create product option value
+                                    app -> infra: UPDATE - Delete product images of deleted option values
+                                    infra -> m_product_image: UPDATE - Delete product images of deleted option values
+                                    activate m_product_image
+                                        note right of m_product_image
+                                            UPDATE product.m_product_image
+                                            SET
+                                                updated_by = '<sequence.updatedBy>',
+                                                updated_at = NOW() AT TIME ZONE 'UTC',
+                                                row_status = 'DELETED'
+                                            WHERE option_value_id IN (
+                                                SELECT pov.id
+                                                FROM product.m_product_option_value pov
+                                                INNER JOIN product.m_product_option po ON po.id = pov.option_id
+                                                WHERE po.product_id = '<sequence.productId>'
+                                                AND pov.row_status = 'DELETED' -- values deleted by rowStatus, values that are not in the list and values of deleted options
+                                            )
+                                            AND row_status <> 'DELETED'
+                                        end note
+                                        m_product_image -> infra: Return updated result
+                                    deactivate m_product_image
+                                    infra -> app: Return result of Delete product images of deleted option values
+                                end
+                                alt images are specified
+                                    app -> infra: UPDATE - Update or delete product image
+                                    infra -> m_product_image: UPDATE - Update or delete product image
+                                    activate m_product_image
+                                        note right of m_product_image
+                                            UPDATE product.m_product_image
+                                            SET
+                                                updated_by = '<sequence.updatedBy>',
+                                                updated_at = NOW() AT TIME ZONE 'UTC',
+                                                row_status = '<sequence.products.images.rowStatus>',
+                                                image_path = '<sequence.products.images.imagePath>'
+                                            WHERE id = '<sequence.products.images.id>'
+                                            AND product_id = '<sequence.productId>'
+                                            AND option_value_id IS NULL -- product level images only
+                                            RETURNING id as image_id
+                                        end note
+                                        m_product_image -> infra: Return updated result
+                                    deactivate m_product_image
+                                    infra -> app: Return result of Update or delete product image
+                                    app -> infra: UPDATE - Update or delete product option value image
+                                    infra -> m_product_image: UPDATE - Update or delete product option value image
+                                    activate m_product_image
+                                        note right of m_product_image
+                                            UPDATE product.m_product_image
+                                            SET
+                                                updated_by = '<sequence.updatedBy>',
+                                                updated_at = NOW() AT TIME ZONE 'UTC',
+                                                row_status = '<sequence.products.options.values.images.rowStatus>',
+                                                image_path = '<sequence.products.options.values.images.imagePath>'
+                                            WHERE id = '<sequence.products.options.values.images.id>'
+                                            AND product_id = '<sequence.productId>'
+                                            AND option_value_id = '<sequence.optionValueId>'
+                                            RETURNING id as image_id
+                                        end note
+                                        m_product_image -> infra: Return updated result
+                                    deactivate m_product_image
+                                    infra -> app: Return result of Update or delete product option value image
+                                    app -> infra: INSERT - Create product image
+                                    infra -> m_product_image: INSERT - Create product image
+                                    activate m_product_image
+                                        note right of m_product_image
+                                            INSERT INTO product.m_product_image (
+                                                created_by,
+                                                row_status,
+                                                product_id,
+                                                image_path,
+                                                option_value_id
+                                            )
+                                            VALUES (
+                                                &#39;<sequence.createdBy>',
+                                                &#39;<sequence.products.images.rowStatus>',
+                                                &#39;<sequence.productId>',
+                                                &#39;<sequence.products.images.imagePath>',
+                                                NULL -- product level image
+                                            )
+                                            RETURNING id as image_id
+                                        end note
+                                        m_product_image -> infra: Return inserted result
+                                    deactivate m_product_image
+                                    infra -> app: Return result of Create product image
+                                    app -> infra: INSERT - Create product option value image
+                                    infra -> m_product_image: INSERT - Create product option value image
+                                    activate m_product_image
+                                        note right of m_product_image
+                                            INSERT INTO product.m_product_image (
+                                                created_by,
+                                                row_status,
+                                                product_id,
+                                                image_path,
+                                                option_value_id
+                                            )
+                                            VALUES (
+                                                &#39;<sequence.createdBy>',
+                                                &#39;<sequence.products.options.values.images.rowStatus>',
+                                                &#39;<sequence.productId>',
+                                                &#39;<sequence.products.options.values.images.imagePath>',
+                                                &#39;<sequence.optionValueId>'
+                                            )
+                                            RETURNING id as image_id
+                                        end note
+                                        m_product_image -> infra: Return inserted result
+                                    deactivate m_product_image
+                                    infra -> app: Return result of Create product option value image
+                                end
+                                alt SKUs must change
+                                    app -> infra: QUERY - Get existing product SKUs
+                                    infra -> m_product_sku: QUERY - Get existing product SKUs
+                                    activate m_product_sku
+                                        note right of m_product_sku
+                                            SELECT
+                                                s.id as sku_id,
+                                                s.combination_key,
+                                                s.row_status
+                                            FROM product.m_product_sku s
+                                            WHERE s.product_id = '<sequence.productId>'
+                                            AND s.row_status <> 'DELETED' -- used to generate only the missing combinations
+                                        end note
+                                        m_product_sku -> infra: Return query result
+                                    deactivate m_product_sku
+                                    infra -> app: Return result of Get existing product SKUs
+                                    app -> infra: UPDATE - Close all product SKUs when levels are added, removed or reordered
+                                    infra -> m_product_sku: UPDATE - Close all product SKUs when levels are added, removed or reordered
+                                    activate m_product_sku
+                                        note right of m_product_sku
+                                            UPDATE product.m_product_sku
+                                            SET
+                                                updated_by = '<sequence.updatedBy>',
+                                                updated_at = NOW() AT TIME ZONE 'UTC',
+                                                row_status = 'DELETED' -- only when the levels of the product change and no SKU is in use, otherwise respond 409
+                                            WHERE product_id = '<sequence.productId>'
+                                            AND row_status <> 'DELETED'
+                                        end note
+                                        m_product_sku -> infra: Return updated result
+                                    deactivate m_product_sku
+                                    infra -> app: Return result of Close all product SKUs when levels are added, removed or reordered
+                                    app -> infra: UPDATE - Close product SKUs of deleted option values
+                                    infra -> m_product_sku: UPDATE - Close product SKUs of deleted option values
+                                    activate m_product_sku
+                                        note right of m_product_sku
+                                            UPDATE product.m_product_sku s
+                                            SET
+                                                updated_by = '<sequence.updatedBy>',
+                                                updated_at = NOW() AT TIME ZONE 'UTC',
+                                                row_status = 'DELETED'
+                                            WHERE s.product_id = '<sequence.productId>'
+                                            AND s.row_status <> 'DELETED'
+                                            AND EXISTS ( -- run after the values are updated or deleted
+                                                SELECT 1
+                                                FROM product.m_product_sku_option_value sov
+                                                INNER JOIN product.m_product_option_value pov ON pov.id = sov.option_value_id
+                                                WHERE sov.sku_id = s.id
+                                                AND pov.row_status = 'DELETED' -- values deleted by rowStatus, values that are not in the list and values of deleted options
+                                            )
+                                        end note
+                                        m_product_sku -> infra: Return updated result
+                                    deactivate m_product_sku
+                                    infra -> app: Return result of Close product SKUs of deleted option values
+                                    app -> infra: UPDATE - Close product SKUs of closed option values
+                                    infra -> m_product_sku: UPDATE - Close product SKUs of closed option values
+                                    activate m_product_sku
+                                        note right of m_product_sku
+                                            UPDATE product.m_product_sku s
+                                            SET
+                                                updated_by = '<sequence.updatedBy>',
+                                                updated_at = NOW() AT TIME ZONE 'UTC',
+                                                row_status = '<sequence.products.options.values.rowStatus>' -- INACTIVE, LOCKED or ARCHIVED closes the SKUs, ACTIVE reopens them
+                                            WHERE s.product_id = '<sequence.productId>'
+                                            AND s.row_status <> 'DELETED' -- a DELETED SKU is never reopened
+                                            AND s.id IN (
+                                                SELECT sov.sku_id
+                                                FROM product.m_product_sku_option_value sov
+                                                WHERE sov.option_value_id = '<sequence.optionValueId>'
+                                            )
+                                            AND (
+                                                &#39;<sequence.products.options.values.rowStatus>' <> 'ACTIVE'
+                                                OR NOT EXISTS ( -- reopen only when every value of the SKU is ACTIVE, run after the option value is updated
+                                                    SELECT 1
+                                                    FROM product.m_product_sku_option_value sov2
+                                                    INNER JOIN product.m_product_option_value pov2 ON pov2.id = sov2.option_value_id
+                                                    WHERE sov2.sku_id = s.id
+                                                    AND pov2.row_status <> 'ACTIVE'
+                                                )
+                                            )
+                                        end note
+                                        m_product_sku -> infra: Return updated result
+                                    deactivate m_product_sku
+                                    infra -> app: Return result of Close product SKUs of closed option values
+                                    app -> infra: UPDATE - Rename product SKUs of renamed option values
+                                    infra -> m_product_sku: UPDATE - Rename product SKUs of renamed option values
+                                    activate m_product_sku
+                                        note right of m_product_sku
+                                            UPDATE product.m_product_sku s
+                                            SET
+                                                updated_by = '<sequence.updatedBy>',
+                                                updated_at = NOW() AT TIME ZONE 'UTC',
+                                                name = LEFT(sn.sku_name, 128), -- value names joined by ' / ' in level order, truncated to 128 characters
+                                                description = LEFT(sn.sku_name, 256) -- the same text truncated to 256 characters
+                                            FROM (
+                                                SELECT
+                                                    sov.sku_id,
+                                                    STRING_AGG(pov.value, ' / ' ORDER BY po.level_no) AS sku_name
+                                                FROM product.m_product_sku_option_value sov
+                                                INNER JOIN product.m_product_option_value pov ON pov.id = sov.option_value_id
+                                                INNER JOIN product.m_product_option po ON po.id = pov.option_id
+                                                WHERE sov.sku_id IN ( -- run after the option values are updated
+                                                    SELECT sov2.sku_id
+                                                    FROM product.m_product_sku_option_value sov2
+                                                    WHERE sov2.option_value_id IN ('<sequence.products.options.values.renamedValueIds>') -- values whose value is renamed
+                                                )
+                                                GROUP BY sov.sku_id
+                                            ) sn
+                                            WHERE s.id = sn.sku_id
+                                            AND s.product_id = '<sequence.productId>'
+                                            AND s.row_status <> 'DELETED'
+                                        end note
+                                        m_product_sku -> infra: Return updated result
+                                    deactivate m_product_sku
+                                    infra -> app: Return result of Rename product SKUs of renamed option values
+                                    app -> infra: UPDATE - Rename default product SKU
+                                    infra -> m_product_sku: UPDATE - Rename default product SKU
+                                    activate m_product_sku
+                                        note right of m_product_sku
+                                            UPDATE product.m_product_sku
+                                            SET
+                                                updated_by = '<sequence.updatedBy>',
+                                                updated_at = NOW() AT TIME ZONE 'UTC',
+                                                name = '<sequence.products.name>', -- only when the product name changes
+                                                description = '<sequence.products.description>'
+                                            WHERE product_id = '<sequence.productId>'
+                                            AND combination_key = '' -- the default SKU
+                                            AND row_status <> 'DELETED'
+                                        end note
+                                        m_product_sku -> infra: Return updated result
+                                    deactivate m_product_sku
+                                    infra -> app: Return result of Rename default product SKU
+                                    app -> infra: INSERT - Create default product SKU
+                                    infra -> m_product_sku: INSERT - Create default product SKU
+                                    activate m_product_sku
+                                        note right of m_product_sku
+                                            INSERT INTO product.m_product_sku (
+                                                created_by,
+                                                row_status,
+                                                product_id,
+                                                name,
+                                                description,
+                                                combination_key
+                                            )
+                                            VALUES (
+                                                &#39;<sequence.createdBy>',
+                                                &#39;ACTIVE',
+                                                &#39;<sequence.productId>',
+                                                &#39;<sequence.products.name>',
+                                                &#39;<sequence.products.description>',
+                                                &#39;' -- only when the product has no level, the default SKU has no option values
+                                            )
+                                            RETURNING id as sku_id
+                                        end note
+                                        m_product_sku -> infra: Return inserted result
+                                    deactivate m_product_sku
+                                    infra -> app: Return result of Create default product SKU
+                                    app -> infra: INSERT - Create product SKU
+                                    infra -> m_product_sku: INSERT - Create product SKU
+                                    activate m_product_sku
+                                        note right of m_product_sku
+                                            INSERT INTO product.m_product_sku (
+                                                created_by,
+                                                row_status,
+                                                product_id,
+                                                name,
+                                                description,
+                                                combination_key
+                                            )
+                                            VALUES (
+                                                &#39;<sequence.createdBy>',
+                                                &#39;ACTIVE',
+                                                &#39;<sequence.productId>',
+                                                &#39;<sequence.products.skus.name>', -- value names of the combination joined by ' / ' in level order, truncated to 128 characters
+                                                &#39;<sequence.products.skus.description>', -- the same text truncated to 256 characters
+                                                &#39;<sequence.products.skus.combinationKey>' -- value ids of the combination joined by '-' in level order, UUIDs have a fixed length so the key stays unique
+                                            )
+                                            RETURNING id as sku_id
+                                        end note
+                                        m_product_sku -> infra: Return inserted result
+                                    deactivate m_product_sku
+                                    infra -> app: Return result of Create product SKU
+                                    app -> infra: INSERT - Create product SKU option value
+                                    infra -> m_product_sku_option_value: INSERT - Create product SKU option value
+                                    activate m_product_sku_option_value
+                                        note right of m_product_sku_option_value
+                                            INSERT INTO product.m_product_sku_option_value (
+                                                created_by,
+                                                row_status,
+                                                sku_id,
+                                                option_value_id
+                                            )
+                                            VALUES (
+                                                &#39;<sequence.createdBy>',
+                                                &#39;ACTIVE',
+                                                &#39;<sequence.skuId>',
+                                                &#39;<sequence.products.skus.optionValueIds>' -- one row for each value of the combination
+                                            )
+                                            RETURNING id as sku_option_value_id
+                                        end note
+                                        m_product_sku_option_value -> infra: Return inserted result
+                                    deactivate m_product_sku_option_value
+                                    infra -> app: Return result of Create product SKU option value
+                                end
+                            end
+                            app -> infra: COMMIT
+                            app -> api: HTTP 200 S10000 with the result of every item
+                            api -> page: Return committed result
+                            page -> user: Display success result
+                    else Timeout before COMMIT
+                        note over app, infra
+                            A timeout can interrupt any preceding SQL or domain step.
+                            No success response is sent without a successful COMMIT.
+                        end note
+                        app -> infra: ROLLBACK
+                        app -> api: HTTP 408 E90001
+                        api -> page: Request timeout
+                        page -> user: Retry if needed
+                    else Unexpected failure before COMMIT
+                        app -> infra: ROLLBACK
+                        app -> api: HTTP 500 generic error; no new bizCode
+                        api -> page: Internal server error
+                        page -> user: Display generic failure
+                    end
+                    deactivate infra
+                end
+            end
+        deactivate app
+    deactivate api
+deactivate page
+
+@enduml
