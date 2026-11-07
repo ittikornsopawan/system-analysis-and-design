@@ -3853,7 +3853,6 @@ LEGACY_SEQUENCES = (
     # authen-and-author: waiting for a retrofit to the login standard
     "authen-and-author/03-reset-password",
     "authen-and-author/04-create-new-password",
-    "authen-and-author/06-logout",
     "authen-and-author/07-upsert-user-profile",
     "authen-and-author/09-upsert-user-address",
     # consent: waiting for a retrofit to the login standard
@@ -6023,6 +6022,100 @@ def check_author_me_flow() -> int:
 COMMANDS['author-me-flow'] = check_author_me_flow
 
 
+def check_logout_flow() -> int:
+    """Check fresh post-lock authorization and atomic revocation of the complete caller session."""
+    path=AUTHEN_SPECS['06'];md=read(path);wsd=read(str(Path(path).with_name('sequence.wsd')));errors=[]
+    for needle in ('2026-11-07-api-review-design.md','Q13','BEGIN READ COMMITTED',
+                   'capture fresh server UTC now after the lock','No token UPDATE may run before the user lock',
+                   'sessionId comes only from the post-lock access-token row',
+                   'Sessions of other devices are not changed.','Other users are unaffected',
+                   'If refresh commits first','If logout commits first','A second concurrent logout waits',
+                   'Both token-table changes are one transaction','Zero refresh rows is allowed',
+                   'unexpected zero access-row update','COMMIT must succeed before 200',
+                   'A lost response after commit does not undo logout'):
+        if needle not in md:errors.append(f'logout rule missing {needle!r}')
+    fm=md.split('---',2)[1] if md.startswith('---\n') else ''
+    state=re.search(r'^status: (draft|in-review|approved)$',fm,re.M)
+    if not state:errors.append('logout needs approval metadata')
+    for field in ('approved_by','approved_at'):
+        value=re.search(rf'^{field}: (.+)$',fm,re.M)
+        if not value or (state and ((state[1]=='approved')==(value[1]=='null'))):errors.append(f'inconsistent logout {field}')
+    operations=spec_database_operations(md)
+    expected=('QUERY - Lock the user','QUERY - Get the session of the access token','UPDATE - Close the access tokens of the session','UPDATE - Close the refresh tokens of the session')
+    if tuple(h for _,h,_ in operations)!=expected:errors.append('logout needs user lock, fresh token/session and both closures in execution order')
+    sql={h:re.sub(r'--[^\n]*','',s) for _,h,s in operations}
+    required={expected[0]:["u.id = '<sequence.userId>'", "u.row_status = 'ACTIVE'", 'FOR UPDATE'],
+              expected[1]:['at.session_id', "at.token = '<sequence.accessTokenHash>'", "at.user_id = '<sequence.userId>'", "at.row_status = 'ACTIVE'", "at.expired_at > '<sequence.now>'"]}
+    for h in expected[2:]:required[h]=["updated_by = '<sequence.userId>'", "updated_at = '<sequence.now>'", "row_status = 'INACTIVE'", "WHERE session_id = '<sequence.sessionId>'", "AND user_id = '<sequence.userId>'", "AND row_status = 'ACTIVE'"]
+    for h,needles in required.items():
+        for needle in needles:
+            if needle not in sql.get(h,''):errors.append(f'{h} missing {needle}')
+    for h in expected[2:]:
+        statement=sql.get(h,'')
+        if re.search(r'\bexpired_at\b|\btoken\s*=',statement):errors.append('logout closes all ACTIVE session rows, not just unexpired/presented token')
+    if 'NOW()' in '\n'.join(sql.values()) or any(t.startswith('author.') or h.startswith('INSERT') for t,h,_ in operations):errors.append('logout must use post-lock now, issue nothing and require no live role lookup')
+    actual,lifecycle=sequence_database_operations(wsd);errors+=lifecycle
+    if [(t.split('.')[-1],h,normalize(s)) for t,h,s in operations]!=[(t,h,normalize(s)) for t,h,s in actual]:errors.append('logout spec/sequence SQL differs')
+    for _,heading,_ in operations:
+        if f'app -> infra: {heading}' not in wsd:errors.append(f'{heading} needs Application request')
+        match=re.search(rf'infra -> (\w+): {re.escape(heading)}\n.*?deactivate \1\n([^\n]+)',wsd,re.S)
+        if not match or not match[2].strip().startswith('infra -> app: Return '):errors.append(f'{heading} needs result returned to Application')
+    for needle in ('Verify JWT signature/issuer/audience/expiry/UUID sub',
+                   'userId = verified sub; accessTokenHash = SHA-256 exact JWT',
+                   'Capture fresh server UTC now after user lock; recheck JWT exp',
+                   'sessionId = returned stored session_id; never request/JWT session input',
+                   'alt accessClosedCount > 0','else Unexpected accessClosedCount = 0',
+                   'refreshClosedCount may be zero; both table changes remain atomic',
+                   'else Token missing, revoked, expired, mismatched or JWT expired during wait'):
+        if needle not in wsd:errors.append(f'logout sequence missing guard/mapping {needle!r}')
+    if 'TODO(author)' in wsd:errors.append('logout sequence must be complete')
+    traces,structure=login_sequence_paths(wsd);errors+=structure
+    from collections import Counter
+    outcomes=[];unauthorized_queries=[]
+    for trace in traces:
+        response=[e for e in trace if e.startswith('app -> api: HTTP ')]
+        if len(response)!=1:errors.append('each logout trace needs one outcome');continue
+        code=int(response[0].split('HTTP ')[1].split()[0]);outcomes.append(code)
+        def ordered(*parts):
+            pos=[next((i for i,e in enumerate(trace) if part in e),-1) for part in parts]
+            return -1 not in pos and pos==sorted(set(pos))
+        begun=any(e.startswith('app -> infra: BEGIN') for e in trace)
+        queries=[e for e in trace if e.startswith('infra -> ')]
+        updates=[e for e in queries if ': UPDATE' in e]
+        if any(expected[1] in e for e in trace) and not ordered('BEGIN',expected[0],'Capture fresh server UTC now',expected[1]):errors.append('stored session lookup must follow user lock and fresh post-lock time')
+        if updates and not ordered(expected[0],expected[1],'sessionId = returned stored session_id',expected[2]):errors.append('every token change must follow locked user and server-derived fresh session')
+        if code==200:
+            if not ordered('Verify JWT','BEGIN READ COMMITTED',expected[0],'Capture fresh server UTC now',expected[1],'sessionId = returned stored session_id',expected[2],expected[3],'app -> infra: COMMIT','HTTP 200') or len(updates)!=2:errors.append('success must close both complete session token tables atomically before 200')
+            if any('ROLLBACK' in e for e in trace) or 'status only, no data' not in response[0]:errors.append('logout success returns status only and must not rollback')
+        elif begun:
+            if not ordered('BEGIN','ROLLBACK',f'HTTP {code}') or any(e=='app -> infra: COMMIT' for e in trace):errors.append('logout failure must rollback before response and never commit')
+            if code==401 and updates:errors.append('invalid logout credential cannot change tokens')
+        elif code not in (400,401) or queries:errors.append('early input/JWT failure must execute no SQL')
+        if code==401:unauthorized_queries.append(len(queries))
+    if Counter(outcomes)!=Counter({200:1,400:1,401:3,408:1,500:2}) or sorted(unauthorized_queries)!=[0,1,2]:errors.append(f'incomplete logout paths: {dict(Counter(outcomes))}, auth-queries={unauthorized_queries}')
+    for title,code in {'Success':200,'Fail - Bad Request':400,'Fail - Unauthorized':401,'Fail - Request Timeout':408,'Fail - Internal Server Error':500}.items():
+        try:
+            obj=authen_json(md,title);status=obj['status']
+            if status['code']!=code or code==500 and 'bizCode' in status:errors.append(f'incorrect logout {title} envelope')
+            if title=='Success' and 'data' in obj:errors.append('logout success has no data')
+        except (TypeError,KeyError,ValueError):errors.append(f'missing logout {title} example')
+    errors+=json_blocks_parse(md);errors+=table_lines_aligned(md)
+    if '--rendered-svg' in sys.argv:
+        import xml.etree.ElementTree as ET
+        try:
+            root=ET.parse(sys.argv[sys.argv.index('--rendered-svg')+1]).getroot()
+            expected_lines=Counter(' '.join(l.split()) for _,_,s in operations for l in s.splitlines() if l.strip())
+            visible=Counter(' '.join(''.join(e.itertext()).split()) for e in root.iter() if e.tag.endswith('}text'))
+            missing=expected_lines-visible
+            if missing:errors.append(f'rendered logout SQL missing {sum(missing.values())} lines')
+            else:print(f'OK: rendered logout SQL ({sum(expected_lines.values())}/{sum(expected_lines.values())} visible lines)')
+        except (IndexError,OSError,ET.ParseError) as exc:errors.append(f'cannot verify logout SVG: {exc}')
+    if errors:return fail('; '.join(errors))
+    print('OK: logout-flow (8 terminal traces; post-lock credential check and atomic full-session revocation)')
+    return 0
+
+
+COMMANDS['logout-flow'] = check_logout_flow
 # ---------------------------------------------------------------- integrity of this file: every check is a sub-command and ends with a return
 def check_registry() -> int:
     """A merge can cut the end of a checker or its COMMANDS line without a syntax error, and then the check does nothing.
