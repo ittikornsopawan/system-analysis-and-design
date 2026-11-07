@@ -1,12 +1,12 @@
 # [POST]: v1/shop/type/upsert/batch
 
-| Title       | Description                                                                                                                                                                                                                                                                                                                                                                                                                                                                                 |
-| ----------- | ------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------- |
-| Name        | Upsert Shop Type Batch API                                                                                                                                                                                                                                                                                                                                                                                                                                                                  |
-| Method      | POST                                                                                                                                                                                                                                                                                                                                                                                                                                                                                        |
-| Endpoint    | v{version}/shop/type/upsert/batch                                                                                                                                                                                                                                                                                                                                                                                                                                                           |
-| Version     | 1                                                                                                                                                                                                                                                                                                                                                                                                                                                                                           |
-| Description | Insert, update or delete multiple shop types at the same time, Each shop type is inserted when id is not specified, updated when id is specified, deleted when rowStatus is DELETED, archived when rowStatus is ARCHIVED, The response is always HTTP 200 for a successful batch including when it deletes (each result is reported in the body with its action), All shop types are processed in one transaction in the request order, If any shop type fails then no shop type is changed |
+| Title       | Description                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                            |
+| ----------- | -------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------- |
+| Name        | Upsert Shop Type Batch API                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                             |
+| Method      | POST                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                   |
+| Endpoint    | v{version}/shop/type/upsert/batch                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                      |
+| Version     | 1                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                      |
+| Description | Insert, update or delete multiple shop types at the same time, Each shop type is inserted when id is not specified, updated when id is specified, deleted when rowStatus is DELETED, archived when rowStatus is ARCHIVED, The response is always HTTP 200 for a successful batch including when it deletes (each result is reported in the body with its action), All shop types are processed in one transaction in the request order, If any shop type fails then no shop type is changed, only a platform administrator can call it |
 
 ## Domain
 
@@ -53,6 +53,8 @@
 - `id` must not be duplicated in the request, and `name` must not be duplicated among the items that are not DELETED (400, E10001). The name of a DELETED item is not compared.
 - Swapping the names of two shop types in one request is rejected with 409 (E10003) at the first item, because that name is still held by the other shop type when the item is checked. Rename them in two requests.
 - An item without `id` and with `rowStatus` DELETED is rejected with 400 (E10001).
+- Permission: the same as the single upsert, only a platform administrator (a user with an ACTIVE `author.t_user_role` row for the ACTIVE role `PLATFORM_ADMIN`) can call this API, any other caller gets 403 (E10009). The check is made once for the request, after the existence checks of all items and before the duplicate, in-use and other conflict checks, so the 403 message has no item position. Approved by the product owner (answered through the lead SA, 2026-11-06).
+- Order of checks: validate the request (400) -> existence checks (404) -> permission (403, E10009) -> duplicate, in-use and other conflicts (409) -> write.
 - The response is HTTP 200 for every successful batch, including a batch that deletes.
 
 #### Example Body Parameters
@@ -331,6 +333,22 @@ curl --location --request POST 'https://www.domain.com/api-dev/v1/shop/type/upse
 }
 ```
 
+#### Fail - Forbidden
+
+```JSON
+{
+    "status": {
+        "code": 403,
+        "message": "Forbidden",
+        "bizCode": "E10009",
+        "bizMessage": "You do not have permission to manage shop types.",
+        "requestId": "req-430a1b2c-3d4e-5f6a-7b8c-9d0e1f2a3b4c",
+        "timestamp": "2026-11-06T09:41:47.123Z",
+        "status": "ERROR"
+    }
+}
+```
+
 #### Fail - Conflict
 
 ```JSON
@@ -448,4 +466,29 @@ SELECT
 FROM shop.m_shop s
 WHERE s.type_id = '<sequence.shopTypes.id>' -- only when rowStatus is DELETED or ARCHIVED
 AND s.row_status <> 'DELETED'
+```
+
+### Table: [author.m_role](../../../schema/author/m_role.md)
+
+#### QUERY - Get the platform administrator role
+
+```SQL
+SELECT
+    r.id as role_id
+FROM author.m_role r
+WHERE r.name = 'PLATFORM_ADMIN'
+AND r.row_status = 'ACTIVE'
+```
+
+### Table: [author.t_user_role](../../../schema/author/t_user_role.md)
+
+#### QUERY - Check platform administrator
+
+```SQL
+SELECT
+    ur.id as user_role_id
+FROM author.t_user_role ur
+WHERE ur.user_id = '<sequence.userId>'
+AND ur.role_id = '<sequence.roleId>'
+AND ur.row_status = 'ACTIVE'
 ```

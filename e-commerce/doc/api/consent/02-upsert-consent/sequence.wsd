@@ -41,6 +41,8 @@ end box
 box "Database" #F8FAFC
     database "m_consent_type" as m_consent_type
     database "t_consent" as t_consent
+    database "m_role" as m_role
+    database "t_user_role" as t_user_role
 end box
 
 user -> page: Submit Upsert Consent
@@ -149,6 +151,31 @@ activate page
                         end note
                         t_consent -> infra: Return updated result
                     deactivate t_consent
+
+                    infra -> m_role: QUERY - Get the platform administrator role
+                    activate m_role
+                        note right of m_role
+                            SELECT
+                                r.id as role_id
+                            FROM author.m_role r
+                            WHERE r.name = 'PLATFORM_ADMIN'
+                            AND r.row_status = 'ACTIVE'
+                        end note
+                        m_role -> infra: Return query result
+                    deactivate m_role
+
+                    infra -> t_user_role: QUERY - Check platform administrator
+                    activate t_user_role
+                        note right of t_user_role
+                            SELECT
+                                ur.id as user_role_id
+                            FROM author.t_user_role ur
+                            WHERE ur.user_id = '<sequence.userId>'
+                            AND ur.role_id = '<sequence.roleId>'
+                            AND ur.row_status = 'ACTIVE'
+                        end note
+                        t_user_role -> infra: Return query result
+                    deactivate t_user_role
 
                     infra -> app: Return database result
                 deactivate infra
