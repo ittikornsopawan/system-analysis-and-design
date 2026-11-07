@@ -1,12 +1,20 @@
+---
+name: Active Consent API Specification
+description: Defines public current consent visibility, ACTIVE type filtering, mandatory type-name mapping, read-only response consistency, empty/error outcomes and exact SQL for GET v1/consent/active.
+status: in-review
+approved_by: null
+approved_at: null
+---
+
 # [GET]: v1/consent/active
 
-| Title       | Description                                                                                     |
-| ----------- | ----------------------------------------------------------------------------------------------- |
-| Name        | Inquiry Active Consent API                                                                      |
-| Method      | GET                                                                                             |
-| Endpoint    | v{version}/consent/active                                                                       |
-| Version     | 1                                                                                               |
-| Description | Inquiry the list of consents that are currently active, which are effective and not yet expired |
+| Title       | Description                                                                                                               |
+| ----------- | ------------------------------------------------------------------------------------------------------------------------- |
+| Name        | Inquiry Active Consent API                                                                                                |
+| Method      | GET                                                                                                                       |
+| Endpoint    | v{version}/consent/active                                                                                                 |
+| Version     | 1                                                                                                                         |
+| Description | Return currently effective ACTIVE consents whose type is ACTIVE, with their current version, body and mandatory type name |
 
 ## Domain
 
@@ -28,6 +36,29 @@
 | --- | -------------- | --------- | --------- | ----------------- | ---------------------------------------- |
 | 1   | timestamp      | DateTime  | MANDATORY | Request timestamp | 2026-11-05T12:42:00.123Z                 |
 | 2   | requestId      | String    | OPTIONAL  | API Request Id    | req-9b1deb4d-3b7d-4bad-9bdd-2b0d7b3dcb6d |
+
+### Active Consent Rules
+
+- Governing decision: [owner-confirmed review](../../../../../docs/superpowers/specs/2026-11-07-api-review-design.md), Q3, approved by the product owner. Hide a consent whose type is not ACTIVE even when the consent itself is ACTIVE/effective. This detailed endpoint revision remains in-review; no backend implementation is included.
+- Public endpoint: no caller identity is required. There is no body or query parameter. Validate mandatory timestamp as a UTC timestamp before SQL; missing/malformed value returns 400 E10001 before a transaction. Generate requestId when omitted. Only public consent definitions are returned; no user evidence, credential or assignment data is read or exposed.
+- Use BEGIN ISOLATION LEVEL REPEATABLE READ READ ONLY, capture UTC now immediately before the first query, and keep both queries in that snapshot. This makes consent/type visibility and the mandatory type name consistent when another request edits or deactivates a type between queries. Do not substitute transaction-start NOW() or the caller's timestamp for the server-captured eligibility time. No locking SELECT or data write is needed.
+- Visible means consent.row_status=ACTIVE, effective_at <= now, expired_at IS NULL or expired_at > now, and its referenced consent type is ACTIVE. Include a consent starting exactly at now and exclude one expiring exactly at now. INACTIVE/LOCKED/ARCHIVED/DELETED types are hidden. The pending/registration/submission APIs apply the same target visibility rule in their own reviews.
+- Return every visible current consent, including both required and optional ones. isRequired comes from c.is_required, not the type's default. The endpoint has no user-specific pending/acceptance filter. Do not expose hidden consents as a fallback for a missing type name.
+- Preserve effective_at ASC, id ASC order, including a deterministic id tie-break. For a non-empty list, derive consentTypeIds from the returned rows and fetch their ACTIVE type names with a typed UUID array in the same snapshot. Map all eleven response fields: consentId, code, consentTypeId, consentTypeName, consentVersion, consentName, consentDescription, effectiveAt, expiredAt, isRequired and body. Nullable description/expiry stay null; do not invent default values or a version.
+- Every returned consent must resolve its mandatory consentTypeName. The query's ACTIVE-type filter and the same snapshot's name lookup guarantee this mapping. Missing mapping is an internal consistency failure that rolls back and returns generic 500, never partial success. A type deactivated after this snapshot is absent in the next request; the current response consistently reflects its established snapshot.
+- When no visible consent exists, skip the type-name lookup and return 200 S10000 with data.consents=[] after COMMIT. An empty list is never 404. UUID arrays and timestamps are typed bound parameters, not interpolated SQL.
+- This GET never records reading or acceptance and never inserts/updates/deletes data. The client keeps the displayed current version for its later register/submit request; those endpoints record the user's displayed/read state separately. No cookie, session or user-specific state changes on this inquiry.
+- COMMIT the read-only transaction before 200. Timeout before commit rolls back and returns 408 E90001; an unexpected pre-commit failure (including incomplete mapping) rolls back and returns generic 500 without a new bizCode. All SQL results return to Application before deriving ids, mapping fields or responding.
+
+#### Scenario correspondence with sequence.wsd
+
+| Scenario                              | Required sequence behavior                                                       | HTTP       | Writes |
+| ------------------------------------- | -------------------------------------------------------------------------------- | ---------- | ------ |
+| Missing/invalid timestamp             | Validate before BEGIN; no SQL                                                    | 400 E10001 | None   |
+| Visible rows                          | Same snapshot for definitions and mandatory type names; complete mapping, COMMIT | 200 S10000 | None   |
+| No visible rows                       | Skip type lookup, COMMIT, explicit empty array                                   | 200 S10000 | None   |
+| Timeout before commit                 | ROLLBACK before response                                                         | 408 E90001 | None   |
+| Unexpected failure or missing mapping | ROLLBACK, generic error without partial data                                     | 500        | None   |
 
 ## Example Request
 
@@ -145,6 +176,25 @@ curl --location --request GET 'https://www.domain.com/api-dev/v1/consent/active'
 }
 ```
 
+#### Success - No Active Consent
+
+```JSON
+{
+    "status": {
+        "code": 200,
+        "message": "Ok",
+        "bizCode": "S10000",
+        "bizMessage": "Inquiry Active Consent Success",
+        "requestId": "req-9b1deb4d-3b7d-4bad-9bdd-2b0d7b3dcb6d",
+        "timestamp": "2026-11-05T12:42:00.123Z",
+        "status": "SUCCESS"
+    },
+    "data": {
+        "consents": []
+    }
+}
+```
+
 #### Fail - Bad Request
 
 ```JSON
@@ -177,9 +227,26 @@ curl --location --request GET 'https://www.domain.com/api-dev/v1/consent/active'
 }
 ```
 
+#### Fail - Internal Server Error
+
+```JSON
+{
+    "status": {
+        "code": 500,
+        "message": "Internal Server Error",
+        "bizMessage": "An unexpected error occurred.",
+        "requestId": "req-active-review",
+        "timestamp": "2026-11-07T12:00:00.123Z",
+        "status": "ERROR"
+    }
+}
+```
+
 ---
 
 ## Database Relations
+
+Both SELECTs use one read-only REPEATABLE READ snapshot and server eligibility time. The first statement also tests the referenced type; the second enriches only returned visible rows. All placeholders represent typed bound values.
 
 ### Table: [consent.t_consent](../../../schema/consent/t_consent.md)
 
@@ -199,9 +266,15 @@ SELECT
     c.body
 FROM consent.t_consent c
 WHERE c.row_status = 'ACTIVE'
-AND c.effective_at <= NOW() AT TIME ZONE 'UTC'
-AND (c.expired_at IS NULL OR c.expired_at > NOW() AT TIME ZONE 'UTC')
-ORDER BY c.effective_at
+AND c.effective_at <= '<sequence.now>'
+AND (c.expired_at IS NULL OR c.expired_at > '<sequence.now>')
+AND EXISTS (
+    SELECT 1
+    FROM consent.m_consent_type ct
+    WHERE ct.id = c.consent_type_id
+    AND ct.row_status = 'ACTIVE'
+)
+ORDER BY c.effective_at, c.id
 ```
 
 ### Table: [consent.m_consent_type](../../../schema/consent/m_consent_type.md)
@@ -213,6 +286,7 @@ SELECT
     ct.id as consent_type_id,
     ct.name as consent_type_name
 FROM consent.m_consent_type ct
-WHERE ct.id IN ('<sequence.consentTypeIds>')
+WHERE ct.id = ANY ('<sequence.consentTypeIds>'::UUID[])
 AND ct.row_status = 'ACTIVE'
+ORDER BY ct.id
 ```

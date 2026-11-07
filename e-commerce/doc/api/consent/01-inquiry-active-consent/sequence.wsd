@@ -1,4 +1,4 @@
-@startuml InquiryActiveConsent Sequence
+@startuml ActiveConsent
 
 title Inquiry Active Consent API Sequence
 
@@ -23,91 +23,103 @@ skinparam sequence {
 
 ' Do not show participant footers at the bottom of the diagram
 hide footbox
-
-
 actor "User" as user
-
 box "Frontend" #F8FAFC
-    participant "Inquiry Active Consent Page" as page
+    participant "Consent Page" as page
 end box
-
 box "Web API" #F8FAFC
     participant "API" as api
     participant "Application" as app
     participant "Domain" as domain
     participant "Infrastructure" as infra
 end box
-
 box "Database" #F8FAFC
     database "t_consent" as t_consent
     database "m_consent_type" as m_consent_type
 end box
-
-user -> page: Request Inquiry Active Consent
-
+user -> page: Request current public consents
 activate page
-    page -> api: Call GET v1/consent/active
-    activate api
-        api -> app: [**InquiryActiveConsentQueryHandler**] Process request
-        activate app
-            app -> app: Validate request parameters and business rules
-            alt If request is invalid
-                app -> api: Return error response
-                api -> page: Return error response
-                page -> user: Display error message
-            else If request is valid
-                app -> infra: Execute database operations
-                activate infra
-                    infra -> t_consent: QUERY - Get active consents
-                    activate t_consent
-                        note right of t_consent
-                            SELECT
-                                c.id as consent_id,
-                                c.code,
-                                c.consent_type_id,
-                                c.consent_version,
-                                c.consent_name,
-                                c.consent_description,
-                                c.effective_at,
-                                c.expired_at,
-                                c.is_required,
-                                c.body
-                            FROM consent.t_consent c
-                            WHERE c.row_status = 'ACTIVE'
-                            AND c.effective_at <= NOW() AT TIME ZONE 'UTC'
-                            AND (c.expired_at IS NULL OR c.expired_at > NOW() AT TIME ZONE 'UTC')
-                            ORDER BY c.effective_at
-                        end note
-                        t_consent -> infra: Return query result
-                    deactivate t_consent
-
-                    infra -> m_consent_type: QUERY - Get consent type
-                    activate m_consent_type
-                        note right of m_consent_type
-                            SELECT
-                                ct.id as consent_type_id,
-                                ct.name as consent_type_name
-                            FROM consent.m_consent_type ct
-                            WHERE ct.id IN ('<sequence.consentTypeIds>')
-                            AND ct.row_status = 'ACTIVE'
-                        end note
-                        m_consent_type -> infra: Return query result
-                    deactivate m_consent_type
-
-                    infra -> app: Return database result
-                deactivate infra
-
-                app -> domain: Apply domain rules and prepare response
-                activate domain
-                    domain -> app: Return response data
-                deactivate domain
-
-                app -> api: Return success response
-                api -> page: Return success response
-                page -> user: Display success result
-            end alt
-        deactivate app
-    deactivate api
+page -> api: GET v1/consent/active (timestamp, requestId)
+activate api
+api -> app: [**InquiryActiveConsentQueryHandler**] Process request
+activate app
+app -> app: Generate requestId if omitted; validate mandatory UTC timestamp
+alt Missing or malformed timestamp
+    app -> api: HTTP 400 E10001
+    api -> page: Header validation error
+else Valid request
+    app -> infra: BEGIN ISOLATION LEVEL REPEATABLE READ READ ONLY
+    alt Read-only work completes
+        app -> app: Capture server UTC now immediately before first query; establish snapshot
+        app -> infra: QUERY - Get active consents
+        infra -> t_consent: QUERY - Get active consents
+        activate t_consent
+            note right of t_consent
+                SELECT
+                    c.id as consent_id,
+                    c.code,
+                    c.consent_type_id,
+                    c.consent_version,
+                    c.consent_name,
+                    c.consent_description,
+                    c.effective_at,
+                    c.expired_at,
+                    c.is_required,
+                    c.body
+                FROM consent.t_consent c
+                WHERE c.row_status = 'ACTIVE'
+                AND c.effective_at <= '<sequence.now>'
+                AND (c.expired_at IS NULL OR c.expired_at > '<sequence.now>')
+                AND EXISTS (
+                    SELECT 1
+                    FROM consent.m_consent_type ct
+                    WHERE ct.id = c.consent_type_id
+                    AND ct.row_status = 'ACTIVE'
+                )
+                ORDER BY c.effective_at, c.id
+            end note
+            t_consent -> infra: Return ordered visibleConsents (current fields and type ids)
+        deactivate t_consent
+        infra -> app: Return ordered visibleConsents (current fields and type ids)
+        alt visibleConsents is empty
+            app -> app: data.consents = []; skip type-name lookup
+        else visibleConsents is non-empty
+            app -> app: consentTypeIds = distinct visibleConsents.consent_type_id
+            app -> infra: QUERY - Get consent type
+            infra -> m_consent_type: QUERY - Get consent type
+            activate m_consent_type
+                note right of m_consent_type
+                    SELECT
+                        ct.id as consent_type_id,
+                        ct.name as consent_type_name
+                    FROM consent.m_consent_type ct
+                    WHERE ct.id = ANY ('<sequence.consentTypeIds>'::UUID[])
+                    AND ct.row_status = 'ACTIVE'
+                    ORDER BY ct.id
+                end note
+                m_consent_type -> infra: Return ACTIVE type names by typeId
+            deactivate m_consent_type
+            infra -> app: Return ACTIVE type names by typeId
+            app -> domain: Merge eleven public fields; require every consentTypeName; preserve nulls and current versions
+            domain -> app: Return complete data.consents in effective_at ASC, id ASC order
+            app -> app: Mapping failure throws before COMMIT; use unexpected-failure path
+        end
+        app -> infra: COMMIT
+        infra -> app: Return completed read-only transaction
+        app -> api: HTTP 200 S10000 Inquiry Active Consent Success; data.consents
+        api -> page: Return ordered list or [] without creating user evidence
+        page -> user: Display current definitions and retain displayed versions
+    else Timeout before COMMIT
+        app -> infra: ROLLBACK
+        app -> api: HTTP 408 E90001
+        api -> page: Inquiry timed out
+    else Unexpected pre-commit failure including incomplete mapping
+        app -> infra: ROLLBACK
+        app -> api: HTTP 500 Internal Server Error; omit bizCode
+        api -> page: Generic inquiry failure
+    end
+end
+deactivate app
+deactivate api
 deactivate page
-
 @enduml
