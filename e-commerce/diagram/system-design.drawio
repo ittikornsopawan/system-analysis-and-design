@@ -1,0 +1,221 @@
+<?xml version='1.0' encoding='utf-8'?>
+<mxfile host="app.diagrams.net" agent="Jinny" version="32.6.10" type="device">
+  <diagram id="system-design" name="Order lifecycle &amp; proposed data boundaries">
+    <mxGraphModel dx="1584" dy="1120" grid="1" gridSize="4" guides="1" connect="1" arrows="1" page="1" pageScale="1" pageWidth="1584" pageHeight="1120" background="#f5f5f5" math="0" shadow="0">
+      <root>
+        <mxCell id="0" />
+        <mxCell id="1" parent="0" />
+        <mxCell id="decor-1" value="" style="shape=rect;fillColor=#f5f5f5;strokeColor=none;connectable=0;" vertex="1" parent="1">
+          <mxGeometry as="geometry" x="0" y="0" width="1584" height="1120" />
+        </mxCell>
+        <mxCell id="decor-2" value="" style="rounded=1;absoluteArcSize=1;arcSize=16;fillColor=#f1f1f1;strokeColor=#bfc0c0;strokeWidth=0.8;" vertex="1" parent="1">
+          <mxGeometry as="geometry" x="40" y="160" width="1504" height="152" />
+        </mxCell>
+        <mxCell id="decor-3" value="WAIT / RETRY / GUARDED RECOVERY" style="text;html=0;align=left;verticalAlign=middle;spacing=0;whiteSpace=wrap;overflow=hidden;strokeColor=none;fillColor=none;fontColor=#5a6580;fontFamily=Geist Mono,Courier New,monospace;fontSize=8;fontStyle=0;" vertex="1" parent="1">
+          <mxGeometry as="geometry" x="56" y="165" width="1488" height="16" />
+        </mxCell>
+        <mxCell id="decor-4" value="" style="rounded=1;absoluteArcSize=1;arcSize=16;fillColor=#f1f1f1;strokeColor=#bfc0c0;strokeWidth=0.8;" vertex="1" parent="1">
+          <mxGeometry as="geometry" x="40" y="704" width="1504" height="304" />
+        </mxCell>
+        <mxCell id="decor-5" value="ALTERNATE OUTCOMES" style="text;html=0;align=left;verticalAlign=middle;spacing=0;whiteSpace=wrap;overflow=hidden;strokeColor=none;fillColor=none;fontColor=#5a6580;fontFamily=Geist Mono,Courier New,monospace;fontSize=8;fontStyle=0;" vertex="1" parent="1">
+          <mxGeometry as="geometry" x="56" y="709" width="1488" height="16" />
+        </mxCell>
+        <mxCell id="edge-0" value="" style="edgeStyle=none;rounded=1;curved=0;arcSize=16;html=0;endArrow=block;endFill=1;endSize=6;strokeWidth=1.2;strokeColor=#4f5d75;entryX=0.0;entryY=0.5;entryPerimeter=0;" edge="1" parent="1" target="wait">
+          <mxGeometry as="geometry" relative="1">
+            <mxPoint as="sourcePoint" x="62" y="468" />
+          </mxGeometry>
+        </mxCell>
+        <mxCell id="decor-6" value="CREATE" style="text;html=0;align=center;verticalAlign=middle;spacing=0;fontSize=8;fontFamily=Geist Mono,Courier New,monospace;fontColor=#5a6580;fillColor=#f5f5f5;strokeColor=none;" vertex="1" parent="1">
+          <mxGeometry as="geometry" x="56" y="448" width="48" height="12" />
+        </mxCell>
+        <mxCell id="edge-1" value="" style="edgeStyle=none;rounded=1;curved=0;arcSize=16;html=0;endArrow=block;endFill=1;endSize=6;strokeWidth=1.2;strokeColor=#4f5d75;exitX=1.0;exitY=0.5;exitPerimeter=0;entryX=0.0;entryY=0.5;entryPerimeter=0;" edge="1" parent="1" target="paid" source="wait">
+          <mxGeometry as="geometry" relative="1" />
+        </mxCell>
+        <mxCell id="decor-7" value="WEBHOOK OK" style="text;html=0;align=center;verticalAlign=middle;spacing=0;fontSize=8;fontFamily=Geist Mono,Courier New,monospace;fontColor=#5a6580;fillColor=#f5f5f5;strokeColor=none;" vertex="1" parent="1">
+          <mxGeometry as="geometry" x="406" y="448" width="68" height="12" />
+        </mxCell>
+        <mxCell id="edge-2" value="" style="edgeStyle=none;rounded=1;curved=0;arcSize=16;html=0;endArrow=block;endFill=1;endSize=6;strokeWidth=1.2;strokeColor=#4f5d75;exitX=1.0;exitY=0.5;exitPerimeter=0;entryX=0.0;entryY=0.5;entryPerimeter=0;" edge="1" parent="1" target="processing" source="paid">
+          <mxGeometry as="geometry" relative="1" />
+        </mxCell>
+        <mxCell id="decor-8" value="FIRST PARCEL" style="text;html=0;align=center;verticalAlign=middle;spacing=0;fontSize=8;fontFamily=Geist Mono,Courier New,monospace;fontColor=#5a6580;fillColor=#f5f5f5;strokeColor=none;" vertex="1" parent="1">
+          <mxGeometry as="geometry" x="786" y="448" width="76" height="12" />
+        </mxCell>
+        <mxCell id="edge-3" value="" style="edgeStyle=none;rounded=1;curved=0;arcSize=16;html=0;endArrow=block;endFill=1;endSize=6;strokeWidth=1.2;strokeColor=#4f5d75;exitX=1.0;exitY=0.5;exitPerimeter=0;entryX=0.0;entryY=0.5;entryPerimeter=0;" edge="1" parent="1" target="complete" source="processing">
+          <mxGeometry as="geometry" relative="1" />
+        </mxCell>
+        <mxCell id="decor-9" value="ALL DELIVERED" style="text;html=0;align=center;verticalAlign=middle;spacing=0;fontSize=8;fontFamily=Geist Mono,Courier New,monospace;fontColor=#5a6580;fillColor=#f5f5f5;strokeColor=none;" vertex="1" parent="1">
+          <mxGeometry as="geometry" x="1166" y="448" width="84" height="12" />
+        </mxCell>
+        <mxCell id="edge-4" value="" style="edgeStyle=none;rounded=1;curved=0;arcSize=16;html=0;endArrow=block;endFill=1;endSize=6;strokeWidth=1.2;strokeColor=#4f5d75;exitX=0.5;exitY=1.0;exitPerimeter=0;entryX=0.5;entryY=0.0;entryPerimeter=0;" edge="1" parent="1" target="cancelled" source="wait">
+          <mxGeometry as="geometry" relative="1" />
+        </mxCell>
+        <mxCell id="decor-10" value="EXPIRE/CANCEL" style="text;html=0;align=center;verticalAlign=middle;spacing=0;fontSize=8;fontFamily=Geist Mono,Courier New,monospace;fontColor=#5a6580;fillColor=#f5f5f5;strokeColor=none;" vertex="1" parent="1">
+          <mxGeometry as="geometry" x="256" y="648" width="84" height="12" />
+        </mxCell>
+        <mxCell id="edge-5" value="" style="edgeStyle=none;rounded=1;curved=0;arcSize=16;html=0;endArrow=block;endFill=1;endSize=6;strokeWidth=1.2;strokeColor=#4f5d75;exitX=0.5;exitY=1.0;exitPerimeter=0;entryX=0.5;entryY=0.0;entryPerimeter=0;" edge="1" parent="1" target="refunded" source="paid">
+          <mxGeometry as="geometry" relative="1" />
+        </mxCell>
+        <mxCell id="decor-11" value="FULL REFUND" style="text;html=0;align=center;verticalAlign=middle;spacing=0;fontSize=8;fontFamily=Geist Mono,Courier New,monospace;fontColor=#5a6580;fillColor=#f5f5f5;strokeColor=none;" vertex="1" parent="1">
+          <mxGeometry as="geometry" x="640" y="648" width="72" height="12" />
+        </mxCell>
+        <mxCell id="edge-6" value="" style="edgeStyle=none;rounded=1;curved=0;arcSize=16;html=0;endArrow=block;endFill=1;endSize=6;strokeWidth=1.2;strokeColor=#4f5d75;exitX=0.5;exitY=0.0;exitPerimeter=0;entryX=0.5;entryY=0.0;entryPerimeter=0;dashed=1;dashPattern=5 4;" edge="1" parent="1" target="paid" source="processing">
+          <mxGeometry as="geometry" relative="1">
+            <Array as="points">
+              <mxPoint x="1016" y="232" />
+              <mxPoint x="632" y="232" />
+            </Array>
+          </mxGeometry>
+        </mxCell>
+        <mxCell id="decor-12" value="NO LIVE PARCEL" style="text;html=0;align=center;verticalAlign=middle;spacing=0;fontSize=8;fontFamily=Geist Mono,Courier New,monospace;fontColor=#5a6580;fillColor=#f5f5f5;strokeColor=none;" vertex="1" parent="1">
+          <mxGeometry as="geometry" x="780" y="212" width="88" height="12" />
+        </mxCell>
+        <mxCell id="edge-7" value="" style="edgeStyle=none;rounded=1;curved=0;arcSize=16;html=0;endArrow=block;endFill=1;endSize=6;strokeWidth=1.2;strokeColor=#4f5d75;exitX=0.3333333333333333;exitY=0.0;exitPerimeter=0;entryX=0.6666666666666666;entryY=0.0;entryPerimeter=0;dashed=1;dashPattern=5 4;" edge="1" parent="1" target="wait" source="wait">
+          <mxGeometry as="geometry" relative="1">
+            <Array as="points">
+              <mxPoint x="200" y="264" />
+              <mxPoint x="296" y="264" />
+            </Array>
+          </mxGeometry>
+        </mxCell>
+        <mxCell id="decor-13" value="PAYMENT RETRY" style="text;html=0;align=center;verticalAlign=middle;spacing=0;fontSize=8;fontFamily=Geist Mono,Courier New,monospace;fontColor=#5a6580;fillColor=#f5f5f5;strokeColor=none;" vertex="1" parent="1">
+          <mxGeometry as="geometry" x="206" y="244" width="84" height="12" />
+        </mxCell>
+        <mxCell id="decor-14" value="" style="ellipse;fillColor=#2d3142;strokeColor=none;" vertex="1" parent="1">
+          <mxGeometry as="geometry" x="50" y="462" width="12" height="12" />
+        </mxCell>
+        <mxCell id="wait" value="&lt;div style=&quot;position:relative;box-sizing:border-box;width:288px;height:216px;text-align:left;color:#2d3142;&quot;&gt;&lt;div style=&quot;position:absolute;left:16px;top:12px;box-sizing:border-box;border:0.8px solid #2d3142;border-radius:2px;width:72px;height:12px;line-height:10px;padding-left:5px;font-size:8px;font-family:Geist Mono,Courier New,monospace;&quot;&gt;WAIT_PAYMENT&lt;/div&gt;&lt;div style=&quot;position:absolute;left:16px;top:32px;font-family:Geist,Arial,sans-serif;font-size:12px;line-height:16px;font-weight:600;white-space:nowrap;&quot;&gt;Awaiting payment&lt;/div&gt;&lt;div style=&quot;position:absolute;left:16px;top:54px;width:256px;border-top:0.8px solid #bfc0c0;&quot;&gt;&lt;/div&gt;&lt;div style=&quot;position:absolute;left:16px;top:58px;font-family:Geist Mono,Courier New,monospace;font-size:9px;line-height:16px;white-space:nowrap;color:#4f5d75;&quot;&gt;sales/02 · customer checkout&lt;/div&gt;&lt;div style=&quot;position:absolute;left:16px;top:74px;font-family:Geist,Arial,sans-serif;font-size:11px;line-height:16px;white-space:nowrap;color:#4f5d75;&quot;&gt;One order per selected shop&lt;/div&gt;&lt;div style=&quot;position:absolute;left:16px;top:90px;font-family:Geist,Arial,sans-serif;font-size:11px;line-height:16px;white-space:nowrap;color:#4f5d75;&quot;&gt;Price, lot and address snapshotted&lt;/div&gt;&lt;div style=&quot;position:absolute;left:16px;top:106px;font-family:Geist,Arial,sans-serif;font-size:11px;line-height:16px;white-space:nowrap;color:#4f5d75;&quot;&gt;Reserve stock + campaign budget&lt;/div&gt;&lt;div style=&quot;position:absolute;left:16px;top:122px;font-family:Geist,Arial,sans-serif;font-size:11px;line-height:16px;white-space:nowrap;color:#4f5d75;&quot;&gt;Configured payment window: 30 min&lt;/div&gt;&lt;div style=&quot;position:absolute;left:16px;top:138px;font-family:Geist,Arial,sans-serif;font-size:11px;line-height:16px;white-space:nowrap;color:#4f5d75;&quot;&gt;default&lt;/div&gt;&lt;div style=&quot;position:absolute;left:16px;top:154px;font-family:Geist,Arial,sans-serif;font-size:11px;line-height:16px;white-space:nowrap;color:#4f5d75;&quot;&gt;Purchased cart rows deleted in same TX&lt;/div&gt;&lt;div style=&quot;position:absolute;left:16px;top:170px;font-family:Geist,Arial,sans-serif;font-size:11px;line-height:16px;white-space:nowrap;color:#4f5d75;&quot;&gt;Only a webhook can confirm payment&lt;/div&gt;&lt;/div&gt;" style="rounded=1;absoluteArcSize=1;arcSize=16;whiteSpace=wrap;html=1;overflow=hidden;align=left;verticalAlign=top;spacing=0;fillColor=#ffffff;strokeColor=#2d3142;strokeWidth=1.2;" vertex="1" parent="1">
+          <mxGeometry as="geometry" x="104" y="360" width="288" height="216" />
+        </mxCell>
+        <mxCell id="paid" value="&lt;div style=&quot;position:relative;box-sizing:border-box;width:288px;height:216px;text-align:left;color:#2d3142;&quot;&gt;&lt;div style=&quot;position:absolute;left:16px;top:12px;box-sizing:border-box;border:0.8px solid #2d3142;border-radius:2px;width:100px;height:12px;line-height:10px;padding-left:5px;font-size:8px;font-family:Geist Mono,Courier New,monospace;&quot;&gt;PAYMENT_CONFIRMED&lt;/div&gt;&lt;div style=&quot;position:absolute;left:16px;top:32px;font-family:Geist,Arial,sans-serif;font-size:12px;line-height:16px;font-weight:600;white-space:nowrap;&quot;&gt;Payment confirmed&lt;/div&gt;&lt;div style=&quot;position:absolute;left:16px;top:54px;width:256px;border-top:0.8px solid #bfc0c0;&quot;&gt;&lt;/div&gt;&lt;div style=&quot;position:absolute;left:16px;top:58px;font-family:Geist Mono,Courier New,monospace;font-size:9px;line-height:16px;white-space:nowrap;color:#4f5d75;&quot;&gt;payment/02 · signed Stripe success&lt;/div&gt;&lt;div style=&quot;position:absolute;left:16px;top:74px;font-family:Geist,Arial,sans-serif;font-size:11px;line-height:16px;white-space:nowrap;color:#4f5d75;&quot;&gt;Payment COMPLETED; order now paid&lt;/div&gt;&lt;div style=&quot;position:absolute;left:16px;top:90px;font-family:Geist,Arial,sans-serif;font-size:11px;line-height:16px;white-space:nowrap;color:#4f5d75;&quot;&gt;Guard: order is still WAIT_PAYMENT&lt;/div&gt;&lt;div style=&quot;position:absolute;left:16px;top:106px;font-family:Geist,Arial,sans-serif;font-size:11px;line-height:16px;white-space:nowrap;color:#4f5d75;&quot;&gt;Accept success if stock is still held&lt;/div&gt;&lt;div style=&quot;position:absolute;left:16px;top:122px;font-family:Geist,Arial,sans-serif;font-size:11px;line-height:16px;white-space:nowrap;color:#4f5d75;&quot;&gt;Shipping has not started&lt;/div&gt;&lt;div style=&quot;position:absolute;left:16px;top:138px;font-family:Geist,Arial,sans-serif;font-size:11px;line-height:16px;white-space:nowrap;color:#4f5d75;&quot;&gt;Whole-payment refund is allowed here&lt;/div&gt;&lt;div style=&quot;position:absolute;left:16px;top:154px;font-family:Geist,Arial,sans-serif;font-size:11px;line-height:16px;white-space:nowrap;color:#4f5d75;&quot;&gt;The browser is not payment truth&lt;/div&gt;&lt;/div&gt;" style="rounded=1;absoluteArcSize=1;arcSize=16;whiteSpace=wrap;html=1;overflow=hidden;align=left;verticalAlign=top;spacing=0;fillColor=#ffffff;strokeColor=#2d3142;strokeWidth=1.2;" vertex="1" parent="1">
+          <mxGeometry as="geometry" x="488" y="360" width="288" height="216" />
+        </mxCell>
+        <mxCell id="processing" value="&lt;div style=&quot;position:relative;box-sizing:border-box;width:288px;height:216px;text-align:left;color:#2d3142;&quot;&gt;&lt;div style=&quot;position:absolute;left:16px;top:12px;box-sizing:border-box;border:0.8px solid #2d3142;border-radius:2px;width:64px;height:12px;line-height:10px;padding-left:5px;font-size:8px;font-family:Geist Mono,Courier New,monospace;&quot;&gt;PROCESSING&lt;/div&gt;&lt;div style=&quot;position:absolute;left:16px;top:32px;font-family:Geist,Arial,sans-serif;font-size:12px;line-height:16px;font-weight:600;white-space:nowrap;&quot;&gt;Fulfilling the order&lt;/div&gt;&lt;div style=&quot;position:absolute;left:16px;top:54px;width:256px;border-top:0.8px solid #bfc0c0;&quot;&gt;&lt;/div&gt;&lt;div style=&quot;position:absolute;left:16px;top:58px;font-family:Geist Mono,Courier New,monospace;font-size:9px;line-height:16px;white-space:nowrap;color:#4f5d75;&quot;&gt;shipping/01 · shop member/admin&lt;/div&gt;&lt;div style=&quot;position:absolute;left:16px;top:74px;font-family:Geist,Arial,sans-serif;font-size:11px;line-height:16px;white-space:nowrap;color:#4f5d75;&quot;&gt;First PENDING parcel starts this phase&lt;/div&gt;&lt;div style=&quot;position:absolute;left:16px;top:90px;font-family:Geist,Arial,sans-serif;font-size:11px;line-height:16px;white-space:nowrap;color:#4f5d75;&quot;&gt;Split parcels; assigned qty ≤ item qty&lt;/div&gt;&lt;div style=&quot;position:absolute;left:16px;top:106px;font-family:Geist,Arial,sans-serif;font-size:11px;line-height:16px;white-space:nowrap;color:#4f5d75;&quot;&gt;Shop records SHIPPED + tracking&lt;/div&gt;&lt;div style=&quot;position:absolute;left:16px;top:122px;font-family:Geist,Arial,sans-serif;font-size:11px;line-height:16px;white-space:nowrap;color:#4f5d75;&quot;&gt;Receiver or eligible system completion&lt;/div&gt;&lt;div style=&quot;position:absolute;left:16px;top:138px;font-family:Geist,Arial,sans-serif;font-size:11px;line-height:16px;white-space:nowrap;color:#4f5d75;&quot;&gt;More parcels keep order PROCESSING&lt;/div&gt;&lt;div style=&quot;position:absolute;left:16px;top:154px;font-family:Geist,Arial,sans-serif;font-size:11px;line-height:16px;white-space:nowrap;color:#4f5d75;&quot;&gt;Cancelled/returned parcels can reopen&lt;/div&gt;&lt;/div&gt;" style="rounded=1;absoluteArcSize=1;arcSize=16;whiteSpace=wrap;html=1;overflow=hidden;align=left;verticalAlign=top;spacing=0;fillColor=#ffffff;strokeColor=#2d3142;strokeWidth=1.2;" vertex="1" parent="1">
+          <mxGeometry as="geometry" x="872" y="360" width="288" height="216" />
+        </mxCell>
+        <mxCell id="complete" value="&lt;div style=&quot;position:relative;box-sizing:border-box;width:288px;height:216px;text-align:left;color:#2d3142;&quot;&gt;&lt;div style=&quot;position:absolute;left:16px;top:12px;box-sizing:border-box;border:0.8px solid #bf4520;border-radius:2px;width:144px;height:12px;line-height:10px;padding-left:5px;font-size:8px;font-family:Geist Mono,Courier New,monospace;&quot;&gt;COMPLETED / HAPPY TERMINAL&lt;/div&gt;&lt;div style=&quot;position:absolute;left:16px;top:32px;font-family:Geist,Arial,sans-serif;font-size:12px;line-height:16px;font-weight:600;white-space:nowrap;&quot;&gt;Order completed&lt;/div&gt;&lt;div style=&quot;position:absolute;left:16px;top:54px;width:256px;border-top:0.8px solid #bfc0c0;&quot;&gt;&lt;/div&gt;&lt;div style=&quot;position:absolute;left:16px;top:58px;font-family:Geist Mono,Courier New,monospace;font-size:9px;line-height:16px;white-space:nowrap;color:#4f5d75;&quot;&gt;shipping/06 · owner / system&lt;/div&gt;&lt;div style=&quot;position:absolute;left:16px;top:74px;font-family:Geist,Arial,sans-serif;font-size:11px;line-height:16px;white-space:nowrap;color:#4f5d75;&quot;&gt;Owner confirms SHIPPED parcels&lt;/div&gt;&lt;div style=&quot;position:absolute;left:16px;top:90px;font-family:Geist,Arial,sans-serif;font-size:11px;line-height:16px;white-space:nowrap;color:#4f5d75;&quot;&gt;System: eligible orders after 7 days&lt;/div&gt;&lt;div style=&quot;position:absolute;left:16px;top:106px;font-family:Geist,Arial,sans-serif;font-size:11px;line-height:16px;white-space:nowrap;color:#4f5d75;&quot;&gt;No PENDING; all item qty allocated&lt;/div&gt;&lt;div style=&quot;position:absolute;left:16px;top:122px;font-family:Geist,Arial,sans-serif;font-size:11px;line-height:16px;white-space:nowrap;color:#4f5d75;&quot;&gt;All remaining SHIPPED aged &amp;gt;= 7d&lt;/div&gt;&lt;div style=&quot;position:absolute;left:16px;top:138px;font-family:Geist,Arial,sans-serif;font-size:11px;line-height:16px;white-space:nowrap;color:#4f5d75;&quot;&gt;Partial / unshipped stays PROCESSING&lt;/div&gt;&lt;div style=&quot;position:absolute;left:16px;top:154px;font-family:Geist,Arial,sans-serif;font-size:11px;line-height:16px;white-space:nowrap;color:#4f5d75;&quot;&gt;Every active item fully DELIVERED&lt;/div&gt;&lt;div style=&quot;position:absolute;left:16px;top:170px;font-family:Geist,Arial,sans-serif;font-size:11px;line-height:16px;white-space:nowrap;color:#4f5d75;&quot;&gt;Allows purchased-product review&lt;/div&gt;&lt;div style=&quot;position:absolute;left:16px;top:186px;font-family:Geist,Arial,sans-serif;font-size:11px;line-height:16px;white-space:nowrap;color:#4f5d75;&quot;&gt;No campaign-budget release&lt;/div&gt;&lt;/div&gt;" style="rounded=1;absoluteArcSize=1;arcSize=16;whiteSpace=wrap;html=1;overflow=hidden;align=left;verticalAlign=top;spacing=0;fillColor=#f1e7e4;strokeColor=#bf4520;strokeWidth=1.2;" vertex="1" parent="1">
+          <mxGeometry as="geometry" x="1256" y="360" width="288" height="216" />
+        </mxCell>
+        <mxCell id="cancelled" value="&lt;div style=&quot;position:relative;box-sizing:border-box;width:288px;height:232px;text-align:left;color:#2d3142;&quot;&gt;&lt;div style=&quot;position:absolute;left:16px;top:12px;box-sizing:border-box;border:0.8px solid #4f5d75;border-radius:2px;width:164px;height:12px;line-height:10px;padding-left:5px;font-size:8px;font-family:Geist Mono,Courier New,monospace;&quot;&gt;CANCELLED / ALTERNATE TERMINAL&lt;/div&gt;&lt;div style=&quot;position:absolute;left:16px;top:32px;font-family:Geist,Arial,sans-serif;font-size:12px;line-height:16px;font-weight:600;white-space:nowrap;&quot;&gt;Order cancelled&lt;/div&gt;&lt;div style=&quot;position:absolute;left:16px;top:54px;width:256px;border-top:0.8px solid #bfc0c0;&quot;&gt;&lt;/div&gt;&lt;div style=&quot;position:absolute;left:16px;top:58px;font-family:Geist Mono,Courier New,monospace;font-size:9px;line-height:16px;white-space:nowrap;color:#4f5d75;&quot;&gt;sales/05 · owner/shop/admin/expiry&lt;/div&gt;&lt;div style=&quot;position:absolute;left:16px;top:74px;font-family:Geist,Arial,sans-serif;font-size:11px;line-height:16px;white-space:nowrap;color:#4f5d75;&quot;&gt;Only WAIT_PAYMENT may be cancelled&lt;/div&gt;&lt;div style=&quot;position:absolute;left:16px;top:90px;font-family:Geist,Arial,sans-serif;font-size:11px;line-height:16px;white-space:nowrap;color:#4f5d75;&quot;&gt;Payment PROCESSING blocks this path&lt;/div&gt;&lt;div style=&quot;position:absolute;left:16px;top:106px;font-family:Geist,Arial,sans-serif;font-size:11px;line-height:16px;white-space:nowrap;color:#4f5d75;&quot;&gt;Cancel PENDING PaymentIntent&lt;/div&gt;&lt;div style=&quot;position:absolute;left:16px;top:122px;font-family:Geist,Arial,sans-serif;font-size:11px;line-height:16px;white-space:nowrap;color:#4f5d75;&quot;&gt;Restore quantities to original lots&lt;/div&gt;&lt;div style=&quot;position:absolute;left:16px;top:138px;font-family:Geist,Arial,sans-serif;font-size:11px;line-height:16px;white-space:nowrap;color:#4f5d75;&quot;&gt;Release budget; append RELEASE ledger&lt;/div&gt;&lt;div style=&quot;position:absolute;left:16px;top:154px;font-family:Geist,Arial,sans-serif;font-size:11px;line-height:16px;white-space:nowrap;color:#4f5d75;&quot;&gt;Keep order and items as history&lt;/div&gt;&lt;div style=&quot;position:absolute;left:16px;top:170px;font-family:Geist,Arial,sans-serif;font-size:11px;line-height:16px;white-space:nowrap;color:#4f5d75;&quot;&gt;Repeat → 409; no double stock release&lt;/div&gt;&lt;/div&gt;" style="rounded=1;absoluteArcSize=1;arcSize=16;whiteSpace=wrap;html=1;overflow=hidden;align=left;verticalAlign=top;spacing=0;fillColor=#ebebec;strokeColor=#4f5d75;strokeWidth=1.2;" vertex="1" parent="1">
+          <mxGeometry as="geometry" x="104" y="744" width="288" height="232" />
+        </mxCell>
+        <mxCell id="refunded" value="&lt;div style=&quot;position:relative;box-sizing:border-box;width:288px;height:232px;text-align:left;color:#2d3142;&quot;&gt;&lt;div style=&quot;position:absolute;left:16px;top:12px;box-sizing:border-box;border:0.8px solid #4f5d75;border-radius:2px;width:156px;height:12px;line-height:10px;padding-left:5px;font-size:8px;font-family:Geist Mono,Courier New,monospace;&quot;&gt;REFUNDED / ALTERNATE TERMINAL&lt;/div&gt;&lt;div style=&quot;position:absolute;left:16px;top:32px;font-family:Geist,Arial,sans-serif;font-size:12px;line-height:16px;font-weight:600;white-space:nowrap;&quot;&gt;Order refunded&lt;/div&gt;&lt;div style=&quot;position:absolute;left:16px;top:54px;width:256px;border-top:0.8px solid #bfc0c0;&quot;&gt;&lt;/div&gt;&lt;div style=&quot;position:absolute;left:16px;top:58px;font-family:Geist Mono,Courier New,monospace;font-size:9px;line-height:16px;white-space:nowrap;color:#4f5d75;&quot;&gt;payment/05 or payment/02 refund event&lt;/div&gt;&lt;div style=&quot;position:absolute;left:16px;top:74px;font-family:Geist,Arial,sans-serif;font-size:11px;line-height:16px;white-space:nowrap;color:#4f5d75;&quot;&gt;Order must be PAYMENT_CONFIRMED&lt;/div&gt;&lt;div style=&quot;position:absolute;left:16px;top:90px;font-family:Geist,Arial,sans-serif;font-size:11px;line-height:16px;white-space:nowrap;color:#4f5d75;&quot;&gt;Payment must already be COMPLETED&lt;/div&gt;&lt;div style=&quot;position:absolute;left:16px;top:106px;font-family:Geist,Arial,sans-serif;font-size:11px;line-height:16px;white-space:nowrap;color:#4f5d75;&quot;&gt;Shop member / admin requests API&lt;/div&gt;&lt;div style=&quot;position:absolute;left:16px;top:122px;font-family:Geist,Arial,sans-serif;font-size:11px;line-height:16px;white-space:nowrap;color:#4f5d75;&quot;&gt;refund&lt;/div&gt;&lt;div style=&quot;position:absolute;left:16px;top:138px;font-family:Geist,Arial,sans-serif;font-size:11px;line-height:16px;white-space:nowrap;color:#4f5d75;&quot;&gt;Refund whole amount including shipping&lt;/div&gt;&lt;div style=&quot;position:absolute;left:16px;top:154px;font-family:Geist,Arial,sans-serif;font-size:11px;line-height:16px;white-space:nowrap;color:#4f5d75;&quot;&gt;Restore stock to original lots&lt;/div&gt;&lt;div style=&quot;position:absolute;left:16px;top:170px;font-family:Geist,Arial,sans-serif;font-size:11px;line-height:16px;white-space:nowrap;color:#4f5d75;&quot;&gt;Release campaign reservations once&lt;/div&gt;&lt;div style=&quot;position:absolute;left:16px;top:186px;font-family:Geist,Arial,sans-serif;font-size:11px;line-height:16px;white-space:nowrap;color:#4f5d75;&quot;&gt;No partial refund / return flow here&lt;/div&gt;&lt;/div&gt;" style="rounded=1;absoluteArcSize=1;arcSize=16;whiteSpace=wrap;html=1;overflow=hidden;align=left;verticalAlign=top;spacing=0;fillColor=#ebebec;strokeColor=#4f5d75;strokeWidth=1.2;" vertex="1" parent="1">
+          <mxGeometry as="geometry" x="488" y="744" width="288" height="232" />
+        </mxCell>
+        <mxCell id="decor-21" value="E-COMMERCE / 03 / SPECIFIED BUSINESS BEHAVIOR" style="text;html=0;align=left;verticalAlign=middle;spacing=0;whiteSpace=wrap;overflow=hidden;strokeColor=none;fillColor=none;fontColor=#5a6580;fontFamily=Geist Mono,Courier New,monospace;fontSize=8;fontStyle=0;" vertex="1" parent="1">
+          <mxGeometry as="geometry" x="40" y="37" width="1504" height="16" />
+        </mxCell>
+        <mxCell id="decor-22" value="Order lifecycle &amp; proposed data boundaries" style="text;html=0;align=left;verticalAlign=middle;spacing=0;whiteSpace=wrap;overflow=hidden;strokeColor=none;fillColor=none;fontColor=#2d3142;fontFamily=Instrument Serif,Georgia,serif;fontSize=32;fontStyle=0;" vertex="1" parent="1">
+          <mxGeometry as="geometry" x="40" y="53" width="1504" height="40" />
+        </mxCell>
+        <mxCell id="decor-23" value="Existing SQL business states · proposed Redis admission/cache, MongoDB config and asynchronous audit/transaction projections." style="text;html=0;align=left;verticalAlign=middle;spacing=0;whiteSpace=wrap;overflow=hidden;strokeColor=none;fillColor=none;fontColor=#4f5d75;fontFamily=Geist,Arial,sans-serif;fontSize=12;fontStyle=0;" vertex="1" parent="1">
+          <mxGeometry as="geometry" x="40" y="101" width="1504" height="20" />
+        </mxCell>
+        <mxCell id="decor-24" value="Payment failure / cancellation" style="text;html=0;align=left;verticalAlign=middle;spacing=0;whiteSpace=wrap;overflow=hidden;strokeColor=none;fillColor=none;fontColor=#4f5d75;fontFamily=Geist,Arial,sans-serif;fontSize=11;fontStyle=0;" vertex="1" parent="1">
+          <mxGeometry as="geometry" x="56" y="186" width="1488" height="19" />
+        </mxCell>
+        <mxCell id="decor-25" value="leaves the order WAIT_PAYMENT." style="text;html=0;align=left;verticalAlign=middle;spacing=0;whiteSpace=wrap;overflow=hidden;strokeColor=none;fillColor=none;fontColor=#4f5d75;fontFamily=Geist,Arial,sans-serif;fontSize=11;fontStyle=0;" vertex="1" parent="1">
+          <mxGeometry as="geometry" x="56" y="206" width="1488" height="19" />
+        </mxCell>
+        <mxCell id="decor-26" value="Retry creates or reuses an intent." style="text;html=0;align=left;verticalAlign=middle;spacing=0;whiteSpace=wrap;overflow=hidden;strokeColor=none;fillColor=none;fontColor=#4f5d75;fontFamily=Geist,Arial,sans-serif;fontSize=11;fontStyle=0;" vertex="1" parent="1">
+          <mxGeometry as="geometry" x="56" y="226" width="1488" height="19" />
+        </mxCell>
+        <mxCell id="decor-27" value="Expiry waits during" style="text;html=0;align=left;verticalAlign=middle;spacing=0;whiteSpace=wrap;overflow=hidden;strokeColor=none;fillColor=none;fontColor=#4f5d75;fontFamily=Geist,Arial,sans-serif;fontSize=11;fontStyle=0;" vertex="1" parent="1">
+          <mxGeometry as="geometry" x="56" y="266" width="1488" height="19" />
+        </mxCell>
+        <mxCell id="decor-28" value="payment processing." style="text;html=0;align=left;verticalAlign=middle;spacing=0;whiteSpace=wrap;overflow=hidden;strokeColor=none;fillColor=none;fontColor=#4f5d75;fontFamily=Geist,Arial,sans-serif;fontSize=11;fontStyle=0;" vertex="1" parent="1">
+          <mxGeometry as="geometry" x="56" y="286" width="1488" height="19" />
+        </mxCell>
+        <mxCell id="decor-29" value="Reopen paid phase only when no parcel" style="text;html=0;align=left;verticalAlign=middle;spacing=0;whiteSpace=wrap;overflow=hidden;strokeColor=none;fillColor=none;fontColor=#4f5d75;fontFamily=Geist,Arial,sans-serif;fontSize=11;fontStyle=0;" vertex="1" parent="1">
+          <mxGeometry as="geometry" x="1080" y="186" width="464" height="19" />
+        </mxCell>
+        <mxCell id="decor-30" value="is PENDING, SHIPPED or DELIVERED." style="text;html=0;align=left;verticalAlign=middle;spacing=0;whiteSpace=wrap;overflow=hidden;strokeColor=none;fillColor=none;fontColor=#4f5d75;fontFamily=Geist,Arial,sans-serif;fontSize=11;fontStyle=0;" vertex="1" parent="1">
+          <mxGeometry as="geometry" x="1080" y="206" width="464" height="19" />
+        </mxCell>
+        <mxCell id="decor-31" value="Cancelled / returned parcels free their" style="text;html=0;align=left;verticalAlign=middle;spacing=0;whiteSpace=wrap;overflow=hidden;strokeColor=none;fillColor=none;fontColor=#4f5d75;fontFamily=Geist,Arial,sans-serif;fontSize=11;fontStyle=0;" vertex="1" parent="1">
+          <mxGeometry as="geometry" x="1080" y="230" width="464" height="19" />
+        </mxCell>
+        <mxCell id="decor-32" value="assigned quantities for a new parcel." style="text;html=0;align=left;verticalAlign=middle;spacing=0;whiteSpace=wrap;overflow=hidden;strokeColor=none;fillColor=none;fontColor=#4f5d75;fontFamily=Geist,Arial,sans-serif;fontSize=11;fontStyle=0;" vertex="1" parent="1">
+          <mxGeometry as="geometry" x="1080" y="250" width="464" height="19" />
+        </mxCell>
+        <mxCell id="decor-33" value="Primary rail: sales.t_order states. Payment and parcel states are separate." style="text;html=0;align=left;verticalAlign=middle;spacing=0;whiteSpace=wrap;overflow=hidden;strokeColor=none;fillColor=none;fontColor=#4f5d75;fontFamily=Geist,Arial,sans-serif;fontSize=11;fontStyle=0;" vertex="1" parent="1">
+          <mxGeometry as="geometry" x="872" y="602" width="672" height="19" />
+        </mxCell>
+        <mxCell id="decor-34" value="Delivery: receiver confirmation or guarded 7-day system job (shipping/06)." style="text;html=0;align=left;verticalAlign=middle;spacing=0;whiteSpace=wrap;overflow=hidden;strokeColor=none;fillColor=none;fontColor=#4f5d75;fontFamily=Geist,Arial,sans-serif;fontSize=11;fontStyle=0;" vertex="1" parent="1">
+          <mxGeometry as="geometry" x="872" y="626" width="672" height="19" />
+        </mxCell>
+        <mxCell id="decor-35" value="Redis / MongoDB boundaries (PROPOSED)" style="text;html=0;align=left;verticalAlign=middle;spacing=0;whiteSpace=wrap;overflow=hidden;strokeColor=none;fillColor=none;fontColor=#4f5d75;fontFamily=Geist,Arial,sans-serif;fontSize=14;fontStyle=1;" vertex="1" parent="1">
+          <mxGeometry as="geometry" x="872" y="735" width="672" height="22" />
+        </mxCell>
+        <mxCell id="decor-36" value="Redis quota gate before CREATE: 429 / protected outage 503 writes no order." style="text;html=0;align=left;verticalAlign=middle;spacing=0;whiteSpace=wrap;overflow=hidden;strokeColor=none;fillColor=none;fontColor=#4f5d75;fontFamily=Geist,Arial,sans-serif;fontSize=11;fontStyle=0;" vertex="1" parent="1">
+          <mxGeometry as="geometry" x="872" y="770" width="672" height="19" />
+        </mxCell>
+        <mxCell id="decor-37" value="SQL source + outbox intent commit; then invalidate cache and relay event copies." style="text;html=0;align=left;verticalAlign=middle;spacing=0;whiteSpace=wrap;overflow=hidden;strokeColor=none;fillColor=none;fontColor=#4f5d75;fontFamily=Geist,Arial,sans-serif;fontSize=11;fontStyle=0;" vertex="1" parent="1">
+          <mxGeometry as="geometry" x="872" y="794" width="672" height="19" />
+        </mxCell>
+        <mxCell id="decor-38" value="MongoDB: versioned config and audit/projections; no shared cross-store commit." style="text;html=0;align=left;verticalAlign=middle;spacing=0;whiteSpace=wrap;overflow=hidden;strokeColor=none;fillColor=none;fontColor=#4f5d75;fontFamily=Geist,Arial,sans-serif;fontSize=11;fontStyle=0;" vertex="1" parent="1">
+          <mxGeometry as="geometry" x="872" y="818" width="672" height="19" />
+        </mxCell>
+        <mxCell id="decor-39" value="Live stock, payable price, payment state and permission authority stay SQL." style="text;html=0;align=left;verticalAlign=middle;spacing=0;whiteSpace=wrap;overflow=hidden;strokeColor=none;fillColor=none;fontColor=#4f5d75;fontFamily=Geist,Arial,sans-serif;fontSize=11;fontStyle=0;" vertex="1" parent="1">
+          <mxGeometry as="geometry" x="872" y="842" width="672" height="19" />
+        </mxCell>
+        <mxCell id="decor-40" value="Cancel/refund restores once. Lock order: order row → lots → budgets." style="text;html=0;align=left;verticalAlign=middle;spacing=0;whiteSpace=wrap;overflow=hidden;strokeColor=none;fillColor=none;fontColor=#4f5d75;fontFamily=Geist,Arial,sans-serif;fontSize=11;fontStyle=0;" vertex="1" parent="1">
+          <mxGeometry as="geometry" x="872" y="866" width="672" height="19" />
+        </mxCell>
+        <mxCell id="decor-41" value="Late money after cancel: refund payment; never release stock/budget twice." style="text;html=0;align=left;verticalAlign=middle;spacing=0;whiteSpace=wrap;overflow=hidden;strokeColor=none;fillColor=none;fontColor=#4f5d75;fontFamily=Geist,Arial,sans-serif;fontSize=11;fontStyle=0;" vertex="1" parent="1">
+          <mxGeometry as="geometry" x="872" y="890" width="672" height="19" />
+        </mxCell>
+        <mxCell id="decor-42" value="Signed webhooks bypass user Redis quotas; SQL idempotency stays authoritative." style="text;html=0;align=left;verticalAlign=middle;spacing=0;whiteSpace=wrap;overflow=hidden;strokeColor=none;fillColor=none;fontColor=#4f5d75;fontFamily=Geist,Arial,sans-serif;fontSize=11;fontStyle=0;" vertex="1" parent="1">
+          <mxGeometry as="geometry" x="872" y="914" width="672" height="19" />
+        </mxCell>
+        <mxCell id="decor-43" value="MongoDB outage queues publication intent; replay never repeats the business write." style="text;html=0;align=left;verticalAlign=middle;spacing=0;whiteSpace=wrap;overflow=hidden;strokeColor=none;fillColor=none;fontColor=#4f5d75;fontFamily=Geist,Arial,sans-serif;fontSize=11;fontStyle=0;" vertex="1" parent="1">
+          <mxGeometry as="geometry" x="872" y="938" width="672" height="19" />
+        </mxCell>
+        <mxCell id="decor-44" value="Post-shipping refunds remain manual follow-up; neither store adds an order state." style="text;html=0;align=left;verticalAlign=middle;spacing=0;whiteSpace=wrap;overflow=hidden;strokeColor=none;fillColor=none;fontColor=#4f5d75;fontFamily=Geist,Arial,sans-serif;fontSize=11;fontStyle=0;" vertex="1" parent="1">
+          <mxGeometry as="geometry" x="872" y="962" width="672" height="19" />
+        </mxCell>
+        <mxCell id="decor-45" value="Existing: sales/02,05 · payment/01,02,05 · shipping/01,02,06 · campaign C2–C9 | In-review boundaries: redis-design.md + mongodb-design.md" style="text;html=0;align=left;verticalAlign=middle;spacing=0;whiteSpace=wrap;overflow=hidden;strokeColor=none;fillColor=none;fontColor=#5a6580;fontFamily=Geist Mono,Courier New,monospace;fontSize=9;fontStyle=0;" vertex="1" parent="1">
+          <mxGeometry as="geometry" x="40" y="1024" width="1504" height="17" />
+        </mxCell>
+        <mxCell id="decor-46" value="" style="shape=line;strokeColor=#bfc0c0;strokeWidth=0.8;" vertex="1" parent="1">
+          <mxGeometry as="geometry" x="40" y="1052" width="1504" height="1" />
+        </mxCell>
+        <mxCell id="decor-47" value="" style="rounded=1;absoluteArcSize=1;arcSize=4;fillColor=#ffffff;strokeColor=#2d3142;" vertex="1" parent="1">
+          <mxGeometry as="geometry" x="40" y="1066" width="16" height="12" />
+        </mxCell>
+        <mxCell id="decor-48" value="Persisted order state" style="text;html=0;align=left;verticalAlign=middle;spacing=0;whiteSpace=wrap;overflow=hidden;strokeColor=none;fillColor=none;fontColor=#4f5d75;fontFamily=Geist,Arial,sans-serif;fontSize=10;fontStyle=0;" vertex="1" parent="1">
+          <mxGeometry as="geometry" x="72" y="1063" width="250" height="18" />
+        </mxCell>
+        <mxCell id="decor-49" value="" style="rounded=1;absoluteArcSize=1;arcSize=4;fillColor=#f1e7e4;strokeColor=#bf4520;" vertex="1" parent="1">
+          <mxGeometry as="geometry" x="336" y="1066" width="16" height="12" />
+        </mxCell>
+        <mxCell id="decor-50" value="Completed order" style="text;html=0;align=left;verticalAlign=middle;spacing=0;whiteSpace=wrap;overflow=hidden;strokeColor=none;fillColor=none;fontColor=#4f5d75;fontFamily=Geist,Arial,sans-serif;fontSize=10;fontStyle=0;" vertex="1" parent="1">
+          <mxGeometry as="geometry" x="368" y="1063" width="250" height="18" />
+        </mxCell>
+        <mxCell id="decor-51" value="" style="rounded=1;absoluteArcSize=1;arcSize=4;fillColor=#ebebec;strokeColor=#4f5d75;" vertex="1" parent="1">
+          <mxGeometry as="geometry" x="632" y="1066" width="16" height="12" />
+        </mxCell>
+        <mxCell id="decor-52" value="Alternate terminal" style="text;html=0;align=left;verticalAlign=middle;spacing=0;whiteSpace=wrap;overflow=hidden;strokeColor=none;fillColor=none;fontColor=#4f5d75;fontFamily=Geist,Arial,sans-serif;fontSize=10;fontStyle=0;" vertex="1" parent="1">
+          <mxGeometry as="geometry" x="664" y="1063" width="250" height="18" />
+        </mxCell>
+        <mxCell id="legend-edge-3" value="" style="endArrow=block;endSize=6;endFill=1;strokeColor=#4f5d75;" edge="1" parent="1">
+          <mxGeometry as="geometry" relative="1">
+            <mxPoint as="sourcePoint" x="928" y="1072" />
+            <mxPoint as="targetPoint" x="952" y="1072" />
+          </mxGeometry>
+        </mxCell>
+        <mxCell id="decor-53" value="Guarded status transition" style="text;html=0;align=left;verticalAlign=middle;spacing=0;whiteSpace=wrap;overflow=hidden;strokeColor=none;fillColor=none;fontColor=#4f5d75;fontFamily=Geist,Arial,sans-serif;fontSize=10;fontStyle=0;" vertex="1" parent="1">
+          <mxGeometry as="geometry" x="960" y="1063" width="250" height="18" />
+        </mxCell>
+        <mxCell id="legend-edge-4" value="" style="endArrow=block;endSize=6;endFill=1;strokeColor=#4f5d75;dashed=1;dashPattern=5 4;" edge="1" parent="1">
+          <mxGeometry as="geometry" relative="1">
+            <mxPoint as="sourcePoint" x="1224" y="1072" />
+            <mxPoint as="targetPoint" x="1248" y="1072" />
+          </mxGeometry>
+        </mxCell>
+        <mxCell id="decor-54" value="Retry / recovery route" style="text;html=0;align=left;verticalAlign=middle;spacing=0;whiteSpace=wrap;overflow=hidden;strokeColor=none;fillColor=none;fontColor=#4f5d75;fontFamily=Geist,Arial,sans-serif;fontSize=10;fontStyle=0;" vertex="1" parent="1">
+          <mxGeometry as="geometry" x="1256" y="1063" width="250" height="18" />
+        </mxCell>
+      </root>
+    </mxGraphModel>
+  </diagram>
+</mxfile>
