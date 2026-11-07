@@ -144,7 +144,7 @@ Status: Complete, reviewed by the lead SA (gate 1, gate 2 and one re-check), wai
 - [x] Add the checkers `authen-spec` and `authen-schema`, extend `audit_all.py` to plain indexes, and mutation-test them.
 - [x] Run every checker, the audit and the database tests after rebasing on `origin/main`.
 
-Verification: see the pull request. The authen checkers caught 120 of 120 deliberate faults and the migration 10 of 10 according to the author; the lead did not rerun them. Tests 2 to 6 of the SQL file were not seen failing before the migration change (the script stops at the first error of a file); their sharpness was shown by deliberate migration faults. Nothing was run against a backend or a real database; the existing backend differs from the specs in endpoint paths and token lifetime, as written in the design document.
+Verification: 45 of 45 `check_docs.py` sub-commands OK, `api-sequence-spec` OK (83 specs, product 5/15 and shop 5/16 filled), audit 53 tables 0 findings, database tests ALL PASSED. `test_sequence_skeleton.py` fails on `main` already (the test compares the block order of the hand-written diagrams with the skeleton; 4 files of `main` and now also `product/02` and `shop/04`, where blocks run in the order of the work); the test is outside this assignment and the lead is told. The authen checkers caught 120 of 120 deliberate faults and the migration 10 of 10 according to the author; the lead did not rerun them. Tests 2 to 6 of the SQL file were not seen failing before the migration change (the script stops at the first error of a file); their sharpness was shown by deliberate migration faults. Nothing was run against a backend or a real database; the existing backend differs from the specs in endpoint paths and token lifetime, as written in the design document.
 
 ## e-commerce: Shipping domain (WP3)
 
@@ -487,7 +487,7 @@ Me delivery preflight: four authorized paths, 41/41 documentation commands OK, a
 
 ## e-commerce: Sequence diagrams of 10 inquiry APIs of product and shop
 
-Status: Diagrams written in the managed workspace of Marry on branch `docs/marry-inquiry-sequences`. The pull request waits for the repair of `check_docs.py` on `main` (SyntaxError after PR #34); then `main` is merged into the branch and the checker is rerun. Scope: the ten folders below and `tasks/`. No `spec.md` is changed.
+Status: Diagrams written in the managed workspace of Marry on branch `docs/marry-inquiry-sequences`; `main` (929012e, after the repair of `check_docs.py`) is merged into the branch and the pull request is open for the lead. Scope: the ten folders below and `tasks/`. No `spec.md` is changed.
 
 Folders: `product/02-inquiry-product`, `05-inquiry-product-category`, `08-inquiry-product-category-attribute`, `12-inquiry-product-type`, `15-inquiry-product-brand`, `shop/03-inquiry-shop-product-sku`, `04-inquiry-storefront-product`, `07-inquiry-shop-type`, `14-inquiry-storefront-shop-product`, `16-inquiry-storefront-product-review`.
 
@@ -495,9 +495,10 @@ Folders: `product/02-inquiry-product`, `05-inquiry-product-category`, `08-inquir
 - [x] Put every block where it runs: the blocks that need the result of another block come after it (for example the option value images of `product/02` after the option values; `shop/04` finds the shop product, the product and its SKUs, each with its own 404, before it reads the images and options); the participants follow the first use.
 - [x] Keep every SQL block letter for letter; run `api-sequence-spec` (OK, 83 specs, product 5/15 and shop 5/16 filled) and `grep TODO(author)` on the ten folders (nothing).
 - [x] PlantUML: `-checkonly` and `-syntax` pass for all ten; the SVGs show every SQL line except five lines with two `--` (three in `shop/14`, two in `shop/16`), which PlantUML draws struck through; the spec is not changed in this round and the lead is told.
-- [ ] After the repair of `check_docs.py` is merged: merge `main` into the branch (no force push), rerun every checker and the preflight, push, open the pull request, tell the lead; hold the lock until the merge, then release and park.
+- [x] After the repair of `check_docs.py` was merged (929012e): merge `main` into the branch (no force push; the only conflict was the end of this file, both sections kept), rerun every checker and the preflight.
+- [ ] Push, open the pull request, tell the lead; hold the lock until the merge, then release and park.
 
-Verification: see the pull request.
+Verification: 45 of 45 `check_docs.py` sub-commands OK, `api-sequence-spec` OK (83 specs, product 5/15 and shop 5/16 filled), audit 53 tables 0 findings, database tests ALL PASSED. `test_sequence_skeleton.py` fails on `main` already (the test compares the block order of the hand-written diagrams with the skeleton; 4 files of `main` and now also `product/02` and `shop/04`, where blocks run in the order of the work); the test is outside this assignment and the lead is told.
 
 ## repository-wide: Sequence phase 1, five prototype diagrams
 
