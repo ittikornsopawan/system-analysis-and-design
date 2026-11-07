@@ -54,3 +54,9 @@ Use `commit-and-pr`. Do not merge PRs or enable auto-merge. Follow Q15: leave ea
 - SQL parity checks protect the definitions and table lifecycles; endpoint flow checks additionally enforce ordering, mutually exclusive outcomes and transaction behavior. A shared SQL step may follow alternative branches when its parameters and preconditions are explicit.
 - Run every documentation subcommand, the complete SQL audit, and database tests for delivery. Mutation-test the changed checker; static SQL parity alone is insufficient proof of flow correctness.
 - Report rendering and runtime checks separately. The existing backend is outside this documentation review; a passing checker does not prove backend conformance.
+
+## Consent display and version decisions (Q16–Q17)
+
+Q16: The owner answered **“แสดงหน้านั้นถือว่าอ่านแล้ว ส่งมาก่อน 1 ทีเพื่อ update ว่าอ่าน ถ้ากดส่ง result ก็เส้นเดียวกันนั้นแหละแค่แปะ result มาด้วย ถ้ามี read อยู่แล้วก็ไม่ต้อง update”**. Displaying a consent triggers the same submission endpoint without result and records the displayed version as read. A later answer sends result on that endpoint; a read-only call preserves an existing answer. Already-read evidence keeps its original read flag/timestamp and read-only calls perform no UPDATE. Required registration still needs explicit true.
+
+Q17: The owner answered **“ใช่ บังคับระบุเวอร์ชันที่แสดง”**. Every supplied consent object must identify its displayed consentVersion, including read-only requests; reject an omitted or non-current version without silently accepting a newer unseen version.

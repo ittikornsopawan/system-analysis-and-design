@@ -5462,6 +5462,93 @@ def check_refresh_flow() -> int:
 COMMANDS['refresh-flow'] = check_refresh_flow
 
 
+def check_pending_consent_flow() -> int:
+    """Guard current canonical evidence, required/optional pending and one read-only response snapshot."""
+    path='e-commerce/doc/api/consent/05-inquiry-pending-consent/spec.md'
+    md=read(path);wsd=read(str(Path(path).with_name('sequence.wsd')));errors=[]
+    for needle in ('2026-11-07-api-review-design.md','Q16/Q17','REPEATABLE READ READ ONLY',
+                   'newest created_at, then greatest id', 'BOTH is_read=true AND result=true',
+                   'Optional consent is complete once canonical current-version is_read=true',
+                   'No evidence means pending', 'submittedVersion does not itself prove acceptance',
+                   'This GET never marks a consent read', 'same snapshot', 'effective_at ASC, id ASC',
+                   'already-authorized in-flight read', 'inactive/locked/archived/deleted type is hidden',
+                   'Required means c.is_required', 'No FOR UPDATE', 'A new current version is pending'):
+        if needle not in md:errors.append(f'pending rule missing {needle!r}')
+    canonical_rule=re.search(r'^- Select the canonical ACTIVE evidence row[^\n]+',md,re.M)
+    if not canonical_rule or 'newest created_at, then greatest id' not in canonical_rule[0]:
+        errors.append('canonical current-version evidence must explicitly use newest created_at then greatest id')
+    front=re.match(r'---\n(.*?)\n---\n',md,re.S);fm=front[1] if front else ''
+    state=re.search(r'^status: (draft|in-review|approved)$',fm,re.M)
+    if not state:errors.append('pending spec needs approval metadata')
+    for field in ('approved_by','approved_at'):
+        value=re.search(rf'^{field}: (.+)$',fm,re.M)
+        if not value or (state and ((state[1]=='approved')==(value[1]=='null'))):errors.append(f'inconsistent pending {field}')
+    operations=spec_database_operations(md)
+    expected=('QUERY - Check active credential and user','QUERY - Get pending consents','QUERY - Get latest submitted version','QUERY - Get consent type')
+    if tuple(h for _,h,_ in operations)!=expected:errors.append('pending requires credential, policy, history and type operations')
+    sql={h:re.sub(r'--[^\n]*','',s) for _,h,s in operations}
+    required={
+        expected[0]: ["at.token = '<sequence.accessTokenHash>'", "at.user_id = '<sequence.userId>'", "at.row_status = 'ACTIVE'", "at.expired_at > '<sequence.now>'", 'AND EXISTS (', 'u.id = at.user_id', "u.row_status = 'ACTIVE'"],
+        expected[1]: ["c.row_status = 'ACTIVE'", "c.effective_at <= '<sequence.now>'", "c.expired_at IS NULL OR c.expired_at > '<sequence.now>'", 'AND EXISTS (', 'ct.id = c.consent_type_id', "ct.row_status = 'ACTIVE'", 'AND NOT COALESCE((', 'SELECT uc.is_read AND (NOT c.is_required OR uc.result)', "uc.user_id = '<sequence.userId>'", 'uc.consent_id = c.id', 'uc.consent_version = c.consent_version', "uc.row_status = 'ACTIVE'", 'ORDER BY uc.created_at DESC, uc.id DESC', 'LIMIT 1', '), FALSE)', 'ORDER BY c.effective_at, c.id'],
+        expected[2]: ['SELECT DISTINCT ON (uc.consent_id)', 'uc.consent_version as submitted_version', "uc.user_id = '<sequence.userId>'", "uc.consent_id = ANY ('<sequence.consentIds>'::UUID[])", "uc.row_status = 'ACTIVE'", 'ORDER BY uc.consent_id, uc.created_at DESC, uc.id DESC'],
+        expected[3]: ['ct.id as consent_type_id', 'ct.name as consent_type_name', "ct.id = ANY ('<sequence.consentTypeIds>'::UUID[])", "ct.row_status = 'ACTIVE'"],
+    }
+    for h,needles in required.items():
+        for needle in needles:
+            if needle not in sql.get(h,''):errors.append(f'{h} missing {needle}')
+    projection=sql.get(expected[1],'').split('FROM consent.t_consent',1)[0]
+    for field in ('id as consent_id','code','consent_type_id','consent_version','consent_name','consent_description','effective_at','expired_at','is_required','body'):
+        if not re.search(r'^\s*'+re.escape('c.'+field)+r'\s*,?\s*$',projection,re.M):errors.append(f'pending projection missing exact c.{field}')
+    for table,heading,statement in operations:
+        if not heading.startswith('QUERY') or not statement.startswith('SELECT') or re.search(r'\b(?:INSERT|UPDATE|DELETE|pg_advisory_xact_lock)\b|\bNOW\s*\(',statement,re.I):errors.append('pending must be read-only with explicit now and no locks')
+        if table.startswith('author.'):errors.append('self inquiry requires no assignment-table query')
+    actual,lifecycle=sequence_database_operations(wsd);errors+=lifecycle
+    if [(t.split('.')[-1],h,normalize(s)) for t,h,s in operations]!=[(t,h,normalize(s)) for t,h,s in actual]:errors.append('pending spec/sequence SQL differs')
+    for _,heading,_ in operations:
+        if f'app -> infra: {heading}' not in wsd:errors.append(f'{heading} needs Application request')
+        match=re.search(rf'infra -> (\w+): {re.escape(heading)}\n.*?deactivate \1\n([^\n]+)',wsd,re.S)
+        if not match or not match[2].strip().startswith('infra -> app: Return '):errors.append(f'{heading} needs result returned to Application')
+    for needle in ('userId = verified sub; accessTokenHash = SHA-256 exact JWT',
+                   'Capture UTC now before first query; establish snapshot and recheck JWT exp',
+                   'alt pendingConsents is empty', 'data.consents = []; skip history/type lookups',
+                   'consentIds = pendingConsents.consent_id; consentTypeIds = distinct pending type ids',
+                   'submittedVersion = latest map or null; require every type name',
+                   'Return complete data.consents in effective_at ASC, id ASC order',
+                   'Mapping failure throws before COMMIT', 'without recording reading'):
+        if needle not in wsd:errors.append(f'pending sequence missing mapping/guard {needle!r}')
+    traces,structure=login_sequence_paths(wsd);errors+=structure
+    from collections import Counter
+    outcomes=[];history_modes=[]
+    for trace in traces:
+        responses=[e for e in trace if e.startswith('app -> api: HTTP ')]
+        if len(responses)!=1:errors.append('each pending trace needs one terminal outcome');continue
+        code=int(responses[0].split('HTTP ')[1].split()[0]);outcomes.append(code)
+        def ordered(*parts):
+            pos=[next((i for i,e in enumerate(trace) if part in e),-1) for part in parts]
+            return -1 not in pos and pos==sorted(set(pos))
+        begun=any(e.startswith('app -> infra: BEGIN') for e in trace)
+        if code==200:
+            if not ordered('Verify JWT','BEGIN ISOLATION LEVEL REPEATABLE READ READ ONLY','Capture UTC now',expected[0],expected[1],'app -> infra: COMMIT','HTTP 200'):errors.append('pending success must authorize/read one snapshot and commit before response')
+            if any('ROLLBACK' in e for e in trace):errors.append('pending success must not roll back')
+            has_history=any(expected[2] in e for e in trace);history_modes.append(has_history)
+            if has_history:
+                if not ordered(expected[1],'consentIds = pendingConsents.consent_id',expected[2],expected[3],'Merge twelve response fields','app -> infra: COMMIT'):errors.append('non-empty pending must map current history and type names from derived ids before commit')
+            elif any(expected[3] in e for e in trace) or not any('data.consents = []' in e for e in trace):errors.append('empty pending must skip enrichment and return explicit []')
+            if 'data.consents' not in responses[0]:errors.append('success must expose pending array')
+        elif begun:
+            if not ordered('BEGIN','ROLLBACK',f'HTTP {code}') or any(e=='app -> infra: COMMIT' for e in trace):errors.append('pending error must roll back before response with no commit')
+            if code==401 and any(expected[1] in e for e in trace):errors.append('invalid credential cannot read policy/history')
+        elif code not in (400,401) or any(e.startswith('infra -> ') for e in trace):errors.append('early error must execute no SQL')
+        if any(e.startswith('infra -> ') and ': QUERY' not in e for e in trace):errors.append('pending cannot mutate data')
+    if Counter(outcomes)!=Counter({200:2,400:1,401:2,408:1,500:1}) or sorted(history_modes)!=[False,True]:errors.append(f'incomplete pending outcome paths: {dict(Counter(outcomes))}, enrich={history_modes}')
+    for title,code in {'Success':200,'Success - No Pending Consent':200,'Fail - Bad Request':400,'Fail - Unauthorized':401,'Fail - Request Timeout':408,'Fail - Internal Server Error':500}.items():
+        try:
+            obj=authen_json(md,title);status=obj['status']
+            if status['code']!=code or code==500 and 'bizCode' in status:errors.append(f'incorrect pending {title} envelope')
+            if title=='Success - No Pending Consent' and obj['data']['consents']!=[]:errors.append('empty pending success must contain []')
+        except (TypeError,KeyError,ValueError):errors.append(f'missing pending {title} example')
+    for text in ('| isRead=false, result=true | Pending | Pending |','| isRead=true, result=false (read-only/rejected) | Pending | Complete |','| isRead=true, result=true | Complete | Complete |'):
+        if re.sub(r'\s+','',text) not in re.sub(r'\s+','',md):errors.append('pending truth table must distinguish read and accepted for both kinds')
 def check_active_consent_flow() -> int:
     """Check the public visible-consent contract, complete type names and read-only paths."""
     path='e-commerce/doc/api/consent/01-inquiry-active-consent/spec.md'
