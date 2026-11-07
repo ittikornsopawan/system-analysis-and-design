@@ -5616,6 +5616,8 @@ def check_register_flow() -> int:
 
 
 COMMANDS['register-flow'] = check_register_flow
+
+
 def check_consent_submit_flow() -> int:
     """Check read/answer/no-op transitions, revocation serialization and atomic batch outcomes."""
     path = 'e-commerce/doc/api/consent/04-submit-consent/spec.md'
@@ -5648,6 +5650,83 @@ def check_consent_submit_flow() -> int:
         expected[3]: ['uc.result,', 'uc.is_read,', 'uc.read_at', "uc.user_id = '<sequence.userId>'", "uc.consent_id = '<sequence.consents.consentId>'", "uc.consent_version = '<sequence.consents.consentVersion>'", "uc.row_status = 'ACTIVE'", 'ORDER BY uc.created_at DESC, uc.id DESC', 'LIMIT 1'],
         expected[4]: ['created_by,', 'user_id,', 'consent_id,', 'consent_version,', 'result,', 'is_read,', 'read_at', '<sequence.userId>', '<sequence.consents.consentId>', '<sequence.consents.consentVersion>', '<sequence.consents.result>', 'TRUE,', '<sequence.now>'],
         expected[5]: ["updated_by = '<sequence.userId>'", "updated_at = '<sequence.now>'", "result = CASE WHEN '<sequence.consents.resultSpecified>'::BOOLEAN THEN '<sequence.consents.result>'::BOOLEAN ELSE result END", "read_at = CASE WHEN is_read THEN read_at ELSE '<sequence.now>'::TIMESTAMP END", 'is_read = TRUE', "WHERE id = '<sequence.userConsentId>'", "AND user_id = '<sequence.userId>'", "AND consent_id = '<sequence.consents.consentId>'", "AND consent_version = '<sequence.consents.consentVersion>'", "AND row_status = 'ACTIVE'", "AND (NOT is_read OR ('<sequence.consents.resultSpecified>'::BOOLEAN AND result IS DISTINCT FROM '<sequence.consents.result>'::BOOLEAN))"],
+    }
+    for h,needles in required.items():
+        for needle in needles:
+            if needle not in sql.get(h,''):errors.append(f'{h} missing {needle}')
+    for h in expected[-2:]:
+        if 'RETURNING id as user_consent_id, consent_id, consent_version, result, is_read, read_at' not in sql.get(h,''):
+            errors.append(f'{h} must return actual persisted response values')
+    if 'NOW()' in '\n'.join(sql.values()):errors.append('submit must use fresh post-lock now')
+    if any(h.startswith('DELETE') or t.startswith('author.') for t,h,_ in operations):errors.append('submit must preserve history and require no role-assignment query')
+    actual,lifecycle=sequence_database_operations(wsd);errors+=lifecycle
+    if [(t.split('.')[-1],h,normalize(s)) for t,h,s in operations]!=[(t,h,normalize(s)) for t,h,s in actual]:errors.append('submit spec/sequence SQL differs')
+    for _,heading,_ in operations:
+        if f'app -> infra: {heading}' not in wsd:errors.append(f'{heading} needs Application request')
+        match=re.search(rf'infra -> (\w+): {re.escape(heading)}\n.*?deactivate \1\n([^\n]+)',wsd,re.S)
+        if not match or not match[2].strip().startswith('infra -> app: Return '):errors.append(f'{heading} must return data to Application')
+    for needle in ('userId = verified sub; accessTokenHash = SHA-256 exact JWT', 'Capture fresh UTC now after user lock; recheck JWT exp',
+                   'Compare complete eligible id set and all displayed versions before writes',
+                   'loop Each consent in ascending consentId order',
+                   'resultSpecified = property present; result = explicit boolean or false for insert',
+                   'alt No canonical ACTIVE row for user/consent/version',
+                   'else Canonical row already read and result omitted or unchanged',
+                   'responseItem = existing evidence; no INSERT or UPDATE; preserve result/readAt',
+                   'userConsentId = canonical evidence id; preserve first readAt if already read',
+                   'Collect responseItem by original request position',
+                   'break Abort entire request on internal consistency failure', 'end break'):
+        if needle not in wsd:errors.append(f'submit sequence missing guard/mapping {needle!r}')
+    traces,structure=login_sequence_paths(wsd);errors+=structure
+    from collections import Counter
+    outcomes=[];modes=Counter()
+    for trace in traces:
+        responses=[e for e in trace if e.startswith('app -> api: HTTP ')]
+        if len(responses)!=1:errors.append('each submit trace needs exactly one terminal outcome');continue
+        code=int(responses[0].split('HTTP ')[1].split()[0]);outcomes.append(code)
+        def ordered(*parts):
+            pos=[next((i for i,e in enumerate(trace) if part in e),-1) for part in parts]
+            return -1 not in pos and pos==sorted(set(pos))
+        writes=[e for e in trace if e.startswith('infra -> ') and ': INSERT' in e or e.startswith('infra -> ') and ': UPDATE' in e]
+        begun=any('BEGIN' in e for e in trace)
+        if code==200:
+            if not ordered('Verify Bearer JWT', 'BEGIN READ COMMITTED', expected[0], 'Capture fresh UTC now',expected[1],expected[2], 'Compare complete eligible id set',expected[3], 'Collect responseItem', 'app -> infra: COMMIT','HTTP 200'):
+                errors.append('success must serialize, freshly validate token/current policy, resolve evidence and commit before response')
+            if any('ROLLBACK' in e for e in trace):errors.append('success must not roll back')
+            if len(writes)>1:errors.append('one item cannot both INSERT and UPDATE')
+            mode='insert' if any(': INSERT' in e for e in writes) else 'update' if writes else 'noop';modes[mode]+=1
+            if mode=='noop' and not any('responseItem = existing evidence' in e for e in trace):errors.append('no-op must return existing evidence unchanged')
+            if mode=='update' and not ordered('userConsentId = canonical evidence id', expected[5], 'responseItem = updated evidence'):errors.append('update needs canonical ownership and actual returned values')
+            if 'data.consents = original request order' not in responses[0]:errors.append('success must retain original response order')
+        elif begun:
+            if not ordered('BEGIN','ROLLBACK',f'HTTP {code}') or any(e=='app -> infra: COMMIT' for e in trace):errors.append('failure must rollback and never fall through to common COMMIT')
+            if code in (401,404,409) and writes:errors.append('authentication/reference/version failures precede every write')
+        elif code not in (400,401) or any(e.startswith('infra -> ') for e in trace):errors.append('early validation/credential failure must execute no SQL')
+        if any(expected[1] in e for e in trace) and not ordered(expected[0],'Capture fresh UTC now',expected[1]):errors.append('active-token reread must follow user lock and fresh now')
+    if Counter(outcomes)!=Counter({200:3,400:1,401:3,404:1,409:1,408:1,500:2}) or modes!=Counter({'insert':1,'update':1,'noop':1}):errors.append(f'incomplete submit outcome/mode paths: {dict(Counter(outcomes))}, {dict(modes)}')
+    for title,code in {'Success':200,'Fail - Bad Request':400,'Fail - Unauthorized':401,'Fail - Not Found':404,'Fail - Conflict':409,'Fail - Request Timeout':408,'Fail - Internal Server Error':500}.items():
+        try:
+            status=authen_json(md,title)['status']
+            if status['code']!=code or code==500 and 'bizCode' in status:errors.append(f'incorrect {title} envelope')
+        except (TypeError,KeyError,ValueError):errors.append(f'missing {title} example')
+    errors+=json_blocks_parse(md);errors+=table_lines_aligned(md)
+    if '--rendered-svg' in sys.argv:
+        import xml.etree.ElementTree as ET
+        try:
+            root=ET.parse(sys.argv[sys.argv.index('--rendered-svg')+1]).getroot()
+            expected_lines=Counter(' '.join(l.split()) for _,_,s in operations for l in s.splitlines() if l.strip())
+            visible=Counter(' '.join(''.join(e.itertext()).split()) for e in root.iter() if e.tag.endswith('}text'))
+            missing=expected_lines-visible
+            if missing:errors.append(f'rendered submit SQL missing {sum(missing.values())} lines')
+            else:print(f'OK: rendered submit SQL ({sum(expected_lines.values())}/{sum(expected_lines.values())} visible lines)')
+        except (IndexError,OSError,ET.ParseError) as exc:errors.append(f'cannot verify submit SVG: {exc}')
+    if errors:return fail('; '.join(errors))
+    print('OK: consent-submit-flow (12 terminal traces; insert/update/no-op; first read, revocation and atomic batch)')
+    return 0
+
+
+COMMANDS['consent-submit-flow'] = check_consent_submit_flow
+
+
 def check_pending_consent_flow() -> int:
     """Guard current canonical evidence, required/optional pending and one read-only response snapshot."""
     path='e-commerce/doc/api/consent/05-inquiry-pending-consent/spec.md'
@@ -5712,28 +5791,6 @@ def check_pending_consent_flow() -> int:
         def ordered(*parts):
             pos=[next((i for i,e in enumerate(trace) if part in e),-1) for part in parts]
             return -1 not in pos and pos==sorted(set(pos))
-        writes=[e for e in trace if e.startswith('infra -> ') and ': INSERT' in e or e.startswith('infra -> ') and ': UPDATE' in e]
-        begun=any('BEGIN' in e for e in trace)
-        if code==200:
-            if not ordered('Verify Bearer JWT', 'BEGIN READ COMMITTED', expected[0], 'Capture fresh UTC now',expected[1],expected[2], 'Compare complete eligible id set',expected[3], 'Collect responseItem', 'app -> infra: COMMIT','HTTP 200'):
-                errors.append('success must serialize, freshly validate token/current policy, resolve evidence and commit before response')
-            if any('ROLLBACK' in e for e in trace):errors.append('success must not roll back')
-            if len(writes)>1:errors.append('one item cannot both INSERT and UPDATE')
-            mode='insert' if any(': INSERT' in e for e in writes) else 'update' if writes else 'noop';modes[mode]+=1
-            if mode=='noop' and not any('responseItem = existing evidence' in e for e in trace):errors.append('no-op must return existing evidence unchanged')
-            if mode=='update' and not ordered('userConsentId = canonical evidence id', expected[5], 'responseItem = updated evidence'):errors.append('update needs canonical ownership and actual returned values')
-            if 'data.consents = original request order' not in responses[0]:errors.append('success must retain original response order')
-        elif begun:
-            if not ordered('BEGIN','ROLLBACK',f'HTTP {code}') or any(e=='app -> infra: COMMIT' for e in trace):errors.append('failure must rollback and never fall through to common COMMIT')
-            if code in (401,404,409) and writes:errors.append('authentication/reference/version failures precede every write')
-        elif code not in (400,401) or any(e.startswith('infra -> ') for e in trace):errors.append('early validation/credential failure must execute no SQL')
-        if any(expected[1] in e for e in trace) and not ordered(expected[0],'Capture fresh UTC now',expected[1]):errors.append('active-token reread must follow user lock and fresh now')
-    if Counter(outcomes)!=Counter({200:3,400:1,401:3,404:1,409:1,408:1,500:2}) or modes!=Counter({'insert':1,'update':1,'noop':1}):errors.append(f'incomplete submit outcome/mode paths: {dict(Counter(outcomes))}, {dict(modes)}')
-    for title,code in {'Success':200,'Fail - Bad Request':400,'Fail - Unauthorized':401,'Fail - Not Found':404,'Fail - Conflict':409,'Fail - Request Timeout':408,'Fail - Internal Server Error':500}.items():
-        try:
-            status=authen_json(md,title)['status']
-            if status['code']!=code or code==500 and 'bizCode' in status:errors.append(f'incorrect {title} envelope')
-        except (TypeError,KeyError,ValueError):errors.append(f'missing {title} example')
         begun=any(e.startswith('app -> infra: BEGIN') for e in trace)
         if code==200:
             if not ordered('Verify JWT','BEGIN ISOLATION LEVEL REPEATABLE READ READ ONLY','Capture UTC now',expected[0],expected[1],'app -> infra: COMMIT','HTTP 200'):errors.append('pending success must authorize/read one snapshot and commit before response')
@@ -5757,6 +5814,25 @@ def check_pending_consent_flow() -> int:
         except (TypeError,KeyError,ValueError):errors.append(f'missing pending {title} example')
     for text in ('| isRead=false, result=true | Pending | Pending |','| isRead=true, result=false (read-only/rejected) | Pending | Complete |','| isRead=true, result=true | Complete | Complete |'):
         if re.sub(r'\s+','',text) not in re.sub(r'\s+','',md):errors.append('pending truth table must distinguish read and accepted for both kinds')
+    errors+=json_blocks_parse(md);errors+=table_lines_aligned(md)
+    if '--rendered-svg' in sys.argv:
+        import xml.etree.ElementTree as ET
+        try:
+            root=ET.parse(sys.argv[sys.argv.index('--rendered-svg')+1]).getroot()
+            expected_lines=Counter(' '.join(l.split()) for _,_,s in operations for l in s.splitlines() if l.strip())
+            visible=Counter(' '.join(''.join(e.itertext()).split()) for e in root.iter() if e.tag.endswith('}text'))
+            missing=expected_lines-visible
+            if missing:errors.append(f'rendered pending SQL missing {sum(missing.values())} lines')
+            else:print(f'OK: rendered pending SQL ({sum(expected_lines.values())}/{sum(expected_lines.values())} visible lines)')
+        except (IndexError,OSError,ET.ParseError) as exc:errors.append(f'cannot verify pending SVG: {exc}')
+    if errors:return fail('; '.join(errors))
+    print('OK: pending-consent-flow (7 terminal traces; canonical required/optional truth table; read-only snapshot and complete mapping)')
+    return 0
+
+
+COMMANDS['pending-consent-flow'] = check_pending_consent_flow
+
+
 def check_active_consent_flow() -> int:
     """Check the public visible-consent contract, complete type names and read-only paths."""
     path='e-commerce/doc/api/consent/01-inquiry-active-consent/spec.md'
@@ -5831,6 +5907,25 @@ def check_active_consent_flow() -> int:
             if title=='Success - No Active Consent' and obj['data']['consents']!=[]:errors.append('empty active list must be []')
             if title=='Success' and any(set(row)!=response_fields or not row['consentTypeName'] for row in obj['data']['consents']):errors.append('active response example needs all eleven public fields and a type name')
         except (TypeError,KeyError,ValueError):errors.append(f'missing active {title} example')
+    errors+=json_blocks_parse(md);errors+=table_lines_aligned(md)
+    if '--rendered-svg' in sys.argv:
+        import xml.etree.ElementTree as ET
+        try:
+            root=ET.parse(sys.argv[sys.argv.index('--rendered-svg')+1]).getroot()
+            expected_lines=Counter(' '.join(l.split()) for _,_,s in operations for l in s.splitlines() if l.strip())
+            visible=Counter(' '.join(''.join(e.itertext()).split()) for e in root.iter() if e.tag.endswith('}text'))
+            missing=expected_lines-visible
+            if missing:errors.append(f'rendered active SQL missing {sum(missing.values())} lines')
+            else:print(f'OK: rendered active SQL ({sum(expected_lines.values())}/{sum(expected_lines.values())} visible lines)')
+        except (IndexError,OSError,ET.ParseError) as exc:errors.append(f'cannot verify active SVG: {exc}')
+    if errors:return fail('; '.join(errors))
+    print('OK: active-consent-flow (5 terminal traces; public type visibility, complete mapping and read-only snapshot)')
+    return 0
+
+
+COMMANDS['active-consent-flow'] = check_active_consent_flow
+
+
 def check_author_me_flow() -> int:
     """Check the calling-token role snapshot while preserving live credential/user revocation."""
     path='e-commerce/doc/api/author/12-me/spec.md'

@@ -496,3 +496,18 @@ Status: Complete in the branch, waiting for review. Assignment: agent `tommy`, d
 - [x] Open the PR with `commit-and-pr`; do not merge.
 
 Verification: see the PR. No `spec.md` and no `sequence_skeleton.py` was changed. Gaps of the specs found while writing are reported to the lead SA in the PR body.
+
+## repository-wide: Repair check_docs.py after the merge of PR 34
+
+Status: Complete in the branch, waiting for review. Assignment: agent `tommy`, delivery `open-pr`, authorized by `josh` (urgent repair, `main` could not run any `check_docs.py` command), workspace `.workspace/tommy`, branch `fix/tommy-check-docs-merge-syntax`, scopes `e-commerce/db/tests/check_docs.py` and `tasks`.
+
+- [x] Find the cause: the merge `f3505f9` (PR 34) interleaved two checkers that share a template (`check_consent_submit_flow` from the submit branch and `check_pending_consent_flow` from PR 35), so `required={` of the submit checker was never closed.
+- [x] Rebuild the region from the whole functions of each side (submit from `3f71d37`, pending from `4e6de08`), without deleting any needle.
+- [x] Find the damage that the earlier merges left without a syntax error: `check_pending_consent_flow` and `check_active_consent_flow` had lost their tail (JSON and table checks, the rendered SVG check, `print` and `return 0`) and their `COMMANDS[...]` registration; restore them from `6e721ce` and `80cfe22`, where the common beginning is identical line by line.
+- [x] Check that every `check_*` function returns and is registered or called.
+- [x] Run every sub-command, `audit_all.py`, `run_db_tests.sh`, the preflight and mutation tests (needles of every `required` of the submit and pending checkers, JSON and table checks of the three consent checkers).
+- [x] Open the PR with `commit-and-pr`; do not merge.
+
+Verification: see the PR. No spec, diagram or other checker is changed.
+
+Lesson for the team: a merge that keeps a file parseable can still drop the end of a function; after resolving a conflict in `check_docs.py`, run `python3 -c "import ast"` on it and run every sub-command, not only the one that was edited.
