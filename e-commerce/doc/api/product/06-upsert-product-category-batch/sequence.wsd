@@ -143,26 +143,7 @@ activate page
                                 api -> page: Forbidden
                                 page -> user: Display error message
                             end
-                            loop For each item (request order, one transaction)
-                                app -> infra: QUERY - Check duplicate name
-                                infra -> m_product_category: QUERY - Check duplicate name
-                                activate m_product_category
-                                    note right of m_product_category
-                                        SELECT
-                                            pc.id as category_id
-                                        FROM product.m_product_category pc
-                                        WHERE pc.name = '<sequence.categories.name>'
-                                        AND pc.id <> '<sequence.categories.id>' -- only when id is specified
-                                    end note
-                                    m_product_category -> infra: Return query result
-                                deactivate m_product_category
-                                infra -> app: Return result of Check duplicate name
-                                alt items[i]: name is held by another product category
-                                    app -> infra: ROLLBACK
-                                    app -> api: HTTP 409 E10003 items[i]: Product category name already exists.
-                                    api -> page: Conflict
-                                    page -> user: Display error message
-                                end
+                            loop For each item (request order)
                                 alt id and parentId are specified
                                     app -> infra: QUERY - Check parent is not the category itself or its sub category
                                     infra -> m_product_category: QUERY - Check parent is not the category itself or its sub category
@@ -192,6 +173,27 @@ activate page
                                         api -> page: Bad request
                                         page -> user: Display error message
                                     end
+                                end
+                            end
+                            loop For each item (request order, one transaction)
+                                app -> infra: QUERY - Check duplicate name
+                                infra -> m_product_category: QUERY - Check duplicate name
+                                activate m_product_category
+                                    note right of m_product_category
+                                        SELECT
+                                            pc.id as category_id
+                                        FROM product.m_product_category pc
+                                        WHERE pc.name = '<sequence.categories.name>'
+                                        AND pc.id <> '<sequence.categories.id>' -- only when id is specified
+                                    end note
+                                    m_product_category -> infra: Return query result
+                                deactivate m_product_category
+                                infra -> app: Return result of Check duplicate name
+                                alt items[i]: name is held by another product category
+                                    app -> infra: ROLLBACK
+                                    app -> api: HTTP 409 E10003 items[i]: Product category name already exists.
+                                    api -> page: Conflict
+                                    page -> user: Display error message
                                 end
                                 alt rowStatus is DELETED or ARCHIVED
                                     app -> infra: QUERY - Check sub category in use
