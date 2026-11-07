@@ -3798,7 +3798,11 @@ def sequence_database_operations(wsd: str) -> tuple[list[tuple[str, str, str]], 
         cursor = index + 3
         sql = []
         while cursor < len(lines) and lines[cursor].strip() != "end note":
-            sql.append(lines[cursor][indent + 8:] if lines[cursor].startswith(" " * (indent + 8)) else lines[cursor].lstrip())
+            sql_line = lines[cursor][indent + 8:] if lines[cursor].startswith(" " * (indent + 8)) else lines[cursor].lstrip()
+            # A literal leading apostrophe is a PlantUML comment, even inside a note.
+            if sql_line.lstrip().startswith("&#39;"):
+                sql_line = sql_line.replace("&#39;", "'", 1)
+            sql.append(sql_line)
             cursor += 1
         if cursor >= len(lines):
             errors.append(f"line {index + 1}: {table} SQL note is not closed")
@@ -4711,6 +4715,257 @@ def check_author_schema() -> int:
 
 
 COMMANDS["author-schema"] = check_author_schema
+
+
+def login_sequence_paths(wsd: str) -> tuple[list[list[str]], list[str]]:
+    """Expand PlantUML alternatives, respecting the explicit attempt result."""
+    root: list = []
+    current = root
+    stack = []
+    errors = []
+    in_note = False
+    for line in wsd.splitlines():
+        text = line.strip()
+        if in_note:
+            if text == 'end note':
+                in_note = False
+            continue
+        if text.startswith('note ') and ':' not in text:
+            in_note = True
+            continue
+        if text.startswith('alt '):
+            branch = [(text[4:], [])]
+            current.append(branch)
+            stack.append((current, branch))
+            current = branch[-1][1]
+        elif text.startswith('else'):
+            if not stack:
+                errors.append('else without alt')
+                continue
+            branch = stack[-1][1]
+            branch.append((text[4:].strip(), []))
+            current = branch[-1][1]
+        elif text in ('end', 'end alt'):
+            if not stack:
+                errors.append('end without alt')
+                continue
+            current, _ = stack.pop()
+        elif re.match(r'(?:infra -> \w+: (?:QUERY|INSERT|UPDATE)|app -> (?:infra|api|app|domain):)', text):
+            # Orchestration requests are distinct from the actual database operations.
+            if text.startswith('app -> infra:') and not text.startswith(('app -> infra: BEGIN', 'app -> infra: COMMIT', 'app -> infra: ROLLBACK')):
+                continue
+            current.append(text)
+    if stack or in_note:
+        errors.append('unclosed alternative or note')
+
+    def expand(nodes, prefix):
+        traces = [prefix]
+        for node in nodes:
+            if isinstance(node, str):
+                traces = [trace + [node] for trace in traces]
+                continue
+            next_traces = []
+            for trace in traces:
+                values = [re.search(r'result = (SUCCESS|FAILED|REFUSED)$', event).group(1)
+                          for event in trace if re.search(r'result = (SUCCESS|FAILED|REFUSED)$', event)]
+                result = values[-1] if values else None
+                for guard, body in node:
+                    if guard == 'result = SUCCESS' and result != 'SUCCESS':
+                        continue
+                    if guard == 'result = FAILED or REFUSED' and result not in ('FAILED', 'REFUSED'):
+                        continue
+                    next_traces.extend(expand(body, trace))
+            traces = next_traces
+        return traces
+
+    return expand(root, []), errors
+
+
+def check_login_flow() -> int:
+    """Check login's security outcomes and query meaning, beyond SQL parity."""
+    path = AUTHEN_SPECS['02']
+    md = read(path)
+    wsd = read(str(Path(path).with_name('sequence.wsd')))
+    errors = []
+    for needle in ('2026-11-07-api-review-design.md', '**Only `FAILED` rows are counted.**',
+                   'constant-time', 'permission-specific', 'ambiguous', 'PBKDF2-HMAC-SHA256 with 600,000 iterations',
+                   'No role, permission or scope definition creates a grant on its own.'):
+        if needle not in md:
+            errors.append(f'login spec missing {needle!r}')
+    if not md.startswith('---\n'):
+        errors.append('login spec requires approval metadata')
+    else:
+        frontmatter = md.split('---', 2)[1]
+        state = re.search(r'^status: (draft|in-review|approved)$', frontmatter, re.MULTILINE)
+        if not state:
+            errors.append('login spec has invalid approval state')
+        for field in ('approved_by', 'approved_at'):
+            value = re.search(rf'^{field}: (.+)$', frontmatter, re.MULTILINE)
+            if not value or (state and ((state.group(1) == 'approved') == (value.group(1) == 'null'))):
+                errors.append(f'login spec has inconsistent {field}')
+    operations = spec_database_operations(md)
+    sql = {heading: statement for _, heading, statement in operations}
+    required = {
+        'QUERY - Serialize identifier': ['pg_advisory_xact_lock', '<sequence.identifierLockKey>', '::BIGINT'],
+        'QUERY - Count failed attempts': [ "la.result = 'FAILED'", 'la.identifier_hash', 'la.created_at >'],
+        'QUERY - Lock the user': ['u.username', 'u.email_address', "u.row_status = 'ACTIVE'", 'ORDER BY u.id', 'FOR UPDATE'],
+        'QUERY - Get current password': ['up.password AS password_hash', 'up.password_salt', "up.row_type = 'PASSWORD'", "up.row_status = 'ACTIVE'", "up.user_id = '<sequence.userId>'"],
+        'QUERY - Get active role ids': ["ur.row_status = 'ACTIVE'", 'ur.user_id'],
+        'QUERY - Get active roles': ["r.row_status = 'ACTIVE'", 'r.id', 'r.name'],
+        'QUERY - Get active role permissions': ["rp.row_status = 'ACTIVE'", 'rp.role_id', '<sequence.activeRoleIds>', 'rp.permission_id', 'rp.id'],
+        'QUERY - Get active role permission scopes': ['rps.role_permission_id', 'rps.permission_scope_id', "rps.row_status = 'ACTIVE'"],
+        'QUERY - Get active direct permissions': ['up.permission_id', 'up.permission_scope_id', "up.row_status = 'ACTIVE'", 'up.user_id'],
+        'QUERY - Get permission scope definitions': ['ps.id AS permission_scope_id', 'ps.permission_id', 'ps.scope_id', 'ps.row_status', "ps.row_status <> 'DELETED'"],
+        'QUERY - Get active permissions': ['p.id', 'p.name', "p.row_status = 'ACTIVE'"],
+        'QUERY - Get active scopes': ['s.id', 's.scope', '<sequence.assignedScopeIds>', "s.row_status = 'ACTIVE'"],
+        'INSERT - Create access token': ['<sequence.sessionId>', '<sequence.accessTokenHash>', '<sequence.accessExpiredAt>'],
+        'INSERT - Create refresh token': ['<sequence.sessionId>', '<sequence.refreshTokenHash>', '<sequence.refreshExpiredAt>'],
+        'INSERT - Record attempt': ['created_at', '<sequence.now>', '<sequence.identifierHash>', '<sequence.userId>', '<sequence.result>'],
+    }
+    for heading, needles in required.items():
+        statement = re.sub(r'--[^\n]*', '', sql.get(heading, ''))
+        for needle in needles:
+            if needle not in statement:
+                errors.append(f'{heading}: missing {needle}')
+    projections = {
+        'QUERY - Get active role permission scopes': ['rps.role_permission_id', 'rps.permission_scope_id'],
+        'QUERY - Get active direct permissions': ['up.permission_id', 'up.permission_scope_id'],
+        'QUERY - Get permission scope definitions': ['ps.id AS permission_scope_id', 'ps.permission_id', 'ps.scope_id', 'ps.row_status'],
+    }
+    for heading, fields in projections.items():
+        statement = re.sub(r'--[^\n]*', '', sql.get(heading, ''))
+        projection = re.search(r'SELECT\s+(.*?)\s+FROM\s', statement, re.DOTALL)
+        for field in fields:
+            if not projection or field not in projection.group(1):
+                errors.append(f'{heading}: must return {field}')
+    if re.search(r'\bup\.password\s*=', '\n'.join(sql.values())):
+        errors.append('password comparison must be constant-time in the application, not a SQL predicate')
+    if 'rps.permission_scope_id AS scope_id' in md:
+        errors.append('permission-scope ids are not scope ids')
+    try:
+        payload = json.loads(re.search(r'#### Example JWT Payload\n\n```JSON\n(.*?)```', md, re.DOTALL).group(1))
+        if payload['exp'] - payload['iat'] != 900:
+            errors.append('JWT example must have a 900-second lifetime')
+        roles = payload['roles']
+        perms = payload['permissions']
+        scopes = payload['scopes']
+        permission_ids = {p['permissionId'] for p in perms}
+        if len(permission_ids) != len(perms) or len({r['roleId'] for r in roles}) != len(roles):
+            errors.append('JWT roles and permissions must be unique by id')
+        scope_pairs = [(s['permissionId'], s['scopeId']) for s in scopes]
+        if len(set(scope_pairs)) != len(scope_pairs) or any(p not in permission_ids for p, _ in scope_pairs):
+            errors.append('each JWT scope must belong to one granted permission, without duplicate pairs')
+        expected = {'catalog.manage': ['OWN'], 'order.view': ['ALL']}
+        actual = {p['name']: sorted(s['scope'] for s in scopes if s['permissionId'] == p['permissionId']) for p in perms}
+        if actual != expected:
+            errors.append('JWT example must demonstrate distinct scopes for catalog.manage and order.view')
+    except (AttributeError, KeyError, TypeError, ValueError) as exc:
+        errors.append(f'missing or malformed structured JWT example: {exc}')
+    for guard in ('alt failed_attempts >= 5', 'else failed_attempts < 5', 'alt user_count != 1', 'else user_count = 1'):
+        if not re.search(r'^\s*' + re.escape(guard) + r'\s*$', wsd, re.MULTILINE):
+            errors.append(f'login sequence missing decision {guard}')
+    if 'app -> domain: Verify password with PBKDF2 and constant-time comparison' not in wsd:
+        errors.append('password verification must explicitly use PBKDF2 and constant-time comparison')
+    for title, code in {'Success': 200, 'Fail - Bad Request': 400, 'Fail - Unauthorized': 401,
+                        'Fail - Request Timeout': 408, 'Fail - Internal Server Error': 500}.items():
+        try:
+            status = authen_json(md, title)['status']
+            if status['code'] != code or (code == 500 and 'bizCode' in status):
+                errors.append(f'{title}: wrong HTTP status or unexpected internal-error bizCode')
+        except (KeyError, TypeError, AttributeError, ValueError):
+            errors.append(f'{title}: missing or invalid response example')
+    for note in re.finditer(r'(?m)^([ \t]*)note right of \w+\n(.*?)^\1end note$', wsd, re.DOTALL):
+        if any(line.lstrip().startswith("'") for line in note.group(2).splitlines()):
+            errors.append('leading SQL apostrophe would disappear as a PlantUML comment; use &#39;')
+    sequence_lines = wsd.splitlines()
+    for index, line in enumerate(sequence_lines):
+        exchange = re.match(r'^(\s*)infra -> (\w+): ((?:QUERY|INSERT|UPDATE)[^\n]*)$', line)
+        if not exchange:
+            continue
+        pad, table, heading = exchange.groups()
+        if index == 0 or sequence_lines[index - 1].strip() != 'app -> infra: ' + heading:
+            errors.append(f'{heading}: Application must request the Infrastructure operation')
+        end = next((i for i in range(index + 1, len(sequence_lines)) if sequence_lines[i] == pad + 'deactivate ' + table), None)
+        if end is None or end + 1 >= len(sequence_lines) or not sequence_lines[end + 1].startswith(pad + 'infra -> app: Return '):
+            errors.append(f'{heading}: Infrastructure must return its result to Application')
+    for mapping in ('app -> app: user_count = length(matchedUsers)',
+                    'app -> app: activeRoleIds = activeRoles.role_id',
+                    'app -> app: rolePermissionIds = rolePermissions.role_permission_id',
+                    'app -> app: permissionIds = union of role and direct permission ids',
+                    'app -> app: Derive assignedScopeIds by exact assignment/definition and permission match'):
+        if mapping not in wsd:
+            errors.append(f'missing result-to-parameter mapping: {mapping}')
+    if '--rendered-svg' in sys.argv:
+        from collections import Counter
+        import xml.etree.ElementTree as ET
+        try:
+            svg_path = Path(sys.argv[sys.argv.index('--rendered-svg') + 1])
+            svg = ET.parse(svg_path).getroot()
+            expected = Counter(' '.join(line.split()) for _, _, statement in operations
+                               for line in statement.splitlines() if line.strip())
+            visible = Counter(' '.join(''.join(element.itertext()).split()) for element in svg.iter()
+                              if element.tag.endswith('}text'))
+            missing = expected - visible
+            if missing:
+                errors.append(f'rendered SQL is missing {sum(missing.values())}/{sum(expected.values())} lines: {dict(missing)}')
+            else:
+                print(f'OK: rendered login SQL ({sum(expected.values())}/{sum(expected.values())} visible lines)')
+        except (IndexError, OSError, ET.ParseError) as exc:
+            errors.append(f'cannot verify rendered SVG: {exc}')
+    traces, structure_errors = login_sequence_paths(wsd)
+    errors.extend(structure_errors)
+    outcomes = []
+    for trace in traces:
+        response = [event for event in trace if event.startswith('app -> api: HTTP ')]
+        if len(response) != 1:
+            errors.append('each login trace must have exactly one HTTP outcome')
+            continue
+        code = int(response[0].split('HTTP ')[1].split()[0])
+        outcomes.append(code)
+        joined = '\n'.join(trace)
+        queries = [e for e in trace if e.startswith('infra -> ')]
+        def ordered(*needles):
+            positions = [next((i for i, e in enumerate(trace) if n in e), -1) for n in needles]
+            return -1 not in positions and positions == sorted(set(positions))
+        writes_tokens = any('INSERT - Create access token' in e or 'INSERT - Create refresh token' in e for e in trace)
+        if any('QUERY - Get current password' in e for e in trace) and not ordered('QUERY - Serialize identifier', 'QUERY - Count failed attempts', 'QUERY - Lock the user', 'QUERY - Get current password', 'Verify password'):
+            errors.append('every password read must follow the failure count and user lock, then verification')
+        if code == 401 and 'result = FAILED' in joined and 'QUERY - Get current password' not in joined and 'Perform dummy password verification' not in joined:
+            errors.append('unknown/ambiguous users require dummy password work before FAILED')
+        if code == 400:
+            if queries or any('BEGIN' in e for e in trace):
+                errors.append('400 must not open a transaction or execute SQL')
+        elif code in (408, 500):
+            if not ordered('BEGIN', 'ROLLBACK', f'HTTP {code}') or any(e == 'app -> infra: COMMIT' for e in trace):
+                errors.append('pre-commit failure must roll back and never commit')
+        elif code in (200, 401):
+            if not ordered('BEGIN', 'QUERY - Serialize identifier', 'QUERY - Count failed attempts', 'INSERT - Record attempt', 'app -> infra: COMMIT', f'HTTP {code}'):
+                errors.append('normal outcomes must serialize/count, record the attempt, then commit before responding')
+            if 'result = REFUSED' in joined and ('Get current password' in joined or 'QUERY - Lock the user' in joined or any(e.startswith('app -> domain:') for e in trace)):
+                errors.append('REFUSED must not read users or passwords')
+            if code == 401 and writes_tokens:
+                errors.append('401 must never issue token rows')
+            if code == 401 and 'result = FAILED' not in joined and 'result = REFUSED' not in joined:
+                errors.append('401 must record FAILED or REFUSED')
+            if code == 200:
+                for field in ('tokenType', 'accessToken', 'refreshAccessToken', 'expiresIn'):
+                    if not re.search(r'\b' + field + r'\b', response[0]):
+                        errors.append(f'success sequence must name response field {field}')
+                for heading in required:
+                    if heading.startswith('QUERY - Get active') or heading == 'QUERY - Get permission scope definitions':
+                        if not ordered(heading, 'Build verified authorization claims'):
+                            errors.append('all assignment and master reads must precede claim construction')
+                if 'result = SUCCESS' not in joined or not ordered('QUERY - Lock the user', 'QUERY - Get current password', 'Verify password', 'Build verified authorization claims', 'INSERT - Create access token', 'INSERT - Create refresh token', 'INSERT - Record attempt', 'app -> infra: COMMIT', 'HTTP 200'):
+                    errors.append('200 must verify under the user lock, resolve claims and atomically commit both tokens and SUCCESS')
+    if sorted(outcomes) != [200, 400, 401, 401, 401, 408, 500]:
+        errors.append(f'expected success, input error, three authentication failures, timeout and internal failure; got {sorted(outcomes)}')
+    if errors:
+        return fail('; '.join(errors))
+    print('OK: login-flow (7 outcome paths, claim mappings and transaction invariants)')
+    return 0
+
+
+COMMANDS['login-flow'] = check_login_flow
 
 
 # ---------------------------------------------------------------- WP5c: delivered write APIs are for platform administrators only

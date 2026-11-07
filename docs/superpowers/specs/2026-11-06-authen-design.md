@@ -1,12 +1,14 @@
 ---
 name: ยืนยันตัวตนให้ครบ (authen) — WP4
 description: เอกสารออกแบบรอบ 1 ของ WP4 ใช้อ่านก่อนแก้ schema authen, เขียน API refresh, logout, reset password, create new password, โปรไฟล์และที่อยู่ และก่อนแก้สัญญา token ที่ spec ทุกเส้นพึ่งอยู่
-status: approved
-approved_by: Ittikorn (Aof) Sopawan (product owner, ตอบผ่าน Josh)
-approved_at: 2026-11-06
+status: in-review
+approved_by: null
+approved_at: null
 ---
 
 # ยืนยันตัวตนให้ครบ (authen) — WP4
+
+> Behavior decisions confirmed directly by the product owner on 2026-11-07 (Peter Q13); this revised document remains in-review: [API review decisions](2026-11-07-api-review-design.md) govern JWT authorization and consent changes. Detailed dependent endpoint revisions are delivered separately; this note does not claim that every endpoint already matches the new decisions.
 
 วันที่: 2026-11-06 · ผู้เขียน: Marry (SA) · สถานะ: รอบ 1 รอ Josh ตรวจ (ประตู 1) ยังไม่แก้ migration หรือเขียน spec · `approved_by`: Ittikorn (Aof) Sopawan ตอบผ่าน Josh 2026-11-06 ("ตามที่แนะนำ" ต่อ Q1 ถึง Q5 และการเพิ่ม index ของตารางที่ส่งแล้ว)
 
@@ -54,6 +56,14 @@ approved_at: 2026-11-06
 - **ผู้เรียก (`userId`)** คือ `sub` ของ access token ที่ผ่านการตรวจ ไม่มีเส้นใดรับ `userId` ของผู้เรียกจากคำขอ
 - **ตรวจ access token** ตามลำดับ: มี header `authorization: Bearer <token>` → ลายเซ็น, `iss`, `aud`, `exp` ถูกต้อง → มีแถวใน `authen.t_user_access_token` ที่ `token = SHA-256(token)` สถานะ `ACTIVE` และ `expired_at` ยังไม่ถึง → ผู้ใช้ (`authen.m_user`) สถานะ `ACTIVE` ข้อใดไม่ผ่าน → **401 `E10002` "Invalid or expired access token."** ข้อความเดียว ไม่บอกเหตุ
 - ผลต่อ spec ที่ส่งแล้ว: **ไม่ต้องแก้ spec ใด** เพราะ spec เหล่านั้นอ้างแค่ header และ 401 `E10002` สัญญานี้ไม่เพิ่มรหัสหรือฟิลด์ที่ spec เหล่านั้นต้องรู้
+
+## Authorization revision (2026-11-07)
+
+The JWT includes role, permission and permission-specific scope claims, resolved when a token is issued by login or refresh. These claims authorize the caller until that access token expires; assignment changes need not take effect earlier. Keep the access-token and ACTIVE-user database checks above so logout and password reset revoke credentials immediately. This revises the U1 payload description and separates U2 credential revocation from authorization-assignment changes. [Owner approval and scope](2026-11-07-api-review-design.md).
+
+### Login technical corrections under review
+
+The login endpoint revision proposes serializing the failure counter by a transaction-scoped identifier advisory lock, locking matched users before password verification, and committing FAILED/REFUSED with no token writes in that attempt transaction. This replaces the earlier ordering and the literal “outside the token transaction” wording for login: only SUCCESS writes tokens, and its token pair plus attempt commit atomically. These implementation-level details remain in-review in the endpoint; the owner-approved rules remain the same 5 FAILED / 15-minute limit and durable log before a 401. A timeout before commit rolls all writes back. This paragraph does not approve unseen backend code.
 
 ## การตัดสินใจ
 

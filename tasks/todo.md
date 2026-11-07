@@ -250,13 +250,55 @@ Verification: each gate was checked by running every `check_docs.py` sub-command
 
 ## repository-wide: Register Peter for the e-commerce API review
 
-Status: Registration verified and ready for delivery; requested directly by Ittikorn on 2026-11-07. API mutation work waits for registration to merge into origin/main. The existing named-agent lifecycle governs this assignment.
+Status: Complete. PR #21 merged into origin/main at eee8add on 2026-11-07 (Asia/Bangkok); Peter's full managed clone was created and the first login assignment prepared through agent-workspace.
 
 - [x] Read the bootstrap, global rules, team registry, named-agent workspace design, lessons, and delivery skill.
 - [x] Confirm the owner chose to register Peter and retain the existing lifecycle rather than allow concurrent API pull requests.
 - [x] Register Peter as an enabled System Analyst with the same repository-wide registry scope as the existing team, reporting to Josh, without delegation capabilities; bound actual assignments to e-commerce and required task bookkeeping.
 - [x] Validate registry parsing and role/scope consistency, run the existing workspace tests and delivery preflight, and review the exact diff.
 - [x] Prepare the commit and registration PR package using commit-and-pr; keep API changes out of this prerequisite PR.
-- [ ] After the owner merges registration into origin/main, create Peter's managed workspace with agent-workspace and record the bounded first-API assignment before edits.
+- [x] After the owner merges registration into origin/main, create Peter's managed workspace with agent-workspace and record the bounded first-API assignment before edits.
 
 Verification: The canonical registry test failed before adding Peter (expected four entries, found three). After registration, `python3 -B -m unittest discover -s .agents/skills/agent-workspace/tests -v` passed all 12 tests, including Peter's direct-user delivery authorization and inability to delegate. `preflight.py --base main` reported three in-scope files and no blockers; `git diff --check` passed. API/database tests were not rerun for this registry-only change. Registration takes effect only after merge into origin/main. Peter may hold one active API task or pull request; while it is open, the next API can be examined read-only from the primary checkout. Each API delivery will contain its spec.md and complete sequence.wsd, with the verification changes required for that API.
+
+
+## e-commerce: Peter API review — login (API 1)
+
+Status: Login artifacts verified and ready for one-API PR delivery. Owner confirmed Q1–Q13 and the additional Q14 ambiguity rule in this chat on 2026-11-07. Governing decisions are recorded in `docs/superpowers/specs/2026-11-07-api-review-design.md`; detailed endpoint changes remain in-review until reviewed. Assignment: Peter, System Analyst, delivery open-pr, authorized directly by ittikorn; branch `fix/peter-login-contract` in `.workspace/peter`.
+
+- [x] Read all 30 APIs (60 files), identify SQL/sequence/approval contradictions, and settle the JWT and consent behavior with the owner.
+- [x] Verify PR #21 merged, create Peter's managed clone, and prepare the bounded login assignment with the declared baseline checks.
+- [x] Persist the exact owner-approved decisions and scope; reconcile superseded A16/A18 and token-design statements without marking detailed endpoint work approved.
+- [x] Correct login SQL and specify the role/permission-specific scope payload, password verification, lock order, counter and transaction behavior.
+- [x] Rewrite sequence.wsd with success, validation, REFUSED, FAILED, rollback and timeout branches and exact table-bound SQL.
+- [x] Extend SQL/sequence and login-behavior checks; prove the old defects fail and mutation-test the changed checker.
+- [x] Run every documentation check, SQL audit and database test; verify source structure and review the exact diff.
+- [x] Prepare the one-login-API commit-and-pr package; verify actual PR/lock state through GitHub and agent-workspace during delivery.
+- [ ] After the owner merges the login PR, verify/park Peter's workspace and prepare refresh as a fresh assignment. Release the session lock whenever delivery ends.
+
+Baseline: all 37 documentation subcommands passed, audit reported 53 tables and 0 findings, and database tests reported ALL PASSED during agent-workspace prepare. The initial PATH-only Java probe failed; the paired-review follow-up below discovered the installed OpenJDK and PlantUML JAR and records completed rendering verification.
+
+Queue after login: refresh, then the remaining original 30 APIs and the additional APIs affected by JWT authorization. Each API owns one PR; no new editing assignment begins until the preceding PR is reconciled under the existing lifecycle. The existing registration worktree was retained because Codex's archive tool refused to remove the chat's primary checkout; Peter's API edits use only his managed full clone.
+
+Login verification evidence: the new login-flow check rejected the old files before correction. Final mutation run caught 56/56 deliberate faults (the first 53-case run caught 48/53; selectors and projection/threshold checks were tightened before rerunning). The SQL and sequence now contain 15 exact operations and seven outcome paths. The delivery preflight ran 38/38 documentation checks, audited 53 tables with 0 findings, ran database tests with ALL PASSED, and found no blockers. PostgreSQL verification executed the specification's exact queries against adversarial role/direct-scope fixtures, empty arrays and ambiguous identifiers, proved token/attempt rollback, and used two connections to verify serialized counting. No backend or published OpenAPI was changed; the detailed login and revised WP4/WP5 documents remain in-review, while the separate owner-decision record is approved. The initial delivery did not render PlantUML; the paired-review follow-up below now records real rendering and visible-SQL verification.
+
+
+### Login PR #23 — paired sequence/spec review follow-up
+
+Status: Paired-review artifacts verified and ready for the existing PR update, resumed through agent-workspace with the original login assignment after the owner's 2026-11-07 correction. GitHub reported the PR OPEN when verified; no next API assignment has started.
+
+- [x] Verify the PR changes both spec.md and sequence.wsd and rerun SQL parity and seven-path flow checks.
+- [x] Find installed OpenJDK and the VS Code PlantUML JAR rather than treating the system Java launcher as proof that no runtime exists.
+- [x] Render the source and reproduce that PlantUML omits SQL value lines beginning with a single quote, despite passing source parity.
+- [x] Preserve all quoted SQL values in the rendered diagram and make decoded SQL parity and application/infrastructure exchanges explicit.
+- [x] Add a scenario correspondence table and strengthen mutation checks for rendered SQL and request/result handoff gaps.
+- [x] Render SVG/PNG, inspect the complete diagram and critical SQL/branch regions, and run paired source/flow/rendered-text checks.
+- [x] Prepare the existing PR update with the observed before/after evidence; verify final delivery through GitHub and release the session lock.
+
+
+Paired-review evidence: PlantUML -syntax reports SEQUENCE (19 participants); SVG and PNG were generated and visually inspected. The original SVG is rejected for missing 15/113 SQL lines; the corrected SVG has 113/113 visible SQL lines. Exact decoded SQL parity passes for the 18 existing source pairs, and login-flow verifies the seven outcomes plus all query requests/results, parameter mappings and four success fields. Mutation testing caught 67/67 faults. The complete preflight reran all 38 documentation commands, audited 53 tables with 0 findings and passed database tests; its first attempt also flagged an extra blank line at the end of this task file, which was removed before final delivery.
+
+
+PR #23 integration: origin/main advanced to 01a5e41 with the already merged Jinny registration (#22) and administrator-write spec retrofit (#20). Reconcile this base into Peter's existing branch without force-pushing; preserve both login-flow and admin-write-spec in the checker. Verify the PR diff against the current main contains only Peter's recorded assignment paths, rerun all current checks and rendered SQL verification, then push the reconciliation commit and release the session lock. Imported main changes are base history, not additional APIs authored in this PR.
+
+Integration verification: both checker registrations are present, all 39 documentation commands pass, the audit reports 53 tables / 0 findings, database tests report ALL PASSED, login mutations remain 67/67, and the rendered SVG still contains 113/113 SQL lines. The working-tree PR diff against the updated main was checked before the reconciliation commit: all eight changed paths match Peter's original assignment.
