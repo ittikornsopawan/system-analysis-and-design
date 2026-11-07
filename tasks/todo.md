@@ -713,6 +713,13 @@ Status: Complete in the branch, waiting for review. Assignment: agent `tommy`, d
 - [x] Check them with `api-sequence-spec`, the skeleton test, PlantUML and mutation tests.
 - [x] Open the PR with `commit-and-pr`; do not merge. The author APIs (`author/01` to `11`) follow in the next pull request.
 
+## repository-wide: Sequence diagrams of the author APIs (set D, author)
+
+Status: Complete in the branch, waiting for review. Assignment: agent `tommy`, delivery `open-pr`, authorized by `josh`, workspace `.workspace/tommy`, branch `feat/tommy-sequence-author`, scopes: the eleven folders `e-commerce/doc/api/author/01-upsert-role` to `11-inquiry-user-role` and `tasks`.
+
+- [x] Write `sequence.wsd` of `author/01` to `11` (role, permission and scope upsert and batch, the three inquiries, the user role upsert with the lock order and the last administrator rule, the user role inquiry) to the agreed standard.
+- [x] Check them with `api-sequence-spec`, the skeleton test, PlantUML and mutation tests.
+- [x] Open the PR with `commit-and-pr`; do not merge. With this set every one of the 83 API specs has a finished diagram.
 ## Peter — API 9: create-new-password paired contract review (2026-11-07)
 
 Scope: authen-and-author/04-create-new-password; owner Q13 credential revocation and existing reset rules. One API per PR; continue from main without waiting for merge under Q15. No backend/schema implementation. Q18–Q19 remain pending for consent inquiry.
