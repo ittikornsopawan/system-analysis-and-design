@@ -1,0 +1,172 @@
+<!DOCTYPE html>
+<html lang="en"><head><meta charset="UTF-8"><meta name="viewport" content="width=device-width,initial-scale=1.0">
+<title>Repository map &amp; proposed data-service seams</title><link href="https://fonts.googleapis.com/css2?family=Instrument+Serif:ital@0;1&amp;family=Geist:wght@400;500;600&amp;family=Geist+Mono:wght@400;500;600&amp;display=swap" rel="stylesheet">
+<style>
+* {box-sizing:border-box;} body {margin:0;padding:24px;background:#f5f5f5;color:#2d3142;font-family:'Geist',Arial,sans-serif;}
+main {width:100%;max-width:1584px;min-width:0;margin:0 auto;} h1 {font-family:'Instrument Serif',Georgia,serif;font-size:32px;font-weight:400;}
+.diagram-container {width:100%;overflow-x:auto;} svg {display:block;width:100%;min-width:1584px;}
+.source-note {font-size:12px;line-height:1.6;color:#4f5d75;} @media print {body {padding:0;} .diagram-container {overflow-x:visible;} svg {min-width:0;}}
+</style></head><body><main><h1>Repository map &amp; proposed data-service seams</h1><div class="diagram-container"><svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 1584 1120" role="img" aria-labelledby="repository-architecture-title repository-architecture-desc">
+<title id="repository-architecture-title">Repository map &amp; proposed data-service seams</title>
+<desc id="repository-architecture-desc">The backend repository contains source, tests and shared build settings, with five production projects and exact compile-time references listed in their source folders.</desc>
+<defs>
+<marker id="repository-architecture-arrow" markerWidth="8" markerHeight="6" refX="7" refY="3" orient="auto"><polygon points="0 0,8 3,0 6" fill="#4f5d75"/></marker>
+<marker id="repository-architecture-arrow-accent" markerWidth="8" markerHeight="6" refX="7" refY="3" orient="auto"><polygon points="0 0,8 3,0 6" fill="#bf4520"/></marker>
+<marker id="repository-architecture-arrow-link" markerWidth="8" markerHeight="6" refX="7" refY="3" orient="auto"><polygon points="0 0,8 3,0 6" fill="#2e5aa8"/></marker>
+</defs>
+<rect x="0" y="0" width="1584" height="1120" fill="#f5f5f5"/>
+<path data-source="root" data-target="src" d="M 360 196 L 440 196" fill="none" stroke="#4f5d75" stroke-width="1.2" marker-end="url(#repository-architecture-arrow)"/>
+<path data-source="root" data-target="tests" d="M 360 232 L 404 232 Q 412 232 412 240 L 412 632 Q 412 640 420 640 L 440 640" fill="none" stroke="#4f5d75" stroke-width="1.2" marker-end="url(#repository-architecture-arrow)"/>
+<path data-source="root" data-target="build" d="M 360 268 L 380 268 Q 388 268 388 276 L 388 904 Q 388 912 396 912 L 440 912" fill="none" stroke="#4f5d75" stroke-width="1.2" marker-end="url(#repository-architecture-arrow)"/>
+<path data-source="src" data-target="api" d="M 760 178.667 L 968 178.667 Q 976 178.667 976 186.667 L 976 224 Q 976 232 984 232 L 1008 232" fill="none" stroke="#4f5d75" stroke-width="1.2" marker-end="url(#repository-architecture-arrow)"/>
+<path data-source="src" data-target="application" d="M 760 197.333 L 936 197.333 Q 944 197.333 944 205.333 L 944 392 Q 944 400 952 400 L 1008 400" fill="none" stroke="#4f5d75" stroke-width="1.2" marker-end="url(#repository-architecture-arrow)"/>
+<path data-source="src" data-target="domain" d="M 760 216 L 904 216 Q 912 216 912 224 L 912 560 Q 912 568 920 568 L 1008 568" fill="none" stroke="#4f5d75" stroke-width="1.2" marker-end="url(#repository-architecture-arrow)"/>
+<path data-source="src" data-target="infrastructure" d="M 760 234.667 L 872 234.667 Q 880 234.667 880 242.667 L 880 728 Q 880 736 888 736 L 1008 736" fill="none" stroke="#4f5d75" stroke-width="1.2" marker-end="url(#repository-architecture-arrow)"/>
+<path data-source="src" data-target="shared" d="M 760 253.333 L 840 253.333 Q 848 253.333 848 261.333 L 848 896 Q 848 904 856 904 L 1008 904" fill="none" stroke="#4f5d75" stroke-width="1.2" marker-end="url(#repository-architecture-arrow)"/>
+<g data-node-id="root"><rect x="40" y="160" width="320" height="144" rx="6" fill="#f5f5f5"/>
+<rect data-role="node-bounds" x="40" y="160" width="320" height="144" rx="6" fill="#f1e7e4" stroke="#bf4520" stroke-width="1.2"/>
+<rect x="56" y="172" width="168" height="12" rx="2" fill="none" stroke="#bf4520" stroke-width="0.8"/>
+<text x="62" y="181" font-size="8" font-family="Geist Mono,Courier New,monospace" font-weight="400" fill="#bf4520" text-anchor="start">BACKEND CHECKOUT / TRACKED HERE</text>
+<text x="56" y="204" font-size="12" font-family="Geist,Arial,sans-serif" font-weight="600" fill="#2d3142" text-anchor="start">e-commerce/repository/</text>
+<line x1="56" y1="214" x2="344" y2="214" stroke="#bfc0c0" stroke-width="0.8"/>
+<text x="56" y="228" font-size="11" font-family="Geist,Arial,sans-serif" font-weight="400" fill="#4f5d75" text-anchor="start">Five production projects; two test projects</text>
+<text x="56" y="244" font-size="11" font-family="Geist,Arial,sans-serif" font-weight="400" fill="#4f5d75" text-anchor="start">CQRS organised by feature</text>
+<text x="56" y="260" font-size="11" font-family="Geist,Arial,sans-serif" font-weight="400" fill="#4f5d75" text-anchor="start">Source folders are not deployed services</text>
+<text x="56" y="276" font-size="11" font-family="Geist,Arial,sans-serif" font-weight="400" fill="#4f5d75" text-anchor="start">Component-repository migration is pending</text>
+</g>
+<g data-node-id="src"><rect x="440" y="160" width="320" height="112" rx="6" fill="#f5f5f5"/>
+<rect data-role="node-bounds" x="440" y="160" width="320" height="112" rx="6" fill="#efeff0" stroke="#5a6580" stroke-width="1.2"/>
+<rect x="456" y="172" width="88" height="12" rx="2" fill="none" stroke="#5a6580" stroke-width="0.8"/>
+<text x="462" y="181" font-size="8" font-family="Geist Mono,Courier New,monospace" font-weight="400" fill="#5a6580" text-anchor="start">PRODUCTION CODE</text>
+<text x="456" y="204" font-size="12" font-family="Geist,Arial,sans-serif" font-weight="600" fill="#2d3142" text-anchor="start">src/</text>
+<line x1="456" y1="214" x2="744" y2="214" stroke="#bfc0c0" stroke-width="0.8"/>
+<text x="456" y="228" font-size="11" font-family="Geist,Arial,sans-serif" font-weight="400" fill="#4f5d75" text-anchor="start">Build into the single ASP.NET Core host</text>
+<text x="456" y="244" font-size="11" font-family="Geist,Arial,sans-serif" font-weight="400" fill="#4f5d75" text-anchor="start">Project references are listed on each leaf</text>
+</g>
+<g data-node-id="tests"><rect x="440" y="536" width="320" height="208" rx="6" fill="#f5f5f5"/>
+<rect data-role="node-bounds" x="440" y="536" width="320" height="208" rx="6" fill="#efeff0" stroke="#5a6580" stroke-width="1.2"/>
+<rect x="456" y="548" width="124" height="12" rx="2" fill="none" stroke="#5a6580" stroke-width="0.8"/>
+<text x="462" y="557" font-size="8" font-family="Geist Mono,Courier New,monospace" font-weight="400" fill="#5a6580" text-anchor="start">EXISTING TEST BOUNDARY</text>
+<text x="456" y="580" font-size="12" font-family="Geist,Arial,sans-serif" font-weight="600" fill="#2d3142" text-anchor="start">tests/ · xUnit</text>
+<line x1="456" y1="590" x2="744" y2="590" stroke="#bfc0c0" stroke-width="0.8"/>
+<text x="456" y="604" font-size="9" font-family="Geist Mono,Courier New,monospace" font-weight="400" fill="#4f5d75" text-anchor="start">Ecommerce.Domain.Tests/</text>
+<text x="456" y="620" font-size="9" font-family="Geist Mono,Courier New,monospace" font-weight="400" fill="#4f5d75" text-anchor="start">Authen/{EntityTests,ValueObjectTests}.cs</text>
+<text x="456" y="636" font-size="9" font-family="Geist Mono,Courier New,monospace" font-weight="400" fill="#4f5d75" text-anchor="start">REF → Domain · Shared</text>
+<text x="456" y="652" font-size="9" font-family="Geist Mono,Courier New,monospace" font-weight="400" fill="#4f5d75" text-anchor="start">Ecommerce.Application.Tests/</text>
+<text x="456" y="668" font-size="9" font-family="Geist Mono,Courier New,monospace" font-weight="400" fill="#4f5d75" text-anchor="start">Authen/{AuthenHandlerTests,Fakes}.cs</text>
+<text x="456" y="684" font-size="9" font-family="Geist Mono,Courier New,monospace" font-weight="400" fill="#4f5d75" text-anchor="start">REF → Application · Domain · Shared</text>
+<text x="456" y="700" font-size="11" font-family="Geist,Arial,sans-serif" font-weight="400" fill="#4f5d75" text-anchor="start">In-memory fakes; no DB integration suite</text>
+<text x="456" y="716" font-size="11" font-family="Geist,Arial,sans-serif" font-weight="400" fill="#4f5d75" text-anchor="start">PROPOSED: Redis / MongoDB / outbox tests</text>
+</g>
+<g data-node-id="build"><rect x="440" y="816" width="320" height="192" rx="6" fill="#f5f5f5"/>
+<rect data-role="node-bounds" x="440" y="816" width="320" height="192" rx="6" fill="#efeff0" stroke="#5a6580" stroke-width="1.2"/>
+<rect x="456" y="828" width="120" height="12" rx="2" fill="none" stroke="#5a6580" stroke-width="0.8"/>
+<text x="462" y="837" font-size="8" font-family="Geist Mono,Courier New,monospace" font-weight="400" fill="#5a6580" text-anchor="start">REPOSITORY ROOT FILES</text>
+<text x="456" y="860" font-size="12" font-family="Geist,Arial,sans-serif" font-weight="600" fill="#2d3142" text-anchor="start">Solution &amp; shared build settings</text>
+<line x1="456" y1="870" x2="744" y2="870" stroke="#bfc0c0" stroke-width="0.8"/>
+<text x="456" y="884" font-size="9" font-family="Geist Mono,Courier New,monospace" font-weight="400" fill="#4f5d75" text-anchor="start">Ecommerce.sln</text>
+<text x="456" y="900" font-size="9" font-family="Geist Mono,Courier New,monospace" font-weight="400" fill="#4f5d75" text-anchor="start">Directory.Build.props → net10.0</text>
+<text x="456" y="916" font-size="11" font-family="Geist,Arial,sans-serif" font-weight="400" fill="#4f5d75" text-anchor="start">Nullable / ImplicitUsings enabled</text>
+<text x="456" y="932" font-size="9" font-family="Geist Mono,Courier New,monospace" font-weight="400" fill="#4f5d75" text-anchor="start">TreatWarningsAsErrors=true</text>
+<text x="456" y="948" font-size="9" font-family="Geist Mono,Courier New,monospace" font-weight="400" fill="#4f5d75" text-anchor="start">README.md · project-structure.md</text>
+<text x="456" y="964" font-size="9" font-family="Geist Mono,Courier New,monospace" font-weight="400" fill="#4f5d75" text-anchor="start">Run from backend root: dotnet test</text>
+<text x="456" y="980" font-size="9" font-family="Geist Mono,Courier New,monospace" font-weight="400" fill="#4f5d75" text-anchor="start">PROPOSED: Redis / MongoDB secret-manager settings</text>
+</g>
+<g data-node-id="api"><rect x="1008" y="160" width="536" height="144" rx="6" fill="#f5f5f5"/>
+<rect data-role="node-bounds" x="1008" y="160" width="536" height="144" rx="6" fill="#ffffff" stroke="#2d3142" stroke-width="1.2"/>
+<rect x="1024" y="172" width="164" height="12" rx="2" fill="none" stroke="#2d3142" stroke-width="0.8"/>
+<text x="1030" y="181" font-size="8" font-family="Geist Mono,Courier New,monospace" font-weight="400" fill="#2d3142" text-anchor="start">ENTRY POINT / COMPOSITION ROOT</text>
+<text x="1024" y="204" font-size="12" font-family="Geist,Arial,sans-serif" font-weight="600" fill="#2d3142" text-anchor="start">Ecommerce.Api/</text>
+<line x1="1024" y1="214" x2="1528" y2="214" stroke="#bfc0c0" stroke-width="0.8"/>
+<text x="1024" y="228" font-size="9" font-family="Geist Mono,Courier New,monospace" font-weight="400" fill="#4f5d75" text-anchor="start">Controllers/AuthenController.cs</text>
+<text x="1024" y="244" font-size="9" font-family="Geist Mono,Courier New,monospace" font-weight="400" fill="#4f5d75" text-anchor="start">Contracts/Authen/AuthenRequests.cs</text>
+<text x="1024" y="260" font-size="9" font-family="Geist Mono,Courier New,monospace" font-weight="400" fill="#4f5d75" text-anchor="start">Extensions/ResultExtensions.cs</text>
+<text x="1024" y="276" font-size="9" font-family="Geist Mono,Courier New,monospace" font-weight="400" fill="#4f5d75" text-anchor="start">CODE: Program.cs DI/JWT; PROPOSED: Middleware/RedisRateLimitMiddleware.cs</text>
+<text x="1024" y="292" font-size="9" font-family="Geist Mono,Courier New,monospace" font-weight="400" fill="#4f5d75" text-anchor="start">REF → Application · Infrastructure · Shared</text>
+</g>
+<g data-node-id="application"><rect x="1008" y="328" width="536" height="144" rx="6" fill="#f5f5f5"/>
+<rect data-role="node-bounds" x="1008" y="328" width="536" height="144" rx="6" fill="#ffffff" stroke="#2d3142" stroke-width="1.2"/>
+<rect x="1024" y="340" width="152" height="12" rx="2" fill="none" stroke="#2d3142" stroke-width="0.8"/>
+<text x="1030" y="349" font-size="8" font-family="Geist Mono,Courier New,monospace" font-weight="400" fill="#2d3142" text-anchor="start">USE CASES / CORE-OWNED PORTS</text>
+<text x="1024" y="372" font-size="12" font-family="Geist,Arial,sans-serif" font-weight="600" fill="#2d3142" text-anchor="start">Ecommerce.Application/</text>
+<line x1="1024" y1="382" x2="1528" y2="382" stroke="#bfc0c0" stroke-width="0.8"/>
+<text x="1024" y="396" font-size="9" font-family="Geist Mono,Courier New,monospace" font-weight="400" fill="#4f5d75" text-anchor="start">Features/Authen/{Register,Login,ResetPassword,GetCurrentUser}/</text>
+<text x="1024" y="412" font-size="11" font-family="Geist,Arial,sans-serif" font-weight="400" fill="#4f5d75" text-anchor="start">Each use case: command/query, validator, handler, response</text>
+<text x="1024" y="428" font-size="9" font-family="Geist Mono,Courier New,monospace" font-weight="400" fill="#4f5d75" text-anchor="start">PROPOSED: Abstractions/ ports for cache, rate, config snapshots and projections</text>
+<text x="1024" y="444" font-size="9" font-family="Geist Mono,Courier New,monospace" font-weight="400" fill="#4f5d75" text-anchor="start">Features/Authen/Mapping/AuthenMappings.cs → response records</text>
+<text x="1024" y="460" font-size="9" font-family="Geist Mono,Courier New,monospace" font-weight="400" fill="#4f5d75" text-anchor="start">REF → Domain · Shared</text>
+</g>
+<g data-node-id="domain"><rect x="1008" y="496" width="536" height="144" rx="6" fill="#f5f5f5"/>
+<rect data-role="node-bounds" x="1008" y="496" width="536" height="144" rx="6" fill="#ffffff" stroke="#2d3142" stroke-width="1.2"/>
+<rect x="1024" y="508" width="252" height="12" rx="2" fill="none" stroke="#2d3142" stroke-width="0.8"/>
+<text x="1030" y="517" font-size="8" font-family="Geist Mono,Courier New,monospace" font-weight="400" fill="#2d3142" text-anchor="start">ENTITIES / VALUE OBJECTS / REPOSITORY INTERFACES</text>
+<text x="1024" y="540" font-size="12" font-family="Geist,Arial,sans-serif" font-weight="600" fill="#2d3142" text-anchor="start">Ecommerce.Domain/</text>
+<line x1="1024" y1="550" x2="1528" y2="550" stroke="#bfc0c0" stroke-width="0.8"/>
+<text x="1024" y="564" font-size="9" font-family="Geist Mono,Courier New,monospace" font-weight="400" fill="#4f5d75" text-anchor="start">Authen/Entities/{User,PasswordResetToken}.cs</text>
+<text x="1024" y="580" font-size="9" font-family="Geist Mono,Courier New,monospace" font-weight="400" fill="#4f5d75" text-anchor="start">Authen/ValueObjects/{Username,EmailAddress,PlainPassword,...}</text>
+<text x="1024" y="596" font-size="9" font-family="Geist Mono,Courier New,monospace" font-weight="400" fill="#4f5d75" text-anchor="start">Authen/Repositories/IAuthenRepositories.cs</text>
+<text x="1024" y="612" font-size="9" font-family="Geist Mono,Courier New,monospace" font-weight="400" fill="#4f5d75" text-anchor="start">Common/{Entity,ValueObject,IAggregateRoot}.cs</text>
+<text x="1024" y="628" font-size="9" font-family="Geist Mono,Courier New,monospace" font-weight="400" fill="#4f5d75" text-anchor="start">REF → Shared; no dependency on Infrastructure</text>
+</g>
+<g data-node-id="infrastructure"><rect x="1008" y="664" width="536" height="144" rx="6" fill="#f5f5f5"/>
+<rect data-role="node-bounds" x="1008" y="664" width="536" height="144" rx="6" fill="#ffffff" stroke="#2d3142" stroke-width="1.2"/>
+<rect x="1024" y="676" width="192" height="12" rx="2" fill="none" stroke="#2d3142" stroke-width="0.8"/>
+<text x="1030" y="685" font-size="8" font-family="Geist Mono,Courier New,monospace" font-weight="400" fill="#2d3142" text-anchor="start">TECHNOLOGY / ADAPTER IMPLEMENTATIONS</text>
+<text x="1024" y="708" font-size="12" font-family="Geist,Arial,sans-serif" font-weight="600" fill="#2d3142" text-anchor="start">Ecommerce.Infrastructure/</text>
+<line x1="1024" y1="718" x2="1528" y2="718" stroke="#bfc0c0" stroke-width="0.8"/>
+<text x="1024" y="732" font-size="9" font-family="Geist Mono,Courier New,monospace" font-weight="400" fill="#4f5d75" text-anchor="start">Persistence/Authen/{User,Password,Token}Repository.cs</text>
+<text x="1024" y="748" font-size="9" font-family="Geist Mono,Courier New,monospace" font-weight="400" fill="#4f5d75" text-anchor="start">Persistence/{DbSession,UnitOfWork}.cs</text>
+<text x="1024" y="764" font-size="9" font-family="Geist Mono,Courier New,monospace" font-weight="400" fill="#4f5d75" text-anchor="start">Security/{Pbkdf2PasswordHasher,TokenService,FieldProtector}.cs</text>
+<text x="1024" y="780" font-size="9" font-family="Geist Mono,Courier New,monospace" font-weight="400" fill="#4f5d75" text-anchor="start">PROPOSED: Caching/ + RateLimiting/Redis*; Configuration/ + Documents/Mongo*</text>
+<text x="1024" y="796" font-size="9" font-family="Geist Mono,Courier New,monospace" font-weight="400" fill="#4f5d75" text-anchor="start">REF → Application · Domain · Shared</text>
+</g>
+<g data-node-id="shared"><rect x="1008" y="832" width="536" height="144" rx="6" fill="#f5f5f5"/>
+<rect data-role="node-bounds" x="1008" y="832" width="536" height="144" rx="6" fill="#ffffff" stroke="#2d3142" stroke-width="1.2"/>
+<rect x="1024" y="844" width="168" height="12" rx="2" fill="none" stroke="#2d3142" stroke-width="0.8"/>
+<text x="1030" y="853" font-size="8" font-family="Geist Mono,Courier New,monospace" font-weight="400" fill="#2d3142" text-anchor="start">COMMON CQRS / RESULT PRIMITIVES</text>
+<text x="1024" y="876" font-size="12" font-family="Geist,Arial,sans-serif" font-weight="600" fill="#2d3142" text-anchor="start">Ecommerce.Shared/</text>
+<line x1="1024" y1="886" x2="1528" y2="886" stroke="#bfc0c0" stroke-width="0.8"/>
+<text x="1024" y="900" font-size="9" font-family="Geist Mono,Courier New,monospace" font-weight="400" fill="#4f5d75" text-anchor="start">Cqrs/{Messaging,Dispatcher,CqrsServiceCollectionExtensions}.cs</text>
+<text x="1024" y="916" font-size="9" font-family="Geist Mono,Courier New,monospace" font-weight="400" fill="#4f5d75" text-anchor="start">Results/{Result,Error}.cs</text>
+<text x="1024" y="932" font-size="11" font-family="Geist,Arial,sans-serif" font-weight="400" fill="#4f5d75" text-anchor="start">Validators run first; expected failures return Result.Failure</text>
+<text x="1024" y="948" font-size="11" font-family="Geist,Arial,sans-serif" font-weight="400" fill="#4f5d75" text-anchor="start">Handlers and validators registered through assembly scanning</text>
+<text x="1024" y="964" font-size="9" font-family="Geist Mono,Courier New,monospace" font-weight="400" fill="#4f5d75" text-anchor="start">REF → none</text>
+</g>
+<text x="40" y="48" font-size="8" font-family="Geist Mono,Courier New,monospace" font-weight="500" fill="#5a6580" text-anchor="start">E-COMMERCE / 02 / SOURCE MAP</text>
+<text x="40" y="88" font-size="32" font-family="Instrument Serif,Georgia,serif" font-weight="400" fill="#2d3142" text-anchor="start">Repository map &amp; proposed data-service seams</text>
+<text x="40" y="116" font-size="12" font-family="Geist,Arial,sans-serif" font-weight="400" fill="#4f5d75" text-anchor="start">Current source/test ownership plus proposed Redis/MongoDB ports, adapters, configuration and delivery verification; no backend files added.</text>
+<text x="40" y="376" font-size="14" font-family="Geist,Arial,sans-serif" font-weight="600" fill="#4f5d75" text-anchor="start">Analysis artefacts sit beside code</text>
+<text x="40" y="408" font-size="9" font-family="Geist Mono,Courier New,monospace" font-weight="400" fill="#4f5d75" text-anchor="start">../doc/api/      API specifications</text>
+<text x="40" y="432" font-size="9" font-family="Geist Mono,Courier New,monospace" font-weight="400" fill="#4f5d75" text-anchor="start">../doc/schema/   schema specifications</text>
+<text x="40" y="456" font-size="9" font-family="Geist Mono,Courier New,monospace" font-weight="400" fill="#4f5d75" text-anchor="start">../db/           migrations / SQL tests</text>
+<text x="40" y="480" font-size="9" font-family="Geist Mono,Courier New,monospace" font-weight="400" fill="#4f5d75" text-anchor="start">../api/          machine-readable contract</text>
+<text x="40" y="504" font-size="9" font-family="Geist Mono,Courier New,monospace" font-weight="400" fill="#4f5d75" text-anchor="start">../diagram/      editable views / sources</text>
+<text x="40" y="584" font-size="14" font-family="Geist,Arial,sans-serif" font-weight="600" fill="#4f5d75" text-anchor="start">Compile-time direction</text>
+<text x="40" y="616" font-size="11" font-family="Geist,Arial,sans-serif" font-weight="400" fill="#4f5d75" text-anchor="start">All 9 production references and all 5 test</text>
+<text x="40" y="636" font-size="11" font-family="Geist,Arial,sans-serif" font-weight="400" fill="#4f5d75" text-anchor="start">references are accounted for on the cards.</text>
+<text x="40" y="676" font-size="11" font-family="Geist,Arial,sans-serif" font-weight="400" fill="#4f5d75" text-anchor="start">Domain and Application never reference</text>
+<text x="40" y="696" font-size="11" font-family="Geist,Arial,sans-serif" font-weight="400" fill="#4f5d75" text-anchor="start">Infrastructure. Program.cs wires interfaces</text>
+<text x="40" y="716" font-size="11" font-family="Geist,Arial,sans-serif" font-weight="400" fill="#4f5d75" text-anchor="start">to adapters at runtime.</text>
+<text x="40" y="776" font-size="11" font-family="Geist,Arial,sans-serif" font-weight="400" fill="#4f5d75" text-anchor="start">Read the arrows as folder membership.</text>
+<text x="40" y="796" font-size="11" font-family="Geist,Arial,sans-serif" font-weight="400" fill="#4f5d75" text-anchor="start">Read REF lines as compile references.</text>
+<text x="40" y="852" font-size="14" font-family="Geist,Arial,sans-serif" font-weight="600" fill="#4f5d75" text-anchor="start">Data-service seams (PROPOSED)</text>
+<text x="40" y="880" font-size="11" font-family="Geist,Arial,sans-serif" font-weight="400" fill="#4f5d75" text-anchor="start">Api: quota middleware before handlers.</text>
+<text x="40" y="900" font-size="11" font-family="Geist,Arial,sans-serif" font-weight="400" fill="#4f5d75" text-anchor="start">Application: cache, rate, config/event ports.</text>
+<text x="40" y="920" font-size="11" font-family="Geist,Arial,sans-serif" font-weight="400" fill="#4f5d75" text-anchor="start">Infrastructure: Redis + MongoDB adapters.</text>
+<text x="40" y="940" font-size="11" font-family="Geist,Arial,sans-serif" font-weight="400" fill="#4f5d75" text-anchor="start">Domain: no Redis / MongoDB SDKs.</text>
+<text x="40" y="960" font-size="11" font-family="Geist,Arial,sans-serif" font-weight="400" fill="#4f5d75" text-anchor="start">Tests: outages, versions, quota, replay.</text>
+<text x="40" y="1036" font-size="9" font-family="Geist Mono,Courier New,monospace" font-weight="400" fill="#5a6580" text-anchor="start">Baseline: project-structure.md · Directory.Build.props · src/*/*.csproj · tests/*/*.csproj | Proposed seams: redis-design.md + mongodb-design.md</text>
+<line x1="40" y1="1052" x2="1544" y2="1052" stroke="#bfc0c0" stroke-width="0.8"/>
+<rect x="40" y="1066" width="16" height="12" rx="2" fill="#f1e7e4" stroke="#bf4520"/>
+<text x="72" y="1076" font-size="10" font-family="Geist,Arial,sans-serif" font-weight="400" fill="#4f5d75" text-anchor="start">Repository root</text>
+<rect x="336" y="1066" width="16" height="12" rx="2" fill="#efeff0" stroke="#5a6580"/>
+<text x="368" y="1076" font-size="10" font-family="Geist,Arial,sans-serif" font-weight="400" fill="#4f5d75" text-anchor="start">Directory / build branch</text>
+<rect x="632" y="1066" width="16" height="12" rx="2" fill="#ffffff" stroke="#2d3142"/>
+<text x="664" y="1076" font-size="10" font-family="Geist,Arial,sans-serif" font-weight="400" fill="#4f5d75" text-anchor="start">Project with representative files</text>
+<path d="M 928 1072 H 952" fill="none" stroke="#4f5d75" marker-end="url(#repository-architecture-arrow)"/>
+<text x="960" y="1076" font-size="10" font-family="Geist,Arial,sans-serif" font-weight="400" fill="#4f5d75" text-anchor="start">Contains / belongs under</text>
+<text x="1224" y="1076" font-size="10" font-family="Geist,Arial,sans-serif" font-weight="400" fill="#4f5d75" text-anchor="start">REF = direct .csproj reference</text>
+</svg></div>
+<p class="source-note">View: Tree. A3 landscape, 1584 × 1120. Default light style.
+The matching PNG contains editable draw.io data. Supplied font fallbacks: Georgia, Arial and Courier New. Research, evidence and limitations: research.md and README.md.</p>
+</main></body></html>
