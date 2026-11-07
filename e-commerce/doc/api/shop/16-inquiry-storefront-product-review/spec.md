@@ -593,8 +593,8 @@ WHERE r.shop_product_id = '<sequence.shopProductId>'
 AND r.row_status = 'ACTIVE'
 AND r.rating = '<sequence.rating>' -- only when rating is specified
 ORDER BY r.created_at DESC, r.id -- sort NEWEST (default)
--- ORDER BY r.rating DESC, r.id -- sort HIGHEST
--- ORDER BY r.rating, r.id -- sort LOWEST
+-- ORDER BY r.rating DESC, r.id (sort HIGHEST)
+-- ORDER BY r.rating, r.id (sort LOWEST)
 LIMIT <sequence.pageSize> OFFSET (<sequence.pageIndex> - 1) * <sequence.pageSize>
 ```
 
