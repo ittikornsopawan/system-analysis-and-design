@@ -73,7 +73,7 @@ class RegistryTests(unittest.TestCase):
                 encoding="utf-8"
             )
         )
-        self.assertEqual(["josh", "tommy", "marry", "peter"], [item["name"] for item in registry["agents"]])
+        self.assertEqual(["josh", "tommy", "marry", "peter", "jinny"], [item["name"] for item in registry["agents"]])
         peter = agent_workspace.agent_record(registry, "peter")
         self.assertEqual(".agents/agents/system-analyst.md", peter["role"])
         self.assertEqual("repository-wide", peter["scope"])
@@ -86,6 +86,28 @@ class RegistryTests(unittest.TestCase):
         with self.assertRaisesRegex(agent_workspace.Blocked, "cannot delegate"):
             agent_workspace.validate_delivery(
                 registry, assignee="tommy", delivery="open-pr", authorized_by="peter"
+            )
+
+    def test_jinny_diagram_role_and_authority(self) -> None:
+        repository_root = SCRIPT.parents[4]
+        registry = agent_workspace.parse_registry(
+            (repository_root / ".agents" / "team" / "agents.yaml").read_text(
+                encoding="utf-8"
+            )
+        )
+        jinny = agent_workspace.agent_record(registry, "jinny")
+        self.assertEqual(".agents/agents/diagram-designer.md", jinny["role"])
+        self.assertTrue((repository_root / jinny["role"]).is_file())
+        self.assertEqual("repository-wide", jinny["scope"])
+        self.assertEqual("josh", jinny["reports_to"])
+        self.assertEqual("jinny", jinny["workspace_key"])
+        self.assertEqual([], jinny["capabilities"])
+        agent_workspace.validate_delivery(
+            registry, assignee="jinny", delivery="none", authorized_by="ittikorn"
+        )
+        with self.assertRaisesRegex(agent_workspace.Blocked, "cannot delegate"):
+            agent_workspace.validate_delivery(
+                registry, assignee="tommy", delivery="open-pr", authorized_by="jinny"
             )
 
     def test_registry_and_delegated_authority(self) -> None:
