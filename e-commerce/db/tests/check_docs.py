@@ -5463,6 +5463,99 @@ def check_refresh_flow() -> int:
 COMMANDS['refresh-flow'] = check_refresh_flow
 
 
+def check_active_consent_flow() -> int:
+    """Check the public visible-consent contract, complete type names and read-only paths."""
+    path='e-commerce/doc/api/consent/01-inquiry-active-consent/spec.md'
+    md=read(path);wsd=read(str(Path(path).with_name('sequence.wsd')));errors=[]
+    for needle in ('2026-11-07-api-review-design.md','Q3','Public endpoint','REPEATABLE READ READ ONLY',
+                   'isRequired comes from c.is_required','every visible current consent',
+                   'mandatory consentTypeName','effective_at ASC, id ASC','This GET never records reading',
+                   'skip the type-name lookup','A type deactivated after this snapshot is absent in the next request'):
+        if needle not in md:errors.append(f'active consent rule missing {needle!r}')
+    if 'authorization' in md.lower():errors.append('public active-consent contract must not require a credential header')
+    front=re.match(r'---\n(.*?)\n---\n',md,re.S);fm=front[1] if front else ''
+    state=re.search(r'^status: (draft|in-review|approved)$',fm,re.M)
+    if not state:errors.append('active-consent needs approval metadata')
+    for field in ('approved_by','approved_at'):
+        value=re.search(rf'^{field}: (.+)$',fm,re.M)
+        if not value or (state and ((state[1]=='approved')==(value[1]=='null'))):errors.append(f'inconsistent active consent {field}')
+    operations=spec_database_operations(md)
+    expected=('QUERY - Get active consents','QUERY - Get consent type')
+    if tuple(h for _,h,_ in operations)!=expected:errors.append('active consent must declare exactly definition and type-name queries')
+    sql={h:re.sub(r'--[^\n]*','',s) for _,h,s in operations}
+    required={expected[0]:["c.row_status = 'ACTIVE'", "c.effective_at <= '<sequence.now>'", "c.expired_at IS NULL OR c.expired_at > '<sequence.now>'", 'AND EXISTS (', 'FROM consent.m_consent_type ct', 'ct.id = c.consent_type_id', "ct.row_status = 'ACTIVE'", 'ORDER BY c.effective_at, c.id'],
+              expected[1]:['ct.id as consent_type_id','ct.name as consent_type_name',"ct.id = ANY ('<sequence.consentTypeIds>'::UUID[])","ct.row_status = 'ACTIVE'"]}
+    for h,needles in required.items():
+        for needle in needles:
+            if needle not in sql.get(h,''):errors.append(f'{h} missing {needle}')
+    projection=sql.get(expected[0],'').split('FROM consent.t_consent',1)[0]
+    for field in ('id as consent_id','code','consent_type_id','consent_version','consent_name','consent_description','effective_at','expired_at','is_required','body'):
+        if not re.search(r'^\s*'+re.escape('c.'+field)+r'\s*,?\s*$',projection,re.M):errors.append(f'active projection missing exact c.{field}')
+    for table,heading,statement in operations:
+        if table not in ('consent.t_consent','consent.m_consent_type') or 'authen.' in statement or 'author.' in statement:errors.append('public inquiry must not read user/credential/assignment data')
+        if not heading.startswith('QUERY') or not statement.startswith('SELECT') or re.search(r'\b(?:INSERT|UPDATE|DELETE|pg_advisory_xact_lock)\b|\bNOW\s*\(',statement,re.I):errors.append('active inquiry requires read-only SQL with server now parameter')
+    actual,lifecycle=sequence_database_operations(wsd);errors+=lifecycle
+    if [(t.split('.')[-1],h,normalize(s)) for t,h,s in operations]!=[(t,h,normalize(s)) for t,h,s in actual]:errors.append('active spec/sequence SQL differs')
+    for _,heading,_ in operations:
+        if f'app -> infra: {heading}' not in wsd:errors.append(f'{heading} needs Application request')
+        match=re.search(rf'infra -> (\w+): {re.escape(heading)}\n.*?deactivate \1\n([^\n]+)',wsd,re.S)
+        if not match or not match[2].strip().startswith('infra -> app: Return '):errors.append(f'{heading} needs Application result')
+    for needle in ('Capture server UTC now immediately before first query; establish snapshot','alt visibleConsents is empty',
+                   'data.consents = []; skip type-name lookup','consentTypeIds = distinct visibleConsents.consent_type_id',
+                   'Merge eleven public fields; require every consentTypeName; preserve nulls and current versions',
+                   'Return complete data.consents in effective_at ASC, id ASC order','Mapping failure throws before COMMIT',
+                   'without creating user evidence'):
+        if needle not in wsd:errors.append(f'active sequence missing mapping/guard {needle!r}')
+    traces,structure=login_sequence_paths(wsd);errors+=structure
+    from collections import Counter
+    outcomes=[];enrich=[]
+    for trace in traces:
+        response=[e for e in trace if e.startswith('app -> api: HTTP ')]
+        if len(response)!=1:errors.append('each active-consent path requires one outcome');continue
+        code=int(response[0].split('HTTP ')[1].split()[0]);outcomes.append(code)
+        def ordered(*parts):
+            pos=[next((i for i,e in enumerate(trace) if part in e),-1) for part in parts]
+            return -1 not in pos and pos==sorted(set(pos))
+        if code==200:
+            if not ordered('BEGIN ISOLATION LEVEL REPEATABLE READ READ ONLY','Capture server UTC now',expected[0],'app -> infra: COMMIT','HTTP 200'):errors.append('active success must query one snapshot and commit before response')
+            if any('ROLLBACK' in e for e in trace):errors.append('active success must not roll back')
+            has_type=any(expected[1] in e for e in trace);enrich.append(has_type)
+            if has_type:
+                if not ordered(expected[0],'consentTypeIds = distinct',expected[1],'Merge eleven public fields','app -> infra: COMMIT'):errors.append('non-empty active response must derive type ids, query names and map before commit')
+            elif not any('data.consents = []' in e for e in trace):errors.append('empty active response must expose []')
+        elif code==400:
+            if any('BEGIN' in e or e.startswith('infra -> ') for e in trace):errors.append('bad timestamp must execute no SQL or transaction')
+        elif code in (408,500):
+            if not ordered('BEGIN','ROLLBACK',f'HTTP {code}') or any(e=='app -> infra: COMMIT' for e in trace):errors.append('active failure must rollback and never commit')
+        if any(e.startswith('infra -> ') and ': QUERY' not in e for e in trace):errors.append('active inquiry cannot write')
+    if Counter(outcomes)!=Counter({200:2,400:1,408:1,500:1}) or sorted(enrich)!=[False,True]:errors.append(f'incomplete active outcomes: {dict(Counter(outcomes))}, enrich={enrich}')
+    response_fields={'consentId','code','consentTypeId','consentTypeName','consentVersion','consentName','consentDescription','effectiveAt','expiredAt','isRequired','body'}
+    for title,code in {'Success':200,'Success - No Active Consent':200,'Fail - Bad Request':400,'Fail - Request Timeout':408,'Fail - Internal Server Error':500}.items():
+        try:
+            obj=authen_json(md,title);status=obj['status']
+            if status['code']!=code or code==500 and 'bizCode' in status:errors.append(f'incorrect active {title} envelope')
+            if title=='Success - No Active Consent' and obj['data']['consents']!=[]:errors.append('empty active list must be []')
+            if title=='Success' and any(set(row)!=response_fields or not row['consentTypeName'] for row in obj['data']['consents']):errors.append('active response example needs all eleven public fields and a type name')
+        except (TypeError,KeyError,ValueError):errors.append(f'missing active {title} example')
+    errors+=json_blocks_parse(md);errors+=table_lines_aligned(md)
+    if '--rendered-svg' in sys.argv:
+        import xml.etree.ElementTree as ET
+        try:
+            root=ET.parse(sys.argv[sys.argv.index('--rendered-svg')+1]).getroot()
+            expected_lines=Counter(' '.join(l.split()) for _,_,s in operations for l in s.splitlines() if l.strip())
+            visible=Counter(' '.join(''.join(e.itertext()).split()) for e in root.iter() if e.tag.endswith('}text'))
+            missing=expected_lines-visible
+            if missing:errors.append(f'rendered active SQL missing {sum(missing.values())} lines')
+            else:print(f'OK: rendered active SQL ({sum(expected_lines.values())}/{sum(expected_lines.values())} visible lines)')
+        except (IndexError,OSError,ET.ParseError) as exc:errors.append(f'cannot verify active SVG: {exc}')
+    if errors:return fail('; '.join(errors))
+    print('OK: active-consent-flow (5 terminal traces; public type visibility, complete mapping and read-only snapshot)')
+    return 0
+
+
+COMMANDS['active-consent-flow'] = check_active_consent_flow
+
+
 def main(argv: list[str]) -> int:
     if len(argv) < 2:
         print("usage: check_docs.py <subcommand>")

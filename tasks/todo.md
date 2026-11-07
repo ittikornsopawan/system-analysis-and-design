@@ -389,3 +389,19 @@ Status: Implemented in the managed workspace of Marry on branch `fix/marry-rejec
 - [ ] Preflight, commit, push, open the pull request, tell the lead; hold the lock until the merge, then release and park.
 
 Verification: `python3 .agents/skills/agent-workspace/tests/test_agent_workspace.py` runs 15 tests OK (13 before).
+
+
+## e-commerce: Peter API review — active consent (API 6)
+
+Status: Pending consent delivered in PR #35 (five files; MERGEABLE when opened); branch/assignment history preserved. A clean main-based active-consent assignment passed baselines under Q15. Q3 requires hiding consent when its type is not ACTIVE.
+
+- [x] Preserve PR #35/history and prepare the bounded active-consent assignment from main without waiting for merge.
+- [x] Read both active-consent artifacts, schema/type rules and paired SQL/rendering lessons.
+- [x] Correct spec and full sequence for public visible consents, mandatory type-name mapping, consistent snapshot, stable order and explicit empty/error outcomes.
+- [x] Add active-consent-flow checks, reject the original pair, and mutation-test source and synchronized semantic faults.
+- [x] Execute exact SQL including time/type boundaries and a concurrent type/name change; render/inspect SVG/PNG and run all current docs/audit/database/delivery checks.
+- [ ] Open one active-consent API PR with commit-and-pr, preserve its review record and continue from main under Q15.
+
+Active-consent verification: two identical SELECT operations and five terminal traces. Original pair rejected; mutations caught 30/30. Three additional synchronized spec/sequence faults (active type, stable order and response alias) pass source parity but fail semantic checks; a genuine rendered omission is rejected with correct source unchanged. PlantUML reports eight participants, SVG/PNG generated and inspected, 29/29 visible SQL lines. Temporary PostgreSQL executed the exact queries against all non-ACTIVE type/consent states, future/expired/exact boundaries, stable id ties, required/optional projection, full eleven-field mapping, nulls/body/version preservation and empty typed arrays. Two connections prove the mandatory original type name remains coherent in the snapshot and the next request hides the disabled type. Read-only mode rejects writes; inquiry creates no user evidence. Backend conformity is not claimed.
+
+Active-consent delivery preflight: four authorized paths, 41/41 documentation commands OK, audit 53 tables / 0 findings, database ALL PASSED, Peter delivery authorized, no blockers. Origin/main unchanged at pre-delivery fetch.
