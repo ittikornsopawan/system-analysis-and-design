@@ -406,3 +406,20 @@ Status: Implemented in the managed workspace of Marry on branch `fix/marry-rejec
 - [ ] Preflight, commit, push, open the pull request, tell the lead; hold the lock until the merge, then release and park.
 
 Verification: `python3 .agents/skills/agent-workspace/tests/test_agent_workspace.py` runs 15 tests OK (13 before).
+
+
+## e-commerce: Peter API review — author/me (API 7)
+
+Status: Active consent delivered in PR #36 (four files; MERGEABLE when opened), branch/history preserved. A clean main-based author/me assignment passed baselines. Owner Q11 requires returning the calling token's roles/isPlatformAdmin; Q13 still checks current credential/user. Management-consent questions Q18/Q19 remain pending; work continues on this already-decided API.
+
+- [x] Preserve PR #36/history and prepare author/me from main under Q15 without waiting for merge.
+- [x] Read me spec/empty sequence, author checker, approved Q11 and A16/A18 supersession.
+- [x] Correct the spec to return verified token roles without live assignment/master filtering and retain active credential/user validation and the response shape.
+- [x] Generate the empty sequence using the ready skeleton tool, then finish every real branch, SQL, mapping and outcome; leave no author TODO marker.
+- [x] Update only the obsolete me-specific author checks, add token-snapshot flow checks, and prove old/synchronized faults fail.
+- [x] Verify exact credential SQL and token-snapshot semantics, mutation coverage, rendered SQL/visuals and all current delivery checks.
+- [ ] Open one author/me PR with commit-and-pr, preserve its review record and continue from main under Q15.
+
+Me verification: replaced the obsolete live-role query with one exact credential/user SELECT; roles/admin come from the calling verified token. Generated the previously empty sequence with the ready skeleton tool and completed every TODO/branch/mapping; the global check now reports author 1/12 filled, not the whole group complete. The finished sequence has eight terminal traces and seven participants; SVG/PNG were generated and inspected with 13/13 visible SQL lines. Original pair rejected; mutations caught 31/31, and three synchronized ownership/user-status/live-assignment faults pass SQL parity but fail semantic guards. A real renderer omission is also rejected with correct source unchanged. Temporary PostgreSQL executed the exact credential SQL alongside ephemeral locally signed JWT reference fixtures: old roles survive assignment revocation, new empty snapshot reports false, independent admin flags are ignored, sorting/response shape remain correct, malformed/duplicate roles and tampering fail before lookup, and wrong owner/expiry/inactive user/revoked or unstored token are rejected. This is reference/design and SQL verification, not backend conformance.
+
+Me delivery preflight: four authorized paths, 41/41 documentation commands OK, audit 53 tables / 0 findings, database ALL PASSED, Peter delivery authorized, no blockers. Origin/main unchanged at pre-delivery fetch.
