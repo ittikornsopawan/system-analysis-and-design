@@ -389,3 +389,20 @@ Status: Implemented in the managed workspace of Marry on branch `fix/marry-rejec
 - [ ] Preflight, commit, push, open the pull request, tell the lead; hold the lock until the merge, then release and park.
 
 Verification: `python3 .agents/skills/agent-workspace/tests/test_agent_workspace.py` runs 15 tests OK (13 before).
+
+
+## e-commerce: Peter API review — pending consent (API 5)
+
+Status: Submit consent delivered as PR #34 (six files, MERGEABLE when opened); its branch/assignment was preserved, and a clean main-based pending-consent assignment passed baselines under Q15. Q8 governs required versus optional pending; Q3 hides inactive types; Q16/Q17 govern displayed/current-version evidence.
+
+- [x] Preserve PR #34/history and prepare the next bounded main-based API assignment without waiting for merge.
+- [x] Read pending spec/sequence, current consent schema and the confirmed display/acceptance rules.
+- [x] Persist shared Q16/Q17 decisions and define current-version canonical evidence and coherent response snapshot.
+- [x] Correct spec and full sequence with credential/user checks, required/optional predicate, active type visibility, stable history/name mapping and empty success.
+- [x] Add pending-consent-flow checks; reject the original pair and mutation-test SQL, outcome and rendered-text guards.
+- [x] Execute the documented SQL against adversarial PostgreSQL fixtures and snapshot races; render/inspect SVG/PNG and pass all current docs/audit/database/delivery checks.
+- [ ] Open one pending-consent API PR with commit-and-pr, preserve its review record and continue from main under Q15.
+
+Pending verification: original pair rejected; four identical SELECT operations and seven terminal traces. Mutation testing initially caught 42/43 because the canonical-order phrase could be found in the unrelated latest-history paragraph; scoping the guard to its canonical paragraph yields 43/43. Five synchronized spec/sequence faults (required acceptance, NULL default, active type, canonical order and projection alias) pass SQL parity but are rejected by the semantic checker. A genuine rendered omission is rejected independently with the correct source unchanged. Final SVG/PNG were generated and inspected; PlantUML reports ten participants and 60/60 visible SQL lines. Temporary PostgreSQL executed the exact queries against every required/optional read/result state, different user/version/status, duplicate canonical rows, type/time boundaries, complete response projection, latest evidence/null mapping and credential failures. Two connections prove policy/history/type-name enrichment remains coherent in one snapshot while the next inquiry sees changed policy; read-only mode rejects evidence writes. No backend conformity is claimed.
+
+Pending delivery preflight: five authorized task paths, all 41 documentation commands OK, audit 53 tables / 0 findings, database ALL PASSED, managed assignment delivery authorized for Peter, no blockers. Origin/main unchanged at the pre-delivery fetch.
