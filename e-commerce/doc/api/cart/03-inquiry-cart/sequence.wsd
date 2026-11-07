@@ -51,20 +51,22 @@ user -> page: Request the cart
 activate page
     page -> api: GET v1/cart
     activate api
-        api -> api: Verify the access token; the userId is the user of the token
-        alt Invalid or expired access token
-            api -> page: HTTP 401 E10002
-            page -> user: Ask the user to sign in again
-        else Valid access token
-            api -> app: [**InquiryCartQueryHandler**] Process request
-            activate app
-                app -> app: Create request context; generate requestId when omitted
-                app -> app: Validate headers and query parameters (shopId is a UUID when specified)
-                alt Invalid input
-                    app -> api: HTTP 400 E10001
-                    api -> page: Bad request
-                    page -> user: Display validation error
-                else Valid input
+        api -> app: [**InquiryCartQueryHandler**] Process request
+        activate app
+            app -> app: Create request context; generate requestId when omitted
+            app -> app: Validate headers and query parameters (shopId is a UUID when specified)
+            alt Invalid input
+                app -> api: HTTP 400 E10001
+                api -> page: Bad request
+                page -> user: Display validation error
+            else Valid input
+                app -> app: Verify JWT signature, issuer, audience, exp and UUID sub
+                alt Missing, malformed or invalid JWT
+                    app -> api: HTTP 401 E10002 Invalid or expired access token.
+                    api -> page: Authentication error
+                    page -> user: Ask the user to sign in again
+                else Verified JWT
+                    app -> app: userId = verified sub
                     app -> infra: Execute database operations
                     activate infra
                     alt Work completes
@@ -228,8 +230,8 @@ activate page
                     end
                     deactivate infra
                 end
-            deactivate app
-        end
+            end
+        deactivate app
     deactivate api
 deactivate page
 
