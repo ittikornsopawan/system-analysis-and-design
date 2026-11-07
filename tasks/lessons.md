@@ -189,3 +189,16 @@ description: Repository-wide and project-specific lessons captured from user cor
 - **Correction**: The handoff said Java was unavailable after /usr/bin/java failed. OpenJDK was already installed under Homebrew, and a PlantUML JAR existed in the VS Code extension.
 - **Root cause**: A failing system launcher was mistaken for the absence of an installed runtime; common installation locations were not checked.
 - **Corrected behavior**: Inspect the selected tool path and known installation locations before reporting a missing capability. Use the existing runtime by absolute path and report precisely what was tried when rendering truly cannot run.
+
+
+### 2026-11-07 — A displayed consent is read independently of its answer
+
+- **Correction**: The owner rejected the proposed rule that only an explicit boolean result proves reading. Displaying the consent triggers a request on the same submission endpoint without result; answering sends result later.
+- **Root cause**: Read state was inferred from answering rather than the UI event the owner intended.
+- **Corrected behavior**: A submitted displayed consent/version records read=true even when result is omitted; preserve the existing answer on a later read-only call, and preserve the first read timestamp when already read. Required registration still needs explicit true. Review register, submission and pending together.
+
+### 2026-11-07 — Apply the owner's later delivery override
+
+- **Correction**: The owner explicitly superseded the earlier one-open-PR skill lifecycle and instructed Peter to leave completed PRs open, return to main and start the next branch immediately.
+- **Root cause**: The earlier process would have kept the review queue waiting for merges despite the owner's later authorization.
+- **Corrected behavior**: Preserve each completed branch and its durable assignment/PR history; use one editing session at a time and a fresh main-based branch for every API. Do not wait for merge or ask the same permission again.

@@ -302,3 +302,20 @@ Paired-review evidence: PlantUML -syntax reports SEQUENCE (19 participants); SVG
 PR #23 integration: origin/main advanced to 01a5e41 with the already merged Jinny registration (#22) and administrator-write spec retrofit (#20). Reconcile this base into Peter's existing branch without force-pushing; preserve both login-flow and admin-write-spec in the checker. Verify the PR diff against the current main contains only Peter's recorded assignment paths, rerun all current checks and rendered SQL verification, then push the reconciliation commit and release the session lock. Imported main changes are base history, not additional APIs authored in this PR.
 
 Integration verification: both checker registrations are present, all 39 documentation commands pass, the audit reports 53 tables / 0 findings, database tests report ALL PASSED, login mutations remain 67/67, and the rendered SVG still contains 113/113 SQL lines. The working-tree PR diff against the updated main was checked before the reconciliation commit: all eight changed paths match Peter's original assignment.
+
+
+## e-commerce: Peter API review — register (API 3)
+
+Owner Q15 supersedes the earlier one-open-PR lifecycle: keep completed PRs open, preserve each branch/assignment history, return to main and begin the next API without waiting for merge. PR #23 is merged; refresh PR #24 remains separately reviewable. Register uses a fresh bounded assignment on fix/peter-register-contract.
+
+- [x] Verify clean main, preserve PR #24 and its assignment, and prepare register with all baseline checks.
+- [x] Read register spec/sequence, consent submission, migration/schema and prior lessons.
+- [x] Persist Q16 display/read semantics and settle explicit consent-version handling.
+- [x] Correct register validation, required consent coverage, optional writes and atomic transaction in spec.md and complete sequence.wsd.
+- [x] Add register-flow invariants and mutation-test old failures, branching and rendered SQL.
+- [x] Execute exact SQL against temporary PostgreSQL, render and inspect SVG/PNG, then run all documentation checks, audit, database tests and delivery preflight.
+- [ ] Deliver one-register-API PR with commit-and-pr; release editing lock and continue from main under Q15.
+
+Register verification: the original pair fails register-flow; the revised pair has ten identical SQL operations, 28 terminal traces (including optional-child combinations) and a whole-transaction retry path. Mutation testing caught 53/53 faults, including an actual SVG with a dropped quoted value. PlantUML syntax passes with 14 participants; SVG/PNG were rendered and visually inspected, with 123/123 SQL lines visible. Temporary PostgreSQL executed the exact queries/inserts and verified active/effective/type filtering, required-current coverage predicates, read-only evidence, omitted children, complete rollback on final-child failure, repeatable policy snapshots across two connections and one winning concurrent identifier insert (23505 for the loser). These checks validate the design/SQL, not backend conformance. All 40 current documentation commands pass and the audit reports 53 tables / 0 findings.
+
+Register delivery preflight: all 40 checks, audit 53/0 and database ALL PASSED; six paths in the authorized assignment, no blockers. Origin/main then advanced through PR #31, including refresh #24 and the repository-wide sequence checker. Integrate that base before opening the register PR, preserve every incoming checker and rerun the current checks.

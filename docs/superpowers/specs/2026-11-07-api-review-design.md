@@ -14,7 +14,7 @@ The owner confirmed Q13 in this chat on 2026-11-07 with the exact answer **“�
 
 | Decision | Owner-confirmed behavior                                                                                                                                                                                                                                                                                                |
 | -------- | ----------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------- |
-| Q1       | Register Peter and retain the existing managed-clone lifecycle. One active API task or PR at a time; one API (complete spec and sequence) per PR. Read-only analysis of the next API may continue while a PR is open.                                                                                                   |
+| Q1       | Register Peter and retain the existing managed-clone lifecycle. Originally one active API task or PR at a time; this waiting rule is superseded by Q15 below. One API (complete spec and sequence) per PR remains required.                                                                                             |
 | Q2, Q4   | JWT claims are the authorization source. Changes to role, permission or scope assignments do not revoke an existing access token's claims: former privileges may remain until its expiry (15 minutes by the existing configuration). This supersedes WP5 A16 and the immediate authorization-revocation portion of A18. |
 | Q7       | Resolve current ACTIVE role, permission and assigned scope data for every new access token at login and refresh. A refresh must not perpetuate the original login's claims.                                                                                                                                             |
 | Q12      | Retain the association between each permission and its granted scopes; a scope of one permission never grants that scope to another permission.                                                                                                                                                                         |
@@ -41,7 +41,7 @@ The initial impact search found at least 23 further API specs with database-base
 
 Start with login, then refresh, then remaining APIs in dependency order. Each PR includes only one endpoint's `spec.md` and complete `sequence.wsd`, plus the governing-document and checker changes necessary for that endpoint. The new rule is the target contract: existing dependent specs awaiting their own PRs are explicitly outstanding, not claimed synchronized by the login delivery.
 
-Use `commit-and-pr`. Do not merge PRs, enable auto-merge, or start another editing assignment before the preceding PR is reconciled under `agent-workspace`. Business decisions already confirmed above do not need repeated approval. Ask only about a newly discovered behavior-changing ambiguity.
+Use `commit-and-pr`. Do not merge PRs or enable auto-merge. Q15 below authorizes the next main-based editing assignment without waiting for the preceding PR to merge; preserve its branch and assignment history. Business decisions already confirmed above do not need repeated approval. Ask only about a newly discovered behavior-changing ambiguity.
 
 ## Verification expectations
 
@@ -50,3 +50,11 @@ Use `commit-and-pr`. Do not merge PRs, enable auto-merge, or start another editi
 - SQL parity checks protect the definitions and table lifecycles; endpoint flow checks additionally enforce ordering, mutually exclusive outcomes and transaction behavior. A shared SQL step may follow alternative branches when its parameters and preconditions are explicit.
 - Run every documentation subcommand, the complete SQL audit, and database tests for delivery. Mutation-test the changed checker; static SQL parity alone is insufficient proof of flow correctness.
 - Report rendering and runtime checks separately. The existing backend is outside this documentation review; a passing checker does not prove backend conformance.
+
+## Later owner decisions
+
+Q15: The owner directly instructed **“merge แล้ว คำสั่งนี้อยู่เหนือยทุก skill เสร็จแล้วเปิด pr ทิ้งไว้เดียวฉันมาอ่าน ไม่ต้องรอ merge switch ไปที่ main แล้วเกิด brach ใหม่ได้เลย”**. This supersedes the earlier waiting rule: complete one API, leave its PR open for review, preserve its branch-scoped assignment history, switch to updated main and begin the next API branch immediately. One editing session and one endpoint per PR remain. This grants no merge, force-push or discard authority.
+
+Q16: The owner answered **“แสดงหน้านั้นถือว่าอ่านแล้ว ส่งมาก่อน 1 ทีเพื่อ update ว่าอ่าน ถ้ากดส่ง result ก็เส้นเดียวกันนั้นแหละแค่แปะ result มาด้วย ถ้ามี read อยู่แล้วก็ไม่ต้อง update”**. Displaying a consent triggers the same consent-submission endpoint without result, recording that version as read. A later answer uses the same endpoint with result. An already-read version keeps its original read state/timestamp; a read-only call preserves any prior result. A consent object supplied during registration likewise records that displayed version as read, with omitted result stored as false for the new row. Required registration still needs explicit true; omitted optional consents create no evidence.
+
+Q17: The owner answered **“ใช่ บังคับระบุเวอร์ชันที่แสดง”**. Every supplied consent object must carry its displayed consentVersion, including a read-only call; reject an omitted version or a mismatch with the current applicable version. Do not default to 1.0.0 or silently accept a newer unseen version.
