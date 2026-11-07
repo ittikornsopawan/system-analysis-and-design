@@ -1,12 +1,12 @@
 # [POST]: v1/product-category/upsert
 
-| Title       | Description                                                                                                                                                                                                                        |
-| ----------- | ---------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------- |
-| Name        | Upsert Product Category API                                                                                                                                                                                                        |
-| Method      | POST                                                                                                                                                                                                                               |
-| Endpoint    | v{version}/product-category/upsert                                                                                                                                                                                                 |
-| Version     | 1                                                                                                                                                                                                                                  |
-| Description | Insert, update or delete a product category, Insert when id is not specified, Update when id is specified, Delete when rowStatus is DELETED (HTTP 204 No Content, no response body), Archive when rowStatus is ARCHIVED (HTTP 200) |
+| Title       | Description                                                                                                                                                                                                                                                                   |
+| ----------- | ----------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------- |
+| Name        | Upsert Product Category API                                                                                                                                                                                                                                                   |
+| Method      | POST                                                                                                                                                                                                                                                                          |
+| Endpoint    | v{version}/product-category/upsert                                                                                                                                                                                                                                            |
+| Version     | 1                                                                                                                                                                                                                                                                             |
+| Description | Insert, update or delete a product category, Insert when id is not specified, Update when id is specified, Delete when rowStatus is DELETED (HTTP 204 No Content, no response body), Archive when rowStatus is ARCHIVED (HTTP 200), only a platform administrator can call it |
 
 ## Domain
 
@@ -45,6 +45,11 @@
 ### Campaign Rules
 
 - A product category cannot be deleted while it is in a campaign that is not DELETED and has not ended (a live `campaign.t_campaign_product` row of a campaign whose `end_at` is after now), 409 (E10006) with the campaign name in the message. Take it out of the campaign first with the upsert campaign API (a campaign that ended or was deleted does not block). Archiving is always allowed. (`docs/superpowers/specs/2026-11-06-campaign-design.md`, C13, approved by the product owner on 2026-11-06)
+
+### Permission Rules
+
+- Permission: only a platform administrator (a user with an ACTIVE `author.t_user_role` row for the ACTIVE role `PLATFORM_ADMIN`) can call this API, any other caller gets 403 (E10009), after the existence checks and before the duplicate, in-use and other conflict checks and before anything is written. Reading is not changed by this rule. Approved by the product owner (answered through the lead SA, 2026-11-06).
+- Order of checks: validate the request (400) -> existence checks (404) -> permission (403, E10009) -> duplicate, in-use and other conflicts (409) -> write.
 
 #### Example Body Parameters
 
@@ -314,6 +319,22 @@ HTTP/1.1 204 No Content
 }
 ```
 
+#### Fail - Forbidden
+
+```JSON
+{
+    "status": {
+        "code": 403,
+        "message": "Forbidden",
+        "bizCode": "E10009",
+        "bizMessage": "You do not have permission to manage product categories.",
+        "requestId": "req-430a1b2c-3d4e-5f6a-7b8c-9d0e1f2a3b4c",
+        "timestamp": "2026-11-06T09:41:47.123Z",
+        "status": "ERROR"
+    }
+}
+```
+
 #### Fail - Conflict
 
 ```JSON
@@ -508,4 +529,29 @@ AND cp.row_status <> 'DELETED'
 AND c.row_status <> 'DELETED'
 AND c.end_at > NOW() AT TIME ZONE 'UTC' -- a campaign that ended or was deleted does not block, answer 409 (E10006) when a row is found
 LIMIT 1
+```
+
+### Table: [author.m_role](../../../schema/author/m_role.md)
+
+#### QUERY - Get the platform administrator role
+
+```SQL
+SELECT
+    r.id as role_id
+FROM author.m_role r
+WHERE r.name = 'PLATFORM_ADMIN'
+AND r.row_status = 'ACTIVE'
+```
+
+### Table: [author.t_user_role](../../../schema/author/t_user_role.md)
+
+#### QUERY - Check platform administrator
+
+```SQL
+SELECT
+    ur.id as user_role_id
+FROM author.t_user_role ur
+WHERE ur.user_id = '<sequence.userId>'
+AND ur.role_id = '<sequence.roleId>'
+AND ur.row_status = 'ACTIVE'
 ```

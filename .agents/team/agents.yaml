@@ -36,3 +36,11 @@ agents:
     reports_to: josh
     workspace_key: peter
     capabilities: []
+  - name: jinny
+    enabled: true
+    role: .agents/agents/diagram-designer.md
+    title: Diagram Designer
+    scope: repository-wide
+    reports_to: josh
+    workspace_key: jinny
+    capabilities: []

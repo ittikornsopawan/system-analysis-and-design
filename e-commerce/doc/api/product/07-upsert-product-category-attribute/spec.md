@@ -1,12 +1,12 @@
 # [POST]: v1/product-category-attribute/upsert
 
-| Title       | Description                                                                                                                                                                                                                                  |
-| ----------- | -------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------- |
-| Name        | Upsert Product Category Attribute API                                                                                                                                                                                                        |
-| Method      | POST                                                                                                                                                                                                                                         |
-| Endpoint    | v{version}/product-category-attribute/upsert                                                                                                                                                                                                 |
-| Version     | 1                                                                                                                                                                                                                                            |
-| Description | Insert, update or delete a product category attribute, Insert when id is not specified, Update when id is specified, Delete when rowStatus is DELETED (HTTP 204 No Content, no response body), Archive when rowStatus is ARCHIVED (HTTP 200) |
+| Title       | Description                                                                                                                                                                                                                                                                             |
+| ----------- | --------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------- |
+| Name        | Upsert Product Category Attribute API                                                                                                                                                                                                                                                   |
+| Method      | POST                                                                                                                                                                                                                                                                                    |
+| Endpoint    | v{version}/product-category-attribute/upsert                                                                                                                                                                                                                                            |
+| Version     | 1                                                                                                                                                                                                                                                                                       |
+| Description | Insert, update or delete a product category attribute, Insert when id is not specified, Update when id is specified, Delete when rowStatus is DELETED (HTTP 204 No Content, no response body), Archive when rowStatus is ARCHIVED (HTTP 200), only a platform administrator can call it |
 
 ## Domain
 
@@ -40,6 +40,11 @@
 | 3   | name           | String       | MANDATORY | Product Category Attribute Name (max 128 characters), Unique                                                                                                                                   | Color                                |
 | 4   | description    | String       | MANDATORY | Product Category Attribute Description (max 256 characters)                                                                                                                                    | Color of the product                 |
 | 5   | rowStatus      | String       | OPTIONAL  | Row status (ACTIVE, INACTIVE, DELETED, LOCKED, ARCHIVED), Defaults to ACTIVE, Delete when DELETED, Archive when ARCHIVED, Delete is allowed only when the attribute is not used by any product | ACTIVE                               |
+
+### Permission Rules
+
+- Permission: only a platform administrator (a user with an ACTIVE `author.t_user_role` row for the ACTIVE role `PLATFORM_ADMIN`) can call this API, any other caller gets 403 (E10009), after the existence checks and before the duplicate, in-use and other conflict checks and before anything is written. Reading is not changed by this rule. Approved by the product owner (answered through the lead SA, 2026-11-06).
+- Order of checks: validate the request (400) -> existence checks (404) -> permission (403, E10009) -> duplicate, in-use and other conflicts (409) -> write.
 
 #### Example Body Parameters
 
@@ -272,6 +277,22 @@ HTTP/1.1 204 No Content
 }
 ```
 
+#### Fail - Forbidden
+
+```JSON
+{
+    "status": {
+        "code": 403,
+        "message": "Forbidden",
+        "bizCode": "E10009",
+        "bizMessage": "You do not have permission to manage product category attributes.",
+        "requestId": "req-430a1b2c-3d4e-5f6a-7b8c-9d0e1f2a3b4c",
+        "timestamp": "2026-11-06T09:41:47.123Z",
+        "status": "ERROR"
+    }
+}
+```
+
 #### Fail - Conflict
 
 ```JSON
@@ -403,4 +424,29 @@ SELECT
 FROM product.m_product_attribute pa
 WHERE pa.attribute_id = '<sequence.id>'
 AND pa.row_status <> 'DELETED'
+```
+
+### Table: [author.m_role](../../../schema/author/m_role.md)
+
+#### QUERY - Get the platform administrator role
+
+```SQL
+SELECT
+    r.id as role_id
+FROM author.m_role r
+WHERE r.name = 'PLATFORM_ADMIN'
+AND r.row_status = 'ACTIVE'
+```
+
+### Table: [author.t_user_role](../../../schema/author/t_user_role.md)
+
+#### QUERY - Check platform administrator
+
+```SQL
+SELECT
+    ur.id as user_role_id
+FROM author.t_user_role ur
+WHERE ur.user_id = '<sequence.userId>'
+AND ur.role_id = '<sequence.roleId>'
+AND ur.row_status = 'ACTIVE'
 ```
