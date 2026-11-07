@@ -7,6 +7,23 @@ description: Shared checklist for planning and tracking non-trivial tasks withou
 
 Use one section per task, named `<scope>: <task-name>`. Preserve other task sections and mark an item complete only after its completion criterion is satisfied.
 
+## e-commerce: Migrate backend to a Component Repository
+
+Status: Implementation and verification complete; approved Showcase PR package prepared. Ittikorn explicitly approved M1–M8 in `docs/superpowers/specs/2026-11-07-e-commerce-component-migration.md` with “อนุมัติตามแผน ใช้ repository แบบ Public”. Approval was persisted at 2026-11-07T14:00:23Z before export/publication/moves. Continue as ordinary Codex in the current checkout under the earlier selected backend-developer perspective. The scope includes public `ittikornsopawan/e-commerce-backend`, filtered backend history, backup, manifest-managed checkout and a separate Showcase migration PR without merging. Actual remote PR delivery is verified through GitHub; PR #33 is merged.
+
+- [x] Read component-repository rules, bootstrap skill, ADR, project knowledge, current Git state and references; confirm missing manifest, 81 tracked backend files and migration-pending status.
+- [x] Verify the current backend baseline and prepare the concrete migration design without moving existing files or publishing a new repository.
+- [x] Confirm the proposed GitHub identity, visibility, history strategy and migration/delivery scope; persist approval before executing migration.
+- [x] Export only backend history in temporary storage, update cross-repository documentation links and prove source-tree preservation plus component verification.
+- [x] Create/deliver the new GitHub repository and verify its default-branch commit exists remotely before recording a manifest revision.
+- [x] Preserve the complete legacy checkout including ignored artifacts in an identified backup, replace tracked backend ownership with manifest/.gitkeep/ignore entries and bootstrap the declared component safely.
+- [x] Update live references and project knowledge, validate manifest/revision/ownership/link boundaries and record actual build/test/bootstrap evidence.
+- [x] Prepare the verified migration commit and authorized Showcase PR package; report actual remote delivery state from GitHub and leave merge to the owner.
+
+Progress: Export preserved 81/81 tracked files and four backend-only history commits. The component build passed with 0 warnings/errors and all 40 tests passed. Public child main is remotely verified at `d8255183cba54d0c2b218607456b895a70df32f0`. The shared primary checkout was externally switched/updated during export; the migration branch was reconciled with current origin/main, backend snapshot equality was checked and this task section was restored without replacing other task sections.
+
+Bootstrap/backup evidence: The actual GitHub clone is clean and detached at the manifest SHA with exact origin `https://github.com/ittikornsopawan/e-commerce-backend.git`. Restore, full solution build (0 warnings/errors) and 40/40 tests passed again from `e-commerce/repository/e-commerce-backend/`. The original directory is retained at `/private/tmp/ecommerce-component-migration-ofejl0ty/legacy-checkout` with all 591 file/directory entries hash-verified, including ignored artifacts. Cross-repository guide links were updated only in the component; source/tests/configuration are unchanged. No legacy backup or unrelated handoff was deleted.
+
 ## e-commerce: Backend code structure guide
 
 Status: Complete. Ittikorn requested a detailed `e-commerce/repository/code.md` for later diagram review and explicitly selected ordinary Codex in the current checkout, using the backend-developer perspective, without a commit. This assignment does not use named-agent delivery authority. The guide remains draft; writing it does not approve the architecture proposals it contains.
