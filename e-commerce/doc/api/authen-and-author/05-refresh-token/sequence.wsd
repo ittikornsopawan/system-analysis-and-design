@@ -1,4 +1,4 @@
-@startuml RefreshToken Sequence
+@startuml RefreshToken
 
 title Refresh Token API Sequence
 
@@ -23,169 +23,367 @@ skinparam sequence {
 
 ' Do not show participant footers at the bottom of the diagram
 hide footbox
-
+' Leading SQL apostrophes use &#39;; the checker compares decoded SQL.
 
 actor "User" as user
-
 box "Frontend" #F8FAFC
-    participant "Refresh Token Page" as page
+    participant "Client Session" as page
 end box
-
 box "Web API" #F8FAFC
     participant "API" as api
     participant "Application" as app
     participant "Domain" as domain
     participant "Infrastructure" as infra
 end box
-
 box "Database" #F8FAFC
     database "t_user_refresh_token" as t_user_refresh_token
     database "m_user" as m_user
+    database "t_user_role" as t_user_role
+    database "m_role" as m_role
+    database "t_role_permission" as t_role_permission
+    database "t_role_permission_scope" as t_role_permission_scope
+    database "t_user_permission" as t_user_permission
+    database "t_permission_scope" as t_permission_scope
+    database "m_permission" as m_permission
+    database "m_scope" as m_scope
     database "t_user_access_token" as t_user_access_token
 end box
 
-user -> page: Submit Refresh Token
-
+user -> page: Access the application
 activate page
-    page -> api: Call POST v1/auth/refresh-token
+    page -> api: POST v1/auth/refresh-token over TLS
     activate api
         api -> app: [**RefreshTokenCommandHandler**] Process request
         activate app
-            app -> app: Validate request parameters and business rules
-            alt If request is invalid
-                app -> api: Return error response
-                api -> page: Return error response
-                page -> user: Display error message
-            else If request is valid
-                app -> infra: Execute database operations
-                activate infra
-                    infra -> t_user_refresh_token: QUERY - Find the refresh token
-                    activate t_user_refresh_token
-                        note right of t_user_refresh_token
-                            SELECT
-                                rt.id as refresh_token_id,
-                                rt.user_id,
-                                rt.session_id,
-                                rt.row_status,
-                                rt.updated_at
-                            FROM authen.t_user_refresh_token rt
-                            WHERE rt.token = '<sequence.refreshTokenHash>' -- SHA-256 of refreshAccessToken
-                            AND rt.expired_at > NOW() AT TIME ZONE 'UTC'
+            app -> app: Create request context; generate requestId if omitted
+            app -> app: Validate mandatory headers, JSON and non-empty token
+            alt Invalid input
+                app -> api: HTTP 400 E10001
+                api -> page: Return validation error
+                page -> user: Cannot refresh
+            else Valid input
+                app -> app: SHA-256 presented token; capture UTC lookupNow
+                app -> infra: QUERY - Find the refresh token
+                infra -> t_user_refresh_token: QUERY - Find the refresh token
+                activate t_user_refresh_token
+                    note right of t_user_refresh_token
+                        SELECT
+                            rt.id as refresh_token_id,
+                            rt.user_id
+                        FROM authen.t_user_refresh_token rt
+                        WHERE rt.token = '<sequence.presentedRefreshTokenHash>'
+                        AND rt.expired_at > '<sequence.lookupNow>'
+                    end note
+                    t_user_refresh_token -> infra: Return query result
+                deactivate t_user_refresh_token
+                infra -> app: Return owner (refreshTokenId, userId) or no row
+                alt Owner lookup returned no row
+                    app -> api: HTTP 401 E10002 Invalid or expired refresh token.
+                    api -> page: Return authentication error
+                else Owner found
+                    app -> infra: BEGIN READ COMMITTED
+                    activate infra
+                    alt Database work completes before COMMIT
+                        app -> infra: QUERY - Lock the user
+                        infra -> m_user: QUERY - Lock the user
+                        activate m_user
+                            note right of m_user
+                                SELECT
+                                    u.id as user_id
+                                FROM authen.m_user u
+                                WHERE u.id = '<sequence.userId>'
+                                AND u.row_status = 'ACTIVE'
+                                FOR UPDATE -- every authen API locks the user row first
+                            end note
+                            m_user -> infra: Return query result
+                        deactivate m_user
+                        infra -> app: Return ACTIVE user row or no row
+                        alt ACTIVE user row returned
+                            app -> app: Capture UTC now after the user lock
+                            app -> infra: QUERY - Reread the refresh token after user lock
+                            infra -> t_user_refresh_token: QUERY - Reread the refresh token after user lock
+                            activate t_user_refresh_token
+                                note right of t_user_refresh_token
+                                    SELECT
+                                        rt.id as refresh_token_id,
+                                        rt.user_id,
+                                        rt.session_id,
+                                        rt.row_status,
+                                        rt.updated_at,
+                                        rt.expired_at
+                                    FROM authen.t_user_refresh_token rt
+                                    WHERE rt.id = '<sequence.refreshTokenId>'
+                                    AND rt.user_id = '<sequence.userId>'
+                                    AND rt.token = '<sequence.presentedRefreshTokenHash>'
+                                end note
+                                t_user_refresh_token -> infra: Return query result
+                            deactivate t_user_refresh_token
+                            infra -> app: Return fresh token state (sessionId, row_status, updated_at, expired_at)
+                            alt Fresh row is ACTIVE and expired_at > now
+                                app -> app: sessionId = the freshly read session id
+                                app -> infra: UPDATE - Use the refresh token once
+                                infra -> t_user_refresh_token: UPDATE - Use the refresh token once
+                                activate t_user_refresh_token
+                                    note right of t_user_refresh_token
+                                        UPDATE authen.t_user_refresh_token
+                                        SET
+                                            updated_by = '<sequence.userId>',
+                                            updated_at = '<sequence.now>',
+                                            row_status = 'INACTIVE'
+                                        WHERE id = '<sequence.refreshTokenId>'
+                                        AND user_id = '<sequence.userId>'
+                                        AND session_id = '<sequence.sessionId>'
+                                        AND token = '<sequence.presentedRefreshTokenHash>'
+                                        AND row_status = 'ACTIVE'
+                                        AND expired_at > '<sequence.now>'
+                                        RETURNING session_id -- no row means the answer is 401
+                                    end note
+                                    t_user_refresh_token -> infra: Return write result
+                                deactivate t_user_refresh_token
+                                infra -> app: Return consumed session_id or no row
+                                alt Conditional consume returned session_id
+                                    app -> infra: QUERY - Get active role ids
+                                    infra -> t_user_role: QUERY - Get active role ids
+                                    activate t_user_role
+                                        note right of t_user_role
+                                            SELECT
+                                                ur.role_id
+                                            FROM author.t_user_role ur
+                                            WHERE ur.user_id = '<sequence.userId>'
+                                            AND ur.row_status = 'ACTIVE'
+                                        end note
+                                        t_user_role -> infra: Return query result
+                                    deactivate t_user_role
+                                    infra -> app: Return roleIds
+                                    app -> infra: QUERY - Get active roles
+                                    infra -> m_role: QUERY - Get active roles
+                                    activate m_role
+                                        note right of m_role
+                                            SELECT
+                                                r.id AS role_id,
+                                                r.name AS role_name
+                                            FROM author.m_role r
+                                            WHERE r.id = ANY ('<sequence.roleIds>'::UUID[])
+                                            AND r.row_status = 'ACTIVE'
+                                        end note
+                                        m_role -> infra: Return query result
+                                    deactivate m_role
+                                    infra -> app: Return activeRoles
+                                    app -> app: activeRoleIds = activeRoles.role_id
+                                    app -> infra: QUERY - Get active role permissions
+                                    infra -> t_role_permission: QUERY - Get active role permissions
+                                    activate t_role_permission
+                                        note right of t_role_permission
+                                            SELECT
+                                                rp.id AS role_permission_id,
+                                                rp.permission_id
+                                            FROM author.t_role_permission rp
+                                            WHERE rp.role_id = ANY ('<sequence.activeRoleIds>'::UUID[])
+                                            AND rp.row_status = 'ACTIVE'
+                                        end note
+                                        t_role_permission -> infra: Return query result
+                                    deactivate t_role_permission
+                                    infra -> app: Return rolePermissions
+                                    app -> app: rolePermissionIds = rolePermissions.role_permission_id
+                                    app -> infra: QUERY - Get active role permission scopes
+                                    infra -> t_role_permission_scope: QUERY - Get active role permission scopes
+                                    activate t_role_permission_scope
+                                        note right of t_role_permission_scope
+                                            SELECT
+                                                rps.role_permission_id,
+                                                rps.permission_scope_id
+                                            FROM author.t_role_permission_scope rps
+                                            WHERE rps.role_permission_id = ANY ('<sequence.rolePermissionIds>'::UUID[])
+                                            AND rps.row_status = 'ACTIVE'
+                                        end note
+                                        t_role_permission_scope -> infra: Return query result
+                                    deactivate t_role_permission_scope
+                                    infra -> app: Return roleScopeLinks
+                                    app -> infra: QUERY - Get active direct permissions
+                                    infra -> t_user_permission: QUERY - Get active direct permissions
+                                    activate t_user_permission
+                                        note right of t_user_permission
+                                            SELECT
+                                                up.permission_id,
+                                                up.permission_scope_id
+                                            FROM author.t_user_permission up
+                                            WHERE up.user_id = '<sequence.userId>'
+                                            AND up.row_status = 'ACTIVE'
+                                        end note
+                                        t_user_permission -> infra: Return query result
+                                    deactivate t_user_permission
+                                    infra -> app: Return directPermissionGrants
+                                    app -> app: permissionIds = union of role and direct permission ids
+                                    app -> infra: QUERY - Get permission scope definitions
+                                    infra -> t_permission_scope: QUERY - Get permission scope definitions
+                                    activate t_permission_scope
+                                        note right of t_permission_scope
+                                            SELECT
+                                                ps.id AS permission_scope_id,
+                                                ps.permission_id,
+                                                ps.scope_id,
+                                                ps.row_status
+                                            FROM author.t_permission_scope ps
+                                            WHERE ps.permission_id = ANY ('<sequence.permissionIds>'::UUID[])
+                                            AND ps.row_status <> 'DELETED'
+                                        end note
+                                        t_permission_scope -> infra: Return query result
+                                    deactivate t_permission_scope
+                                    infra -> app: Return permissionScopeDefinitions
+                                    app -> infra: QUERY - Get active permissions
+                                    infra -> m_permission: QUERY - Get active permissions
+                                    activate m_permission
+                                        note right of m_permission
+                                            SELECT
+                                                p.id AS permission_id,
+                                                p.name AS permission_name
+                                            FROM author.m_permission p
+                                            WHERE p.id = ANY ('<sequence.permissionIds>'::UUID[])
+                                            AND p.row_status = 'ACTIVE'
+                                        end note
+                                        m_permission -> infra: Return query result
+                                    deactivate m_permission
+                                    infra -> app: Return activePermissions
+                                    app -> app: Derive assignedScopeIds by exact assignment/definition and permission match
+                                    app -> infra: QUERY - Get active scopes
+                                    infra -> m_scope: QUERY - Get active scopes
+                                    activate m_scope
+                                        note right of m_scope
+                                            SELECT
+                                                s.id AS scope_id,
+                                                s.scope
+                                            FROM author.m_scope s
+                                            WHERE s.id = ANY ('<sequence.assignedScopeIds>'::UUID[])
+                                            AND s.row_status = 'ACTIVE'
+                                        end note
+                                        m_scope -> infra: Return query result
+                                    deactivate m_scope
+                                    infra -> app: Return activeScopes
+                                    app -> domain: Build verified authorization claims from current assignments
+                                    activate domain
+                                        domain -> domain: Apply login resolver; preserve permission-specific scopes; deduplicate and sort
+                                        domain -> app: Current roles, permissions and scopes (empty arrays are valid)
+                                    deactivate domain
+                                    app -> app: Capture UTC issuedAt; sign fresh JWT; generate fresh random refresh; hash both
+                                    app -> infra: INSERT - Create access token
+                                    infra -> t_user_access_token: INSERT - Create access token
+                                    activate t_user_access_token
+                                        note right of t_user_access_token
+                                            INSERT INTO authen.t_user_access_token (
+                                                created_by,
+                                                user_id,
+                                                session_id,
+                                                token,
+                                                expired_at
+                                            )
+                                            VALUES (
+                                                &#39;<sequence.userId>',
+                                                &#39;<sequence.userId>',
+                                                &#39;<sequence.sessionId>',
+                                                &#39;<sequence.accessTokenHash>',
+                                                &#39;<sequence.accessExpiredAt>' -- issuedAt plus 15 minutes (configurable)
+                                            )
+                                        end note
+                                        t_user_access_token -> infra: Return write result
+                                    deactivate t_user_access_token
+                                    infra -> app: Return access token row inserted
+                                    app -> infra: INSERT - Create refresh token
+                                    infra -> t_user_refresh_token: INSERT - Create refresh token
+                                    activate t_user_refresh_token
+                                        note right of t_user_refresh_token
+                                            INSERT INTO authen.t_user_refresh_token (
+                                                created_by,
+                                                user_id,
+                                                session_id,
+                                                token,
+                                                expired_at
+                                            )
+                                            VALUES (
+                                                &#39;<sequence.userId>',
+                                                &#39;<sequence.userId>',
+                                                &#39;<sequence.sessionId>',
+                                                &#39;<sequence.newRefreshTokenHash>',
+                                                &#39;<sequence.refreshExpiredAt>' -- issuedAt plus 14 days (configurable)
+                                            )
+                                        end note
+                                        t_user_refresh_token -> infra: Return write result
+                                    deactivate t_user_refresh_token
+                                    infra -> app: Return refresh token row inserted
+                                    app -> infra: COMMIT
+                                    app -> api: HTTP 200 S10000: tokenType, accessToken, refreshAccessToken, expiresIn
+                                    api -> page: Return committed fresh token pair
+                                else Conditional consume returned no row
+                                    app -> infra: ROLLBACK
+                                    app -> api: HTTP 401 E10002 Invalid or expired refresh token.
+                                    api -> page: Return authentication error
+                                end
+                            else Fresh row is INACTIVE, unexpired, updated_at known and now < updated_at + 10 seconds
+                                app -> infra: ROLLBACK
+                                app -> api: HTTP 401 E10002 Invalid or expired refresh token.
+                                api -> page: Recent duplicate; keep the rotated session
+                            else Fresh row is INACTIVE, unexpired and outside grace (or updated_at is NULL)
+                                app -> app: sessionId = the freshly read session id
+                                app -> infra: UPDATE - Close the refresh tokens of the session (reuse)
+                                infra -> t_user_refresh_token: UPDATE - Close the refresh tokens of the session (reuse)
+                                activate t_user_refresh_token
+                                    note right of t_user_refresh_token
+                                        UPDATE authen.t_user_refresh_token
+                                        SET
+                                            updated_by = '<sequence.userId>',
+                                            updated_at = '<sequence.now>',
+                                            row_status = 'INACTIVE'
+                                        WHERE session_id = '<sequence.sessionId>'
+                                        AND user_id = '<sequence.userId>'
+                                        AND row_status = 'ACTIVE' -- only on replay outside the 10-second grace window
+                                    end note
+                                    t_user_refresh_token -> infra: Return write result
+                                deactivate t_user_refresh_token
+                                infra -> app: Return session refresh rows closed
+                                app -> infra: UPDATE - Close the access tokens of the session (reuse)
+                                infra -> t_user_access_token: UPDATE - Close the access tokens of the session (reuse)
+                                activate t_user_access_token
+                                    note right of t_user_access_token
+                                        UPDATE authen.t_user_access_token
+                                        SET
+                                            updated_by = '<sequence.userId>',
+                                            updated_at = '<sequence.now>',
+                                            row_status = 'INACTIVE'
+                                        WHERE session_id = '<sequence.sessionId>'
+                                        AND user_id = '<sequence.userId>'
+                                        AND row_status = 'ACTIVE' -- only on replay outside the 10-second grace window
+                                    end note
+                                    t_user_access_token -> infra: Return write result
+                                deactivate t_user_access_token
+                                infra -> app: Return session access rows closed
+                                app -> infra: COMMIT
+                                app -> api: HTTP 401 E10002 Invalid or expired refresh token.
+                                api -> page: Replay detected; session revocation is durable
+                            else Fresh row missing, expired or another status
+                                app -> infra: ROLLBACK
+                                app -> api: HTTP 401 E10002 Invalid or expired refresh token.
+                                api -> page: Return authentication error without writes
+                            end
+                        else No ACTIVE user row
+                            app -> infra: ROLLBACK
+                            app -> api: HTTP 401 E10002 Invalid or expired refresh token.
+                            api -> page: Return authentication error without consuming token
+                        end
+                    else Timeout before COMMIT
+                        note over app, infra
+                            Timeout may interrupt any previous SQL or domain step.
+                            No success or replay 401 is sent before its required COMMIT.
                         end note
-                        t_user_refresh_token -> infra: Return query result
-                    deactivate t_user_refresh_token
-
-                    infra -> t_user_refresh_token: UPDATE - Use the refresh token once
-                    activate t_user_refresh_token
-                        note right of t_user_refresh_token
-                            UPDATE authen.t_user_refresh_token
-                            SET
-                                updated_by = '<sequence.userId>',
-                                updated_at = NOW() AT TIME ZONE 'UTC',
-                                row_status = 'INACTIVE'
-                            WHERE id = '<sequence.refreshTokenId>'
-                            AND row_status = 'ACTIVE'
-                            AND expired_at > NOW() AT TIME ZONE 'UTC'
-                            RETURNING session_id -- no row means the answer is 401
-                        end note
-                        t_user_refresh_token -> infra: Return updated result
-                    deactivate t_user_refresh_token
-
-                    infra -> t_user_refresh_token: UPDATE - Close the refresh tokens of the session (reuse)
-                    activate t_user_refresh_token
-                        note right of t_user_refresh_token
-                            UPDATE authen.t_user_refresh_token
-                            SET
-                                updated_by = '<sequence.userId>',
-                                updated_at = NOW() AT TIME ZONE 'UTC',
-                                row_status = 'INACTIVE'
-                            WHERE session_id = '<sequence.sessionId>'
-                            AND row_status = 'ACTIVE' -- only when the used token became INACTIVE more than 10 seconds ago
-                        end note
-                        t_user_refresh_token -> infra: Return updated result
-                    deactivate t_user_refresh_token
-
-                    infra -> t_user_refresh_token: INSERT - Create refresh token
-                    activate t_user_refresh_token
-                        note right of t_user_refresh_token
-                            INSERT INTO authen.t_user_refresh_token (
-                                created_by,
-                                user_id,
-                                session_id,
-                                token,
-                                expired_at
-                            )
-                            VALUES (
-                                '<sequence.userId>',
-                                '<sequence.userId>',
-                                '<sequence.sessionId>',
-                                '<sequence.refreshTokenHash>',
-                                '<sequence.refreshExpiredAt>' -- now plus 14 days (configurable)
-                            )
-                        end note
-                        t_user_refresh_token -> infra: Return inserted result
-                    deactivate t_user_refresh_token
-
-                    infra -> m_user: QUERY - Lock the user
-                    activate m_user
-                        note right of m_user
-                            SELECT
-                                u.id as user_id
-                            FROM authen.m_user u
-                            WHERE u.id = '<sequence.userId>'
-                            AND u.row_status = 'ACTIVE'
-                            FOR UPDATE -- every authen API locks the user row first
-                        end note
-                        m_user -> infra: Return query result
-                    deactivate m_user
-
-                    infra -> t_user_access_token: UPDATE - Close the access tokens of the session (reuse)
-                    activate t_user_access_token
-                        note right of t_user_access_token
-                            UPDATE authen.t_user_access_token
-                            SET
-                                updated_by = '<sequence.userId>',
-                                updated_at = NOW() AT TIME ZONE 'UTC',
-                                row_status = 'INACTIVE'
-                            WHERE session_id = '<sequence.sessionId>'
-                            AND row_status = 'ACTIVE' -- only when the used token became INACTIVE more than 10 seconds ago
-                        end note
-                        t_user_access_token -> infra: Return updated result
-                    deactivate t_user_access_token
-
-                    infra -> t_user_access_token: INSERT - Create access token
-                    activate t_user_access_token
-                        note right of t_user_access_token
-                            INSERT INTO authen.t_user_access_token (
-                                created_by,
-                                user_id,
-                                session_id,
-                                token,
-                                expired_at
-                            )
-                            VALUES (
-                                '<sequence.userId>',
-                                '<sequence.userId>',
-                                '<sequence.sessionId>',
-                                '<sequence.accessTokenHash>', -- SHA-256 of the JWT
-                                '<sequence.accessExpiredAt>' -- now plus 15 minutes (configurable)
-                            )
-                        end note
-                        t_user_access_token -> infra: Return inserted result
-                    deactivate t_user_access_token
-
-                    infra -> app: Return database result
-                deactivate infra
-
-                app -> domain: Apply domain rules and prepare response
-                activate domain
-                    domain -> app: Return response data
-                deactivate domain
-
-                app -> api: Return success response
-                api -> page: Return success response
-                page -> user: Display success result
-            end alt
+                        app -> infra: ROLLBACK
+                        app -> api: HTTP 408 E90001
+                        api -> page: Return timeout
+                    else Unexpected failure before COMMIT
+                        app -> infra: ROLLBACK
+                        app -> api: HTTP 500 generic error; no new bizCode
+                        api -> page: Return generic failure
+                    end
+                    deactivate infra
+                end
+            end
         deactivate app
     deactivate api
 deactivate page
