@@ -24,24 +24,20 @@ skinparam sequence {
 ' Do not show participant footers at the bottom of the diagram
 hide footbox
 
-
 actor "User" as user
-
 box "Frontend" #F8FAFC
     participant "Login Page" as page
 end box
-
 box "Web API" #F8FAFC
     participant "API" as api
     participant "Application" as app
     participant "Domain" as domain
     participant "Infrastructure" as infra
 end box
-
 box "Database" #F8FAFC
+    database "l_user_login_attempt" as l_user_login_attempt
     database "m_user" as m_user
     database "m_user_password" as m_user_password
-    database "l_user_login_attempt" as l_user_login_attempt
     database "t_user_role" as t_user_role
     database "m_role" as m_role
     database "t_role_permission" as t_role_permission
@@ -54,67 +50,30 @@ box "Database" #F8FAFC
     database "t_user_refresh_token" as t_user_refresh_token
 end box
 
-user -> page: Submit Login
-
+user -> page: Submit username/email and password over TLS
 activate page
-    page -> api: Call POST v1/auth/login
+    page -> api: POST v1/auth/login
     activate api
         api -> app: [**LoginCommandHandler**] Process request
         activate app
-            app -> app: Validate request parameters and business rules
-            alt If request is invalid
-                app -> api: Return error response
-                api -> page: Return error response
-                page -> user: Display error message
-            else If request is valid
-                app -> infra: Execute database operations
+            app -> app: Validate headers and body
+            alt Invalid input
+                app -> api: HTTP 400 E10001
+                api -> page: Bad request
+                page -> user: Display validation error
+            else Valid input
+                app -> app: Encrypt exact identifier; SHA-256 identifier; derive advisory key
+                app -> infra: BEGIN READ COMMITTED
                 activate infra
-                    infra -> m_user: QUERY
-                    activate m_user
-                        note right of m_user
-                            SELECT
-                                u.id as user_id
-                            FROM authen.m_user u
-                            WHERE (u.username = '<sequence.usernameBytes>' OR u.email_address = '<sequence.usernameBytes>')
-                            AND u.row_status = 'ACTIVE'
+                alt Work completes before commit
+                    infra -> l_user_login_attempt: QUERY - Serialize identifier
+                    activate l_user_login_attempt
+                        note right of l_user_login_attempt
+                            SELECT pg_advisory_xact_lock('<sequence.identifierLockKey>'::BIGINT)
                         end note
-                        m_user -> infra: Return query result
-                    deactivate m_user
-
-                    infra -> m_user_password: QUERY - Get current password
-                    activate m_user_password
-                        note right of m_user_password
-                            SELECT
-                                up.user_id,
-                                up.password_salt
-                            FROM authen.m_user u
-                            INNER JOIN authen.m_user_password up
-                                ON u.id = up.user_id
-                                    AND up.row_type = 'PASSWORD'
-                                    AND up.row_status = 'ACTIVE'
-                            WHERE (u.username = '<sequence.usernameBytes>' OR u.email_address = '<sequence.usernameBytes>')
-                            AND u.row_status = 'ACTIVE'
-                        end note
-                        m_user_password -> infra: Return query result
-                    deactivate m_user_password
-
-                    infra -> m_user_password: QUERY - Get matching user_id and password
-                    activate m_user_password
-                        note right of m_user_password
-                            SELECT
-                                up.user_id
-                            FROM authen.m_user u
-                            INNER JOIN authen.m_user_password up
-                                ON u.id = up.user_id
-                            WHERE (u.username = '<sequence.usernameBytes>' OR u.email_address = '<sequence.usernameBytes>')
-                            AND u.row_status = 'ACTIVE'
-                            AND up.row_type = 'PASSWORD'
-                            AND up.row_status = 'ACTIVE'
-                            AND up.password = '<sequence.passwordBytes>'
-                        end note
-                        m_user_password -> infra: Return query result
-                    deactivate m_user_password
-
+                        l_user_login_attempt -> infra: Return query result
+                    deactivate l_user_login_attempt
+                    app -> app: Capture now and windowStart after acquiring the identifier lock
                     infra -> l_user_login_attempt: QUERY - Count failed attempts
                     activate l_user_login_attempt
                         note right of l_user_login_attempt
@@ -127,193 +86,244 @@ activate page
                         end note
                         l_user_login_attempt -> infra: Return query result
                     deactivate l_user_login_attempt
-
+                    alt failed_attempts >= 5
+                        app -> app: userId = NULL; skip user/password lookup
+                        app -> app: result = REFUSED
+                    else failed_attempts < 5
+                        infra -> m_user: QUERY - Lock the user
+                        activate m_user
+                            note right of m_user
+                                SELECT
+                                    u.id as user_id
+                                FROM authen.m_user u
+                                WHERE (u.username = '<sequence.usernameBytes>' OR u.email_address = '<sequence.usernameBytes>')
+                                AND u.row_status = 'ACTIVE'
+                                ORDER BY u.id
+                                FOR UPDATE -- every authen API locks the user row first
+                            end note
+                            m_user -> infra: Return query result
+                        deactivate m_user
+                        alt user_count != 1
+                            app -> domain: Perform dummy password verification
+                            domain -> app: Discard dummy result
+                            app -> app: userId = NULL; never choose an ambiguous account
+                            app -> app: result = FAILED
+                        else user_count = 1
+                            app -> app: userId = the single locked user
+                            infra -> m_user_password: QUERY - Get current password
+                            activate m_user_password
+                                note right of m_user_password
+                                    SELECT
+                                        up.user_id,
+                                        up.password AS password_hash,
+                                        up.password_salt
+                                    FROM authen.m_user_password up
+                                    WHERE up.user_id = '<sequence.userId>'
+                                    AND up.row_type = 'PASSWORD'
+                                    AND up.row_status = 'ACTIVE'
+                                end note
+                                m_user_password -> infra: Return query result
+                            deactivate m_user_password
+                            app -> domain: Verify password with PBKDF2 and constant-time comparison
+                            domain -> app: Match, mismatch, or missing password (dummy hash)
+                            alt Password row missing or mismatch
+                                app -> app: result = FAILED
+                            else Password matches
+                                infra -> t_user_role: QUERY - Get active role ids
+                                activate t_user_role
+                                    note right of t_user_role
+                                        SELECT
+                                            ur.role_id
+                                        FROM author.t_user_role ur
+                                        WHERE ur.user_id = '<sequence.userId>'
+                                        AND ur.row_status = 'ACTIVE'
+                                    end note
+                                    t_user_role -> infra: Return query result
+                                deactivate t_user_role
+                                infra -> m_role: QUERY - Get active roles
+                                activate m_role
+                                    note right of m_role
+                                        SELECT
+                                            r.id AS role_id,
+                                            r.name AS role_name
+                                        FROM author.m_role r
+                                        WHERE r.id = ANY ('<sequence.roleIds>'::UUID[])
+                                        AND r.row_status = 'ACTIVE'
+                                    end note
+                                    m_role -> infra: Return query result
+                                deactivate m_role
+                                infra -> t_role_permission: QUERY - Get active role permissions
+                                activate t_role_permission
+                                    note right of t_role_permission
+                                        SELECT
+                                            rp.id AS role_permission_id,
+                                            rp.permission_id
+                                        FROM author.t_role_permission rp
+                                        WHERE rp.role_id = ANY ('<sequence.activeRoleIds>'::UUID[])
+                                        AND rp.row_status = 'ACTIVE'
+                                    end note
+                                    t_role_permission -> infra: Return query result
+                                deactivate t_role_permission
+                                infra -> t_role_permission_scope: QUERY - Get active role permission scopes
+                                activate t_role_permission_scope
+                                    note right of t_role_permission_scope
+                                        SELECT
+                                            rps.role_permission_id,
+                                            rps.permission_scope_id
+                                        FROM author.t_role_permission_scope rps
+                                        WHERE rps.role_permission_id = ANY ('<sequence.rolePermissionIds>'::UUID[])
+                                        AND rps.row_status = 'ACTIVE'
+                                    end note
+                                    t_role_permission_scope -> infra: Return query result
+                                deactivate t_role_permission_scope
+                                infra -> t_user_permission: QUERY - Get active direct permissions
+                                activate t_user_permission
+                                    note right of t_user_permission
+                                        SELECT
+                                            up.permission_id,
+                                            up.permission_scope_id
+                                        FROM author.t_user_permission up
+                                        WHERE up.user_id = '<sequence.userId>'
+                                        AND up.row_status = 'ACTIVE'
+                                    end note
+                                    t_user_permission -> infra: Return query result
+                                deactivate t_user_permission
+                                infra -> t_permission_scope: QUERY - Get permission scope definitions
+                                activate t_permission_scope
+                                    note right of t_permission_scope
+                                        SELECT
+                                            ps.id AS permission_scope_id,
+                                            ps.permission_id,
+                                            ps.scope_id,
+                                            ps.row_status
+                                        FROM author.t_permission_scope ps
+                                        WHERE ps.permission_id = ANY ('<sequence.permissionIds>'::UUID[])
+                                        AND ps.row_status <> 'DELETED'
+                                    end note
+                                    t_permission_scope -> infra: Return query result
+                                deactivate t_permission_scope
+                                infra -> m_permission: QUERY - Get active permissions
+                                activate m_permission
+                                    note right of m_permission
+                                        SELECT
+                                            p.id AS permission_id,
+                                            p.name AS permission_name
+                                        FROM author.m_permission p
+                                        WHERE p.id = ANY ('<sequence.permissionIds>'::UUID[])
+                                        AND p.row_status = 'ACTIVE'
+                                    end note
+                                    m_permission -> infra: Return query result
+                                deactivate m_permission
+                                app -> app: Derive assignedScopeIds by exact assignment/definition and permission match
+                                infra -> m_scope: QUERY - Get active scopes
+                                activate m_scope
+                                    note right of m_scope
+                                        SELECT
+                                            s.id AS scope_id,
+                                            s.scope
+                                        FROM author.m_scope s
+                                        WHERE s.id = ANY ('<sequence.assignedScopeIds>'::UUID[])
+                                        AND s.row_status = 'ACTIVE'
+                                    end note
+                                    m_scope -> infra: Return query result
+                                deactivate m_scope
+                                app -> domain: Build verified authorization claims
+                                activate domain
+                                    domain -> domain: Filter ACTIVE masters; retain permission-specific scopes; deduplicate and sort
+                                    domain -> app: roles, permissions, scopes (empty arrays are valid)
+                                deactivate domain
+                                app -> app: Create new session; sign JWT; create refresh token; hash both
+                                infra -> t_user_access_token: INSERT - Create access token
+                                activate t_user_access_token
+                                    note right of t_user_access_token
+                                        INSERT INTO authen.t_user_access_token (
+                                            created_by,
+                                            user_id,
+                                            session_id,
+                                            token,
+                                            expired_at
+                                        )
+                                        VALUES (
+                                            '<sequence.userId>',
+                                            '<sequence.userId>',
+                                            '<sequence.sessionId>', -- a new session id for every login
+                                            '<sequence.accessTokenHash>', -- SHA-256 of the JWT
+                                            '<sequence.accessExpiredAt>' -- now plus 15 minutes (configurable)
+                                        )
+                                    end note
+                                    t_user_access_token -> infra: Return inserted result
+                                deactivate t_user_access_token
+                                infra -> t_user_refresh_token: INSERT - Create refresh token
+                                activate t_user_refresh_token
+                                    note right of t_user_refresh_token
+                                        INSERT INTO authen.t_user_refresh_token (
+                                            created_by,
+                                            user_id,
+                                            session_id,
+                                            token,
+                                            expired_at
+                                        )
+                                        VALUES (
+                                            '<sequence.userId>',
+                                            '<sequence.userId>',
+                                            '<sequence.sessionId>',
+                                            '<sequence.refreshTokenHash>', -- SHA-256 of the refresh token
+                                            '<sequence.refreshExpiredAt>' -- now plus 14 days (configurable)
+                                        )
+                                    end note
+                                    t_user_refresh_token -> infra: Return inserted result
+                                deactivate t_user_refresh_token
+                                app -> app: result = SUCCESS
+                            end
+                        end
+                    end
                     infra -> l_user_login_attempt: INSERT - Record attempt
                     activate l_user_login_attempt
                         note right of l_user_login_attempt
                             INSERT INTO authen.l_user_login_attempt (
                                 created_by,
+                                created_at,
                                 identifier_hash,
                                 user_id,
                                 result
                             )
                             VALUES (
                                 'system',
+                                '<sequence.now>', -- UTC time captured after the identifier lock
                                 '<sequence.identifierHash>',
-                                '<sequence.userId>', -- NULL when the username does not exist
+                                '<sequence.userId>', -- NULL when the username is unknown, ambiguous or REFUSED
                                 '<sequence.result>' -- SUCCESS, FAILED or REFUSED
                             )
                         end note
                         l_user_login_attempt -> infra: Return inserted result
                     deactivate l_user_login_attempt
-
-                    infra -> m_user: QUERY - Lock the user
-                    activate m_user
-                        note right of m_user
-                            SELECT
-                                u.id as user_id
-                            FROM authen.m_user u
-                            WHERE u.id = '<sequence.userId>'
-                            AND u.row_status = 'ACTIVE'
-                            FOR UPDATE -- every authen API locks the user row first
-                        end note
-                        m_user -> infra: Return query result
-                    deactivate m_user
-
-                    infra -> t_user_role: QUERY - Get active role ids
-                    activate t_user_role
-                        note right of t_user_role
-                            SELECT
-                                ur.role_id
-                            FROM author.t_user_role ur
-                            WHERE ur.user_id = '<sequence.userId>'
-                            AND ur.row_status = 'ACTIVE'
-                        end note
-                        t_user_role -> infra: Return query result
-                    deactivate t_user_role
-
-                    infra -> m_role: QUERY - Get active roles
-                    activate m_role
-                        note right of m_role
-                            SELECT
-                                r.id AS role_id,
-                                r.name AS role_name
-                            FROM author.m_role r
-                            WHERE r.id IN (<sequence.roleIds>)
-                            AND r.row_status = 'ACTIVE'
-                        end note
-                        m_role -> infra: Return query result
-                    deactivate m_role
-
-                    infra -> t_role_permission: QUERY - Get active role permissions
-                    activate t_role_permission
-                        note right of t_role_permission
-                            SELECT
-                                rp.id AS role_permission_id,
-                                rp.permission_id
-                            FROM author.t_role_permission rp
-                            WHERE rp.role_id IN (<sequence.roleIds>)
-                            AND rp.row_status = 'ACTIVE'
-                        end note
-                        t_role_permission -> infra: Return query result
-                    deactivate t_role_permission
-
-                    infra -> t_role_permission_scope: QUERY - Get active role permission scopes
-                    activate t_role_permission_scope
-                        note right of t_role_permission_scope
-                            SELECT
-                                rps.permission_scope_id AS scope_id
-                            FROM author.t_role_permission_scope rps
-                            WHERE rps.role_permission_id IN (<sequence.rolePermissionIds>)
-                            AND rps.row_status = 'ACTIVE'
-                        end note
-                        t_role_permission_scope -> infra: Return query result
-                    deactivate t_role_permission_scope
-
-                    infra -> t_user_permission: QUERY - Get active direct permissions
-                    activate t_user_permission
-                        note right of t_user_permission
-                            SELECT
-                                up.permission_id
-                            FROM author.t_user_permission up
-                            WHERE up.user_id = '<sequence.userId>'
-                            AND up.row_status = 'ACTIVE'
-                        end note
-                        t_user_permission -> infra: Return query result
-                    deactivate t_user_permission
-
-                    infra -> t_permission_scope: QUERY - Get active direct permission scopes
-                    activate t_permission_scope
-                        note right of t_permission_scope
-                            SELECT
-                                ps.scope_id
-                            FROM author.t_permission_scope ps
-                            WHERE ps.permission_id IN (<sequence.directPermissionIds>)
-                            AND ps.row_status = 'ACTIVE'
-                        end note
-                        t_permission_scope -> infra: Return query result
-                    deactivate t_permission_scope
-
-                    infra -> m_permission: QUERY - Get active permissions
-                    activate m_permission
-                        note right of m_permission
-                            SELECT
-                                p.id AS permission_id,
-                                p.name AS permission_name
-                            FROM author.m_permission p
-                            WHERE p.id IN (<sequence.permissionIds>)
-                            AND p.row_status = 'ACTIVE'
-                        end note
-                        m_permission -> infra: Return query result
-                    deactivate m_permission
-
-                    infra -> m_scope: QUERY - Get active scopes
-                    activate m_scope
-                        note right of m_scope
-                            SELECT
-                                s.id AS scope_id,
-                                s.scope
-                            FROM author.m_scope s
-                            WHERE s.id IN (<sequence.scopeIds>)
-                            AND s.row_status = 'ACTIVE'
-                        end note
-                        m_scope -> infra: Return query result
-                    deactivate m_scope
-
-                    infra -> t_user_access_token: INSERT - Create access token
-                    activate t_user_access_token
-                        note right of t_user_access_token
-                            INSERT INTO authen.t_user_access_token (
-                                created_by,
-                                user_id,
-                                session_id,
-                                token,
-                                expired_at
-                            )
-                            VALUES (
-                                '<sequence.userId>',
-                                '<sequence.userId>',
-                                '<sequence.sessionId>', -- a new session id for every login
-                                '<sequence.accessTokenHash>', -- SHA-256 of the JWT
-                                '<sequence.accessExpiredAt>' -- now plus 15 minutes (configurable)
-                            )
-                        end note
-                        t_user_access_token -> infra: Return inserted result
-                    deactivate t_user_access_token
-
-                    infra -> t_user_refresh_token: INSERT - Create refresh token
-                    activate t_user_refresh_token
-                        note right of t_user_refresh_token
-                            INSERT INTO authen.t_user_refresh_token (
-                                created_by,
-                                user_id,
-                                session_id,
-                                token,
-                                expired_at
-                            )
-                            VALUES (
-                                '<sequence.userId>',
-                                '<sequence.userId>',
-                                '<sequence.sessionId>',
-                                '<sequence.refreshTokenHash>', -- SHA-256 of the refresh token
-                                '<sequence.refreshExpiredAt>' -- now plus 14 days (configurable)
-                            )
-                        end note
-                        t_user_refresh_token -> infra: Return inserted result
-                    deactivate t_user_refresh_token
-
-                    infra -> app: Return database result
+                    app -> infra: COMMIT
+                    alt result = SUCCESS
+                        app -> api: HTTP 200 S10000 and four token fields
+                        api -> page: Return committed token pair
+                        page -> user: Login succeeded
+                    else result = FAILED or REFUSED
+                        app -> api: HTTP 401 E10002 Invalid username or password.
+                        api -> page: Return the same authentication failure
+                        page -> user: Login failed
+                    end
+                else Timeout before COMMIT
+                    note over app, infra
+                        A timeout can interrupt any preceding SQL or domain step.
+                        No 200 or 401 is sent without a successful COMMIT.
+                    end note
+                    app -> infra: ROLLBACK
+                    app -> api: HTTP 408 E90001
+                    api -> page: Request timeout
+                    page -> user: Retry if needed
+                else Unexpected failure before COMMIT
+                    app -> infra: ROLLBACK
+                    app -> api: HTTP 500 generic error; no credentials or new bizCode
+                    api -> page: Internal server error
+                    page -> user: Display generic failure
+                end
                 deactivate infra
-
-                app -> domain: Apply domain rules and prepare response
-                activate domain
-                    domain -> app: Return response data
-                deactivate domain
-
-                app -> api: Return success response
-                api -> page: Return success response
-                page -> user: Display success result
-            end alt
+            end
         deactivate app
     deactivate api
 deactivate page

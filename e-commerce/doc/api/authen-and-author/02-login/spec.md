@@ -1,7 +1,7 @@
 ---
 name: Login API Specification
 description: Defines the login request, authentication controls, authorization claims, token session, responses, and database operations for POST v1/auth/login.
-status: draft
+status: in-review
 approved_by: null
 approved_at: null
 ---
@@ -47,14 +47,83 @@ approved_at: null
 
 ### Login Rules
 
-- `username` is the username or the email address. It is sent as plain text over TLS and encrypted by the system before it is compared (same deterministic encryption as `01-register`). Login by phone number is not supported.
-- Only an ACTIVE user with an ACTIVE PASSWORD row can log in. The password is hashed with PBKDF2-HMAC-SHA256, the salt of the current password row and 600,000 iterations, and compared in constant time. Approved by the product owner (answered through the lead SA, 2026-11-06).
-- **One answer for every failure:** an unknown username, a wrong password, a user that is not ACTIVE and a username that is temporarily refused all get 401 (E10002) `Invalid username or password.` The answer never says which one it is.
-- **Brute force limit:** every request is written to `authen.l_user_login_attempt` with the SHA-256 of the username (also for names that do not exist) and a `result`: `SUCCESS`, `FAILED` (the password was checked and was wrong, or the user was not found or not ACTIVE) or `REFUSED` (the username was blocked and the password was not checked). **Only `FAILED` rows are counted.** When the username has 5 `FAILED` attempts in the last 15 minutes (configurable) the request is refused without checking the password, answered with the same 401 and recorded as `REFUSED`, which is not counted. The block therefore ends by itself as soon as the 5th most recent failure is older than 15 minutes, however many requests arrive meanwhile. Example: failures at 09:00, 09:01, 09:02, 09:03 and 09:04 block the username from 09:04, the requests from 09:05 to 09:14 are `REFUSED`, and at 09:15:01 the failure of 09:00 is older than 15 minutes, so 4 are counted and the next request checks the password. The `FAILED` and `REFUSED` rows are committed although the answer is 401 (they are written outside the transaction that creates the tokens). The lock is not stored in `authen.m_user` (the `LOCKED` status is kept for administrators). Attempts older than 30 days are deleted by a system job.
-- **Authorization claims:** after the password matches, load ACTIVE roles from `author.t_user_role` and `author.m_role`; load role permissions and scopes from `author.t_role_permission` and `author.t_role_permission_scope`; load direct user permissions and their allowed scopes from `author.t_user_permission` and `author.t_permission_scope`; then resolve ACTIVE names from `author.m_permission` and `author.m_scope`. Merge and remove duplicate role, permission and scope values before issuing the JWT. A user with no assigned role or permission can still log in with empty authorization-claim arrays. Approved by the product owner in this task (2026-11-06).
-- **Session:** a successful login creates a new `session_id` and inserts one access token row and one refresh token row, both with that `session_id`, in one transaction. The tokens are stored as SHA-256 (32 bytes), never as the token itself. The access token is a JWT (HS256) with `sub` (user id), `jti`, `iss`, `aud`, `iat`, `exp`, `roles`, `permissions` and `scopes`, valid 15 minutes (`expiresIn` 900, configurable). The refresh token is 32 random bytes (base64url), valid 14 days (configurable) and usable once (see `05-refresh-token`).
-- Lock order: after the password matches, lock the `authen.m_user` row (`FOR UPDATE`), load the authorization claims, then write the tokens and the attempt.
-- Execution order: validate the request (400) -> count the `FAILED` attempts of the last 15 minutes (record `REFUSED` and answer 401 when there are 5) -> find the ACTIVE user -> get the current password and compare (record `FAILED` and answer 401 when it does not match or the user is not found) -> lock the user row -> load and merge ACTIVE roles, permissions and scopes -> insert the access token and the refresh token -> record `SUCCESS` -> answer 200.
+- Governing behavior is [the owner-confirmed API review](../../../../../docs/superpowers/specs/2026-11-07-api-review-design.md) (Q2, Q4, Q7, Q12–Q14, approved by the product owner directly in this task on 2026-11-07). This detailed endpoint revision is in-review; no backend implementation is included.
+- Validate headers and the JSON body before opening a transaction. `username` is a non-empty string of at most 254 characters and `password` is a non-empty string of at most 128 characters; malformed or missing values answer 400 (E10001). Do not apply the registration password-complexity rule to a login attempt. `timestamp` is a valid UTC timestamp; generate `requestId` when it is omitted.
+- `username` is the username or the email address. It is sent as plain text over TLS and encrypted by the system before it is compared (same deterministic encryption as `01-register`). Compare the supplied identifier exactly, without silently changing case or trimming it. Login by phone number is not supported. If it matches two ACTIVE accounts across username/email, the identifier is **ambiguous**: record `FAILED`, do not choose an account, and answer the same 401 (Q14). An unknown or ambiguous identifier has NULL `user_id` in the attempt log.
+- Only an ACTIVE user with an ACTIVE PASSWORD row can log in. Lock the matching user rows in ascending `id` order before reading the current password; proceed only when exactly one ACTIVE user matches. Read the stored salted hash and salt once, derive PBKDF2-HMAC-SHA256 with 600,000 iterations in the application, and compare hashes using a **constant-time** comparison. The password is never compared with a SQL `=` predicate. Perform a dummy hash/constant-time comparison for an unknown or ambiguous user or a missing password row; no token is issued. Never log passwords, hashes, salts or raw tokens.
+- **One answer for every failure:** an unknown or ambiguous username, a wrong password, a missing ACTIVE PASSWORD row, a user that is not ACTIVE and a username that is temporarily refused all get 401 (E10002) `Invalid username or password.` The answer never says which one it is.
+- **Brute force limit:** every syntactically valid login attempt is written to `authen.l_user_login_attempt` with the SHA-256 of the exact supplied username and a `result`: `SUCCESS`, `FAILED` or `REFUSED`. **Only `FAILED` rows are counted.** When the username has 5 `FAILED` attempts in the last 15 minutes (configurable), refuse without looking up the user or checking a password; it is recorded as `REFUSED`, which is not counted. The block therefore ends by itself as soon as the 5th most recent failure is older than 15 minutes, however many requests arrive meanwhile. A missing/malformed request (400) is not an authentication attempt and is not stored.
+- **Concurrent attempts:** begin a READ COMMITTED transaction and acquire `pg_advisory_xact_lock` for the identifier before counting failures. `identifierLockKey` is the signed 64-bit, big-endian interpretation of the first eight bytes of `identifierHash`; it only serializes attempts (the full 32-byte hash still selects the log rows). Capture `now` and `windowStart` after acquiring the lock. Hold this transaction-scoped lock through the attempt insert and COMMIT/ROLLBACK, so concurrent requests for the same identifier cannot all pass a stale count. Username and email are distinct supplied identifiers; the counter is per supplied identifier, as in WP4.
+- The `FAILED` and `REFUSED` rows are committed although the answer is 401. Those branches perform no token writes. `SUCCESS`, the two token rows and their common session are committed atomically. A failed attempt does not change `authen.m_user.row_status`; the `LOCKED` status remains an administrative state. Attempts older than 30 days are deleted by a system job.
+- **Authorization claims:** after password verification, load ACTIVE user-role assignments and ACTIVE roles, then role/direct permission assignments and the permission-scope definitions they reference. Resolve ACTIVE permission and scope masters. Preserve the `(permissionId, scopeId)` association; scope definitions are a catalogue, not grants. In particular, `t_role_permission_scope.permission_scope_id` references `t_permission_scope.id`, not `m_scope.id`, and a direct assignment uses its own `t_user_permission.permission_scope_id`, not every scope defined for that permission. See the resolution rules below. A user with no assigned role or permission can still log in with empty claim arrays.
+- **JWT authorization:** `roles`, `permissions` and `scopes` are the effective authorization snapshot for this access token. Assignment or role/permission/scope-status changes may leave former privileges usable until that token expires (15 minutes by configuration). Every new access token at login or refresh resolves current assignments; refresh must not copy the old claims. Keep signature, issuer, audience, expiry, ACTIVE token-row and ACTIVE user checks on protected calls so logout/password reset still revoke credentials immediately. `author/me` will display this same token snapshot. Dependent endpoints are migrated in separate PRs; this login PR does not claim they are already synchronized.
+- **Session:** successful login creates a new `session_id` and inserts one access token and one refresh token with that session id. The access token is a JWT (HS256) with `sub`, `jti`, `iss`, `aud`, `iat`, `exp`, `roles`, `permissions` and `scopes`; default `exp - iat` and `expiresIn` are 900 seconds. The refresh token is 32 random bytes in base64url, valid 14 days, and usable once (`05-refresh-token`). Both database tokens are stored as SHA-256 (32 bytes), never as the token itself. Issuer, audience, lifetimes and signing key are server configuration, never request values.
+- Lock order: identifier advisory lock -> matching `authen.m_user` rows by `id` (`FOR UPDATE`) -> current password read -> authorization reads -> token and attempt inserts. A reset that changes the password must hold the same user-row lock, so login cannot verify an old password and then issue tokens after that reset commits.
+- Execution order: validate (400) -> BEGIN and serialize/count -> record `REFUSED` and answer 401 when there are 5 (after committing the attempt, without a password read) -> lock/find the user -> read and verify the current password -> record `FAILED` and answer 401 when it does not match or the user is not found (also when ambiguous, after committing the attempt) -> resolve claims -> create both tokens -> record `SUCCESS` -> COMMIT -> answer 200.
+- Any timeout before COMMIT rolls the transaction back, including token and attempt inserts, and answers 408 (E90001). An unexpected failure before COMMIT also rolls back and answers 500 with the generic example below and no new bizCode. Never send 200 or 401 before a successful COMMIT. A lost response after COMMIT cannot undo the durable transaction; login is not idempotent, and a retry creates a different session.
+
+#### Claim resolution and payload
+
+No role, permission or scope definition creates a grant on its own. Empty UUID lists are bound as empty `UUID[]` parameters (`{}`); each `ANY` query then returns zero rows. Placeholder text below denotes bound parameters, never string concatenation.
+
+1. Resolve `activeRoleIds` from the intersection of ACTIVE `t_user_role` rows and ACTIVE `m_role` rows. Only those role ids feed the role-permission query.
+2. Candidate permissions come only from ACTIVE `t_role_permission` rows of these active roles, or ACTIVE `t_user_permission` rows of this user. Remove candidates whose `m_permission` row is not ACTIVE.
+3. Read the non-DELETED `t_permission_scope` definitions of candidate permissions to determine whether a permission is scoped. For a scoped role grant, join an ACTIVE `t_role_permission_scope` row back to its `role_permission_id`, then to its exact ACTIVE definition by `permission_scope_id`; the definition's `permission_id` must equal that role permission's `permission_id`. For a scoped direct grant, the exact ACTIVE definition must match both the direct assignment's `permission_scope_id` and `permission_id`. A missing, inactive or mismatched definition grants nothing.
+4. Derive `assignedScopeIds` only from those matched assignment-definition pairs and retain only ACTIVE `m_scope` rows. Never infer a grant from the catalogue alone. A scoped permission with no surviving assigned scope is omitted. A NULL direct scope, or a role grant with no ACTIVE scope link, grants an unscoped permission only when that permission has no non-DELETED scope definition; it is not a wildcard for a scoped permission. An ACTIVE role-scope link that fails resolution must not be reinterpreted as an unscoped role grant.
+5. Merge role and direct grants by `permissionId`. Deduplicate roles by `roleId`, permissions by `permissionId`, and scope grants by `(permissionId, scopeId)`. Sort roles by `(name, roleId)`, permissions by `(name, permissionId)`, and scope grants by `(permissionId, scope, scopeId)`. A consumer checks scopes for the requested permission id, never the union of every permission's scopes.
+
+`roles` contains `{roleId, name}` objects; `permissions` contains `{permissionId, name}` objects; `scopes` contains permission-specific `{permissionId, scopeId, scope}` objects. An unscoped granted permission has no corresponding scope objects. `sub` remains the user's UUID; a claim payload never includes credentials or personal profile fields.
+
+#### Example JWT Payload
+
+```JSON
+{
+    "sub": "b1c2d3e4-f5a6-4b7c-8d9e-0f1a2b3c4d5e",
+    "jti": "8bf3ef1e-cddc-4ad7-b627-5ed8093675ca",
+    "iss": "https://www.domain.com",
+    "aud": "ecommerce",
+    "iat": 1793882520,
+    "exp": 1793883420,
+    "roles": [
+        {
+            "roleId": "a1b2c3d4-e5f6-4a7b-8c9d-0e1f2a3b4c5d",
+            "name": "CATALOG_MANAGER"
+        }
+    ],
+    "permissions": [
+        {
+            "permissionId": "00000000-0000-4000-8000-000000000001",
+            "name": "catalog.manage"
+        },
+        {
+            "permissionId": "00000000-0000-4000-8000-000000000002",
+            "name": "order.view"
+        }
+    ],
+    "scopes": [
+        {
+            "permissionId": "00000000-0000-4000-8000-000000000001",
+            "scopeId": "00000000-0000-4000-8000-000000000011",
+            "scope": "OWN"
+        },
+        {
+            "permissionId": "00000000-0000-4000-8000-000000000002",
+            "scopeId": "00000000-0000-4000-8000-000000000012",
+            "scope": "ALL"
+        }
+    ]
+}
+```
+
+The example grants `OWN` only for `catalog.manage` and `ALL` only for `order.view`; it does not grant `ALL` for `catalog.manage`. It is a decoded illustrative payload, not a usable signed token. The HTTP response still contains the same four token fields as before.
+
+#### Acceptance criteria
+
+- 400 opens no transaction. REFUSED reads no user/password and does not extend the failure window. Unknown, ambiguous and incorrect credentials return the same 401; each 401 requires its attempt insert to commit.
+- Concurrent attempts for one identifier serialize the count and log; only FAILED contributes to the 5-in-15-minute threshold. Password lookup/verification occurs under the user lock.
+- Role/direct scope resolution cannot grant a different permission's scope, all catalogue scopes, inactive masters/assignments, or a scoped permission with no valid assigned scope. A user with no grants still receives valid tokens and empty claim arrays.
+- Success commits both token hashes and SUCCESS together; pre-commit failure rolls back all of them. No secret is logged or returned except the newly issued raw tokens in the successful TLS response.
+- The sequence contains the same SQL as this spec and shows every validation, failed/refused, success, timeout and internal-error path explicitly.
 
 #### Example Body Parameters
 
@@ -197,52 +266,33 @@ curl --location --request POST 'https://www.domain.com/api-dev/v1/auth/login' \
 }
 ```
 
+#### Fail - Internal Server Error
+
+```JSON
+{
+    "status": {
+        "code": 500,
+        "message": "Internal Server Error",
+        "bizMessage": "An unexpected error occurred.",
+        "requestId": "req-500a1b2c-3d4e-5f6a-7b8c-9d0e1f2a3b4c",
+        "timestamp": "2026-11-05T12:45:30.123Z",
+        "status": "ERROR"
+    }
+}
+```
+
 ---
 
 ## Database Relations
 
-### Table: [authen.m_user](../../../schema/authen/m_user.md)
+SQL blocks are listed in first-execution order. The final attempt insert is shared by the three mutually exclusive result branches. All statements belong to the same explicit transaction; only the successful branch writes token rows.
 
-#### QUERY
+### Table: [authen.l_user_login_attempt](../../../schema/authen/l_user_login_attempt.md)
 
-```SQL
-SELECT 
-    u.id as user_id
-FROM authen.m_user u
-WHERE (u.username = '<sequence.usernameBytes>' OR u.email_address = '<sequence.usernameBytes>')
-AND u.row_status = 'ACTIVE'
-```
-
-### Table: [authen.m_user_password](../../../schema/authen/m_user_password.md)
-
-#### QUERY - Get current password
+#### QUERY - Serialize identifier
 
 ```SQL
-SELECT
-    up.user_id,
-    up.password_salt
-FROM authen.m_user u
-INNER JOIN authen.m_user_password up 
-    ON u.id = up.user_id 
-        AND up.row_type = 'PASSWORD'
-        AND up.row_status = 'ACTIVE'
-WHERE (u.username = '<sequence.usernameBytes>' OR u.email_address = '<sequence.usernameBytes>')
-AND u.row_status = 'ACTIVE'
-```
-
-#### QUERY - Get matching user_id and password
-
-```SQL
-SELECT
-    up.user_id
-FROM authen.m_user u
-INNER JOIN authen.m_user_password up 
-    ON u.id = up.user_id 
-WHERE (u.username = '<sequence.usernameBytes>' OR u.email_address = '<sequence.usernameBytes>')
-AND u.row_status = 'ACTIVE'
-AND up.row_type = 'PASSWORD'
-AND up.row_status = 'ACTIVE'
-AND up.password = '<sequence.passwordBytes>'
+SELECT pg_advisory_xact_lock('<sequence.identifierLockKey>'::BIGINT)
 ```
 
 ### Table: [authen.l_user_login_attempt](../../../schema/authen/l_user_login_attempt.md)
@@ -258,23 +308,6 @@ AND la.result = 'FAILED' -- refused attempts are never counted
 AND la.created_at > '<sequence.windowStart>' -- now minus 15 minutes (configurable)
 ```
 
-#### INSERT - Record attempt
-
-```SQL
-INSERT INTO authen.l_user_login_attempt (
-    created_by,
-    identifier_hash,
-    user_id,
-    result
-)
-VALUES (
-    'system',
-    '<sequence.identifierHash>',
-    '<sequence.userId>', -- NULL when the username does not exist
-    '<sequence.result>' -- SUCCESS, FAILED or REFUSED
-)
-```
-
 ### Table: [authen.m_user](../../../schema/authen/m_user.md)
 
 #### QUERY - Lock the user
@@ -283,9 +316,25 @@ VALUES (
 SELECT
     u.id as user_id
 FROM authen.m_user u
-WHERE u.id = '<sequence.userId>'
+WHERE (u.username = '<sequence.usernameBytes>' OR u.email_address = '<sequence.usernameBytes>')
 AND u.row_status = 'ACTIVE'
+ORDER BY u.id
 FOR UPDATE -- every authen API locks the user row first
+```
+
+### Table: [authen.m_user_password](../../../schema/authen/m_user_password.md)
+
+#### QUERY - Get current password
+
+```SQL
+SELECT
+    up.user_id,
+    up.password AS password_hash,
+    up.password_salt
+FROM authen.m_user_password up
+WHERE up.user_id = '<sequence.userId>'
+AND up.row_type = 'PASSWORD'
+AND up.row_status = 'ACTIVE'
 ```
 
 ### Table: [author.t_user_role](../../../schema/author/t_user_role.md)
@@ -309,7 +358,7 @@ SELECT
     r.id AS role_id,
     r.name AS role_name
 FROM author.m_role r
-WHERE r.id IN (<sequence.roleIds>)
+WHERE r.id = ANY ('<sequence.roleIds>'::UUID[])
 AND r.row_status = 'ACTIVE'
 ```
 
@@ -322,7 +371,7 @@ SELECT
     rp.id AS role_permission_id,
     rp.permission_id
 FROM author.t_role_permission rp
-WHERE rp.role_id IN (<sequence.roleIds>)
+WHERE rp.role_id = ANY ('<sequence.activeRoleIds>'::UUID[])
 AND rp.row_status = 'ACTIVE'
 ```
 
@@ -332,9 +381,10 @@ AND rp.row_status = 'ACTIVE'
 
 ```SQL
 SELECT
-    rps.permission_scope_id AS scope_id
+    rps.role_permission_id,
+    rps.permission_scope_id
 FROM author.t_role_permission_scope rps
-WHERE rps.role_permission_id IN (<sequence.rolePermissionIds>)
+WHERE rps.role_permission_id = ANY ('<sequence.rolePermissionIds>'::UUID[])
 AND rps.row_status = 'ACTIVE'
 ```
 
@@ -344,7 +394,8 @@ AND rps.row_status = 'ACTIVE'
 
 ```SQL
 SELECT
-    up.permission_id
+    up.permission_id,
+    up.permission_scope_id
 FROM author.t_user_permission up
 WHERE up.user_id = '<sequence.userId>'
 AND up.row_status = 'ACTIVE'
@@ -352,14 +403,17 @@ AND up.row_status = 'ACTIVE'
 
 ### Table: [author.t_permission_scope](../../../schema/author/t_permission_scope.md)
 
-#### QUERY - Get active direct permission scopes
+#### QUERY - Get permission scope definitions
 
 ```SQL
 SELECT
-    ps.scope_id
+    ps.id AS permission_scope_id,
+    ps.permission_id,
+    ps.scope_id,
+    ps.row_status
 FROM author.t_permission_scope ps
-WHERE ps.permission_id IN (<sequence.directPermissionIds>)
-AND ps.row_status = 'ACTIVE'
+WHERE ps.permission_id = ANY ('<sequence.permissionIds>'::UUID[])
+AND ps.row_status <> 'DELETED'
 ```
 
 ### Table: [author.m_permission](../../../schema/author/m_permission.md)
@@ -371,7 +425,7 @@ SELECT
     p.id AS permission_id,
     p.name AS permission_name
 FROM author.m_permission p
-WHERE p.id IN (<sequence.permissionIds>)
+WHERE p.id = ANY ('<sequence.permissionIds>'::UUID[])
 AND p.row_status = 'ACTIVE'
 ```
 
@@ -384,7 +438,7 @@ SELECT
     s.id AS scope_id,
     s.scope
 FROM author.m_scope s
-WHERE s.id IN (<sequence.scopeIds>)
+WHERE s.id = ANY ('<sequence.assignedScopeIds>'::UUID[])
 AND s.row_status = 'ACTIVE'
 ```
 
@@ -427,5 +481,26 @@ VALUES (
     '<sequence.sessionId>',
     '<sequence.refreshTokenHash>', -- SHA-256 of the refresh token
     '<sequence.refreshExpiredAt>' -- now plus 14 days (configurable)
+)
+```
+
+### Table: [authen.l_user_login_attempt](../../../schema/authen/l_user_login_attempt.md)
+
+#### INSERT - Record attempt
+
+```SQL
+INSERT INTO authen.l_user_login_attempt (
+    created_by,
+    created_at,
+    identifier_hash,
+    user_id,
+    result
+)
+VALUES (
+    'system',
+    '<sequence.now>', -- UTC time captured after the identifier lock
+    '<sequence.identifierHash>',
+    '<sequence.userId>', -- NULL when the username is unknown, ambiguous or REFUSED
+    '<sequence.result>' -- SUCCESS, FAILED or REFUSED
 )
 ```
