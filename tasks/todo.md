@@ -596,3 +596,14 @@ Status: Complete in the branch, waiting for review. Assignment: agent `tommy`, d
 - [x] `shipping/06`: the endpoint, then the automatic completion job as a second section under `== Automatic completion job (caller: system scheduler, not an endpoint) ==` because its SQL blocks are in the spec and the checker needs every block (lead SA decision (a)).
 - [x] Check every file with `api-sequence-spec`, the skeleton test, PlantUML and mutation tests.
 - [x] Open the PR with `commit-and-pr`; do not merge.
+
+## Peter — API 9: create-new-password paired contract review (2026-11-07)
+
+Scope: authen-and-author/04-create-new-password; owner Q13 credential revocation and existing reset rules. One API per PR; continue from main without waiting for merge under Q15. No backend/schema implementation. Q18–Q19 remain pending for consent inquiry.
+
+- [x] Prepare a fresh authorized Peter branch from current main after preserving logout PR #44; baseline all doc commands, SQL audit and database suite.
+- [x] Read both existing files, password/reset/token schema, and shared login/refresh/logout locking rules; reproduce reset consumption before user lock in the old sequence.
+- [x] Revise spec and generated-then-completed sequence together: fresh post-lock single-use guard, password comparison/history, all-session revocation, 12 terminal traces and rollback.
+- [x] Complete final image inspection: scoped flow/character-for-character SQL checks pass; 59/59 mutations caught; synchronized SQL faults, whitespace drift and rendered omission rejected; exact PostgreSQL reset/refresh races and rollback fixtures passed.
+- [x] Run every current doc command (48/48), audit (53 tables, 0 findings), database suite (ALL PASSED) and authorized delivery preflight (5 files, no blockers).
+- [ ] Commit paired files and support changes, open one API PR, retain branch and continue from main.
