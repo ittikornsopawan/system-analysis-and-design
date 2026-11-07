@@ -7,6 +7,23 @@ description: Shared checklist for planning and tracking non-trivial tasks withou
 
 Use one section per task, named `<scope>: <task-name>`. Preserve other task sections and mark an item complete only after its completion criterion is satisfied.
 
+## e-commerce: Backend code structure guide
+
+Status: Complete. Ittikorn requested a detailed `e-commerce/repository/code.md` for later diagram review and explicitly selected ordinary Codex in the current checkout, using the backend-developer perspective, without a commit. This assignment does not use named-agent delivery authority. The guide remains draft; writing it does not approve the architecture proposals it contains.
+
+- [x] Read applicable rules, project knowledge, backend conventions, source files, tests, and the preceding Domain/CQRS discussion.
+- [x] Write the Thai guide with source-linked project structure, dependency direction, layer responsibilities, Domain modeling decisions, CQRS dispatch, Authen flows, transactions, error handling, and testing conventions.
+- [x] Separate observed implementation from proposed policies, missing capabilities, and decisions awaiting specification approval; include a checklist for the upcoming diagram review.
+- [x] Validate frontmatter, local references, source correspondence, Markdown structure, and the exact changed-file scope; record verification results without changing backend behavior or committing.
+
+Verification: YAML/frontmatter, local references, section/table/fence structure, C# excerpts, all five project-reference sets, all five controller routes, Authen-only implementation scope and login/refresh in-review metadata passed static checks. `git diff --check` and a separate whitespace check of the new guide passed. Existing unrelated untracked handoff files were preserved. No backend build, runtime tests, database verification, diagram changes or commit were performed for this documentation-only assignment.
+
+Delivery authorization (2026-11-07): Ittikorn subsequently requested a PR using `commit-and-pr`, superseding the earlier no-commit boundary for these two task files only. Use ordinary Codex in the current checkout; include `e-commerce/repository/code.md` and this task-plan section, exclude the three pre-existing handoff files, and target `main`. The guide and its architecture proposals remain draft. Remote delivery state will be reported from GitHub rather than presumed in this plan.
+
+- [x] Confirm direct delivery authorization, isolate the task branch and inspect the latest main without including another task's files.
+- [x] Revalidate the guide, run the scoped delivery preflight and prepare the fixed-format commit and PR package.
+- [x] Create the scoped local commit, reconcile the task branch with current origin/main and prepare the authorized push/PR handoff; report actual remote delivery state from GitHub.
+
 ## e-commerce: Jinny architecture diagrams
 
 Status: Registration prepared and verified locally; diagram creation waits for registration on origin/main. Ittikorn requested Jinny and three diagrams on 2026-11-07, then explicitly chose to register Jinny and use the diagram-design default light style. Ittikorn subsequently authorized commit, push, and a registration PR in this chat. That direct delivery authorization covers registration only; the future diagram assignment retains delivery: none.
