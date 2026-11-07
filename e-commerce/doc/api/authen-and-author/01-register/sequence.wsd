@@ -1,4 +1,4 @@
-@startuml Register Sequence
+@startuml Register
 
 title Register API Sequence
 
@@ -23,126 +23,203 @@ skinparam sequence {
 
 ' Do not show participant footers at the bottom of the diagram
 hide footbox
-
-
 actor "User" as user
-
 box "Frontend" #F8FAFC
-    participant "Register Page" as page
+    participant "Registration Page" as page
 end box
-
 box "Web API" #F8FAFC
-    participant "API" as api
-    participant "Application" as app
-    participant "Domain" as domain
-    participant "Infrastructure" as infra
+participant "API" as api
+participant "Application" as app
+participant "Domain" as domain
+participant "Infrastructure" as infra
 end box
-
 box "Database" #F8FAFC
-    database "m_user" as m_user
-    database "m_user_password" as m_user_password
-    database "m_user_information" as m_user_information
-    database "t_user_address" as t_user_address
-    database "t_user_consent" as t_user_consent
-    database "l_user_referral" as l_user_referral
+database "m_user" as m_user
+database "t_consent" as t_consent
+database "m_consent_type" as m_consent_type
+database "m_user_password" as m_user_password
+database "m_user_information" as m_user_information
+database "t_user_address" as t_user_address
+database "t_user_consent" as t_user_consent
+database "l_user_referral" as l_user_referral
 end box
-
-user -> page: Submit Register
-
+user -> page: Enter registration; view consent versions
 activate page
-    page -> api: Call POST v1/auth/register
-    activate api
-        api -> app: [**RegisterCommandHandler**] Process request
-        activate app
-            app -> app: Validate request parameters and business rules
-            alt If request is invalid
-                app -> api: Return error response
-                api -> page: Return error response
-                page -> user: Display error message
-            else If request is valid
-                app -> infra: Execute database operations
-                activate infra
-                    infra -> m_user: QUERY - Check existing user
-                    activate m_user
-                        note right of m_user
-                            SELECT
-                                u.id as user_id
-                            FROM authen.m_user u
-                            WHERE (u.username = '<sequence.usernameBytes>' OR u.email_address = '<sequence.emailAddressBytes>')
-                        end note
-                        m_user -> infra: Return query result
-                    deactivate m_user
-
-                    infra -> m_user: INSERT - Create user
-                    activate m_user
-                        note right of m_user
-                            INSERT INTO authen.m_user (
-                                created_by,
-                                username,
-                                email_address,
-                                first_name,
-                                last_name,
-                                display_name,
-                                profile_picture_path
-                            )
-                            VALUES (
-                                '<sequence.createdBy>',
-                                '<sequence.usernameBytes>',
-                                '<sequence.emailAddressBytes>',
-                                '<sequence.firstNameBytes>',
-                                '<sequence.lastNameBytes>',
-                                '<sequence.displayName>',
-                                '<sequence.profilePicturePath>'
-                            )
-                            RETURNING id as user_id
-                        end note
-                        m_user -> infra: Return inserted result
-                    deactivate m_user
-
-                    infra -> m_user_password: INSERT - Create password
-                    activate m_user_password
-                        note right of m_user_password
-                            INSERT INTO authen.m_user_password (
-                                created_by,
-                                row_type,
-                                user_id,
-                                password,
-                                password_salt
-                            )
-                            VALUES (
-                                '<sequence.createdBy>',
-                                'PASSWORD',
-                                '<sequence.userId>',
-                                '<sequence.passwordBytes>',
-                                '<sequence.passwordSaltBytes>'
-                            )
-                        end note
-                        m_user_password -> infra: Return inserted result
-                    deactivate m_user_password
-
-                    infra -> m_user_information: INSERT - Create user information
-                    activate m_user_information
-                        note right of m_user_information
-                            INSERT INTO authen.m_user_information (
-                                created_by,
-                                user_id,
-                                phone_number,
-                                address,
-                                date_of_birth,
-                                gender
-                            )
-                            VALUES (
-                                '<sequence.createdBy>',
-                                '<sequence.userId>',
-                                '<sequence.phoneNumberBytes>',
-                                '<sequence.addressBytes>',
-                                '<sequence.dateOfBirth>',
-                                '<sequence.gender>'
-                            )
-                        end note
-                        m_user_information -> infra: Return inserted result
-                    deactivate m_user_information
-
+page -> api: POST v1/auth/register over TLS\n(content-type, timestamp, requestId, body)
+activate api
+api -> app: [**RegisterCommandHandler**] Process RegisterCommand
+activate app
+app -> app: Create request context; generate requestId if omitted
+app -> domain: Validate headers, JSON, scalar/object types, password policy, unique consentIds
+domain -> app: Return input validation
+alt Invalid input
+    app -> api: HTTP 400 E10001
+    api -> page: Validation error
+else Valid input
+    app -> app: Encrypt sensitive fields; random 16 byte salt; PBKDF2-HMAC-SHA256 600,000 iterations
+    app -> app: createdBy = auth-register; preserve input identifier representation
+    app -> infra: BEGIN REPEATABLE READ
+    alt Transaction work completes
+        app -> app: Capture UTC now immediately before first read; establish one snapshot
+        app -> infra: QUERY - Check existing user
+        infra -> m_user: QUERY - Check existing user
+        activate m_user
+            note right of m_user
+                SELECT
+                    u.id as user_id
+                FROM authen.m_user u
+                WHERE (u.username = '<sequence.usernameBytes>' OR u.email_address = '<sequence.emailAddressBytes>')
+            end note
+            m_user -> infra: Return matching existing user ids
+        deactivate m_user
+        infra -> app: Return matching existing user ids
+        alt Existing username or email
+            app -> infra: ROLLBACK
+            app -> api: HTTP 409 E10003 Username or email address already exists.
+            api -> page: Duplicate identifier
+        else No existing identifier
+            app -> infra: QUERY - Get effective consents
+            infra -> t_consent: QUERY - Get effective consents
+            activate t_consent
+                note right of t_consent
+                    SELECT
+                        c.id as consent_id,
+                        c.consent_type_id,
+                        c.consent_version,
+                        c.is_required
+                    FROM consent.t_consent c
+                    WHERE c.row_status = 'ACTIVE'
+                    AND c.effective_at <= '<sequence.now>'
+                    AND (c.expired_at IS NULL OR c.expired_at > '<sequence.now>')
+                    ORDER BY c.id
+                end note
+                t_consent -> infra: Return effectiveConsents (consentId, typeId, version, isRequired)
+            deactivate t_consent
+            infra -> app: Return effectiveConsents (consentId, typeId, version, isRequired)
+            app -> app: consentTypeIds = distinct effectiveConsents.consent_type_id
+            app -> infra: QUERY - Get active consent types
+            infra -> m_consent_type: QUERY - Get active consent types
+            activate m_consent_type
+                note right of m_consent_type
+                    SELECT
+                        ct.id as consent_type_id
+                    FROM consent.m_consent_type ct
+                    WHERE ct.id = ANY ('<sequence.consentTypeIds>'::UUID[])
+                    AND ct.row_status = 'ACTIVE'
+                    ORDER BY ct.id
+                end note
+                m_consent_type -> infra: Return activeTypeIds
+            deactivate m_consent_type
+            infra -> app: Return activeTypeIds
+            app -> app: applicableConsents = effectiveConsents with typeId in activeTypeIds
+            alt referrerId is specified
+                app -> infra: QUERY - Check referrer
+                infra -> m_user: QUERY - Check referrer
+                activate m_user
+                    note right of m_user
+                        SELECT
+                            u.id as referrer_id
+                        FROM authen.m_user u
+                        WHERE u.id = '<sequence.referrerId>' -- only when referrerId is specified
+                    end note
+                    m_user -> infra: Return referrer id or no row
+                deactivate m_user
+                infra -> app: Return referrer id or no row
+                app -> app: referenceValid = referrer row returned
+            else referrerId omitted
+                app -> app: referenceValid = true; no referral write
+            end
+            app -> domain: Validate submitted ids/versions and all applicable required acceptances
+            domain -> app: Return reference, version and required-coverage validation
+            alt Missing/hidden consent or missing referrer
+                app -> infra: ROLLBACK
+                app -> api: HTTP 404 E10005 Consent or referrer not found.
+                api -> page: Reference invalid
+            else Displayed consentVersion differs from current version
+                app -> infra: ROLLBACK
+                app -> api: HTTP 400 E10001 Consent version is no longer current.
+                api -> page: Reload current consents
+            else Required consent missing or result is not explicit true
+                app -> infra: ROLLBACK
+                app -> api: HTTP 400 E10001 All current required consents must be accepted.
+                api -> page: Required acceptance missing
+            else All references, versions and required acceptances valid
+                app -> infra: INSERT - Create user
+                infra -> m_user: INSERT - Create user
+                activate m_user
+                    note right of m_user
+                        INSERT INTO authen.m_user (
+                            created_by,
+                            username,
+                            email_address,
+                            first_name,
+                            last_name,
+                            display_name,
+                            profile_picture_path
+                        )
+                        VALUES (
+                            &#39;<sequence.createdBy>',
+                            &#39;<sequence.usernameBytes>',
+                            &#39;<sequence.emailAddressBytes>',
+                            &#39;<sequence.firstNameBytes>',
+                            &#39;<sequence.lastNameBytes>',
+                            &#39;<sequence.displayName>',
+                            &#39;<sequence.profilePicturePath>'
+                        )
+                        RETURNING id as user_id
+                    end note
+                    m_user -> infra: Return new user_id
+                deactivate m_user
+                infra -> app: Return new user_id
+                app -> app: userId = returned user_id; all children use this server-derived id
+                app -> infra: INSERT - Create password
+                infra -> m_user_password: INSERT - Create password
+                activate m_user_password
+                    note right of m_user_password
+                        INSERT INTO authen.m_user_password (
+                            created_by,
+                            row_type,
+                            user_id,
+                            password,
+                            password_salt
+                        )
+                        VALUES (
+                            &#39;<sequence.createdBy>',
+                            &#39;PASSWORD',
+                            &#39;<sequence.userId>',
+                            &#39;<sequence.passwordBytes>',
+                            &#39;<sequence.passwordSaltBytes>'
+                        )
+                    end note
+                    m_user_password -> infra: Return one PASSWORD row inserted
+                deactivate m_user_password
+                infra -> app: Return one PASSWORD row inserted
+                app -> infra: INSERT - Create user information
+                infra -> m_user_information: INSERT - Create user information
+                activate m_user_information
+                    note right of m_user_information
+                        INSERT INTO authen.m_user_information (
+                            created_by,
+                            user_id,
+                            phone_number,
+                            address,
+                            date_of_birth,
+                            gender
+                        )
+                        VALUES (
+                            &#39;<sequence.createdBy>',
+                            &#39;<sequence.userId>',
+                            &#39;<sequence.phoneNumberBytes>',
+                            &#39;<sequence.addressBytes>',
+                            &#39;<sequence.dateOfBirth>',
+                            &#39;<sequence.gender>'
+                        )
+                    end note
+                    m_user_information -> infra: Return one information row inserted
+                deactivate m_user_information
+                infra -> app: Return one information row inserted
+                alt addresses object supplied
+                    app -> infra: INSERT - Create user address
                     infra -> t_user_address: INSERT - Create user address
                     activate t_user_address
                         note right of t_user_address
@@ -158,41 +235,58 @@ activate page
                                 country
                             )
                             VALUES (
-                                '<sequence.createdBy>',
-                                '<sequence.userId>',
-                                '<sequence.addresses.title>',
+                                &#39;<sequence.createdBy>',
+                                &#39;<sequence.userId>',
+                                &#39;<sequence.addresses.title>',
                                 TRUE, -- the first address of a user is the default address, whatever isDefault says
-                                '<sequence.addresses.addressBytes>',
-                                '<sequence.addresses.cityBytes>',
-                                '<sequence.addresses.stateBytes>',
-                                '<sequence.addresses.postalCodeBytes>',
-                                '<sequence.addresses.countryBytes>'
+                                &#39;<sequence.addresses.addressBytes>',
+                                &#39;<sequence.addresses.cityBytes>',
+                                &#39;<sequence.addresses.stateBytes>',
+                                &#39;<sequence.addresses.postalCodeBytes>',
+                                &#39;<sequence.addresses.countryBytes>'
                             )
                         end note
-                        t_user_address -> infra: Return inserted result
+                        t_user_address -> infra: Return default address inserted
                     deactivate t_user_address
-
-                    infra -> t_user_consent: INSERT - Create user consent
-                    activate t_user_consent
-                        note right of t_user_consent
-                            INSERT INTO authen.t_user_consent (
-                                created_by,
-                                user_id,
-                                consent_id,
-                                consent_version,
-                                result
-                            )
-                            VALUES (
-                                '<sequence.createdBy>',
-                                '<sequence.userId>',
-                                '<sequence.consents.consentId>',
-                                '<sequence.consents.consentVersion>',
-                                '<sequence.consents.result>'
-                            )
-                        end note
-                        t_user_consent -> infra: Return inserted result
-                    deactivate t_user_consent
-
+                    infra -> app: Return default address inserted
+                else addresses omitted
+                    app -> app: No address row
+                end
+                alt Validated consents list is non-empty
+                    loop Each supplied consent ordered by consentId
+                        app -> app: Bind displayed consentVersion; result = explicit result or false; isRead = true; readAt = now
+                        app -> infra: INSERT - Create user consent
+                        infra -> t_user_consent: INSERT - Create user consent
+                        activate t_user_consent
+                            note right of t_user_consent
+                                INSERT INTO authen.t_user_consent (
+                                    created_by,
+                                    user_id,
+                                    consent_id,
+                                    consent_version,
+                                    result,
+                                    is_read,
+                                    read_at
+                                )
+                                VALUES (
+                                    &#39;<sequence.createdBy>',
+                                    &#39;<sequence.userId>',
+                                    &#39;<sequence.consents.consentId>',
+                                    &#39;<sequence.consents.consentVersion>',
+                                    &#39;<sequence.consents.result>', -- explicit result, or false when omitted
+                                    TRUE, -- supplied object records displayed/read version
+                                    &#39;<sequence.now>'
+                                )
+                            end note
+                            t_user_consent -> infra: Return read consent evidence inserted
+                        deactivate t_user_consent
+                        infra -> app: Return read consent evidence inserted
+                    end loop
+                else No supplied consents
+                    app -> app: No consent evidence rows
+                end
+                alt Validated referrerId supplied
+                    app -> infra: INSERT - Create user referral
                     infra -> l_user_referral: INSERT - Create user referral
                     activate l_user_referral
                         note right of l_user_referral
@@ -202,28 +296,50 @@ activate page
                                 referrer_id
                             )
                             VALUES (
-                                '<sequence.createdBy>',
-                                '<sequence.userId>',
-                                '<sequence.referrerId>'
+                                &#39;<sequence.createdBy>',
+                                &#39;<sequence.userId>',
+                                &#39;<sequence.referrerId>'
                             )
                         end note
-                        l_user_referral -> infra: Return inserted result
+                        l_user_referral -> infra: Return referral inserted
                     deactivate l_user_referral
-
-                    infra -> app: Return database result
-                deactivate infra
-
-                app -> domain: Apply domain rules and prepare response
-                activate domain
-                    domain -> app: Return response data
-                deactivate domain
-
-                app -> api: Return success response
-                api -> page: Return success response
-                page -> user: Display success result
-            end alt
-        deactivate app
-    deactivate api
+                    infra -> app: Return referral inserted
+                else No referrer
+                    app -> app: No referral row
+                end
+                app -> infra: COMMIT
+                infra -> app: Return committed registration
+                app -> api: HTTP 201 S10000 Register Success; data.userId = userId
+                api -> page: Return userId only
+                page -> user: Registered; proceed to login
+            end
+        end
+    else m_user identifier UNIQUE violation SQLSTATE 23505
+        app -> infra: ROLLBACK
+        app -> api: HTTP 409 E10003 Username or email address already exists.
+        api -> page: Concurrent duplicate
+    else Referenced row deleted concurrently; FK violation
+        app -> infra: ROLLBACK
+        app -> api: HTTP 404 E10005 Consent or referrer not found.
+        api -> page: Reference no longer exists
+    else Serialization conflict
+        app -> infra: ROLLBACK
+        app -> app: Retry whole transaction with new snapshot/now within request timeout
+        ref over app, infra
+            Repeat validation reads and all writes; never retry a partial transaction
+            End with the corresponding success/error path; exhaustion follows timeout below
+        end ref
+    else Timeout before COMMIT
+        app -> infra: ROLLBACK
+        app -> api: HTTP 408 E90001
+        api -> page: Timeout; no partial registration
+    else Unexpected failure before COMMIT
+        app -> infra: ROLLBACK
+        app -> api: HTTP 500 Internal Server Error; omit bizCode
+        api -> page: Generic failure; no partial registration
+    end
+end
+deactivate app
+deactivate api
 deactivate page
-
 @enduml
