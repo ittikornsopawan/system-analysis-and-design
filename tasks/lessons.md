@@ -230,3 +230,9 @@ description: Repository-wide and project-specific lessons captured from user cor
 - **Correction**: The first run of the manual case "BEGIN after the first write" passed the checker and looked like a miss. The case itself was wrong: it removed BEGIN and put it back immediately before the first write, which is still before it.
 - **Root cause**: The mutation was written from the name of the case and its result was not compared with the property (order of two lines) before the checker was blamed.
 - **Corrected behavior**: When a mutation is not caught, first print the mutated lines and check that they really break the property; fix the case if it does not, and fix the checker only if it does.
+
+### 2026-11-07 — A rule about "the line before" must follow the block, not the text
+
+- **Correction**: The lead found in review of PR #27 that a lock taken before BEGIN and an error answer without ROLLBACK were not caught. My first fix for the second one looked for the nearest earlier `app -> infra:` line, and the ROLLBACK of a sibling branch still satisfied it.
+- **Root cause**: The checker read the diagram as a flat list of lines, while an `alt` / `else` diagram has branches; the transaction standard was only compared with the lines the login diagram happens to have (408 and 500) and not with every way a transaction can fail (400 to 409, a lock before BEGIN).
+- **Corrected behavior**: When a checker reasons about order inside a diagram with branches, follow the nesting (indentation) so closed branches do not count, and write the mutation for each ROLLBACK or COMMIT one by one, not for one example. For a transaction rule, list every statement that must be inside it (writes and locks) and every exit that must end it.
