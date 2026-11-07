@@ -615,6 +615,22 @@ Verification: see the PR. No spec, diagram or other checker is changed.
 Lesson for the team: a merge that keeps a file parseable can still drop the end of a function; after resolving a conflict in `check_docs.py`, run `python3 -c "import ast"` on it and run every sub-command, not only the one that was edited.
 
 
+## Peter — API 9: create-new-password paired contract review (2026-11-07)
+
+Scope: authen-and-author/04-create-new-password; owner Q13 credential revocation and existing reset rules. One API per PR; continue from main without waiting for merge under Q15. No backend/schema implementation. Q18–Q19 remain pending for consent inquiry.
+
+- [x] Prepare a fresh authorized Peter branch from current main after preserving logout PR #44; baseline all doc commands, SQL audit and database suite.
+- [x] Read both existing files, password/reset/token schema, and shared login/refresh/logout locking rules; reproduce reset consumption before user lock in the old sequence.
+- [x] Revise spec and generated-then-completed sequence together: fresh post-lock single-use guard, password comparison/history, all-session revocation, 12 terminal traces and rollback.
+- [x] Complete final image inspection: scoped flow/character-for-character SQL checks pass; 59/59 mutations caught; synchronized SQL faults, whitespace drift and rendered omission rejected; exact PostgreSQL reset/refresh races and rollback fixtures passed.
+- [x] Run every current doc command (48/48), audit (53 tables, 0 findings), database suite (ALL PASSED) and authorized delivery preflight (5 files, no blockers).
+- [x] Commit paired files and support changes and open API PR #53; initial head 863d47a.
+- [ ] Retain branch/assignment history and continue from updated main under owner Q15.
+
+Integration: GitHub reported a conflict after main advanced. Preserve all upstream diagram, component-repository migration and task changes; conflict is only the shared todo append. Re-run all checks before the integration push; this PR changes only the five authorized task paths relative to current origin/main.
+
+Delivery correction: the first integration preflight compared against stale local main and rejected imported upstream paths. The following shell step pushed despite that failure. Fast-forward local main, prove only the five task paths differ, re-run delivery authorization successfully, and require fail-fast dependent commands. A second upstream checker rule added a token/timeout legacy entry for this API; remove only its completed entry and re-run every check before the follow-up push.
+
 ## e-commerce: Peter API review — logout (API 8)
 
 Status: Author/me delivered as PR #37 (four files; MERGEABLE when opened), branch/history preserved. Clean main-based logout assignment passed baselines under Q15. Q13 keeps immediate credential revocation; WP4 U9/U23 requires the user lock and atomic closure of every token in the caller's session. Management-consent Q18/Q19 remains pending; independent authorized work continues.
@@ -624,8 +640,8 @@ Status: Author/me delivered as PR #37 (four files; MERGEABLE when opened), branc
 - [x] Correct spec with user-first lock, fresh post-lock token/session/expiry validation, server-derived ids, complete atomic revocation and error/retry semantics.
 - [x] Regenerate then finish sequence with actual execution order, every SQL request/result and success/invalid/revoked/rollback/timeout paths; remove its legacy exemption only when the new standard passes.
 - [x] Add logout-flow checks, reject original/synchronized faults and mutation-test ordering, scope, transaction and rendered SQL.
-- [ ] Execute exact SQL for session-wide closure, rollback, concurrent refresh/logout and expiry/revocation while waiting; render/inspect SVG/PNG and pass all current delivery checks.
-- [ ] Open one logout PR through commit-and-pr, preserve its review record and continue from main under Q15.
+- [x] Execute exact SQL for session-wide closure, rollback, concurrent refresh/logout and expiry/revocation while waiting; render/inspect SVG/PNG and pass all current delivery checks.
+- [x] Open logout PR #44 through commit-and-pr, preserve its review record and continue from main under Q15; merge verified remotely.
 
 Logout verification: four identical SQL operations in user-lock -> fresh session -> access closure -> refresh closure order; eight terminal paths. Regenerated via the ready skeleton tool, completed all markers/branches/mappings and removed the now-complete legacy exemption. Original pair rejected; mutations caught 36/36 (durable temporary log retained). Four additional synchronized faults, including moving the complete access UPDATE before the user lock while preserving SQL parity/participant first use, are rejected by logout-flow. Real rendered omission rejected independently; final PlantUML has nine participants, inspected SVG/PNG and 29/29 visible SQL lines. Temporary PostgreSQL executed exact logout and refresh credential statements: full closure includes older/expired ACTIVE access rows, preserves other devices/users even with a shared session id and inactive history, actual mid-transaction error rolls back, zero refresh closure is valid, zero access closure is detected, repeated/concurrent logout sees revocation, both refresh/logout races leave no new usable pair, and post-lock time rejects expiry while waiting. These are design/SQL checks, not backend conformance.
 
@@ -713,16 +729,15 @@ Status: Complete in the branch, waiting for review. Assignment: agent `tommy`, d
 - [x] Check them with `api-sequence-spec`, the skeleton test, PlantUML and mutation tests.
 - [x] Open the PR with `commit-and-pr`; do not merge. The author APIs (`author/01` to `11`) follow in the next pull request.
 
-## Peter — API 9: create-new-password paired contract review (2026-11-07)
+## e-commerce: api-sequence-spec requires the 401 and 408 answers and matching headings
 
-Scope: authen-and-author/04-create-new-password; owner Q13 credential revocation and existing reset rules. One API per PR; continue from main without waiting for merge under Q15. No backend/schema implementation. Q18–Q19 remain pending for consent inquiry.
+Status: Implemented in the managed workspace of Marry on branch `test/marry-enforce-401-408-heading`; the pull request is opened after the checks and merged by the lead. Scope: `e-commerce/db/tests/check_docs.py` and `tasks/`. No spec and no `sequence.wsd` is changed. Decisions of the lead (chat, 2026-11-07): the token rule applies when the spec has a mandatory `authorization` header only; the verify step may say `JWT` or `access token`; the older diagrams that do not pass are listed by name.
 
-- [x] Prepare a fresh authorized Peter branch from current main after preserving logout PR #44; baseline all doc commands, SQL audit and database suite.
-- [x] Read both existing files, password/reset/token schema, and shared login/refresh/logout locking rules; reproduce reset consumption before user lock in the old sequence.
-- [x] Revise spec and generated-then-completed sequence together: fresh post-lock single-use guard, password comparison/history, all-session revocation, 12 terminal traces and rollback.
-- [x] Complete final image inspection: scoped flow/character-for-character SQL checks pass; 59/59 mutations caught; synchronized SQL faults, whitespace drift and rendered omission rejected; exact PostgreSQL reset/refresh races and rollback fixtures passed.
-- [x] Run every current doc command (48/48), audit (53 tables, 0 findings), database suite (ALL PASSED) and authorized delivery preflight (5 files, no blockers).
-- [x] Commit paired files and support changes and open API PR #53; initial head 863d47a.
-- [ ] Retain branch/assignment history and continue from updated main under owner Q15.
-
-Integration: GitHub reported a conflict after main advanced. Preserve all upstream diagram, component-repository migration and task changes; conflict is only the shared todo append. Re-run all checks before the integration push; this PR changes only the five authorized task paths relative to current origin/main.
+- [x] Measure the three rules on every non-empty diagram before writing the code: the heading rule passes on all 72, the token rule fails on 19 and the 408 rule on 11 (see the pull request).
+- [x] Rule 1: when the spec has a mandatory `authorization` header row, the diagram has `app -> app: Verify ... JWT / access token ...` followed by an `alt` with `app -> api: HTTP 401 E10002`, all before the first `app -> infra:` line; a public API (no authorization header and the words "Public API" or "API is public") must not answer 401. Login and refresh-token are not forced (their 401 is about credentials).
+- [x] Rule 2: every non-empty diagram has `app -> api: HTTP 408 E90001`.
+- [x] Rule 3: every `app -> infra: QUERY|INSERT|UPDATE|DELETE - X` line is followed at once by `infra -> <table>: X`.
+- [x] `LEGACY_TOKEN_SEQUENCES`: 11 older diagrams (`authen-and-author` 03, 04, 07, 08, 09, 10 and `consent` 02, 03, 06, 07, 08) are exempt from rules 1 and 2; an entry must be a real spec folder and must still fail one of the two rules, so a diagram that is fixed has to leave the list; the count is printed in the OK line. `consent/04` passed both rules and is not listed.
+- [x] Mutation tests: 15 cases of the harness on the three rules and the list, 13 cases that check which message fires (10 must fail, 3 controls must pass); the earlier mutation sets still behave (see the pull request).
+- [x] Run every `check_docs.py` sub-command, `audit_all.py`, `run_db_tests.sh`, `test_sequence_skeleton.py`.
+- [ ] Merge `main` into the branch, preflight, push, open the pull request, tell the lead; hold the lock until the merge, then release and park.

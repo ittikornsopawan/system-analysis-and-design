@@ -3859,6 +3859,22 @@ LEGACY_SEQUENCES = (
     "consent/06-upsert-consent-type",
     "consent/07-upsert-consent-type-batch",
 )
+# Diagrams written before the access token and timeout answers became part of the check. Each is exempt from the token
+# rule (Verify JWT and 401 E10002 when the spec has a mandatory authorization header) and from the 408 E90001 rule, and
+# must still fail at least one of them: a file that passes both has to leave this list. Remove an entry in the same
+# change that adds the missing answers to the diagram.
+LEGACY_TOKEN_SEQUENCES = (
+    "authen-and-author/03-reset-password",          # no 408
+    "authen-and-author/07-upsert-user-profile",     # no Verify JWT / 401 step, no 408
+    "authen-and-author/08-inquiry-user-profile",    # no Verify JWT / 401 step, no 408
+    "authen-and-author/09-upsert-user-address",     # no Verify JWT / 401 step, no 408
+    "authen-and-author/10-inquiry-user-address",    # no Verify JWT / 401 step, no 408
+    "consent/02-upsert-consent",                    # no Verify JWT / 401 step, no 408
+    "consent/03-inquiry-consent",                   # no Verify JWT / 401 step, no 408
+    "consent/06-upsert-consent-type",               # no Verify JWT / 401 step, no 408
+    "consent/07-upsert-consent-type-batch",         # no Verify JWT / 401 step, no 408
+    "consent/08-inquiry-consent-type",              # no Verify JWT / 401 step, no 408
+)
 
 
 def spec_database_operations(md: str) -> list[tuple[str, str, str]]:
@@ -4037,6 +4053,58 @@ def sequence_login_standard_errors(text: str) -> list[str]:
     return errors
 
 
+SEQUENCE_AUTH_ROW = re.compile(r"^\|\s*\d+\s*\|\s*authorization\s*\|[^|]*\|\s*MANDATORY\s*\|", re.MULTILINE | re.IGNORECASE)
+
+
+def spec_needs_token(spec_text: str) -> bool:
+    """The spec has a mandatory authorization header, so the caller sends an access token (login and refresh do not)."""
+    return bool(SEQUENCE_AUTH_ROW.search(spec_text))
+
+
+def spec_is_public(spec_text: str) -> bool:
+    """The spec has no authorization header and says it is a public API."""
+    return not spec_needs_token(spec_text) and bool(re.search(r"public api|api is public", spec_text, re.IGNORECASE))
+
+
+def sequence_answer_errors(text: str, needs_token: bool, is_public: bool) -> list[str]:
+    """Token, public and timeout answers: the 401 comes after the access token is verified and before the first database call."""
+    errors = []
+    lines = text.splitlines()
+    first_infra = next((n for n, line in enumerate(lines) if re.match(r"^\s*app -> infra:", line)), len(lines))
+    if needs_token:
+        verify = next((n for n, line in enumerate(lines) if re.match(r"^\s*app -> app: Verify\b.*(?:\bJWT\b|access token)", line, re.IGNORECASE)), None)
+        answer = next((n for n, line in enumerate(lines) if re.match(r"^\s*app -> api: HTTP 401 E10002\b", line)), None)
+        if verify is None:
+            errors.append("the spec has a mandatory authorization header: missing 'app -> app: Verify JWT ...' (or 'Verify the access token ...')")
+        if answer is None:
+            errors.append("the spec has a mandatory authorization header: missing 'app -> api: HTTP 401 E10002'")
+        if verify is not None and answer is not None:
+            if not verify < answer < first_infra:
+                errors.append("the access token is verified and the 401 E10002 is answered before the first 'app -> infra' line")
+            elif not any(re.match(r"^\s*alt\b", line) for line in lines[verify + 1:answer]):
+                errors.append("the 401 E10002 answer belongs to an alt branch right after the verify step")
+    if is_public and any(re.match(r"^\s*app -> api: HTTP 401\b", line) for line in lines):
+        errors.append("the spec is a public API (no authorization header): the diagram must not answer 401")
+    if not any(re.match(r"^\s*app -> api: HTTP 408 E90001\b", line) for line in lines):
+        errors.append("missing 'app -> api: HTTP 408 E90001'")
+    return errors
+
+
+def sequence_heading_errors(text: str) -> list[str]:
+    """Each 'app -> infra: <SQL heading>' line is followed at once by 'infra -> <table>: <the same heading>'."""
+    errors = []
+    lines = text.splitlines()
+    for number, line in enumerate(lines):
+        request = re.match(r"^\s*app -> infra: ((?:QUERY|INSERT|UPDATE|DELETE) - .*)$", line)
+        if not request:
+            continue
+        following = re.match(r"^\s*infra -> \w+: (.*)$", lines[number + 1]) if number + 1 < len(lines) else None
+        if not following or following.group(1) != request.group(1):
+            found = following.group(1) if following else (lines[number + 1].strip() if number + 1 < len(lines) else "end of file")
+            errors.append(f"line {number + 1}: 'app -> infra: {request.group(1)}' must be followed by 'infra -> <table>: {request.group(1)}', found {found!r}")
+    return errors
+
+
 def sequence_block_errors(spec_operations, sequence_operations, declared_tables) -> list[str]:
     """Blocks of a sequence against the blocks of its spec: every block exactly once or more, in any order.
 
@@ -4093,6 +4161,9 @@ def check_api_sequence_spec() -> int:
     for entry in LEGACY_SEQUENCES:
         if not (api_root / entry / "spec.md").exists():
             errors.append(f"LEGACY_SEQUENCES lists {entry}, which is not a spec folder")
+    for entry in LEGACY_TOKEN_SEQUENCES:
+        if not (api_root / entry / "spec.md").exists():
+            errors.append(f"LEGACY_TOKEN_SEQUENCES lists {entry}, which is not a spec folder")
     for spec_path in specs:
         group = spec_path.parent.parent.name
         folder = f"{group}/{spec_path.parent.name}"
@@ -4124,6 +4195,14 @@ def check_api_sequence_spec() -> int:
                 errors.append(f"{relative_sequence}: already follows the login standard, remove it from LEGACY_SEQUENCES")
         else:
             errors.extend(f"{relative_sequence}: login standard: {error}" for error in standard_errors)
+        spec_text = spec_path.read_text(encoding="utf-8")
+        errors.extend(f"{relative_sequence}: {error}" for error in sequence_heading_errors(sequence_text))
+        answer_errors = sequence_answer_errors(sequence_text, spec_needs_token(spec_text), spec_is_public(spec_text))
+        if folder in LEGACY_TOKEN_SEQUENCES:
+            if not answer_errors:
+                errors.append(f"{relative_sequence}: already has the token and timeout answers, remove it from LEGACY_TOKEN_SEQUENCES")
+        else:
+            errors.extend(f"{relative_sequence}: {error}" for error in answer_errors)
         declared_tables = re.findall(r'^\s*database "[^"]+" as (\w+)$', sequence_text, re.MULTILINE)
         errors.extend(f"{relative_sequence}: {error}" for error in sequence_block_errors(spec_operations, sequence_operations, declared_tables))
     if errors:
@@ -4131,7 +4210,7 @@ def check_api_sequence_spec() -> int:
     summary = ", ".join(
         f"{group} {filled}/{total}{'' if group in REQUIRED_GROUPS else ' pending' if filled < total else ''}" for group, (filled, total) in sorted(groups.items())
     )
-    print(f"OK: api-sequence-spec ({len(specs)} specs; filled/total per group: {summary}; {len(LEGACY_SEQUENCES)} legacy without the login standard)")
+    print(f"OK: api-sequence-spec ({len(specs)} specs; filled/total per group: {summary}; {len(LEGACY_SEQUENCES)} legacy without the login standard; {len(LEGACY_TOKEN_SEQUENCES)} legacy without the token and timeout answers)")
     return 0
 
 
