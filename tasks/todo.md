@@ -535,3 +535,12 @@ Status: Complete in the branch, waiting for review. Assignment: agent `tommy`, d
 - [x] Add a test of the comparison itself (reordered and repeated blocks pass; a missing block, a changed SQL letter, a block with another heading, a broken lifecycle, participants out of order and an extra participant fail).
 - [x] Mutation-test the test (7 changes of the test, 5 changes of real diagrams): 12/12 caught.
 - [x] Open the PR with `commit-and-pr`; do not merge.
+
+## e-commerce: Reword the SQL comments with two `--` in shop/14 and shop/16
+
+Status: Implemented in the managed workspace of Marry on branch `docs/marry-reword-double-dash-comments`; the pull request is opened after the preflight and merged by the lead. Scope: `shop/14-inquiry-storefront-shop-product`, `shop/16-inquiry-storefront-product-review` and `tasks/`. Only comments change; no SQL that runs.
+
+- [x] Find the five lines (three in `shop/14`, two in `shop/16`) in `spec.md` and `sequence.wsd`, and every other user of them: `check_docs.py` (`shop-spec`) uses the start of each line (`-- ORDER BY ... , p.id`) as a needle, so the form `-- sort X: ORDER BY ...` would break it.
+- [x] Reword the five lines in one form with one `--`: `-- ORDER BY p.name, p.id (sort NAME_ASC)`; the needles stay valid and the sequence equals the spec letter for letter.
+- [x] Check: 45 of 45 `check_docs.py` sub-commands, `api-sequence-spec`, `audit_all.py`, database tests, `test_sequence_skeleton.py` (12 tests); the skeleton script prints no struck-through warning for any spec; no `sequence.wsd` of the repository has a SQL line with two `--`; the rendered SVGs show 115 of 115 (`shop/14`) and 57 of 57 (`shop/16`) SQL lines with no strike-through mark.
+- [ ] Preflight, commit, push, open the pull request, tell the lead; hold the lock until the merge, then release and park.
