@@ -408,6 +408,23 @@ Status: Implemented in the managed workspace of Marry on branch `fix/marry-rejec
 Verification: `python3 .agents/skills/agent-workspace/tests/test_agent_workspace.py` runs 15 tests OK (13 before).
 
 
+## e-commerce: Peter API review — register (API 3)
+
+Owner Q15 supersedes the earlier one-open-PR lifecycle: keep completed PRs open, preserve each branch/assignment history, return to main and begin the next API without waiting for merge. PR #23 is merged; refresh PR #24 was preserved separately and subsequently merged before register delivery. Register uses a fresh bounded assignment on fix/peter-register-contract.
+
+- [x] Verify clean main, preserve PR #24 and its assignment, and prepare register with all baseline checks.
+- [x] Read register spec/sequence, consent submission, migration/schema and prior lessons.
+- [x] Persist Q16 display/read semantics and settle explicit consent-version handling.
+- [x] Correct register validation, required consent coverage, optional writes and atomic transaction in spec.md and complete sequence.wsd.
+- [x] Add register-flow invariants and mutation-test old failures, branching and rendered SQL.
+- [x] Execute exact SQL against temporary PostgreSQL, render and inspect SVG/PNG, then run all documentation checks, audit, database tests and delivery preflight.
+- [ ] Deliver one-register-API PR with commit-and-pr; release editing lock and continue from main under Q15.
+
+Register verification: the original pair fails register-flow; the revised pair has ten identical SQL operations, 28 terminal traces (including optional-child combinations) and a whole-transaction retry path. Mutation testing caught 53/53 faults, including an actual SVG with a dropped quoted value. PlantUML syntax passes with 14 participants; SVG/PNG were rendered and visually inspected, with 123/123 SQL lines visible. Temporary PostgreSQL executed the exact queries/inserts and verified active/effective/type filtering, required-current coverage predicates, read-only evidence, omitted children, complete rollback on final-child failure, repeatable policy snapshots across two connections and one winning concurrent identifier insert (23505 for the loser). These checks validate the design/SQL, not backend conformance. All 40 current documentation commands pass and the audit reports 53 tables / 0 findings.
+
+Register delivery preflight: all 40 checks, audit 53/0 and database ALL PASSED; six paths in the authorized assignment, no blockers. Origin/main then advanced through PR #31, including refresh #24 and the repository-wide sequence checker. Integrate that base before opening the register PR, preserve every incoming checker and rerun the current checks.
+
+Register integration verified: preserved upstream refresh, shipping and sequence-checker changes; the task diff against origin/main remains the same six assignment paths. The global sequence check now covers 83 specs; register passes its standard, so its legacy exemption was removed. All 41 documentation commands pass, audit remains 53/0, database tests ALL PASSED, mutations 53/53 and rendered SQL 123/123. Final SVG/PNG were regenerated from the restored source after mutation tests and inspected.
 ## e-commerce: Peter API review — submit consent (API 4)
 
 Status: Register delivered in PR #32 (six files; MERGEABLE when opened), branch/history preserved, clean main-based submit-consent assignment prepared under Q15. Owner Q16: display records reading, optional result answers later, already-read evidence keeps its read timestamp. Q17: require the displayed version. No next-API merge gate applies.

@@ -3850,7 +3850,6 @@ REQUIRED_GROUPS = ("authen-and-author", "consent")
 # check fails when a listed diagram already passes (remove it) or no longer has a write.
 LEGACY_SEQUENCES = (
     # authen-and-author: waiting for a retrofit to the login standard
-    "authen-and-author/01-register",
     "authen-and-author/03-reset-password",
     "authen-and-author/04-create-new-password",
     "authen-and-author/06-logout",
@@ -5479,6 +5478,144 @@ def check_refresh_flow() -> int:
 COMMANDS['refresh-flow'] = check_refresh_flow
 
 
+def check_register_flow() -> int:
+    """Guard the owner-approved registration policy and atomic execution paths."""
+    path = AUTHEN_SPECS['01']
+    md = read(path)
+    wsd = read(str(Path(path).with_name('sequence.wsd')))
+    errors = []
+    for needle in ('2026-11-07-api-review-design.md', 'REPEATABLE READ', 'first read establishes the transaction snapshot',
+                   'Required means `t_consent.is_required`', 'Reject duplicate consentIds before SQL',
+                   'result=true', 'every supplied valid consent object represents the displayed version',
+                   'Omitted optional consent creates no row', 'SQLSTATE 23505', 'rolls back the whole transaction',
+                   'Serialization', '600,000 iterations', 'random 16 byte salt', 'Register does not log the user in',
+                   'not request input', 'never the string', 'one optional object, never an array',
+                   'keeps its original read', 'consentVersion'):
+        # The prior read timestamp belongs to authenticated submit, but must be explained here too.
+        if needle == 'keeps its original read':
+            needle = 'repeated reads preserve the first read_at'
+        if needle not in md:
+            errors.append(f'register rules missing {needle!r}')
+    fm = md.split('---', 2)[1] if md.startswith('---\n') else ''
+    state = re.search(r'^status: (draft|in-review|approved)$', fm, re.M)
+    if not state:
+        errors.append('register requires valid approval metadata')
+    for field in ('approved_by', 'approved_at'):
+        value = re.search(rf'^{field}: (.+)$', fm, re.M)
+        if not value or (state and ((state[1] == 'approved') == (value[1] == 'null'))):
+            errors.append(f'inconsistent register {field}')
+    version_row = re.search(r'^\|[^\n]*\| consentVersion\s*\|[^\n]+$', md, re.M)
+    if not version_row or 'MANDATORY' not in version_row[0] or 'never defaulted' not in version_row[0]:
+        errors.append('displayed consentVersion must be mandatory, not silently defaulted')
+    operations = spec_database_operations(md)
+    expected = ('QUERY - Check existing user', 'QUERY - Get effective consents', 'QUERY - Get active consent types',
+                'QUERY - Check referrer', 'INSERT - Create user', 'INSERT - Create password',
+                'INSERT - Create user information', 'INSERT - Create user address',
+                'INSERT - Create user consent', 'INSERT - Create user referral')
+    if tuple(h for _, h, _ in operations) != expected:
+        errors.append('registration must declare all ten validation/write operations in execution order')
+    sql = {h: re.sub(r'--[^\n]*', '', s) for _, h, s in operations}
+    required = {
+        expected[0]: ["u.username = '<sequence.usernameBytes>' OR u.email_address = '<sequence.emailAddressBytes>'"],
+        expected[1]: ['c.id as consent_id', 'c.consent_type_id', 'c.consent_version', 'c.is_required',
+                      "c.row_status = 'ACTIVE'", "c.effective_at <= '<sequence.now>'",
+                      "c.expired_at IS NULL OR c.expired_at > '<sequence.now>'", 'ORDER BY c.id'],
+        expected[2]: ['ct.id as consent_type_id', "ct.id = ANY ('<sequence.consentTypeIds>'::UUID[])", "ct.row_status = 'ACTIVE'"],
+        expected[3]: ["u.id = '<sequence.referrerId>'"],
+        expected[4]: ['username,', 'email_address,', '<sequence.createdBy>', '<sequence.usernameBytes>', '<sequence.emailAddressBytes>', 'RETURNING id as user_id'],
+        expected[5]: ['user_id,', 'password,', 'password_salt', "'PASSWORD'", '<sequence.userId>', '<sequence.passwordBytes>', '<sequence.passwordSaltBytes>'],
+        expected[6]: ['user_id,', '<sequence.userId>', '<sequence.phoneNumberBytes>', '<sequence.addressBytes>', '<sequence.dateOfBirth>', '<sequence.gender>'],
+        expected[7]: ['is_default,', 'TRUE,', '<sequence.userId>', '<sequence.addresses.title>', '<sequence.addresses.addressBytes>', '<sequence.addresses.cityBytes>', '<sequence.addresses.stateBytes>', '<sequence.addresses.postalCodeBytes>', '<sequence.addresses.countryBytes>'],
+        expected[8]: ['consent_id,', 'consent_version,', 'result,', 'is_read,', 'read_at', '<sequence.userId>', '<sequence.consents.consentId>', '<sequence.consents.consentVersion>', '<sequence.consents.result>', 'TRUE,', '<sequence.now>'],
+        expected[9]: ['user_id,', 'referrer_id', '<sequence.userId>', '<sequence.referrerId>'],
+    }
+    for heading, needles in required.items():
+        for needle in needles:
+            if needle not in sql.get(heading, ''):
+                errors.append(f'{heading} missing {needle}')
+    if 'row_status' in sql.get(expected[0], ''):
+        errors.append('duplicate check must include identifiers in all lifecycle states')
+    if any(t.startswith('author.') or '_token' in t for t, _, _ in operations):
+        errors.append('registration must not grant privileges or issue tokens')
+    actual, lifecycle = sequence_database_operations(wsd)
+    errors += lifecycle
+    if [(t.split('.')[-1],h,normalize(s)) for t,h,s in operations] != [(t,h,normalize(s)) for t,h,s in actual]:
+        errors.append('register spec/sequence SQL and execution order differ')
+    for _, heading, _ in operations:
+        if f'app -> infra: {heading}' not in wsd:
+            errors.append(f'{heading} requires Application request')
+        match = re.search(rf'infra -> (\w+): {re.escape(heading)}\n.*?deactivate \1\n([^\n]+)', wsd, re.S)
+        if not match or not match[2].strip().startswith('infra -> app: Return '):
+            errors.append(f'{heading} requires Infrastructure result to Application')
+    for needle in ('consentTypeIds = distinct effectiveConsents.consent_type_id',
+                   'applicableConsents = effectiveConsents with typeId in activeTypeIds',
+                   'userId = returned user_id', 'result = explicit result or false; isRead = true; readAt = now',
+                   'alt addresses object supplied', 'alt Validated consents list is non-empty',
+                   'loop Each supplied consent ordered by consentId', 'alt Validated referrerId supplied',
+                   'Displayed consentVersion differs from current version',
+                   'Required consent missing or result is not explicit true',
+                   'Retry whole transaction with new snapshot/now within request timeout'):
+        if needle not in wsd:
+            errors.append(f'sequence missing mapping/guard {needle!r}')
+    traces, structure = login_sequence_paths(wsd)
+    errors += structure
+    outcomes = []
+    retries = 0
+    for trace in traces:
+        responses = [e for e in trace if e.startswith('app -> api: HTTP ')]
+        def ordered(*parts):
+            positions = [next((i for i,e in enumerate(trace) if n in e), -1) for n in parts]
+            return -1 not in positions and positions == sorted(set(positions))
+        writes = [e for e in trace if e.startswith('infra -> ') and ': INSERT' in e]
+        if not responses and any('Retry whole transaction' in e for e in trace):
+            retries += 1
+            if writes or not ordered('BEGIN REPEATABLE READ', 'ROLLBACK', 'Retry whole transaction'):
+                errors.append('serialization retry must abandon the whole failed transaction')
+            continue
+        if len(responses) != 1:
+            errors.append('each terminal register trace needs exactly one HTTP outcome')
+            continue
+        code = int(responses[0].split('HTTP ')[1].split()[0]);outcomes.append(code)
+        begun = any('BEGIN' in e for e in trace)
+        if code == 201:
+            if not ordered('BEGIN REPEATABLE READ', 'Capture UTC now', expected[0], expected[1], expected[2],
+                           'applicableConsents =', 'Validate submitted ids/versions', expected[4],
+                           'userId = returned user_id', expected[5], expected[6], 'COMMIT', 'HTTP 201'):
+                errors.append('success must validate one snapshot, map new user id and atomically commit required children')
+            if 'data.userId = userId' not in responses[0]:
+                errors.append('success returns the newly created userId')
+            if any('ROLLBACK' in e for e in trace):
+                errors.append('success cannot roll back')
+        elif begun:
+            if not ordered('BEGIN REPEATABLE READ', 'ROLLBACK', f'HTTP {code}') or any('COMMIT' in e for e in trace):
+                errors.append('transaction failure must rollback before responding, with no commit')
+            if writes:
+                errors.append('normal validation failure must precede every write')
+        elif code != 400 or any(e.startswith('infra -> ') for e in trace):
+            errors.append('only malformed input may respond without a transaction; it must execute no SQL')
+    from collections import Counter
+    if Counter(outcomes) != Counter({201:16,400:5,404:3,409:2,408:1,500:1}) or retries != 1:
+        errors.append(f'expected complete terminal/optional paths and one retry; got {dict(Counter(outcomes))}, retry={retries}')
+    if '--rendered-svg' in sys.argv:
+        import xml.etree.ElementTree as ET
+        try:
+            root = ET.parse(Path(sys.argv[sys.argv.index('--rendered-svg')+1])).getroot()
+            expected_lines = Counter(' '.join(l.split()) for _,_,s in operations for l in s.splitlines() if l.strip())
+            visible = Counter(' '.join(''.join(e.itertext()).split()) for e in root.iter() if e.tag.endswith('}text'))
+            missing = expected_lines-visible
+            if missing:
+                errors.append(f'rendered register SQL missing {sum(missing.values())} lines: {dict(missing)}')
+            else:
+                print(f'OK: rendered register SQL ({sum(expected_lines.values())}/{sum(expected_lines.values())} visible lines)')
+        except (IndexError,OSError,ET.ParseError) as exc:
+            errors.append(f'cannot verify rendered register SVG: {exc}')
+    if errors:
+        return fail('; '.join(errors))
+    print(f'OK: register-flow ({len(outcomes)} terminal traces, whole-transaction retry, current consent coverage and atomic writes)')
+    return 0
+
+
+COMMANDS['register-flow'] = check_register_flow
 def check_consent_submit_flow() -> int:
     """Check read/answer/no-op transitions, revocation serialization and atomic batch outcomes."""
     path = 'e-commerce/doc/api/consent/04-submit-consent/spec.md'
