@@ -418,7 +418,7 @@ Owner Q15 supersedes the earlier one-open-PR lifecycle: keep completed PRs open,
 - [x] Correct register validation, required consent coverage, optional writes and atomic transaction in spec.md and complete sequence.wsd.
 - [x] Add register-flow invariants and mutation-test old failures, branching and rendered SQL.
 - [x] Execute exact SQL against temporary PostgreSQL, render and inspect SVG/PNG, then run all documentation checks, audit, database tests and delivery preflight.
-- [ ] Deliver one-register-API PR with commit-and-pr; release editing lock and continue from main under Q15.
+- [x] Deliver one-register-API PR with commit-and-pr; release editing lock and continue from main under Q15.
 
 Register verification: the original pair fails register-flow; the revised pair has ten identical SQL operations, 28 terminal traces (including optional-child combinations) and a whole-transaction retry path. Mutation testing caught 53/53 faults, including an actual SVG with a dropped quoted value. PlantUML syntax passes with 14 participants; SVG/PNG were rendered and visually inspected, with 123/123 SQL lines visible. Temporary PostgreSQL executed the exact queries/inserts and verified active/effective/type filtering, required-current coverage predicates, read-only evidence, omitted children, complete rollback on final-child failure, repeatable policy snapshots across two connections and one winning concurrent identifier insert (23505 for the loser). These checks validate the design/SQL, not backend conformance. All 40 current documentation commands pass and the audit reports 53 tables / 0 findings.
 
@@ -435,7 +435,7 @@ Status: Register delivered in PR #32 (six files; MERGEABLE when opened), branch/
 - [x] Correct the spec and complete sequence with user-first serialization, fresh token check, current/active-type validation, deterministic existing evidence and atomic batch branches.
 - [x] Add focused consent-submit-flow checks, reject the original pair and mutation-test guards/results/rendered SQL.
 - [x] Verify exact SQL/no-op/rollback/concurrency in temporary PostgreSQL, render/inspect the sequence and pass all current checks/audit/database tests.
-- [ ] Open one API PR through commit-and-pr, preserve its review record and continue from main under Q15.
+- [x] Open one API PR through commit-and-pr, preserve its review record and continue from main under Q15.
 
 Submit verification: original pair rejected; six exact SQL operations, twelve terminal traces with distinct insert/update/no-op and aborted-update failure. The shared path parser now terminates an explicit PlantUML break, preventing failed updates from falling through to COMMIT/200; mutation coverage includes disabling that termination. All 52/52 deliberate faults are caught, including a real rendered SQL omission. PlantUML syntax reports ten participants; SVG/PNG generated and inspected, 75/75 visible SQL lines. Exact SQL in temporary PostgreSQL proves policy/type filtering, first-read preservation, no-op audit preservation, explicit false, legacy NULL timestamp and deterministic duplicates, ownership/old-version history, whole-batch rollback, two-call serialization to one evidence row, and fresh token revocation visibility after a lock wait. No backend implementation is claimed.
 
@@ -450,7 +450,7 @@ Status: Submit consent delivered as PR #34 (six files, MERGEABLE when opened); i
 - [x] Correct spec and full sequence with credential/user checks, required/optional predicate, active type visibility, stable history/name mapping and empty success.
 - [x] Add pending-consent-flow checks; reject the original pair and mutation-test SQL, outcome and rendered-text guards.
 - [x] Execute the documented SQL against adversarial PostgreSQL fixtures and snapshot races; render/inspect SVG/PNG and pass all current docs/audit/database/delivery checks.
-- [ ] Open one pending-consent API PR with commit-and-pr, preserve its review record and continue from main under Q15.
+- [x] Open one pending-consent API PR with commit-and-pr, preserve its review record and continue from main under Q15.
 
 Pending verification: original pair rejected; four identical SELECT operations and seven terminal traces. Mutation testing initially caught 42/43 because the canonical-order phrase could be found in the unrelated latest-history paragraph; scoping the guard to its canonical paragraph yields 43/43. Five synchronized spec/sequence faults (required acceptance, NULL default, active type, canonical order and projection alias) pass SQL parity but are rejected by the semantic checker. A genuine rendered omission is rejected independently with the correct source unchanged. Final SVG/PNG were generated and inspected; PlantUML reports ten participants and 60/60 visible SQL lines. Temporary PostgreSQL executed the exact queries against every required/optional read/result state, different user/version/status, duplicate canonical rows, type/time boundaries, complete response projection, latest evidence/null mapping and credential failures. Two connections prove policy/history/type-name enrichment remains coherent in one snapshot while the next inquiry sees changed policy; read-only mode rejects evidence writes. No backend conformity is claimed.
 
@@ -464,7 +464,7 @@ Status: Pending consent delivered in PR #35 (five files; MERGEABLE when opened);
 - [x] Correct spec and full sequence for public visible consents, mandatory type-name mapping, consistent snapshot, stable order and explicit empty/error outcomes.
 - [x] Add active-consent-flow checks, reject the original pair, and mutation-test source and synchronized semantic faults.
 - [x] Execute exact SQL including time/type boundaries and a concurrent type/name change; render/inspect SVG/PNG and run all current docs/audit/database/delivery checks.
-- [ ] Open one active-consent API PR with commit-and-pr, preserve its review record and continue from main under Q15.
+- [x] Open one active-consent API PR with commit-and-pr, preserve its review record and continue from main under Q15.
 
 Active-consent verification: two identical SELECT operations and five terminal traces. Original pair rejected; mutations caught 30/30. Three additional synchronized spec/sequence faults (active type, stable order and response alias) pass source parity but fail semantic checks; a genuine rendered omission is rejected with correct source unchanged. PlantUML reports eight participants, SVG/PNG generated and inspected, 29/29 visible SQL lines. Temporary PostgreSQL executed the exact queries against all non-ACTIVE type/consent states, future/expired/exact boundaries, stable id ties, required/optional projection, full eleven-field mapping, nulls/body/version preservation and empty typed arrays. Two connections prove the mandatory original type name remains coherent in the snapshot and the next request hides the disabled type. Read-only mode rejects writes; inquiry creates no user evidence. Backend conformity is not claimed.
 
@@ -479,7 +479,7 @@ Status: Active consent delivered in PR #36 (four files; MERGEABLE when opened), 
 - [x] Generate the empty sequence using the ready skeleton tool, then finish every real branch, SQL, mapping and outcome; leave no author TODO marker.
 - [x] Update only the obsolete me-specific author checks, add token-snapshot flow checks, and prove old/synchronized faults fail.
 - [x] Verify exact credential SQL and token-snapshot semantics, mutation coverage, rendered SQL/visuals and all current delivery checks.
-- [ ] Open one author/me PR with commit-and-pr, preserve its review record and continue from main under Q15.
+- [x] Open one author/me PR with commit-and-pr, preserve its review record and continue from main under Q15.
 
 Me verification: replaced the obsolete live-role query with one exact credential/user SELECT; roles/admin come from the calling verified token. Generated the previously empty sequence with the ready skeleton tool and completed every TODO/branch/mapping; the global check now reports author 1/12 filled, not the whole group complete. The finished sequence has eight terminal traces and seven participants; SVG/PNG were generated and inspected with 13/13 visible SQL lines. Original pair rejected; mutations caught 31/31, and three synchronized ownership/user-status/live-assignment faults pass SQL parity but fail semantic guards. A real renderer omission is also rejected with correct source unchanged. Temporary PostgreSQL executed the exact credential SQL alongside ephemeral locally signed JWT reference fixtures: old roles survive assignment revocation, new empty snapshot reports false, independent admin flags are ignored, sorting/response shape remain correct, malformed/duplicate roles and tampering fail before lookup, and wrong owner/expiry/inactive user/revoked or unstored token are rejected. This is reference/design and SQL verification, not backend conformance.
 
@@ -527,6 +527,26 @@ Verification: see the PR. No spec, diagram or other checker is changed.
 
 Lesson for the team: a merge that keeps a file parseable can still drop the end of a function; after resolving a conflict in `check_docs.py`, run `python3 -c "import ast"` on it and run every sub-command, not only the one that was edited.
 
+
+## e-commerce: Peter API review — logout (API 8)
+
+Status: Author/me delivered as PR #37 (four files; MERGEABLE when opened), branch/history preserved. Clean main-based logout assignment passed baselines under Q15. Q13 keeps immediate credential revocation; WP4 U9/U23 requires the user lock and atomic closure of every token in the caller's session. Management-consent Q18/Q19 remains pending; independent authorized work continues.
+
+- [x] Preserve PR #37/history and prepare logout from main without waiting for merge. The first prepare label exceeded the helper's 240-character formatting limit; shorten only that label, retaining scope/requirements/authority, then prepare successfully.
+- [x] Read logout spec/sequence and relevant transaction, full-session revocation and lock-order lessons; reproduce the sequence's access-token UPDATE before user lock.
+- [x] Correct spec with user-first lock, fresh post-lock token/session/expiry validation, server-derived ids, complete atomic revocation and error/retry semantics.
+- [x] Regenerate then finish sequence with actual execution order, every SQL request/result and success/invalid/revoked/rollback/timeout paths; remove its legacy exemption only when the new standard passes.
+- [x] Add logout-flow checks, reject original/synchronized faults and mutation-test ordering, scope, transaction and rendered SQL.
+- [ ] Execute exact SQL for session-wide closure, rollback, concurrent refresh/logout and expiry/revocation while waiting; render/inspect SVG/PNG and pass all current delivery checks.
+- [ ] Open one logout PR through commit-and-pr, preserve its review record and continue from main under Q15.
+
+Logout verification: four identical SQL operations in user-lock -> fresh session -> access closure -> refresh closure order; eight terminal paths. Regenerated via the ready skeleton tool, completed all markers/branches/mappings and removed the now-complete legacy exemption. Original pair rejected; mutations caught 36/36 (durable temporary log retained). Four additional synchronized faults, including moving the complete access UPDATE before the user lock while preserving SQL parity/participant first use, are rejected by logout-flow. Real rendered omission rejected independently; final PlantUML has nine participants, inspected SVG/PNG and 29/29 visible SQL lines. Temporary PostgreSQL executed exact logout and refresh credential statements: full closure includes older/expired ACTIVE access rows, preserves other devices/users even with a shared session id and inactive history, actual mid-transaction error rolls back, zero refresh closure is valid, zero access closure is detected, repeated/concurrent logout sees revocation, both refresh/logout races leave no new usable pair, and post-lock time rejects expiry while waiting. These are design/SQL checks, not backend conformance.
+
+Logout pre-integration preflight passed 41/41 commands, audit 53/0, database ALL PASSED and four authorized paths. Origin/main then advanced through the already merged API reviews and cart/order/webhook diagrams; checker syntax at 4c263c7 was broken by incomplete merged function bodies. Latest main was checked again before integration and now carries the upstream repair. Integrate the latest complete checker, preserve every command/body and rerun the full current checks before delivery.
+
+Logout integration: latest origin/main at 929012e includes upstream checker repair #39 and the now-merged API PRs #32/#34/#35/#36/#37. Preserve their complete functions/registrations plus upstream cart/order/webhook and backend guide changes; the working-tree task diff against origin/main is still only the four authorized logout paths. Prior Peter delivery checkboxes are now reconciled to those verified merged PRs. Q18/Q19 remains pending for consent management; no detailed spec approval or backend implementation is inferred from merge.
+
+Logout post-integration verification: complete checker parses, all 46 current documentation commands pass, audit 53 tables / 0 findings, database ALL PASSED, logout mutations remain 36/36 and the unchanged spec/sequence still have 29/29 visible SQL lines. Manual diff against current origin/main is exactly the four authorized logout paths; imported main files are base history, not additional APIs in this PR.
 ## repository-wide: Make the skeleton test read finished diagrams like the checker
 
 Status: Complete in the branch, waiting for review. Assignment: agent `tommy`, delivery `open-pr`, authorized by `josh`, workspace `.workspace/tommy`, branch `test/tommy-sequence-skeleton-order-free`, scopes `.agents/skills/api-contract-design/scripts` and `tasks`.
