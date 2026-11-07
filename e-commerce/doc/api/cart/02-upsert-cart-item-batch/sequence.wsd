@@ -45,20 +45,22 @@ user -> page: Submit the cart lines
 activate page
     page -> api: POST v1/cart/item/upsert/batch
     activate api
-        api -> api: Verify the access token; the userId is the user of the token
-        alt Invalid or expired access token
-            api -> page: HTTP 401 E10002
-            page -> user: Ask the user to sign in again
-        else Valid access token
-            api -> app: [**UpsertCartItemBatchCommandHandler**] Process request
-            activate app
-                app -> app: Create request context; generate requestId when omitted
-                app -> app: Validate headers and body: 1 to 100 items, no duplicated id, no duplicated shopProductSkuId among items without id, every item as in the single upsert
-                alt Invalid input
-                    app -> api: HTTP 400 E10001 items[i]: the first invalid item or the item count
-                    api -> page: Bad request
-                    page -> user: Display validation error
-                else Valid input
+        api -> app: [**UpsertCartItemBatchCommandHandler**] Process request
+        activate app
+            app -> app: Create request context; generate requestId when omitted
+            app -> app: Validate headers and body: 1 to 100 items, no duplicated id, no duplicated shopProductSkuId among items without id, every item as in the single upsert
+            alt Invalid input
+                app -> api: HTTP 400 E10001 items[i]: the first invalid item or the item count
+                api -> page: Bad request
+                page -> user: Display validation error
+            else Valid input
+                app -> app: Verify JWT signature, issuer, audience, exp and UUID sub
+                alt Missing, malformed or invalid JWT
+                    app -> api: HTTP 401 E10002 Invalid or expired access token.
+                    api -> page: Authentication error
+                    page -> user: Ask the user to sign in again
+                else Verified JWT
+                    app -> app: userId = verified sub
                     app -> infra: BEGIN READ COMMITTED
                     activate infra
                     alt Work completes before commit
@@ -251,8 +253,8 @@ activate page
                     end
                     deactivate infra
                 end
-            deactivate app
-        end
+            end
+        deactivate app
     deactivate api
 deactivate page
 

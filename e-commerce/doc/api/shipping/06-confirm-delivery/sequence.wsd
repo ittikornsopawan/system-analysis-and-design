@@ -1,0 +1,437 @@
+@startuml ConfirmDelivery Sequence
+
+title Confirm Delivery API Sequence
+
+' Leading SQL apostrophes use &#39; so PlantUML preserves literals; parity compares decoded SQL.
+
+' Visual style
+skinparam defaultFontName "Sarabun"
+skinparam defaultFontSize 14
+skinparam backgroundColor #FFFFFF
+skinparam shadowing false
+skinparam roundcorner 10
+skinparam sequence {
+    ArrowColor #475569
+    ArrowFontColor #334155
+    LifeLineBorderColor #CBD5E1
+    LifeLineBackgroundColor #F8FAFC
+    ParticipantBorderColor #94A3B8
+    ParticipantBackgroundColor #F1F5F9
+    ParticipantFontColor #0F172A
+    GroupBorderColor #94A3B8
+    GroupBackgroundColor #F8FAFC
+    GroupFontColor #334155
+}
+
+' Do not show participant footers at the bottom of the diagram
+hide footbox
+
+actor "User" as user
+box "Frontend" #F8FAFC
+    participant "Confirm Delivery Page" as page
+end box
+box "Web API" #F8FAFC
+    participant "API" as api
+    participant "Application" as app
+    participant "Domain" as domain
+    participant "Infrastructure" as infra
+end box
+box "Database" #F8FAFC
+    database "t_shipping" as t_shipping
+    database "t_order" as t_order
+    database "t_order_item" as t_order_item
+end box
+
+user -> page: Confirm that the parcel was received
+activate page
+    page -> api: POST v1/shipping/confirm
+    activate api
+        api -> app: [**ConfirmDeliveryCommandHandler**] Process request
+        activate app
+            app -> app: Create request context; generate requestId when omitted
+            app -> app: Validate headers and body: shippingId is a required UUID
+            alt Invalid input
+                app -> api: HTTP 400 E10001
+                api -> page: Bad request
+                page -> user: Display validation error
+            else Valid input
+                app -> app: Verify JWT signature, issuer, audience, exp and UUID sub
+                alt Missing, malformed or invalid JWT
+                    app -> api: HTTP 401 E10002 Invalid or expired access token.
+                    api -> page: Authentication error
+                    page -> user: Ask the user to sign in again
+                else Verified JWT
+                    app -> app: userId = verified sub
+                    app -> infra: BEGIN READ COMMITTED
+                    activate infra
+                    alt Work completes before commit
+                        app -> infra: QUERY - Get the shipping of the user
+                        infra -> t_shipping: QUERY - Get the shipping of the user
+                        activate t_shipping
+                            note right of t_shipping
+                                SELECT
+                                    s.id as shipping_id,
+                                    s.order_id,
+                                    s.status
+                                FROM shipping.t_shipping s
+                                INNER JOIN sales.t_order o
+                                    ON o.id = s.order_id
+                                WHERE s.id = '<sequence.shippingId>'
+                                AND o.user_id = '<sequence.userId>'
+                                AND s.row_status <> 'DELETED' -- a shipping of another user counts as not found
+                            end note
+                            t_shipping -> infra: Return query result
+                        deactivate t_shipping
+                        infra -> app: Return the shipping and its order_id or no row (read without a lock only to find the order)
+                        alt Shipping not found for this user (another user's shipping or no shipping)
+                            app -> infra: ROLLBACK
+                            app -> api: HTTP 404 E10004 Shipping not found.
+                            api -> page: Not found
+                            page -> user: Display the shipping is not found
+                        else Shipping found
+                            app -> infra: QUERY - Lock the order
+                            infra -> t_order: QUERY - Lock the order
+                            activate t_order
+                                note right of t_order
+                                    SELECT
+                                        o.id as order_id,
+                                        o.code,
+                                        o.shop_id,
+                                        o.user_id,
+                                        o.status
+                                    FROM sales.t_order o
+                                    WHERE o.id = '<sequence.orderId>'
+                                    AND o.row_status <> 'DELETED'
+                                    FOR UPDATE -- the order row is locked first in every write of the shipping and payment APIs, so they never wait for each other in a circle
+                                end note
+                                t_order -> infra: Return query result
+                            deactivate t_order
+                            infra -> app: Return the locked order
+                            alt The shipping is not SHIPPED (PENDING, DELIVERED, CANCELLED or RETURNED)
+                                app -> infra: ROLLBACK
+                                app -> api: HTTP 409 E10006 Only a shipping that is SHIPPED can be confirmed, the shipping is <status>.
+                                api -> page: Conflict
+                                page -> user: Display the shipping cannot be confirmed
+                            else The shipping is SHIPPED
+                                app -> infra: UPDATE - Confirm the delivery
+                                infra -> t_shipping: UPDATE - Confirm the delivery
+                                activate t_shipping
+                                    note right of t_shipping
+                                        UPDATE shipping.t_shipping
+                                        SET
+                                            updated_by = '<sequence.userId>',
+                                            updated_at = NOW() AT TIME ZONE 'UTC',
+                                            status = 'DELIVERED',
+                                            delivered_at = NOW() AT TIME ZONE 'UTC'
+                                        WHERE id = '<sequence.shippingId>'
+                                        AND status = 'SHIPPED' -- no row changed means the status changed in the meantime, answer 409 (E10006)
+                                        RETURNING id as shipping_id, status, delivered_at
+                                    end note
+                                    t_shipping -> infra: Return updated result
+                                deactivate t_shipping
+                                infra -> app: Return the delivered shipping or no row
+                                alt No row changed: the status changed in the meantime
+                                    app -> infra: ROLLBACK
+                                    app -> api: HTTP 409 E10006 Only a shipping that is SHIPPED can be confirmed.
+                                    api -> page: Conflict
+                                    page -> user: Display the shipping cannot be confirmed
+                                else Shipping is DELIVERED
+                                    app -> infra: QUERY - Get the delivered quantity of every item
+                                    infra -> t_order_item: QUERY - Get the delivered quantity of every item
+                                    activate t_order_item
+                                        note right of t_order_item
+                                            SELECT
+                                                oi.id as order_item_id,
+                                                oi.quantity as ordered_quantity,
+                                                COALESCE(SUM(si.quantity), 0) as delivered_quantity -- the order is complete when every row has delivered_quantity = ordered_quantity
+                                            FROM sales.t_order_item oi
+                                            LEFT JOIN shipping.t_shipping_item si
+                                                ON si.order_item_id = oi.id
+                                                AND si.row_status <> 'DELETED'
+                                                AND si.shipping_id IN (
+                                                    SELECT s.id
+                                                    FROM shipping.t_shipping s
+                                                    WHERE s.order_id = '<sequence.orderId>'
+                                                    AND s.row_status <> 'DELETED'
+                                                    AND s.status = 'DELIVERED'
+                                                )
+                                            WHERE oi.order_id = '<sequence.orderId>'
+                                            AND oi.row_status <> 'DELETED'
+                                            GROUP BY oi.id, oi.quantity
+                                        end note
+                                        t_order_item -> infra: Return query result
+                                    deactivate t_order_item
+                                    infra -> app: Return the ordered and the delivered quantity of every item
+                                    app -> domain: The order is completed when it is PROCESSING and every item is delivered in full
+                                    activate domain
+                                    domain -> app: Return whether the order completes
+                                    deactivate domain
+                                    alt The order is PROCESSING and every item is delivered in full
+                                        app -> infra: UPDATE - Complete the order
+                                        infra -> t_order: UPDATE - Complete the order
+                                        activate t_order
+                                            note right of t_order
+                                                UPDATE sales.t_order
+                                                SET
+                                                    updated_by = '<sequence.userId>',
+                                                    updated_at = NOW() AT TIME ZONE 'UTC',
+                                                    status = 'COMPLETED'
+                                                WHERE id = '<sequence.orderId>'
+                                                AND status = 'PROCESSING' -- only when every item is delivered in full
+                                                RETURNING id as order_id, status
+                                            end note
+                                            t_order -> infra: Return updated result
+                                        deactivate t_order
+                                        infra -> app: Return the completed order
+                                        app -> infra: COMMIT
+                                        app -> api: HTTP 200 S10000 Confirm Delivery Success: orderStatus COMPLETED
+                                        api -> page: Return the delivered shipping and the order status
+                                        page -> user: Display the delivery confirmed and the order completed
+                                    else Some goods are not delivered yet
+                                        app -> infra: COMMIT
+                                        app -> api: HTTP 200 S10000 Confirm Delivery Success: orderStatus PROCESSING
+                                        api -> page: Return the delivered shipping and the order status
+                                        page -> user: Display the delivery confirmed
+                                    end
+                                end
+                            end
+                        end
+                    else Timeout before COMMIT
+                        note over app, infra
+                            A timeout can interrupt any preceding SQL or domain step.
+                            No success response is sent without a successful COMMIT.
+                        end note
+                        app -> infra: ROLLBACK
+                        app -> api: HTTP 408 E90001
+                        api -> page: Request timeout
+                        page -> user: Retry if needed
+                    else Unexpected failure before COMMIT
+                        app -> infra: ROLLBACK
+                        app -> api: HTTP 500 generic error; no new bizCode
+                        api -> page: Internal server error
+                        page -> user: Display generic failure
+                    end
+                    deactivate infra
+                end
+            end
+        deactivate app
+    deactivate api
+deactivate page
+
+== Automatic completion job (caller: system scheduler, not an endpoint) ==
+app -> app: The scheduler starts the job (completion_days is 7; the size of a batch and the interval are configs)
+app -> infra: QUERY - Get the orders with an old SHIPPED parcel
+infra -> t_shipping: QUERY - Get the orders with an old SHIPPED parcel
+activate t_shipping
+    note right of t_shipping
+        SELECT
+            o.id as order_id
+        FROM sales.t_order o
+        WHERE o.status = 'PROCESSING'
+        AND o.row_status <> 'DELETED'
+        AND EXISTS (
+            SELECT 1
+            FROM shipping.t_shipping s
+            WHERE s.order_id = o.id
+            AND s.status = 'SHIPPED'
+            AND s.row_status <> 'DELETED'
+            AND s.shipped_at <= NOW() AT TIME ZONE 'UTC' - INTERVAL '<sequence.completionDays> days' -- uses the index ix_t_shipping_shipped_at
+        ) -- a SHIPPED shipping is old enough
+        AND NOT EXISTS (
+            SELECT 1
+            FROM shipping.t_shipping s
+            WHERE s.order_id = o.id
+            AND s.row_status <> 'DELETED'
+            AND s.status = 'PENDING'
+        ) -- no shipping is still being prepared
+        AND NOT EXISTS (
+            SELECT 1
+            FROM shipping.t_shipping s
+            WHERE s.order_id = o.id
+            AND s.row_status <> 'DELETED'
+            AND s.status = 'SHIPPED'
+            AND s.shipped_at > NOW() AT TIME ZONE 'UTC' - INTERVAL '<sequence.completionDays> days'
+        ) -- no SHIPPED shipping is younger than completion_days days
+        AND NOT EXISTS (
+            SELECT 1
+            FROM sales.t_order_item oi
+            WHERE oi.order_id = o.id
+            AND oi.row_status <> 'DELETED'
+            AND oi.quantity <> (
+                SELECT COALESCE(SUM(si.quantity), 0)
+                FROM shipping.t_shipping_item si
+                INNER JOIN shipping.t_shipping s2
+                    ON s2.id = si.shipping_id
+                WHERE si.order_item_id = oi.id
+                AND si.row_status <> 'DELETED'
+                AND s2.row_status <> 'DELETED'
+                AND s2.status IN ('SHIPPED', 'DELIVERED')
+            )
+        ) -- every item is allocated in full, an order that can never qualify must not use a place of the batch
+        ORDER BY o.id
+        LIMIT <sequence.batchSize>
+    end note
+    t_shipping -> infra: Return query result
+deactivate t_shipping
+infra -> app: Return the order ids in order_id order, at most one batch (read without a lock)
+alt No order has an old SHIPPED parcel
+    app -> app: Nothing to do until the next run
+else Orders found
+    loop For every order of the batch in order_id order, one transaction each
+        app -> infra: BEGIN READ COMMITTED
+        activate infra
+        alt Work completes before commit
+            app -> infra: QUERY - Lock the order
+            infra -> t_order: QUERY - Lock the order
+            activate t_order
+                note right of t_order
+                    SELECT
+                        o.id as order_id,
+                        o.code,
+                        o.shop_id,
+                        o.user_id,
+                        o.status
+                    FROM sales.t_order o
+                    WHERE o.id = '<sequence.orderId>'
+                    AND o.row_status <> 'DELETED'
+                    FOR UPDATE -- the order row is locked first in every write of the shipping and payment APIs, so they never wait for each other in a circle
+                end note
+                t_order -> infra: Return query result
+            deactivate t_order
+            infra -> app: Return the locked order
+            app -> infra: QUERY - Check that the order qualifies
+            infra -> t_order: QUERY - Check that the order qualifies
+            activate t_order
+                note right of t_order
+                    SELECT
+                        o.id as order_id
+                    FROM sales.t_order o
+                    WHERE o.id = '<sequence.orderId>'
+                    AND o.status = 'PROCESSING'
+                    AND o.row_status <> 'DELETED'
+                    AND NOT EXISTS (
+                        SELECT 1
+                        FROM shipping.t_shipping s
+                        WHERE s.order_id = o.id
+                        AND s.row_status <> 'DELETED'
+                        AND s.status = 'PENDING'
+                    ) -- no shipping is still being prepared
+                    AND EXISTS (
+                        SELECT 1
+                        FROM shipping.t_shipping s
+                        WHERE s.order_id = o.id
+                        AND s.row_status <> 'DELETED'
+                        AND s.status = 'SHIPPED'
+                    ) -- a shipping waits for the confirmation
+                    AND NOT EXISTS (
+                        SELECT 1
+                        FROM shipping.t_shipping s
+                        WHERE s.order_id = o.id
+                        AND s.row_status <> 'DELETED'
+                        AND s.status = 'SHIPPED'
+                        AND s.shipped_at > NOW() AT TIME ZONE 'UTC' - INTERVAL '<sequence.completionDays> days'
+                    ) -- every SHIPPED shipping is at least completion_days days old
+                    AND NOT EXISTS (
+                        SELECT 1
+                        FROM sales.t_order_item oi
+                        WHERE oi.order_id = o.id
+                        AND oi.row_status <> 'DELETED'
+                        AND oi.quantity <> (
+                            SELECT COALESCE(SUM(si.quantity), 0)
+                            FROM shipping.t_shipping_item si
+                            INNER JOIN shipping.t_shipping s2
+                                ON s2.id = si.shipping_id
+                            WHERE si.order_item_id = oi.id
+                            AND si.row_status <> 'DELETED'
+                            AND s2.row_status <> 'DELETED'
+                            AND s2.status IN ('SHIPPED', 'DELIVERED')
+                        )
+                    ) -- every item is allocated in full (CANCELLED and RETURNED shippings do not count)
+                end note
+                t_order -> infra: Return query result
+            deactivate t_order
+            infra -> app: Return the order or no row
+            alt The order does not qualify any more
+                app -> infra: ROLLBACK
+                app -> app: Skip the order
+            else The order qualifies: PROCESSING, no PENDING shipping, a SHIPPED shipping, every item allocated, every SHIPPED shipping at least completion_days old
+                app -> infra: UPDATE - Confirm the delivery as the system
+                infra -> t_shipping: UPDATE - Confirm the delivery as the system
+                activate t_shipping
+                    note right of t_shipping
+                        UPDATE shipping.t_shipping
+                        SET
+                            updated_by = 'system',
+                            updated_at = NOW() AT TIME ZONE 'UTC',
+                            status = 'DELIVERED',
+                            delivered_at = NOW() AT TIME ZONE 'UTC'
+                        WHERE order_id = '<sequence.orderId>'
+                        AND row_status <> 'DELETED'
+                        AND status = 'SHIPPED' -- no row changed means the shippings changed in the meantime, skip the order
+                        RETURNING id as shipping_id, status, delivered_at
+                    end note
+                    t_shipping -> infra: Return updated result
+                deactivate t_shipping
+                infra -> app: Return the delivered shippings or no row
+                alt No row changed: the shippings changed in the meantime
+                    app -> infra: ROLLBACK
+                    app -> app: Skip the order
+                else Shippings delivered by the system
+                    app -> infra: QUERY - Get the delivered quantity of every item
+                    infra -> t_order_item: QUERY - Get the delivered quantity of every item
+                    activate t_order_item
+                        note right of t_order_item
+                            SELECT
+                                oi.id as order_item_id,
+                                oi.quantity as ordered_quantity,
+                                COALESCE(SUM(si.quantity), 0) as delivered_quantity -- the order is complete when every row has delivered_quantity = ordered_quantity
+                            FROM sales.t_order_item oi
+                            LEFT JOIN shipping.t_shipping_item si
+                                ON si.order_item_id = oi.id
+                                AND si.row_status <> 'DELETED'
+                                AND si.shipping_id IN (
+                                    SELECT s.id
+                                    FROM shipping.t_shipping s
+                                    WHERE s.order_id = '<sequence.orderId>'
+                                    AND s.row_status <> 'DELETED'
+                                    AND s.status = 'DELIVERED'
+                                )
+                            WHERE oi.order_id = '<sequence.orderId>'
+                            AND oi.row_status <> 'DELETED'
+                            GROUP BY oi.id, oi.quantity
+                        end note
+                        t_order_item -> infra: Return query result
+                    deactivate t_order_item
+                    infra -> app: Return the ordered and the delivered quantity of every item
+                    alt Every item is delivered in full
+                        app -> infra: UPDATE - Complete the order
+                        infra -> t_order: UPDATE - Complete the order
+                        activate t_order
+                            note right of t_order
+                                UPDATE sales.t_order
+                                SET
+                                    updated_by = '<sequence.userId>',
+                                    updated_at = NOW() AT TIME ZONE 'UTC',
+                                    status = 'COMPLETED'
+                                WHERE id = '<sequence.orderId>'
+                                AND status = 'PROCESSING' -- only when every item is delivered in full
+                                RETURNING id as order_id, status
+                            end note
+                            t_order -> infra: Return updated result
+                        deactivate t_order
+                        infra -> app: Return the completed order
+                        app -> infra: COMMIT
+                    else Some goods are not delivered yet
+                        app -> infra: COMMIT
+                    end
+                end
+            end
+        else Failure or timeout before COMMIT
+            app -> infra: ROLLBACK
+            app -> app: Skip the order; the next order continues
+        end
+        deactivate infra
+    end
+end
+
+@enduml

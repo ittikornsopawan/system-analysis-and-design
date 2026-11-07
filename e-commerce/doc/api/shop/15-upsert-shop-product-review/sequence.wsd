@@ -1,0 +1,261 @@
+@startuml UpsertShopProductReview Sequence
+
+title Upsert Shop Product Review API Sequence
+
+' Leading SQL apostrophes use &#39; so PlantUML preserves literals; parity compares decoded SQL.
+
+' Visual style
+skinparam defaultFontName "Sarabun"
+skinparam defaultFontSize 14
+skinparam backgroundColor #FFFFFF
+skinparam shadowing false
+skinparam roundcorner 10
+skinparam sequence {
+    ArrowColor #475569
+    ArrowFontColor #334155
+    LifeLineBorderColor #CBD5E1
+    LifeLineBackgroundColor #F8FAFC
+    ParticipantBorderColor #94A3B8
+    ParticipantBackgroundColor #F1F5F9
+    ParticipantFontColor #0F172A
+    GroupBorderColor #94A3B8
+    GroupBackgroundColor #F8FAFC
+    GroupFontColor #334155
+}
+
+' Do not show participant footers at the bottom of the diagram
+hide footbox
+
+actor "User" as user
+box "Frontend" #F8FAFC
+    participant "Upsert Shop Product Review Page" as page
+end box
+box "Web API" #F8FAFC
+    participant "API" as api
+    participant "Application" as app
+    participant "Domain" as domain
+    participant "Infrastructure" as infra
+end box
+box "Database" #F8FAFC
+    database "t_shop_product" as t_shop_product
+    database "t_shop_product_review" as t_shop_product_review
+    database "t_order" as t_order
+end box
+
+user -> page: Submit the review
+activate page
+    page -> api: POST v1/shop/product-review/upsert
+    activate api
+        api -> app: [**UpsertShopProductReviewCommandHandler**] Process request
+        activate app
+            app -> app: Create request context; generate requestId when omitted
+            app -> app: Validate headers and body: shopId, productId and rating are required, rating is a whole number 1 to 5, comment is at most 2000 characters, rowStatus is ACTIVE or DELETED and not DELETED when inserting
+            alt Invalid input
+                app -> api: HTTP 400 E10001
+                api -> page: Bad request
+                page -> user: Display validation error
+            else Valid input
+                app -> app: Verify JWT signature, issuer, audience, exp and UUID sub
+                alt Missing, malformed or invalid JWT
+                    app -> api: HTTP 401 E10002 Invalid or expired access token.
+                    api -> page: Authentication error
+                    page -> user: Ask the user to sign in again
+                else Verified JWT
+                    app -> app: userId = verified sub
+                    app -> infra: BEGIN READ COMMITTED
+                    activate infra
+                    alt Work completes before commit
+                        app -> infra: QUERY - Get the shop product that has a product page
+                        infra -> t_shop_product: QUERY - Get the shop product that has a product page
+                        activate t_shop_product
+                            note right of t_shop_product
+                                SELECT
+                                    sp.id as shop_product_id
+                                FROM shop.t_shop_product sp
+                                INNER JOIN shop.m_shop s
+                                    ON s.id = sp.shop_id
+                                    AND s.row_status = 'ACTIVE'
+                                INNER JOIN product.m_product p
+                                    ON p.id = sp.product_id
+                                    AND p.row_status = 'ACTIVE'
+                                INNER JOIN shop.t_shop_product_sku ssk
+                                    ON ssk.shop_product_id = sp.id
+                                    AND ssk.row_status = 'ACTIVE'
+                                INNER JOIN product.m_product_sku ps
+                                    ON ps.id = ssk.sku_id
+                                    AND ps.row_status = 'ACTIVE'
+                                WHERE sp.shop_id = '<sequence.shopId>'
+                                AND sp.product_id = '<sequence.productId>'
+                                AND sp.row_status = 'ACTIVE'
+                                LIMIT 1
+                            end note
+                            t_shop_product -> infra: Return query result
+                        deactivate t_shop_product
+                        infra -> app: Return the shop product or no row
+                        alt The product page does not exist for the shop and the product
+                            app -> infra: ROLLBACK
+                            app -> api: HTTP 404 E10005 Product not found.
+                            api -> page: Not found
+                            page -> user: Display the product is not found
+                        else Product page found
+                            alt id is specified (update or delete)
+                                app -> infra: QUERY - Check existing review
+                                infra -> t_shop_product_review: QUERY - Check existing review
+                                activate t_shop_product_review
+                                    note right of t_shop_product_review
+                                        SELECT
+                                            r.id as review_id,
+                                            r.shop_product_id
+                                        FROM shop.t_shop_product_review r
+                                        WHERE r.id = '<sequence.id>'
+                                        AND r.user_id = '<sequence.userId>'
+                                        AND r.row_status = 'ACTIVE' -- a review of another user, a DELETED review and a review that is not ACTIVE count as not found
+                                    end note
+                                    t_shop_product_review -> infra: Return query result
+                                deactivate t_shop_product_review
+                                infra -> app: Return the review of the caller or no row
+                                alt Review not found, not ACTIVE or not the caller's
+                                    app -> infra: ROLLBACK
+                                    app -> api: HTTP 404 E10004 Review not found.
+                                    api -> page: Not found
+                                    page -> user: Display the review is not found
+                                else The review belongs to another shop product than shopId and productId
+                                    app -> infra: ROLLBACK
+                                    app -> api: HTTP 400 E10001 Shop Id and Product Id cannot be changed.
+                                    api -> page: Bad request
+                                    page -> user: Display validation error
+                                else Review found
+                                    app -> infra: UPDATE - Update or delete review
+                                    infra -> t_shop_product_review: UPDATE - Update or delete review
+                                    activate t_shop_product_review
+                                        note right of t_shop_product_review
+                                            UPDATE shop.t_shop_product_review
+                                            SET
+                                                updated_by = '<sequence.updatedBy>',
+                                                updated_at = NOW() AT TIME ZONE 'UTC',
+                                                row_status = '<sequence.rowStatus>',
+                                                rating = '<sequence.rating>',
+                                                comment = '<sequence.comment>' -- null when the comment is empty or not specified
+                                            WHERE id = '<sequence.id>'
+                                            AND user_id = '<sequence.userId>'
+                                            AND row_status = 'ACTIVE'
+                                            RETURNING id as review_id
+                                        end note
+                                        t_shop_product_review -> infra: Return updated result
+                                    deactivate t_shop_product_review
+                                    infra -> app: Return the changed review
+                                    alt rowStatus = DELETED (delete)
+                                        app -> infra: COMMIT
+                                        app -> api: HTTP 204 No Content; no response body
+                                        api -> page: No content
+                                        page -> user: Display the review removed
+                                    else rowStatus = ACTIVE (update)
+                                        app -> infra: COMMIT
+                                        app -> api: HTTP 200 S10000 Update Shop Product Review Success
+                                        api -> page: Return committed result
+                                        page -> user: Display success result
+                                    end
+                                end
+                            else id is not specified (insert)
+                                app -> infra: QUERY - Check that the caller has bought the product
+                                infra -> t_order: QUERY - Check that the caller has bought the product
+                                activate t_order
+                                    note right of t_order
+                                        SELECT
+                                            o.id as order_id
+                                        FROM sales.t_order o
+                                        INNER JOIN sales.t_order_item oi
+                                            ON oi.order_id = o.id
+                                            AND oi.shop_id = '<sequence.shopId>'
+                                            AND oi.product_id = '<sequence.productId>'
+                                            AND oi.row_status <> 'DELETED'
+                                        WHERE o.user_id = '<sequence.userId>' -- only when a review is inserted
+                                        AND o.status = 'COMPLETED'
+                                        AND o.row_status <> 'DELETED'
+                                        LIMIT 1
+                                    end note
+                                    t_order -> infra: Return query result
+                                deactivate t_order
+                                infra -> app: Return a COMPLETED order of the caller with an item of this shop and product, or no row
+                                alt The caller has no COMPLETED order with an item of this shop and product
+                                    app -> infra: ROLLBACK
+                                    app -> api: HTTP 403 E10009 You can review only a product that you have bought.
+                                    api -> page: Forbidden
+                                    page -> user: Display the buyer rule
+                                else The caller is a buyer
+                                    app -> infra: QUERY - Check duplicate review
+                                    infra -> t_shop_product_review: QUERY - Check duplicate review
+                                    activate t_shop_product_review
+                                        note right of t_shop_product_review
+                                            SELECT
+                                                r.id as review_id
+                                            FROM shop.t_shop_product_review r
+                                            WHERE r.shop_product_id = '<sequence.shopProductId>'
+                                            AND r.user_id = '<sequence.userId>'
+                                            AND r.row_status <> 'DELETED'
+                                        end note
+                                        t_shop_product_review -> infra: Return query result
+                                    deactivate t_shop_product_review
+                                    infra -> app: Return the review of the caller for this shop product or no row
+                                    alt The caller already has a review that is not DELETED
+                                        app -> infra: ROLLBACK
+                                        app -> api: HTTP 409 E10003 You have already reviewed this product.
+                                        api -> page: Conflict
+                                        page -> user: Display the review exists
+                                    else No review yet
+                                        app -> infra: INSERT - Create review
+                                        infra -> t_shop_product_review: INSERT - Create review
+                                        activate t_shop_product_review
+                                            note right of t_shop_product_review
+                                                INSERT INTO shop.t_shop_product_review (
+                                                    created_by,
+                                                    row_status,
+                                                    shop_product_id,
+                                                    user_id,
+                                                    rating,
+                                                    comment
+                                                )
+                                                VALUES (
+                                                    &#39;<sequence.createdBy>',
+                                                    &#39;<sequence.rowStatus>',
+                                                    &#39;<sequence.shopProductId>',
+                                                    &#39;<sequence.userId>',
+                                                    &#39;<sequence.rating>',
+                                                    &#39;<sequence.comment>' -- null when the comment is empty
+                                                )
+                                                RETURNING id as review_id
+                                            end note
+                                            t_shop_product_review -> infra: Return inserted result
+                                        deactivate t_shop_product_review
+                                        infra -> app: Return the new review
+                                        app -> infra: COMMIT
+                                        app -> api: HTTP 201 S10000 Insert Shop Product Review Success
+                                        api -> page: Return committed result
+                                        page -> user: Display success result
+                                    end
+                                end
+                            end
+                        end
+                    else Timeout before COMMIT
+                        note over app, infra
+                            A timeout can interrupt any preceding SQL or domain step.
+                            No success response is sent without a successful COMMIT.
+                        end note
+                        app -> infra: ROLLBACK
+                        app -> api: HTTP 408 E90001
+                        api -> page: Request timeout
+                        page -> user: Retry if needed
+                    else Unexpected failure before COMMIT
+                        app -> infra: ROLLBACK
+                        app -> api: HTTP 500 generic error; no new bizCode
+                        api -> page: Internal server error
+                        page -> user: Display generic failure
+                    end
+                    deactivate infra
+                end
+            end
+        deactivate app
+    deactivate api
+deactivate page
+
+@enduml
