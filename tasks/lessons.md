@@ -249,3 +249,15 @@ description: Repository-wide and project-specific lessons captured from user cor
 - **Correction**: The owner rejected inferring reading only from an explicit boolean result. Displaying triggers the submission endpoint without result; answering adds result later.
 - **Root cause**: Read state was inferred from answering rather than the owner's display event.
 - **Corrected behavior**: Record a supplied displayed version as read independently of result; preserve any answer on read-only calls and preserve the original read timestamp once read. Already-read read-only calls need no UPDATE. Review register, submit and pending together; each remains its own PR.
+
+### 2026-11-07 — Give each requested diagram a distinct analytical purpose
+
+- **Correction**: The owner found the three delivered architecture diagrams too shallow and too similar, and requested research before revising all three with diagram-design.
+- **Root cause**: A single compact Architecture grammar and similar component cards were reused for code structure, runtime flow, and commerce capabilities; the nine-node budget became a reason to omit useful detail instead of selecting the right view and canvas.
+- **Corrected behavior**: Research the purpose of each view first, define a distinct question and visual grammar per deliverable, and include concrete project paths, responsibilities, interfaces, interactions, guards, and transaction effects as appropriate. Use evidence-based detail and a larger readable frame where needed. Review the three renders together for both semantic separation and detail before claiming completion.
+
+### 2026-11-07 — Refresh diagram evidence before delivery
+
+- **Finding**: The diagram branch retained the earlier shipping rule without automatic completion while WP3b had already merged into main.
+- **Root cause**: Local specifications were used without comparing changes on the refreshed PR base before delivery.
+- **Corrected behavior**: Before a diagram PR, compare governing sources against current origin/main, reconcile affected diagrams and explanations, and rerun rendered/source checks; do not ship a known superseded lifecycle rule.

@@ -1,0 +1,272 @@
+@startuml InquiryShopShipping Sequence
+
+title Inquiry Shop Shipping API Sequence
+
+' Leading SQL apostrophes use &#39; so PlantUML preserves literals; parity compares decoded SQL.
+
+' Visual style
+skinparam defaultFontName "Sarabun"
+skinparam defaultFontSize 14
+skinparam backgroundColor #FFFFFF
+skinparam shadowing false
+skinparam roundcorner 10
+skinparam sequence {
+    ArrowColor #475569
+    ArrowFontColor #334155
+    LifeLineBorderColor #CBD5E1
+    LifeLineBackgroundColor #F8FAFC
+    ParticipantBorderColor #94A3B8
+    ParticipantBackgroundColor #F1F5F9
+    ParticipantFontColor #0F172A
+    GroupBorderColor #94A3B8
+    GroupBackgroundColor #F8FAFC
+    GroupFontColor #334155
+}
+
+' Do not show participant footers at the bottom of the diagram
+hide footbox
+
+actor "User" as user
+box "Frontend" #F8FAFC
+    participant "Inquiry Shop Shipping Page" as page
+end box
+box "Web API" #F8FAFC
+    participant "API" as api
+    participant "Application" as app
+    participant "Domain" as domain
+    participant "Infrastructure" as infra
+end box
+box "Database" #F8FAFC
+    database "m_shop" as m_shop
+    database "t_shop_user" as t_shop_user
+    database "m_role" as m_role
+    database "t_user_role" as t_user_role
+    database "t_shipping" as t_shipping
+    database "t_shipping_item" as t_shipping_item
+    database "t_shipping_stop" as t_shipping_stop
+end box
+
+user -> page: Request the shippings of the shop
+activate page
+    page -> api: GET v1/shop/shipping
+    activate api
+        api -> app: [**InquiryShopShippingQueryHandler**] Process request
+        activate app
+            app -> app: Create request context; generate requestId when omitted
+            app -> app: Validate headers and query parameters: shopId is a UUID, pageSize 1 to 100
+            alt Invalid input
+                app -> api: HTTP 400 E10001
+                api -> page: Bad request
+                page -> user: Display validation error
+            else Valid input
+                app -> app: Verify JWT signature, issuer, audience, exp and UUID sub
+                alt Missing, malformed or invalid JWT
+                    app -> api: HTTP 401 E10002 Invalid or expired access token.
+                    api -> page: Authentication error
+                    page -> user: Ask the user to sign in again
+                else Verified JWT
+                    app -> app: userId = verified sub
+                    app -> infra: Execute database operations
+                    activate infra
+                    alt Work completes
+                        app -> infra: QUERY - Check shop
+                        infra -> m_shop: QUERY - Check shop
+                        activate m_shop
+                            note right of m_shop
+                                SELECT
+                                    s.id as shop_id
+                                FROM shop.m_shop s
+                                WHERE s.id = '<sequence.shopId>'
+                                AND s.row_status <> 'DELETED'
+                            end note
+                            m_shop -> infra: Return query result
+                        deactivate m_shop
+                        infra -> app: Return the shop or no row
+                        alt Shop not found or DELETED
+                            app -> api: HTTP 404 E10005 Shop not found.
+                            api -> page: Not found
+                            page -> user: Display the shop is not found
+                        else Shop found
+                            app -> infra: QUERY - Check shop member
+                            infra -> t_shop_user: QUERY - Check shop member
+                            activate t_shop_user
+                                note right of t_shop_user
+                                    SELECT
+                                        su.shop_id
+                                    FROM shop.t_shop_user su
+                                    WHERE su.shop_id = '<sequence.shopId>'
+                                    AND su.user_id = '<sequence.userId>'
+                                    AND su.role IN ('ADMIN', 'STAFF')
+                                    AND su.row_status = 'ACTIVE'
+                                end note
+                                t_shop_user -> infra: Return query result
+                            deactivate t_shop_user
+                            infra -> app: Return the ACTIVE ADMIN or STAFF row of the caller or no row
+                            alt The caller is not an ACTIVE ADMIN or STAFF member of the shop
+                                app -> infra: QUERY - Get the platform administrator role
+                                infra -> m_role: QUERY - Get the platform administrator role
+                                activate m_role
+                                    note right of m_role
+                                        SELECT
+                                            r.id as role_id
+                                        FROM author.m_role r
+                                        WHERE r.name = 'PLATFORM_ADMIN'
+                                        AND r.row_status = 'ACTIVE'
+                                    end note
+                                    m_role -> infra: Return query result
+                                deactivate m_role
+                                infra -> app: Return the role id
+                                app -> infra: QUERY - Check platform administrator
+                                infra -> t_user_role: QUERY - Check platform administrator
+                                activate t_user_role
+                                    note right of t_user_role
+                                        SELECT
+                                            ur.id as user_role_id
+                                        FROM author.t_user_role ur
+                                        WHERE ur.user_id = '<sequence.userId>'
+                                        AND ur.role_id = '<sequence.roleId>'
+                                        AND ur.row_status = 'ACTIVE'
+                                    end note
+                                    t_user_role -> infra: Return query result
+                                deactivate t_user_role
+                                infra -> app: Return the assignment or no row
+                                alt The caller is not a platform administrator
+                                    app -> api: HTTP 403 E10009 Only a member of the shop or a platform administrator can read the shippings of the shop.
+                                    api -> page: Forbidden
+                                    page -> user: Display no permission
+                                end
+                            end
+                            app -> infra: QUERY - Get the shippings of the shop
+                            infra -> t_shipping: QUERY - Get the shippings of the shop
+                            activate t_shipping
+                                note right of t_shipping
+                                    SELECT
+                                        s.id as shipping_id,
+                                        s.order_id,
+                                        o.code as order_code,
+                                        o.status as order_status,
+                                        s.shipping_method,
+                                        s.status,
+                                        s.carrier_name,
+                                        s.tracking_number,
+                                        s.shipped_at,
+                                        s.delivered_at,
+                                        s.created_at,
+                                        o.ship_title,
+                                        o.ship_address,
+                                        o.ship_city,
+                                        o.ship_state,
+                                        o.ship_postal_code,
+                                        o.ship_country
+                                    FROM shipping.t_shipping s
+                                    INNER JOIN sales.t_order o
+                                        ON o.id = s.order_id
+                                    WHERE o.shop_id = '<sequence.shopId>'
+                                    AND s.row_status <> 'DELETED'
+                                    AND s.id = '<sequence.id>' -- only when id is specified
+                                    AND s.order_id = '<sequence.orderId>' -- only when orderId is specified
+                                    AND s.status = '<sequence.status>' -- only when status is specified
+                                    AND (o.code ILIKE '%<sequence.search>%' OR s.tracking_number ILIKE '%<sequence.search>%') -- only when search is specified
+                                    ORDER BY s.created_at DESC, s.id
+                                    LIMIT <sequence.pageSize> OFFSET (<sequence.pageIndex> - 1) * <sequence.pageSize>
+                                end note
+                                t_shipping -> infra: Return query result
+                            deactivate t_shipping
+                            infra -> app: Return the page of shippings of the orders of the shop
+                            app -> infra: QUERY - Count the shippings of the shop
+                            infra -> t_shipping: QUERY - Count the shippings of the shop
+                            activate t_shipping
+                                note right of t_shipping
+                                    SELECT
+                                        COUNT(s.id) as total_items
+                                    FROM shipping.t_shipping s
+                                    INNER JOIN sales.t_order o
+                                        ON o.id = s.order_id
+                                    WHERE o.shop_id = '<sequence.shopId>'
+                                    AND s.row_status <> 'DELETED'
+                                    AND s.id = '<sequence.id>' -- only when id is specified
+                                    AND s.order_id = '<sequence.orderId>' -- only when orderId is specified
+                                    AND s.status = '<sequence.status>' -- only when status is specified
+                                    AND (o.code ILIKE '%<sequence.search>%' OR s.tracking_number ILIKE '%<sequence.search>%') -- only when search is specified
+                                end note
+                                t_shipping -> infra: Return query result
+                            deactivate t_shipping
+                            infra -> app: Return total_items
+                            alt No shipping matches
+                                app -> api: HTTP 200 S10000
+                                api -> page: Return an empty list
+                                page -> user: Display no shipping
+                            else Shippings found
+                                app -> infra: QUERY - Get the items of the shippings
+                                infra -> t_shipping_item: QUERY - Get the items of the shippings
+                                activate t_shipping_item
+                                    note right of t_shipping_item
+                                        SELECT
+                                            si.shipping_id,
+                                            si.order_item_id,
+                                            oi.product_id,
+                                            p.name as product_name,
+                                            oi.sku_id,
+                                            ps.name as sku_name,
+                                            si.quantity
+                                        FROM shipping.t_shipping_item si
+                                        INNER JOIN sales.t_order_item oi
+                                            ON oi.id = si.order_item_id
+                                        INNER JOIN product.m_product p
+                                            ON p.id = oi.product_id
+                                        INNER JOIN product.m_product_sku ps
+                                            ON ps.id = oi.sku_id
+                                        WHERE si.shipping_id IN ('<sequence.shippingIds>')
+                                        AND si.row_status <> 'DELETED'
+                                        ORDER BY si.created_at, si.id
+                                    end note
+                                    t_shipping_item -> infra: Return query result
+                                deactivate t_shipping_item
+                                infra -> app: Return the items of the shippings
+                                app -> infra: QUERY - Get the stops of the shippings
+                                infra -> t_shipping_stop: QUERY - Get the stops of the shippings
+                                activate t_shipping_stop
+                                    note right of t_shipping_stop
+                                        SELECT
+                                            ss.id as stop_id,
+                                            ss.shipping_id,
+                                            ss.stop_number,
+                                            ss.stop_type,
+                                            ss.location_name,
+                                            ss.estimated_arrival,
+                                            ss.arrived_at,
+                                            ss.row_status
+                                        FROM shipping.t_shipping_stop ss
+                                        WHERE ss.shipping_id IN ('<sequence.shippingIds>')
+                                        AND ss.row_status <> 'DELETED'
+                                        ORDER BY ss.shipping_id, ss.stop_number, ss.id
+                                    end note
+                                    t_shipping_stop -> infra: Return query result
+                                deactivate t_shipping_stop
+                                infra -> app: Return the stops that are not DELETED in stopNumber order
+                                app -> domain: Build the shippings with the address copy of the order, the items and the stops, without the customer name and the profit
+                                activate domain
+                                domain -> app: Return the shippings and the paging
+                                deactivate domain
+                                app -> api: HTTP 200 S10000
+                                api -> page: Return the shippings
+                                page -> user: Display the shippings
+                            end
+                        end
+                    else Timeout
+                        app -> api: HTTP 408 E90001
+                        api -> page: Request timeout
+                        page -> user: Retry if needed
+                    else Unexpected failure
+                        app -> api: HTTP 500 generic error; no new bizCode
+                        api -> page: Internal server error
+                        page -> user: Display generic failure
+                    end
+                    deactivate infra
+                end
+            end
+        deactivate app
+    deactivate api
+deactivate page
+
+@enduml
