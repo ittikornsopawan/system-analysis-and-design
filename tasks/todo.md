@@ -7,6 +7,23 @@ description: Shared checklist for planning and tracking non-trivial tasks withou
 
 Use one section per task, named `<scope>: <task-name>`. Preserve other task sections and mark an item complete only after its completion criterion is satisfied.
 
+## e-commerce: Backend code structure guide
+
+Status: Complete. Ittikorn requested a detailed `e-commerce/repository/code.md` for later diagram review and explicitly selected ordinary Codex in the current checkout, using the backend-developer perspective, without a commit. This assignment does not use named-agent delivery authority. The guide remains draft; writing it does not approve the architecture proposals it contains.
+
+- [x] Read applicable rules, project knowledge, backend conventions, source files, tests, and the preceding Domain/CQRS discussion.
+- [x] Write the Thai guide with source-linked project structure, dependency direction, layer responsibilities, Domain modeling decisions, CQRS dispatch, Authen flows, transactions, error handling, and testing conventions.
+- [x] Separate observed implementation from proposed policies, missing capabilities, and decisions awaiting specification approval; include a checklist for the upcoming diagram review.
+- [x] Validate frontmatter, local references, source correspondence, Markdown structure, and the exact changed-file scope; record verification results without changing backend behavior or committing.
+
+Verification: YAML/frontmatter, local references, section/table/fence structure, C# excerpts, all five project-reference sets, all five controller routes, Authen-only implementation scope and login/refresh in-review metadata passed static checks. `git diff --check` and a separate whitespace check of the new guide passed. Existing unrelated untracked handoff files were preserved. No backend build, runtime tests, database verification, diagram changes or commit were performed for this documentation-only assignment.
+
+Delivery authorization (2026-11-07): Ittikorn subsequently requested a PR using `commit-and-pr`, superseding the earlier no-commit boundary for these two task files only. Use ordinary Codex in the current checkout; include `e-commerce/repository/code.md` and this task-plan section, exclude the three pre-existing handoff files, and target `main`. The guide and its architecture proposals remain draft. Remote delivery state will be reported from GitHub rather than presumed in this plan.
+
+- [x] Confirm direct delivery authorization, isolate the task branch and inspect the latest main without including another task's files.
+- [x] Revalidate the guide, run the scoped delivery preflight and prepare the fixed-format commit and PR package.
+- [x] Create the scoped local commit, reconcile the task branch with current origin/main and prepare the authorized push/PR handoff; report actual remote delivery state from GitHub.
+
 ## e-commerce: Jinny architecture diagrams
 
 Status: Registration prepared and verified locally; diagram creation waits for registration on origin/main. Ittikorn requested Jinny and three diagrams on 2026-11-07, then explicitly chose to register Jinny and use the diagram-design default light style. Ittikorn subsequently authorized commit, push, and a registration PR in this chat. That direct delivery authorization covers registration only; the future diagram assignment retains delivery: none.
@@ -408,3 +425,74 @@ Register verification: the original pair fails register-flow; the revised pair h
 Register delivery preflight: all 40 checks, audit 53/0 and database ALL PASSED; six paths in the authorized assignment, no blockers. Origin/main then advanced through PR #31, including refresh #24 and the repository-wide sequence checker. Integrate that base before opening the register PR, preserve every incoming checker and rerun the current checks.
 
 Register integration verified: preserved upstream refresh, shipping and sequence-checker changes; the task diff against origin/main remains the same six assignment paths. The global sequence check now covers 83 specs; register passes its standard, so its legacy exemption was removed. All 41 documentation commands pass, audit remains 53/0, database tests ALL PASSED, mutations 53/53 and rendered SQL 123/123. Final SVG/PNG were regenerated from the restored source after mutation tests and inspected.
+## e-commerce: Peter API review — submit consent (API 4)
+
+Status: Register delivered in PR #32 (six files; MERGEABLE when opened), branch/history preserved, clean main-based submit-consent assignment prepared under Q15. Owner Q16: display records reading, optional result answers later, already-read evidence keeps its read timestamp. Q17: require the displayed version. No next-API merge gate applies.
+
+- [x] Preserve register PR/history, return to main and prepare the scoped submit-consent assignment with passing baselines.
+- [x] Read existing submit spec/sequence, token/user revocation design and consent/evidence migrations.
+- [x] Persist Q16/Q17 and define read-only, answer, no-op and history behavior without a schema change.
+- [x] Correct the spec and complete sequence with user-first serialization, fresh token check, current/active-type validation, deterministic existing evidence and atomic batch branches.
+- [x] Add focused consent-submit-flow checks, reject the original pair and mutation-test guards/results/rendered SQL.
+- [x] Verify exact SQL/no-op/rollback/concurrency in temporary PostgreSQL, render/inspect the sequence and pass all current checks/audit/database tests.
+- [ ] Open one API PR through commit-and-pr, preserve its review record and continue from main under Q15.
+
+Submit verification: original pair rejected; six exact SQL operations, twelve terminal traces with distinct insert/update/no-op and aborted-update failure. The shared path parser now terminates an explicit PlantUML break, preventing failed updates from falling through to COMMIT/200; mutation coverage includes disabling that termination. All 52/52 deliberate faults are caught, including a real rendered SQL omission. PlantUML syntax reports ten participants; SVG/PNG generated and inspected, 75/75 visible SQL lines. Exact SQL in temporary PostgreSQL proves policy/type filtering, first-read preservation, no-op audit preservation, explicit false, legacy NULL timestamp and deterministic duplicates, ownership/old-version history, whole-batch rollback, two-call serialization to one evidence row, and fresh token revocation visibility after a lock wait. No backend implementation is claimed.
+
+Submit delivery preflight: six authorized task files, all 41 documentation commands OK, audit 53 tables / 0 findings, database ALL PASSED, managed assignment authorized for Peter, no blockers. Origin/main unchanged at the pre-delivery fetch; register remains a separate review PR.
+## e-commerce: Peter API review — pending consent (API 5)
+
+Status: Submit consent delivered as PR #34 (six files, MERGEABLE when opened); its branch/assignment was preserved, and a clean main-based pending-consent assignment passed baselines under Q15. Q8 governs required versus optional pending; Q3 hides inactive types; Q16/Q17 govern displayed/current-version evidence.
+
+- [x] Preserve PR #34/history and prepare the next bounded main-based API assignment without waiting for merge.
+- [x] Read pending spec/sequence, current consent schema and the confirmed display/acceptance rules.
+- [x] Persist shared Q16/Q17 decisions and define current-version canonical evidence and coherent response snapshot.
+- [x] Correct spec and full sequence with credential/user checks, required/optional predicate, active type visibility, stable history/name mapping and empty success.
+- [x] Add pending-consent-flow checks; reject the original pair and mutation-test SQL, outcome and rendered-text guards.
+- [x] Execute the documented SQL against adversarial PostgreSQL fixtures and snapshot races; render/inspect SVG/PNG and pass all current docs/audit/database/delivery checks.
+- [ ] Open one pending-consent API PR with commit-and-pr, preserve its review record and continue from main under Q15.
+
+Pending verification: original pair rejected; four identical SELECT operations and seven terminal traces. Mutation testing initially caught 42/43 because the canonical-order phrase could be found in the unrelated latest-history paragraph; scoping the guard to its canonical paragraph yields 43/43. Five synchronized spec/sequence faults (required acceptance, NULL default, active type, canonical order and projection alias) pass SQL parity but are rejected by the semantic checker. A genuine rendered omission is rejected independently with the correct source unchanged. Final SVG/PNG were generated and inspected; PlantUML reports ten participants and 60/60 visible SQL lines. Temporary PostgreSQL executed the exact queries against every required/optional read/result state, different user/version/status, duplicate canonical rows, type/time boundaries, complete response projection, latest evidence/null mapping and credential failures. Two connections prove policy/history/type-name enrichment remains coherent in one snapshot while the next inquiry sees changed policy; read-only mode rejects evidence writes. No backend conformity is claimed.
+
+Pending delivery preflight: five authorized task paths, all 41 documentation commands OK, audit 53 tables / 0 findings, database ALL PASSED, managed assignment delivery authorized for Peter, no blockers. Origin/main unchanged at the pre-delivery fetch.
+## e-commerce: Peter API review — active consent (API 6)
+
+Status: Pending consent delivered in PR #35 (five files; MERGEABLE when opened); branch/assignment history preserved. A clean main-based active-consent assignment passed baselines under Q15. Q3 requires hiding consent when its type is not ACTIVE.
+
+- [x] Preserve PR #35/history and prepare the bounded active-consent assignment from main without waiting for merge.
+- [x] Read both active-consent artifacts, schema/type rules and paired SQL/rendering lessons.
+- [x] Correct spec and full sequence for public visible consents, mandatory type-name mapping, consistent snapshot, stable order and explicit empty/error outcomes.
+- [x] Add active-consent-flow checks, reject the original pair, and mutation-test source and synchronized semantic faults.
+- [x] Execute exact SQL including time/type boundaries and a concurrent type/name change; render/inspect SVG/PNG and run all current docs/audit/database/delivery checks.
+- [ ] Open one active-consent API PR with commit-and-pr, preserve its review record and continue from main under Q15.
+
+Active-consent verification: two identical SELECT operations and five terminal traces. Original pair rejected; mutations caught 30/30. Three additional synchronized spec/sequence faults (active type, stable order and response alias) pass source parity but fail semantic checks; a genuine rendered omission is rejected with correct source unchanged. PlantUML reports eight participants, SVG/PNG generated and inspected, 29/29 visible SQL lines. Temporary PostgreSQL executed the exact queries against all non-ACTIVE type/consent states, future/expired/exact boundaries, stable id ties, required/optional projection, full eleven-field mapping, nulls/body/version preservation and empty typed arrays. Two connections prove the mandatory original type name remains coherent in the snapshot and the next request hides the disabled type. Read-only mode rejects writes; inquiry creates no user evidence. Backend conformity is not claimed.
+
+Active-consent delivery preflight: four authorized paths, 41/41 documentation commands OK, audit 53 tables / 0 findings, database ALL PASSED, Peter delivery authorized, no blockers. Origin/main unchanged at pre-delivery fetch.
+## e-commerce: Peter API review — author/me (API 7)
+
+Status: Active consent delivered in PR #36 (four files; MERGEABLE when opened), branch/history preserved. A clean main-based author/me assignment passed baselines. Owner Q11 requires returning the calling token's roles/isPlatformAdmin; Q13 still checks current credential/user. Management-consent questions Q18/Q19 remain pending; work continues on this already-decided API.
+
+- [x] Preserve PR #36/history and prepare author/me from main under Q15 without waiting for merge.
+- [x] Read me spec/empty sequence, author checker, approved Q11 and A16/A18 supersession.
+- [x] Correct the spec to return verified token roles without live assignment/master filtering and retain active credential/user validation and the response shape.
+- [x] Generate the empty sequence using the ready skeleton tool, then finish every real branch, SQL, mapping and outcome; leave no author TODO marker.
+- [x] Update only the obsolete me-specific author checks, add token-snapshot flow checks, and prove old/synchronized faults fail.
+- [x] Verify exact credential SQL and token-snapshot semantics, mutation coverage, rendered SQL/visuals and all current delivery checks.
+- [ ] Open one author/me PR with commit-and-pr, preserve its review record and continue from main under Q15.
+
+Me verification: replaced the obsolete live-role query with one exact credential/user SELECT; roles/admin come from the calling verified token. Generated the previously empty sequence with the ready skeleton tool and completed every TODO/branch/mapping; the global check now reports author 1/12 filled, not the whole group complete. The finished sequence has eight terminal traces and seven participants; SVG/PNG were generated and inspected with 13/13 visible SQL lines. Original pair rejected; mutations caught 31/31, and three synchronized ownership/user-status/live-assignment faults pass SQL parity but fail semantic guards. A real renderer omission is also rejected with correct source unchanged. Temporary PostgreSQL executed the exact credential SQL alongside ephemeral locally signed JWT reference fixtures: old roles survive assignment revocation, new empty snapshot reports false, independent admin flags are ignored, sorting/response shape remain correct, malformed/duplicate roles and tampering fail before lookup, and wrong owner/expiry/inactive user/revoked or unstored token are rejected. This is reference/design and SQL verification, not backend conformance.
+
+Me delivery preflight: four authorized paths, 41/41 documentation commands OK, audit 53 tables / 0 findings, database ALL PASSED, Peter delivery authorized, no blockers. Origin/main unchanged at pre-delivery fetch.
+
+## repository-wide: Sequence phase 1, five prototype diagrams
+
+Status: Complete in the branch, waiting for review. Assignment: agent `tommy`, delivery `open-pr`, authorized by `josh` (the product owner ordered real diagrams instead of a notes document), workspace `.workspace/tommy`, branch `feat/tommy-sequence-cart-order-webhook`, scopes `e-commerce/doc/api/cart`, `e-commerce/doc/api/sales/02-create-order`, `e-commerce/doc/api/payment/02-stripe-webhook`, `e-commerce/db/tests/check_docs.py`, `tasks`.
+
+- [x] Close the earlier notes task (discarded by the lead SA; the note is kept in the scratchpad) and park the workspace.
+- [x] Write `sequence.wsd` of `cart/01`, `cart/02`, `cart/03`, `sales/02` to the login standard with no `TODO(author)` left: real order of checks (400, 404, 409, write), blocks placed on the branch where they run, every error after `BEGIN` after a `ROLLBACK`, every lock after `BEGIN`, participants in order of first use.
+- [x] Write `sequence.wsd` of `payment/02` with Stripe as `participant "Stripe" as stripe` in `box "External"`, and let `sequence_structure_errors` accept `External, Web API, Database` (no Frontend, no actor User, the External box holds a participant).
+- [x] Mutation-test the diagrams and the new rule, render every diagram with PlantUML, run all checkers.
+- [x] Open the PR with `commit-and-pr`; do not merge.
+
+Verification: see the PR. No `spec.md` and no `sequence_skeleton.py` was changed. Gaps of the specs found while writing are reported to the lead SA in the PR body.

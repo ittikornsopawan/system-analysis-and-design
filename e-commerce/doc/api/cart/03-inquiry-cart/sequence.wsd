@@ -1,0 +1,236 @@
+@startuml InquiryCart Sequence
+
+title Inquiry Cart API Sequence
+
+' Leading SQL apostrophes use &#39; so PlantUML preserves literals; parity compares decoded SQL.
+
+' Visual style
+skinparam defaultFontName "Sarabun"
+skinparam defaultFontSize 14
+skinparam backgroundColor #FFFFFF
+skinparam shadowing false
+skinparam roundcorner 10
+skinparam sequence {
+    ArrowColor #475569
+    ArrowFontColor #334155
+    LifeLineBorderColor #CBD5E1
+    LifeLineBackgroundColor #F8FAFC
+    ParticipantBorderColor #94A3B8
+    ParticipantBackgroundColor #F1F5F9
+    ParticipantFontColor #0F172A
+    GroupBorderColor #94A3B8
+    GroupBackgroundColor #F8FAFC
+    GroupFontColor #334155
+}
+
+' Do not show participant footers at the bottom of the diagram
+hide footbox
+
+actor "User" as user
+box "Frontend" #F8FAFC
+    participant "Inquiry Cart Page" as page
+end box
+box "Web API" #F8FAFC
+    participant "API" as api
+    participant "Application" as app
+    participant "Domain" as domain
+    participant "Infrastructure" as infra
+end box
+box "Database" #F8FAFC
+    database "t_cart" as t_cart
+    database "m_shop" as m_shop
+    database "t_shop_product_sku" as t_shop_product_sku
+    database "t_shop_product_sku_lot" as t_shop_product_sku_lot
+    database "m_product" as m_product
+    database "m_product_sku" as m_product_sku
+    database "m_product_sku_option_value" as m_product_sku_option_value
+    database "m_product_image" as m_product_image
+end box
+
+user -> page: Request the cart
+activate page
+    page -> api: GET v1/cart
+    activate api
+        api -> api: Verify the access token; the userId is the user of the token
+        alt Invalid or expired access token
+            api -> page: HTTP 401 E10002
+            page -> user: Ask the user to sign in again
+        else Valid access token
+            api -> app: [**InquiryCartQueryHandler**] Process request
+            activate app
+                app -> app: Create request context; generate requestId when omitted
+                app -> app: Validate headers and query parameters (shopId is a UUID when specified)
+                alt Invalid input
+                    app -> api: HTTP 400 E10001
+                    api -> page: Bad request
+                    page -> user: Display validation error
+                else Valid input
+                    app -> infra: Execute database operations
+                    activate infra
+                    alt Work completes
+                        app -> infra: QUERY - Get the lines of the user
+                        infra -> t_cart: QUERY - Get the lines of the user
+                        activate t_cart
+                            note right of t_cart
+                                SELECT
+                                    c.id as cart_id,
+                                    c.shop_id,
+                                    c.product_id,
+                                    c.sku_id,
+                                    c.quantity
+                                FROM cart.t_cart c
+                                WHERE c.user_id = '<sequence.userId>'
+                                AND c.row_status = 'ACTIVE'
+                                AND c.shop_id = '<sequence.shopId>' -- only when shopId is specified
+                                ORDER BY c.created_at
+                            end note
+                            t_cart -> infra: Return query result
+                        deactivate t_cart
+                        infra -> app: Return the lines of the user
+                        alt The cart has no line
+                            app -> domain: Build the empty cart (shops = [], summary all 0)
+                            activate domain
+                            domain -> app: Return the empty cart
+                            deactivate domain
+                        else The cart has lines
+                            app -> infra: QUERY - Get shops
+                            infra -> m_shop: QUERY - Get shops
+                            activate m_shop
+                                note right of m_shop
+                                    SELECT
+                                        s.id as shop_id,
+                                        s.name as shop_name,
+                                        s.row_status
+                                    FROM shop.m_shop s
+                                    WHERE s.id IN ('<sequence.shopIds>')
+                                end note
+                                m_shop -> infra: Return query result
+                            deactivate m_shop
+                            infra -> app: Return the shops of the lines
+                            app -> infra: QUERY - Get the shop product SKUs of the lines
+                            infra -> t_shop_product_sku: QUERY - Get the shop product SKUs of the lines
+                            activate t_shop_product_sku
+                                note right of t_shop_product_sku
+                                    SELECT
+                                        ssk.id as shop_product_sku_id,
+                                        sp.shop_id,
+                                        sp.product_id,
+                                        ssk.sku_id,
+                                        ssk.row_status as sku_row_status,
+                                        sp.row_status as shop_product_row_status
+                                    FROM shop.t_shop_product_sku ssk
+                                    INNER JOIN shop.t_shop_product sp
+                                        ON sp.id = ssk.shop_product_id
+                                    WHERE (sp.shop_id, sp.product_id, ssk.sku_id) IN (<sequence.lineKeys>)
+                                end note
+                                t_shop_product_sku -> infra: Return query result
+                            deactivate t_shop_product_sku
+                            infra -> app: Return the shop product SKUs of the lines
+                            app -> infra: QUERY - Get the lot that is on sale of each shop product SKU
+                            infra -> t_shop_product_sku_lot: QUERY - Get the lot that is on sale of each shop product SKU
+                            activate t_shop_product_sku_lot
+                                note right of t_shop_product_sku_lot
+                                    SELECT
+                                        l.shop_product_sku_id,
+                                        l.selling_price,
+                                        l.quantity
+                                    FROM shop.t_shop_product_sku_lot l
+                                    WHERE l.shop_product_sku_id IN ('<sequence.shopProductSkuIds>')
+                                    AND l.is_on_sale = TRUE
+                                    AND l.row_status = 'ACTIVE'
+                                end note
+                                t_shop_product_sku_lot -> infra: Return query result
+                            deactivate t_shop_product_sku_lot
+                            infra -> app: Return the lots that are on sale
+                            app -> infra: QUERY - Get products
+                            infra -> m_product: QUERY - Get products
+                            activate m_product
+                                note right of m_product
+                                    SELECT
+                                        p.id as product_id,
+                                        p.name,
+                                        p.slug,
+                                        p.row_status
+                                    FROM product.m_product p
+                                    WHERE p.id IN ('<sequence.productIds>')
+                                end note
+                                m_product -> infra: Return query result
+                            deactivate m_product
+                            infra -> app: Return the products
+                            app -> infra: QUERY - Get product SKUs
+                            infra -> m_product_sku: QUERY - Get product SKUs
+                            activate m_product_sku
+                                note right of m_product_sku
+                                    SELECT
+                                        ps.id as sku_id,
+                                        ps.name,
+                                        ps.row_status
+                                    FROM product.m_product_sku ps
+                                    WHERE ps.id IN ('<sequence.skuIds>')
+                                end note
+                                m_product_sku -> infra: Return query result
+                            deactivate m_product_sku
+                            infra -> app: Return the product SKUs
+                            app -> infra: QUERY - Get the chosen option values of the SKUs
+                            infra -> m_product_sku_option_value: QUERY - Get the chosen option values of the SKUs
+                            activate m_product_sku_option_value
+                                note right of m_product_sku_option_value
+                                    SELECT
+                                        psov.sku_id,
+                                        po.name as option_name,
+                                        pov.id as option_value_id,
+                                        pov.value
+                                    FROM product.m_product_sku_option_value psov
+                                    INNER JOIN product.m_product_option_value pov
+                                        ON pov.id = psov.option_value_id
+                                    INNER JOIN product.m_product_option po
+                                        ON po.id = pov.option_id
+                                    WHERE psov.sku_id IN ('<sequence.skuIds>')
+                                    AND psov.row_status <> 'DELETED'
+                                    ORDER BY psov.sku_id, po.level_no
+                                end note
+                                m_product_sku_option_value -> infra: Return query result
+                            deactivate m_product_sku_option_value
+                            infra -> app: Return the chosen option values
+                            app -> infra: QUERY - Get the images of the lines
+                            infra -> m_product_image: QUERY - Get the images of the lines
+                            activate m_product_image
+                                note right of m_product_image
+                                    SELECT
+                                        pi.product_id,
+                                        pi.option_value_id,
+                                        pi.image_path
+                                    FROM product.m_product_image pi
+                                    WHERE (pi.product_id IN ('<sequence.productIds>') AND pi.option_value_id IS NULL
+                                        OR pi.option_value_id IN ('<sequence.optionValueIds>'))
+                                    AND pi.row_status = 'ACTIVE'
+                                    ORDER BY pi.created_at
+                                end note
+                                m_product_image -> infra: Return query result
+                            deactivate m_product_image
+                            infra -> app: Return the images
+                            app -> domain: Decide the availability of every line (AVAILABLE, QUANTITY_EXCEEDS_STOCK, OUT_OF_STOCK, UNAVAILABLE), the line totals, the subtotal of each shop and the summary
+                            activate domain
+                            domain -> app: Return the cart grouped by shop
+                            deactivate domain
+                        end
+                        app -> api: HTTP 200 S10000
+                        api -> page: Return the cart
+                        page -> user: Display the cart
+                    else Timeout
+                        app -> api: HTTP 408 E90001
+                        api -> page: Request timeout
+                        page -> user: Retry if needed
+                    else Unexpected failure
+                        app -> api: HTTP 500 generic error; no new bizCode
+                        api -> page: Internal server error
+                        page -> user: Display generic failure
+                    end
+                    deactivate infra
+                end
+            deactivate app
+        end
+    deactivate api
+deactivate page
+
+@enduml

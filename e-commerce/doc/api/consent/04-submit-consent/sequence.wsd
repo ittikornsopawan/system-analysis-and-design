@@ -1,4 +1,4 @@
-@startuml SubmitConsent Sequence
+@startuml SubmitConsent
 
 title Submit Consent API Sequence
 
@@ -23,41 +23,76 @@ skinparam sequence {
 
 ' Do not show participant footers at the bottom of the diagram
 hide footbox
-
-
 actor "User" as user
-
 box "Frontend" #F8FAFC
-    participant "Submit Consent Page" as page
+    participant "Consent Page" as page
 end box
-
 box "Web API" #F8FAFC
     participant "API" as api
     participant "Application" as app
     participant "Domain" as domain
     participant "Infrastructure" as infra
 end box
-
 box "Database" #F8FAFC
+    database "m_user" as m_user
+    database "t_user_access_token" as t_user_access_token
     database "t_consent" as t_consent
     database "t_user_consent" as t_user_consent
 end box
-
-user -> page: Submit Submit Consent
-
+user -> page: Display consent; optionally answer later
 activate page
-    page -> api: Call POST v1/consent/submit
-    activate api
-        api -> app: [**SubmitConsentCommandHandler**] Process request
-        activate app
-            app -> app: Validate request parameters and business rules
-            alt If request is invalid
-                app -> api: Return error response
-                api -> page: Return error response
-                page -> user: Display error message
-            else If request is valid
-                app -> infra: Execute database operations
-                activate infra
+page -> api: POST v1/consent/submit (displayed version, isRead=true, optional result)
+activate api
+api -> app: [**SubmitConsentCommandHandler**] Process request
+activate app
+app -> app: Create request context and requestId
+app -> domain: Validate non-empty consents, UUID/version/isRead=true, result presence/type, duplicate ids
+domain -> app: Return validation
+alt Invalid body or ordinary headers
+    app -> api: HTTP 400 E10001
+    api -> page: Validation failure
+else Valid body
+    app -> app: Verify Bearer JWT signature/issuer/audience/exp/sub
+    alt Missing, malformed or invalid JWT
+        app -> api: HTTP 401 E10002 Invalid or expired access token.
+        api -> page: Authentication failure
+    else Verified JWT
+        app -> app: userId = verified sub; accessTokenHash = SHA-256 exact JWT; consentIds = unique submitted ids
+        app -> infra: BEGIN READ COMMITTED
+        alt Transaction work completes
+            app -> infra: QUERY - Lock the user
+            infra -> m_user: QUERY - Lock the user
+            activate m_user
+                note right of m_user
+                    SELECT
+                        u.id as user_id
+                    FROM authen.m_user u
+                    WHERE u.id = '<sequence.userId>'
+                    AND u.row_status = 'ACTIVE'
+                    FOR UPDATE -- user lock precedes token and evidence reads
+                end note
+                m_user -> infra: Return ACTIVE user row or no row
+            deactivate m_user
+            infra -> app: Return ACTIVE user row or no row
+            alt ACTIVE user returned
+                app -> app: Capture fresh UTC now after user lock; recheck JWT exp
+                app -> infra: QUERY - Check the active access token
+                infra -> t_user_access_token: QUERY - Check the active access token
+                activate t_user_access_token
+                    note right of t_user_access_token
+                        SELECT
+                            at.id as access_token_id
+                        FROM authen.t_user_access_token at
+                        WHERE at.token = '<sequence.accessTokenHash>'
+                        AND at.user_id = '<sequence.userId>'
+                        AND at.row_status = 'ACTIVE'
+                        AND at.expired_at > '<sequence.now>'
+                    end note
+                    t_user_access_token -> infra: Return ACTIVE matching token or no row
+                deactivate t_user_access_token
+                infra -> app: Return ACTIVE matching token or no row
+                alt Stored token valid and JWT still unexpired
+                    app -> infra: QUERY - Get active consents
                     infra -> t_consent: QUERY - Get active consents
                     activate t_consent
                         note right of t_consent
@@ -65,88 +100,151 @@ activate page
                                 c.id as consent_id,
                                 c.consent_version
                             FROM consent.t_consent c
-                            WHERE c.id IN ('<sequence.consentIds>')
+                            WHERE c.id = ANY ('<sequence.consentIds>'::UUID[])
                             AND c.row_status = 'ACTIVE'
-                            AND c.effective_at <= NOW() AT TIME ZONE 'UTC'
-                            AND (c.expired_at IS NULL OR c.expired_at > NOW() AT TIME ZONE 'UTC')
+                            AND c.effective_at <= '<sequence.now>'
+                            AND (c.expired_at IS NULL OR c.expired_at > '<sequence.now>')
+                            AND EXISTS (
+                                SELECT 1
+                                FROM consent.m_consent_type ct
+                                WHERE ct.id = c.consent_type_id
+                                AND ct.row_status = 'ACTIVE'
+                            )
+                            ORDER BY c.id
                         end note
-                        t_consent -> infra: Return query result
+                        t_consent -> infra: Return eligibleConsentIds and current versions (ACTIVE type included)
                     deactivate t_consent
-
-                    infra -> t_user_consent: QUERY - Get existing user consent
-                    activate t_user_consent
-                        note right of t_user_consent
-                            SELECT
-                                uc.id as user_consent_id,
-                                uc.consent_id,
-                                uc.consent_version,
-                                uc.result,
-                                uc.is_read
-                            FROM authen.t_user_consent uc
-                            WHERE uc.user_id = '<sequence.userId>'
-                            AND uc.consent_id = '<sequence.consents.consentId>'
-                            AND uc.consent_version = '<sequence.consents.consentVersion>'
-                            AND uc.row_status = 'ACTIVE'
-                        end note
-                        t_user_consent -> infra: Return query result
-                    deactivate t_user_consent
-
-                    infra -> t_user_consent: INSERT - Create user consent
-                    activate t_user_consent
-                        note right of t_user_consent
-                            INSERT INTO authen.t_user_consent (
-                                created_by,
-                                user_id,
-                                consent_id,
-                                consent_version,
-                                result,
-                                is_read,
-                                read_at
-                            )
-                            VALUES (
-                                '<sequence.createdBy>',
-                                '<sequence.userId>',
-                                '<sequence.consents.consentId>',
-                                '<sequence.consents.consentVersion>',
-                                '<sequence.consents.result>', -- only when result is specified
-                                '<sequence.consents.isRead>',
-                                NOW() AT TIME ZONE 'UTC' -- only when isRead is true
-                            )
-                            RETURNING id as user_consent_id
-                        end note
-                        t_user_consent -> infra: Return inserted result
-                    deactivate t_user_consent
-
-                    infra -> t_user_consent: UPDATE - Update user consent
-                    activate t_user_consent
-                        note right of t_user_consent
-                            UPDATE authen.t_user_consent
-                            SET
-                                updated_by = '<sequence.updatedBy>',
-                                updated_at = NOW() AT TIME ZONE 'UTC',
-                                result = '<sequence.consents.result>', -- only when result is specified
-                                is_read = '<sequence.consents.isRead>',
-                                read_at = NOW() AT TIME ZONE 'UTC' -- only when isRead is true
-                            WHERE id = '<sequence.userConsentId>'
-                            RETURNING id as user_consent_id
-                        end note
-                        t_user_consent -> infra: Return updated result
-                    deactivate t_user_consent
-
-                    infra -> app: Return database result
-                deactivate infra
-
-                app -> domain: Apply domain rules and prepare response
-                activate domain
-                    domain -> app: Return response data
-                deactivate domain
-
-                app -> api: Return success response
-                api -> page: Return success response
-                page -> user: Display success result
-            end alt
-        deactivate app
-    deactivate api
+                    infra -> app: Return eligibleConsentIds and current versions (ACTIVE type included)
+                    app -> domain: Compare complete eligible id set and all displayed versions before writes
+                    domain -> app: Return eligibility/version validation
+                    alt Any requested id missing or hidden by type/status/time
+                        app -> infra: ROLLBACK
+                        app -> api: HTTP 404 E10004 Consent not found.
+                        api -> page: Consent unavailable
+                    else Any displayed version differs from current version
+                        app -> infra: ROLLBACK
+                        app -> api: HTTP 409 E10003 Consent version is not the current version.
+                        api -> page: Reload displayed versions
+                    else All submitted ids and versions valid
+                        loop Each consent in ascending consentId order
+                            app -> app: resultSpecified = property present; result = explicit boolean or false for insert
+                            app -> app: Read-only never overwrites an existing answer
+                            app -> infra: QUERY - Get existing user consent
+                            infra -> t_user_consent: QUERY - Get existing user consent
+                            activate t_user_consent
+                                note right of t_user_consent
+                                    SELECT
+                                        uc.id as user_consent_id,
+                                        uc.consent_id,
+                                        uc.consent_version,
+                                        uc.result,
+                                        uc.is_read,
+                                        uc.read_at
+                                    FROM authen.t_user_consent uc
+                                    WHERE uc.user_id = '<sequence.userId>'
+                                    AND uc.consent_id = '<sequence.consents.consentId>'
+                                    AND uc.consent_version = '<sequence.consents.consentVersion>'
+                                    AND uc.row_status = 'ACTIVE'
+                                    ORDER BY uc.created_at DESC, uc.id DESC
+                                    LIMIT 1
+                                end note
+                                t_user_consent -> infra: Return canonical evidence (id, result, isRead, readAt) or no row
+                            deactivate t_user_consent
+                            infra -> app: Return canonical evidence (id, result, isRead, readAt) or no row
+                            alt No canonical ACTIVE row for user/consent/version
+                                app -> infra: INSERT - Create user consent
+                                infra -> t_user_consent: INSERT - Create user consent
+                                activate t_user_consent
+                                    note right of t_user_consent
+                                        INSERT INTO authen.t_user_consent (
+                                            created_by,
+                                            user_id,
+                                            consent_id,
+                                            consent_version,
+                                            result,
+                                            is_read,
+                                            read_at
+                                        )
+                                        VALUES (
+                                            &#39;<sequence.userId>',
+                                            &#39;<sequence.userId>',
+                                            &#39;<sequence.consents.consentId>',
+                                            &#39;<sequence.consents.consentVersion>',
+                                            &#39;<sequence.consents.result>', -- explicit result, or false for a new read-only row
+                                            TRUE,
+                                            &#39;<sequence.now>'
+                                        )
+                                        RETURNING id as user_consent_id, consent_id, consent_version, result, is_read, read_at
+                                    end note
+                                    t_user_consent -> infra: Return new evidence id, consentId, version, result, isRead, readAt
+                                deactivate t_user_consent
+                                infra -> app: Return new evidence id, consentId, version, result, isRead, readAt
+                                app -> app: responseItem = inserted evidence; isRead=true, readAt=now
+                            else Canonical row already read and result omitted or unchanged
+                                app -> app: responseItem = existing evidence; no INSERT or UPDATE; preserve result/readAt
+                            else Canonical row unread or explicit answer changed
+                                app -> app: userConsentId = canonical evidence id; preserve first readAt if already read
+                                app -> infra: UPDATE - Update user consent
+                                infra -> t_user_consent: UPDATE - Update user consent
+                                activate t_user_consent
+                                    note right of t_user_consent
+                                        UPDATE authen.t_user_consent
+                                        SET
+                                            updated_by = '<sequence.userId>',
+                                            updated_at = '<sequence.now>',
+                                            result = CASE WHEN '<sequence.consents.resultSpecified>'::BOOLEAN THEN '<sequence.consents.result>'::BOOLEAN ELSE result END,
+                                            read_at = CASE WHEN is_read THEN read_at ELSE '<sequence.now>'::TIMESTAMP END,
+                                            is_read = TRUE
+                                        WHERE id = '<sequence.userConsentId>'
+                                        AND user_id = '<sequence.userId>'
+                                        AND consent_id = '<sequence.consents.consentId>'
+                                        AND consent_version = '<sequence.consents.consentVersion>'
+                                        AND row_status = 'ACTIVE'
+                                        AND (NOT is_read OR ('<sequence.consents.resultSpecified>'::BOOLEAN AND result IS DISTINCT FROM '<sequence.consents.result>'::BOOLEAN))
+                                        RETURNING id as user_consent_id, consent_id, consent_version, result, is_read, read_at
+                                    end note
+                                    t_user_consent -> infra: Return updated evidence id, consentId, version, result, isRead, readAt or no row
+                                deactivate t_user_consent
+                                infra -> app: Return updated evidence id, consentId, version, result, isRead, readAt or no row
+                                alt Guarded UPDATE returned one row
+                                    app -> app: responseItem = updated evidence
+                                else Guarded UPDATE returned no row
+                                    break Abort entire request on internal consistency failure
+                                    app -> infra: ROLLBACK
+                                    app -> api: HTTP 500 Internal Server Error; omit bizCode
+                                        api -> page: Batch failed; every earlier item rolled back
+                                    end break
+                                end
+                            end
+                            app -> app: Collect responseItem by original request position
+                        end loop
+                        app -> infra: COMMIT
+                        infra -> app: Return committed batch
+                        app -> api: HTTP 200 S10000 Submit Consent Success; data.consents = original request order
+                        api -> page: Return consentId, consentVersion, isRead, readAt, result
+                    end
+                else Stored token missing/revoked/expired or JWT expired during wait
+                    app -> infra: ROLLBACK
+                    app -> api: HTTP 401 E10002 Invalid or expired access token.
+                    api -> page: Authentication failure; no evidence change
+                end
+            else Missing or inactive user
+                app -> infra: ROLLBACK
+                app -> api: HTTP 401 E10002 Invalid or expired access token.
+                api -> page: Authentication failure; no evidence change
+            end
+        else Timeout before COMMIT
+            app -> infra: ROLLBACK
+            app -> api: HTTP 408 E90001
+            api -> page: Whole batch timed out
+        else Unexpected pre-commit failure
+            app -> infra: ROLLBACK
+            app -> api: HTTP 500 Internal Server Error; omit bizCode
+            api -> page: Whole batch failed
+        end
+    end
+end
+deactivate app
+deactivate api
 deactivate page
-
 @enduml

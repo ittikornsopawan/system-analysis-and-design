@@ -246,6 +246,6 @@ description: Repository-wide and project-specific lessons captured from user cor
 
 ### 2026-11-07 — A displayed consent is read independently of its answer
 
-- **Correction**: The owner rejected the proposed rule that only an explicit boolean result proves reading. Displaying the consent triggers a request on the same submission endpoint without result; answering sends result later.
-- **Root cause**: Read state was inferred from answering rather than the UI event the owner intended.
-- **Corrected behavior**: A submitted displayed consent/version records read=true even when result is omitted; preserve the existing answer on a later read-only call, and preserve the first read timestamp when already read. Required registration still needs explicit true. Review register, submission and pending together.
+- **Correction**: The owner rejected inferring reading only from an explicit boolean result. Displaying triggers the submission endpoint without result; answering adds result later.
+- **Root cause**: Read state was inferred from answering rather than the owner's display event.
+- **Corrected behavior**: Record a supplied displayed version as read independently of result; preserve any answer on read-only calls and preserve the original read timestamp once read. Already-read read-only calls need no UPDATE. Review register, submit and pending together; each remains its own PR.
