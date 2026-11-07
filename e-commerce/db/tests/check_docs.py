@@ -4,6 +4,7 @@
 Subcommands (schema, er, spec01, spec02, spec03) are added by later tasks.
 Each subcommand returns exit code 0 on pass and prints "FAIL: <reason>" on fail.
 """
+import ast
 import json
 import re
 import sys
@@ -6115,6 +6116,46 @@ def check_logout_flow() -> int:
 
 
 COMMANDS['logout-flow'] = check_logout_flow
+# ---------------------------------------------------------------- integrity of this file: every check is a sub-command and ends with a return
+def check_registry() -> int:
+    """A merge can cut the end of a checker or its COMMANDS line without a syntax error, and then the check does nothing.
+
+    Every top-level `check_*` function must end with `return` or `raise` and must be registered in COMMANDS (the name may
+    be inside a lambda) or be called by another function; a sub-command name may be registered only once, because a second
+    registration silently replaces the first.
+    """
+    source = Path(__file__).read_text(encoding="utf-8")
+    tree = ast.parse(source)
+    functions = {n.name: n for n in tree.body if isinstance(n, ast.FunctionDef) and n.name.startswith("check_")}
+    registered, keys = set(), []
+    for node in tree.body:
+        if isinstance(node, ast.Assign) and any(
+            isinstance(t, ast.Subscript) and isinstance(t.value, ast.Name) and t.value.id == "COMMANDS" for t in node.targets
+        ):
+            key = next(t.slice for t in node.targets if isinstance(t, ast.Subscript))
+            keys.append(key.value if isinstance(key, ast.Constant) else ast.dump(key))
+            registered.update(n.id for n in ast.walk(node.value) if isinstance(n, ast.Name))
+    called = {
+        n.func.id
+        for f in ast.walk(tree)
+        if isinstance(f, ast.FunctionDef)
+        for n in ast.walk(f)
+        if isinstance(n, ast.Call) and isinstance(n.func, ast.Name)
+    }
+    errors = []
+    for name, node in functions.items():
+        if not isinstance(node.body[-1], (ast.Return, ast.Raise)):
+            errors.append(f"{name} (line {node.lineno}) does not end with return or raise: its end may have been cut")
+        if name not in registered and name not in called:
+            errors.append(f"{name} (line {node.lineno}) is neither registered in COMMANDS nor called by another function")
+    errors.extend(f"sub-command {key!r} is registered more than once" for key in sorted(set(keys)) if keys.count(key) > 1)
+    if errors:
+        return fail("; ".join(errors))
+    print(f"OK: check-registry ({len(functions)} check functions, {len(set(keys))} sub-commands, every one registered or called and ending with a return)")
+    return 0
+
+
+COMMANDS["check-registry"] = check_registry
 
 
 def main(argv: list[str]) -> int:

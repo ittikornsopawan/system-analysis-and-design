@@ -7,12 +7,12 @@ Run from anywhere: python3 .agents/skills/api-contract-design/scripts/test_seque
      its structure check may only complain about the TODO(author) markers and its login standard must be met) and must hold the same table interactions as the spec, in order, with the SQL equal line for line, the same
      `database` participants, a clean lifecycle (activate, note, return, deactivate), balanced alt / else / end and
      activate / deactivate, the header of the login diagram, a handler line and TODO(author) markers.
-  2. The hand-written diagrams (a sequence.wsd that is not empty): the database blocks and the participants that
-     the script builds must equal the ones written by hand.
+  2. The finished diagrams (a sequence.wsd that is not empty): every block of the spec is there (table, heading and
+     SQL), in any order and repeated if the branches need it, with no block that the spec lacks, and the database
+     participants are declared in the order of their first use, the way `check_docs.py` reads them.
   3. The command line: print, `--write` into an empty file, refusal to overwrite a non-empty file, `--force`.
 
-A failure of (2) means that the script is wrong or that the hand-written diagram is wrong, and the message says
-which block differs.
+A failure of (2) names the block or the participant that differs.
 """
 import importlib.util
 import re
@@ -200,24 +200,66 @@ class SkeletonOfEverySpec(unittest.TestCase):
         self.assertIn("sort A", warnings[0])
 
 
+def hand_written_errors(hand: str, spec_ops) -> list[str]:
+    """Blocks and participants of a finished diagram against the blocks of its spec, the way the checker reads them.
+
+    The diagram may order the blocks by the work and repeat a block in several branches, so the blocks are compared as a
+    set of (table, heading, SQL) and the database participants must be declared in the order of their first use.
+    """
+    errors = []
+    hand_ops, lifecycle = CHECK.sequence_database_operations(hand)
+    errors.extend(lifecycle)
+    spec_blocks = {(t.split(".")[-1], h, CHECK.normalize(s)) for t, h, s in spec_ops}
+    hand_blocks = {(t, h, CHECK.normalize(s)) for t, h, s in hand_ops}
+    errors.extend(f"block {t} / {h} of the spec is missing from the diagram" for t, h, _ in sorted(spec_blocks - hand_blocks))
+    errors.extend(f"block {t} / {h} of the diagram is not a block of the spec (or its SQL differs)" for t, h, _ in sorted(hand_blocks - spec_blocks))
+    declared = re.findall(r'^\s*database "[^"]+" as (\w+)$', hand, re.MULTILINE)
+    used = list(dict.fromkeys(t for t, _, _ in hand_ops))
+    spec_tables = {t for t, _, _ in spec_blocks}
+    if set(declared) != spec_tables or len(declared) != len(set(declared)):
+        errors.append(f"participants {declared} are not the tables of the spec {sorted(spec_tables)}")
+    elif declared != used:
+        errors.append(f"participants {declared} must be declared in the order of first use {used}")
+    return errors
+
+
 class HandWrittenDiagrams(unittest.TestCase):
-    def test_database_blocks_and_participants_equal_the_hand_written_ones(self):
+    def test_every_finished_diagram_has_the_blocks_of_its_spec_and_participants_by_first_use(self):
         problems = []
         written = sorted(p for p in API_DIR.glob("*/*/sequence.wsd") if p.read_text(encoding="utf-8").strip())
         self.assertGreaterEqual(len(written), 1)
         for wsd_path in written:
             name = f"{wsd_path.parent.parent.name}/{wsd_path.parent.name}"
-            hand = wsd_path.read_text(encoding="utf-8")
-            generated = sequence_skeleton.skeleton(wsd_path.with_name("spec.md"))
-            hand_ops, _ = CHECK.sequence_database_operations(hand)
-            gen_ops, _ = CHECK.sequence_database_operations(generated)
-            if [(t, h, CHECK.normalize(s)) for t, h, s in hand_ops] != [(t, h, CHECK.normalize(s)) for t, h, s in gen_ops]:
-                problems.append(f"{name}: the database blocks differ")
-            hand_tables = re.findall(r'^\s*database "[^"]+" as (\w+)$', hand, re.MULTILINE)
-            gen_tables = re.findall(r'^\s*database "[^"]+" as (\w+)$', generated, re.MULTILINE)
-            if hand_tables != gen_tables:
-                problems.append(f"{name}: participants {hand_tables} (hand) and {gen_tables} (script) differ")
+            spec_ops = CHECK.spec_database_operations(wsd_path.with_name("spec.md").read_text(encoding="utf-8"))
+            problems.extend(f"{name}: {e}" for e in hand_written_errors(wsd_path.read_text(encoding="utf-8"), spec_ops))
         self.assertEqual(problems, [], "\n".join(problems))
+
+    def test_the_comparison_accepts_reordered_and_repeated_blocks_and_rejects_the_rest(self):
+        spec = API_DIR / "cart" / "03-inquiry-cart" / "spec.md"
+        spec_ops = CHECK.spec_database_operations(spec.read_text(encoding="utf-8"))
+        text = sequence_skeleton.skeleton(spec)
+        self.assertEqual(hand_written_errors(text, spec_ops), [])
+        blocks = re.findall(r"(?ms)^( *app -> infra: [^\n]*\n *infra -> (\w+): [^\n]*\n.*?^ *infra -> app: [^\n]*\n)", text)
+        self.assertGreater(len(blocks), 3)
+        first, last = blocks[0][0], blocks[-1][0]
+        # a block repeated in a second place is fine
+        self.assertEqual(hand_written_errors(text.replace(last, last + first, 1), spec_ops), [])
+        # a missing block is not
+        self.assertTrue(any("missing" in e for e in hand_written_errors(text.replace(last, "", 1), spec_ops)))
+        # one changed SQL letter is not
+        changed = text.replace("WHERE ", "WHERE  x = 1 AND ", 1)
+        self.assertTrue(hand_written_errors(changed, spec_ops))
+        # participants out of the order of first use are not
+        tables = re.findall(r'^    database "[^"]+" as \w+$', text, re.MULTILINE)
+        swapped = text.replace(tables[0], "@@", 1).replace(tables[1], tables[0], 1).replace("@@", tables[1], 1)
+        self.assertTrue(any("first use" in e for e in hand_written_errors(swapped, spec_ops)))
+        # a block that the spec does not have is not (same SQL, another heading)
+        renamed = text.replace("QUERY - Get products", "QUERY - Get all products")
+        self.assertTrue(any("not a block of the spec" in e for e in hand_written_errors(renamed, spec_ops)))
+        # a broken lifecycle (an activation that is never closed) is not
+        self.assertTrue(hand_written_errors(text.replace("    deactivate m_product\n", "", 1), spec_ops))
+        # a participant that the spec does not have is not
+        self.assertTrue(any("are not the tables of the spec" in e for e in hand_written_errors(text.replace(tables[0], tables[0] + '\n    database "t_extra" as t_extra', 1), spec_ops)))
 
 
 class CommandLine(unittest.TestCase):

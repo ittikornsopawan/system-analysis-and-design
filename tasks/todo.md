@@ -144,7 +144,7 @@ Status: Complete, reviewed by the lead SA (gate 1, gate 2 and one re-check), wai
 - [x] Add the checkers `authen-spec` and `authen-schema`, extend `audit_all.py` to plain indexes, and mutation-test them.
 - [x] Run every checker, the audit and the database tests after rebasing on `origin/main`.
 
-Verification: see the pull request. The authen checkers caught 120 of 120 deliberate faults and the migration 10 of 10 according to the author; the lead did not rerun them. Tests 2 to 6 of the SQL file were not seen failing before the migration change (the script stops at the first error of a file); their sharpness was shown by deliberate migration faults. Nothing was run against a backend or a real database; the existing backend differs from the specs in endpoint paths and token lifetime, as written in the design document.
+Verification: 45 of 45 `check_docs.py` sub-commands OK, `api-sequence-spec` OK (83 specs, product 5/15 and shop 5/16 filled), audit 53 tables 0 findings, database tests ALL PASSED. `test_sequence_skeleton.py` fails on `main` already (the test compares the block order of the hand-written diagrams with the skeleton; 4 files of `main` and now also `product/02` and `shop/04`, where blocks run in the order of the work); the test is outside this assignment and the lead is told. The authen checkers caught 120 of 120 deliberate faults and the migration 10 of 10 according to the author; the lead did not rerun them. Tests 2 to 6 of the SQL file were not seen failing before the migration change (the script stops at the first error of a file); their sharpness was shown by deliberate migration faults. Nothing was run against a backend or a real database; the existing backend differs from the specs in endpoint paths and token lifetime, as written in the design document.
 
 ## e-commerce: Shipping domain (WP3)
 
@@ -485,6 +485,21 @@ Me verification: replaced the obsolete live-role query with one exact credential
 
 Me delivery preflight: four authorized paths, 41/41 documentation commands OK, audit 53 tables / 0 findings, database ALL PASSED, Peter delivery authorized, no blockers. Origin/main unchanged at pre-delivery fetch.
 
+## e-commerce: Sequence diagrams of 10 inquiry APIs of product and shop
+
+Status: Diagrams written in the managed workspace of Marry on branch `docs/marry-inquiry-sequences`; `main` (929012e, after the repair of `check_docs.py`) is merged into the branch and the pull request is open for the lead. Scope: the ten folders below and `tasks/`. No `spec.md` is changed.
+
+Folders: `product/02-inquiry-product`, `05-inquiry-product-category`, `08-inquiry-product-category-attribute`, `12-inquiry-product-type`, `15-inquiry-product-brand`, `shop/03-inquiry-shop-product-sku`, `04-inquiry-storefront-product`, `07-inquiry-shop-type`, `14-inquiry-storefront-shop-product`, `16-inquiry-storefront-product-review`.
+
+- [x] Write the skeletons with `sequence_skeleton.py --write` and replace every `TODO(author)` with the branches of the spec: 400, 401 for the eight APIs that need an access token (none for the three public storefront APIs), 404 for the storefront APIs, a 200 with empty items when nothing matches, 408, then the reads and 200. An inquiry has no transaction.
+- [x] Put every block where it runs: the blocks that need the result of another block come after it (for example the option value images of `product/02` after the option values; `shop/04` finds the shop product, the product and its SKUs, each with its own 404, before it reads the images and options); the participants follow the first use.
+- [x] Keep every SQL block letter for letter; run `api-sequence-spec` (OK, 83 specs, product 5/15 and shop 5/16 filled) and `grep TODO(author)` on the ten folders (nothing).
+- [x] PlantUML: `-checkonly` and `-syntax` pass for all ten; the SVGs show every SQL line except five lines with two `--` (three in `shop/14`, two in `shop/16`), which PlantUML draws struck through; the spec is not changed in this round and the lead is told.
+- [x] After the repair of `check_docs.py` was merged (929012e): merge `main` into the branch (no force push; the only conflict was the end of this file, both sections kept), rerun every checker and the preflight.
+- [ ] Push, open the pull request, tell the lead; hold the lock until the merge, then release and park.
+
+Verification: 45 of 45 `check_docs.py` sub-commands OK, `api-sequence-spec` OK (83 specs, product 5/15 and shop 5/16 filled), audit 53 tables 0 findings, database tests ALL PASSED. `test_sequence_skeleton.py` fails on `main` already (the test compares the block order of the hand-written diagrams with the skeleton; 4 files of `main` and now also `product/02` and `shop/04`, where blocks run in the order of the work); the test is outside this assignment and the lead is told.
+
 ## repository-wide: Sequence phase 1, five prototype diagrams
 
 Status: Complete in the branch, waiting for review. Assignment: agent `tommy`, delivery `open-pr`, authorized by `josh` (the product owner ordered real diagrams instead of a notes document), workspace `.workspace/tommy`, branch `feat/tommy-sequence-cart-order-webhook`, scopes `e-commerce/doc/api/cart`, `e-commerce/doc/api/sales/02-create-order`, `e-commerce/doc/api/payment/02-stripe-webhook`, `e-commerce/db/tests/check_docs.py`, `tasks`.
@@ -532,3 +547,30 @@ Logout pre-integration preflight passed 41/41 commands, audit 53/0, database ALL
 Logout integration: latest origin/main at 929012e includes upstream checker repair #39 and the now-merged API PRs #32/#34/#35/#36/#37. Preserve their complete functions/registrations plus upstream cart/order/webhook and backend guide changes; the working-tree task diff against origin/main is still only the four authorized logout paths. Prior Peter delivery checkboxes are now reconciled to those verified merged PRs. Q18/Q19 remains pending for consent management; no detailed spec approval or backend implementation is inferred from merge.
 
 Logout post-integration verification: complete checker parses, all 46 current documentation commands pass, audit 53 tables / 0 findings, database ALL PASSED, logout mutations remain 36/36 and the unchanged spec/sequence still have 29/29 visible SQL lines. Manual diff against current origin/main is exactly the four authorized logout paths; imported main files are base history, not additional APIs in this PR.
+## repository-wide: Make the skeleton test read finished diagrams like the checker
+
+Status: Complete in the branch, waiting for review. Assignment: agent `tommy`, delivery `open-pr`, authorized by `josh`, workspace `.workspace/tommy`, branch `test/tommy-sequence-skeleton-order-free`, scopes `.agents/skills/api-contract-design/scripts` and `tasks`.
+
+- [x] Replace the comparison of a finished diagram with the skeleton in spec order by the checker's reading: the blocks (table, heading, SQL) as a set, repeated blocks allowed, no block that the spec lacks, database participants in the order of first use.
+- [x] Add a test of the comparison itself (reordered and repeated blocks pass; a missing block, a changed SQL letter, a block with another heading, a broken lifecycle, participants out of order and an extra participant fail).
+- [x] Mutation-test the test (7 changes of the test, 5 changes of real diagrams): 12/12 caught.
+- [x] Open the PR with `commit-and-pr`; do not merge.
+
+## repository-wide: Guard check_docs.py against a merge that cuts it
+
+Status: Complete in the branch, waiting for review. Assignment: agent `tommy`, delivery `open-pr`, authorized by `josh` (queue item 1.5 after the repair of PR 39), workspace `.workspace/tommy`, branch `feat/tommy-check-docs-integrity`, scopes `e-commerce/db/tests/check_docs.py`, `.agents/skills/commit-and-pr/scripts`, `.agents/skills/commit-and-pr/references` and `tasks`.
+
+- [x] Find why the preflight let a file that does not parse pass: the list of sub-commands came back empty and the report said `0/0 OK`.
+- [x] Make the preflight parse `check_docs.py` first and report a blocker with the line, and report a blocker when no sub-command is listed.
+- [x] Add the sub-command `check-registry`: every top-level `check_*` function ends with `return` or `raise` and is registered in `COMMANDS` or called, and no sub-command is registered twice.
+- [x] Say it in `references/checklist.md`.
+- [x] Mutation-test it (6 changes of `check_docs.py`) and show the old preflight passing a broken file and the new one failing.
+- [x] Open the PR with `commit-and-pr`; do not merge.
+## e-commerce: Reword the SQL comments with two `--` in shop/14 and shop/16
+
+Status: Implemented in the managed workspace of Marry on branch `docs/marry-reword-double-dash-comments`; the pull request is opened after the preflight and merged by the lead. Scope: `shop/14-inquiry-storefront-shop-product`, `shop/16-inquiry-storefront-product-review` and `tasks/`. Only comments change; no SQL that runs.
+
+- [x] Find the five lines (three in `shop/14`, two in `shop/16`) in `spec.md` and `sequence.wsd`, and every other user of them: `check_docs.py` (`shop-spec`) uses the start of each line (`-- ORDER BY ... , p.id`) as a needle, so the form `-- sort X: ORDER BY ...` would break it.
+- [x] Reword the five lines in one form with one `--`: `-- ORDER BY p.name, p.id (sort NAME_ASC)`; the needles stay valid and the sequence equals the spec letter for letter.
+- [x] Check: 45 of 45 `check_docs.py` sub-commands, `api-sequence-spec`, `audit_all.py`, database tests, `test_sequence_skeleton.py` (12 tests); the skeleton script prints no struck-through warning for any spec; no `sequence.wsd` of the repository has a SQL line with two `--`; the rendered SVGs show 115 of 115 (`shop/14`) and 57 of 57 (`shop/16`) SQL lines with no strike-through mark.
+- [ ] Preflight, commit, push, open the pull request, tell the lead; hold the lock until the merge, then release and park.
