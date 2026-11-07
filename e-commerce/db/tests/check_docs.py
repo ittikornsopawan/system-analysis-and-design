@@ -3941,6 +3941,7 @@ def sequence_database_operations(wsd: str) -> tuple[list[tuple[str, str, str]], 
 SEQUENCE_PARTICIPANT_CHAIN = ('participant "API" as api', 'participant "Application" as app', 'participant "Domain" as domain', 'participant "Infrastructure" as infra')
 SEQUENCE_HEAD = ('skinparam defaultFontName "Sarabun"', "hide footbox", 'actor "User" as user')
 SEQUENCE_BOXES = ('box "Frontend"', 'box "Web API"', 'box "Database"')
+SEQUENCE_LOCK = re.compile(r"FOR\s+(?:NO\s+KEY\s+)?UPDATE|FOR\s+(?:KEY\s+)?SHARE|pg_(?:try_)?advisory_(?:xact_)?lock", re.IGNORECASE)
 SEQUENCE_LOGIN_STANDARD = ("-> infra: BEGIN", "-> infra: COMMIT", "-> infra: ROLLBACK", "HTTP 400 E10001", "HTTP 408 E90001", "HTTP 500")
 
 
@@ -3987,8 +3988,37 @@ def sequence_login_standard_errors(text: str) -> list[str]:
             errors.append(f"missing the answer line 'app -> api: {needle}'")
     if "-> infra: BEGIN" in text and "HTTP 400 E10001" in text and text.index("HTTP 400 E10001") > text.index("-> infra: BEGIN"):
         errors.append("the HTTP 400 E10001 answer belongs to the validation step before BEGIN")
-    if writes and text.index("-> infra: BEGIN") > writes[0]:
+    begin = text.index("-> infra: BEGIN")
+    if writes and begin > writes[0]:
         errors.append("BEGIN must come before the first INSERT, UPDATE or DELETE")
+    # A lock taken outside the transaction is released at once, so every locking statement comes after BEGIN
+    # (05-refresh-token reads the row to lock before BEGIN, but that read takes no lock).
+    for match in re.finditer(r"^\s*infra -> \w+: (?:QUERY|INSERT|UPDATE|DELETE)", text, re.MULTILINE):
+        following = re.search(r"^\s*(?:app|infra) -> ", text[match.end():], re.MULTILINE)
+        statement = text[match.start(): match.end() + following.start() if following else len(text)]
+        if match.start() < begin and SEQUENCE_LOCK.search(statement):
+            errors.append(f"line {text.count(chr(10), 0, match.start()) + 1}: a locking statement (FOR UPDATE / advisory lock) must come after BEGIN")
+    # Every error answer inside the transaction ends it first: the closest 'app -> infra:' line that leads to it is
+    # ROLLBACK or COMMIT. "Leads to it" follows the nesting by indentation: lines of closed branches (deeper) are skipped
+    # and a lower indent moves out to the enclosing block, so the ROLLBACK of a sibling branch does not count.
+    offset = 0
+    for position, line in enumerate(lines):
+        line_start, offset = offset, offset + len(line) + 1
+        if not re.match(r"^\s*app -> api: HTTP [45]\d\d\b", line) or line_start < begin:
+            continue
+        indent = len(line) - len(line.lstrip())
+        previous = ""
+        for item in reversed(lines[:position]):
+            if not item.strip():
+                continue
+            item_indent = len(item) - len(item.lstrip())
+            if item_indent < indent:
+                indent = item_indent
+            if item_indent == indent and item.lstrip().startswith("app -> infra:"):
+                previous = item.strip()
+                break
+        if previous not in ("app -> infra: ROLLBACK", "app -> infra: COMMIT"):
+            errors.append(f"line {position + 1}: {line.strip().split(': ', 1)[1]} inside the transaction must follow 'app -> infra: ROLLBACK' or 'COMMIT' (found {previous!r})")
     if interactions and text.rindex("-> infra: COMMIT") < interactions[-1]:
         errors.append("COMMIT must come after the last SQL interaction")
     return errors
@@ -4000,9 +4030,13 @@ def check_api_sequence_spec() -> int:
     specs = sorted(api_root.glob("*/*/spec.md"))
     groups: dict[str, list[int]] = {}
     legacy_seen = set()
+    if not specs:
+        errors.append(f"no spec.md found under {SEQUENCE_API_ROOT}")
     for group in REQUIRED_GROUPS:
         if not (api_root / group).is_dir():
             errors.append(f"required group {group} does not exist")
+        elif not any(spec.parent.parent.name == group for spec in specs):
+            errors.append(f"required group {group} has no spec")
     for entry in LEGACY_SEQUENCES:
         if not (api_root / entry / "spec.md").exists():
             errors.append(f"LEGACY_SEQUENCES lists {entry}, which is not a spec folder")

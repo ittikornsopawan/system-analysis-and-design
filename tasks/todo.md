@@ -341,6 +341,10 @@ Status: Implemented in the managed workspace of Marry on branch `feat/marry-sequ
 - [x] Add the login standard for every spec with INSERT, UPDATE or DELETE (BEGIN, COMMIT, ROLLBACK, HTTP 400 `E10001`, HTTP 408 `E90001`, HTTP 500) with the explicit named list `LEGACY_SEQUENCES` for the 10 diagrams that do not follow it yet.
 - [x] Mutation-test the checker: 35 cases of `mutation_harness.py` and 10 special cases (empty file, only blanks, missing file, pending group, moved BEGIN, moved COMMIT, TODO marker).
 - [x] Run every `check_docs.py` sub-command (40), `audit_all.py` and `run_db_tests.sh`.
-- [ ] Preflight, commit, push, open the pull request, tell the lead; hold the lock until the merge, then release and park.
+- [x] Preflight, commit, push, open the pull request (PR #27), tell the lead.
+- [x] Lead review of PR #27, fix 1: a locking statement (`FOR UPDATE`, `pg_advisory_xact_lock`) must come after BEGIN.
+- [x] Lead review of PR #27, fix 2: every `HTTP 4xx/5xx` answer after the first BEGIN follows ROLLBACK or COMMIT in its own block (by indentation, so the ROLLBACK of a sibling branch does not count).
+- [x] Lead review of PR #27, fix 3: fail when no spec is found or a required group has no spec; mutation-test the three fixes and rerun every check.
+- [ ] Push the fixes to the same branch, tell the lead; hold the lock until the merge, then release and park.
 
-Verification: `api-sequence-spec` prints `OK: api-sequence-spec (83 specs; ... 10 legacy without the login standard)`; harness 35 of 35 caught; special cases 10 of 10 as expected after the BEGIN case was rebuilt (see the lesson of 2026-11-07); 40 of 40 sub-commands OK; audit 53 tables, 0 findings; database tests ALL PASSED.
+Verification: `api-sequence-spec` prints `OK: api-sequence-spec (83 specs; ... 10 legacy without the login standard)`; harness 35 of 35 caught; 10 special cases of the first round as expected after the BEGIN case was rebuilt (see the lesson of 2026-11-07); review round: BEGIN moved after the locks in `02-login` (3 cases), every ROLLBACK before an error answer of `02-login` and `05-refresh-token` deleted one by one (8 cases), a ROLLBACK replaced by a query, no spec at all, a required group without spec and a missing required group are all caught; 40 of 40 sub-commands OK; audit 53 tables, 0 findings; database tests ALL PASSED.
