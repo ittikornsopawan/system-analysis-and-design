@@ -392,6 +392,11 @@ def normalize_scopes(values: list[str], agent: dict[str, Any]) -> list[str]:
         raise Blocked("at least one assignment scope is required")
     normalized: list[str] = []
     for value in values:
+        if "," in value:
+            raise Blocked(
+                f"assignment scope {value!r} contains a comma; repeat --scope once per path, "
+                "for example: --scope e-commerce/doc --scope tasks"
+            )
         if value == ".":
             scope = "."
         else:
