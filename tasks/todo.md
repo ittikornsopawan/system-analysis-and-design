@@ -712,6 +712,19 @@ Scope: authen-and-author/08-inquiry-user-profile with checker/task evidence. Own
 
 Integration finding: current main restored stale transaction/token-timeout exemptions for already-complete API #56 (reset request) and #57 (profile upsert). The full merged check catches this. Remove only those four stale checker entries, preserve their API artifacts byte-for-byte and keep every registered function; rerun all commands before push. This is checker reconciliation within the existing assignment scope, not another API revision.
 
+## e-commerce: Peter API review — own-user address inquiry (API 14, 2026-11-08)
+
+Authority: original API review, owner Q13 credentials and Q15 immediate main-based continuation without a merge gate; every checker must pass before push. One API pair per PR. Assignment includes the shared checker and tasks. No backend/schema implementation.
+
+- [x] Preserve PR #62/history and return to clean main. Reproduce list/count snapshot mismatch in isolated PostgreSQL during read-only analysis.
+- [x] Run every baseline command plus audit/database tests; record the exact known main API08 stale exemption failure honestly in /private/tmp/peter_address_inquiry_red_baseline.log. No other failing command is accepted.
+- [x] Apply the same one-line shared-checker repair already delivered in #62 on this fresh main-based branch, without changing the API08 pair; all 51 documentation checks plus audit/database baselines passed before API10 edits. This bounded repair honors Q15 rather than waiting for #62 to merge; it is not a checker suppression or a general failed-baseline waiver.
+- [x] Revise API10 spec/complete generated sequence together: current credential gate, identical typed filters, consistent count/page snapshot, bounds and complete mapping/outcomes.
+- [x] Add exact SQL/semantic/path/render checks; mutation-test and execute pagination/ownership/snapshot SQL fixtures; inspect the diagram.
+- [ ] Run all checkers/audit/database tests and authorized delivery preflight; open one API PR and continue from main.
+
+Verification before main integration: three character-identical SQL operations, nine terminal traces, 56/56 mutations caught after closing the late-JWT-expiry branch gap; eight synchronized semantic SQL faults and intact pre-credential count/whitespace/old-diagram/render-omission faults rejected. Rendered SQL is 35/35 visible lines; SVG/PNG inspected, eight participants. Isolated PostgreSQL executes actual credential/count/page SQL: typed null filters, wildcard/apostrophe/Thai search, owner/deleted/missing id, status visibility, deterministic ties and four pages/beyond-range, expiry equality/inactive credentials, read-only write rejection and concurrent committed insert/delete between count/page with a consistent snapshot. Reference pagination bounds cover signed Int64 and checked offset; no backend implementation/conformance claim. All 52 documentation commands, audit 53 tables / 0 findings, database ALL PASSED and 12 skeleton tests passed. The initial main API08 exemption failure and its bounded checker-only repair are recorded above.
+
 ## e-commerce: Peter API review — logout (API 8)
 
 Status: Author/me delivered as PR #37 (four files; MERGEABLE when opened), branch/history preserved. Clean main-based logout assignment passed baselines under Q15. Q13 keeps immediate credential revocation; WP4 U9/U23 requires the user lock and atomic closure of every token in the caller's session. Management-consent Q18/Q19 remains pending; independent authorized work continues.
