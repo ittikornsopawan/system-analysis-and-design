@@ -329,3 +329,15 @@ description: Repository-wide and project-specific lessons captured from user cor
 - **Finding**: GitHub merge commit 87162eb restored the completed inquiry-profile token/timeout exemption that its first parent b1c5c90 had removed. Endpoint artifacts still passed their flow check, but the combined main failed api-sequence-spec.
 - **Root cause**: A shared checker contains both function logic and changing exemption lists; retaining functions alone does not prove that a merge preserved retired entries.
 - **Corrected behavior**: Compare function registrations and retired exemptions against both parents, run every registered check on the combined tree before delivery, and record/repair an existing failure within the authorized scope rather than masking it or weakening the check.
+
+### 2026-11-08 — Use the returned PR identity, never the next presumed number
+
+- **Finding**: After opening role-batch PR69, the rotation command mistakenly used 68, which another branch had already taken. The identity/head guard stopped rotation before changing active assignment history.
+- **Root cause**: A sequential PR number was assumed instead of consuming the URL returned by the create command; concurrent authors can take intervening numbers.
+- **Corrected behavior**: Capture the actual returned PR URL, verify repository/base/head branch/head commit before any lifecycle action, and pass that same verified URL throughout release/archive/rotation. Keep the identity guard; correct the input rather than relaxing it.
+
+### 2026-11-08 — A replacement PR does not authorize closing the original
+
+- **Finding**: Automatic approval review rejected closing PR67 after replacement PR73 opened because the owner had explicitly instructed leaving PRs open. No closure was performed.
+- **Root cause**: Replacement delivery was incorrectly treated as an exception to the earlier leave-open instruction.
+- **Corrected behavior**: Keep original PRs and branches intact unless the owner explicitly authorizes closing that specific PR; creating a replacement and resuming other work do not supply that authorization.
