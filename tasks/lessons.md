@@ -305,3 +305,9 @@ description: Repository-wide and project-specific lessons captured from user cor
 - **Correction**: The INSERT written by hand in PR #58 had value lines that start with a quote after the indentation; PlantUML draws such a line as a comment, so six lines were missing from the picture. `api-sequence-spec` passed because it reads the raw text, and my first rendered check passed too because it asked only whether each line appears somewhere in the picture.
 - **Root cause**: The edit script encoded a line only when the quote was in the first column, and the rendered check used a substring test that a repeated line (`'<sequence.userId>',` appears twice) satisfies by luck.
 - **Corrected behavior**: Encode a leading quote after the indentation (`&#39;`), and check the render by counting: every SQL line must appear in the picture at least as many times as it appears in the spec.
+
+### 2026-11-08 — Preserve retired exemptions when updating a PR base
+
+- **Finding**: GitHub merge commit 87162eb restored the completed inquiry-profile token/timeout exemption that its first parent b1c5c90 had removed. Endpoint artifacts still passed their flow check, but the combined main failed api-sequence-spec.
+- **Root cause**: A shared checker contains both function logic and changing exemption lists; retaining functions alone does not prove that a merge preserved retired entries.
+- **Corrected behavior**: Compare function registrations and retired exemptions against both parents, run every registered check on the combined tree before delivery, and record/repair an existing failure within the authorized scope rather than masking it or weakening the check.

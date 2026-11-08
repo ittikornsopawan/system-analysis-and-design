@@ -767,10 +767,27 @@ Scope: authen-and-author/09-upsert-user-address plus checker, shared confirmed-d
 - [x] Revise spec and generated-then-completed sequence together: full-body/Q21 validation, post-lock current credential, owned/non-DELETED target, serialized quota, nullable insert id, computed default and 14 atomic insert/update/delete/promotion traces.
 - [x] Add exact SQL/path/semantic/render checks: 66/66 mutations caught, including old checker Delete exception; synchronized wrong guards, clear-after-insert and Q21-after-BEGIN ordering, original sequence, whitespace and real renderer omission rejected. Nine exact SQL definitions passed UTC PostgreSQL reference Application/default logic, quota and credential lock waits confirmed via pg_stat_activity, rollback/default promotion/soft-history/ownership fixtures. Diagram inspected with nine participants and 136/136 visible SQL lines including reused blocks; no backend/encryption-runtime claim.
 - [x] Run pre-integration checkers (51/51), audit (53 tables/0 findings), database suite (ALL PASSED), skeleton tests (12/12), and authorized preflight (five paths/no blockers).
-- [ ] Integrate latest main including inquiry #60 and architecture #61, rerun all combined checks, open one address API PR and continue from main.
+- [x] Integrate latest main including inquiry #60 and architecture #61, rerun all combined checks, deliver address API PR #62 and continue from main; #62 is now verified merged.
 
 
 Integration finding: GitHub merge commit 87162eb for inquiry #60 re-added its completed API 08 token/timeout exemption (verified against its first parent b1c5c90). The full merged check rejects it. Remove only that stale checker entry; preserve the API 08 artifacts and every imported checker/function. This is the cause of the main baseline regression, not permission to weaken the legacy check or modify another endpoint.
+
+## e-commerce: Peter API review — own-user address inquiry (API 14, 2026-11-08)
+
+Authority: original API review, owner Q13 credentials and Q15 immediate main-based continuation without a merge gate; every checker must pass before push. One API pair per PR. Assignment includes the shared checker and tasks. No backend/schema implementation.
+
+- [x] Preserve PR #62/history and return to clean main. Reproduce list/count snapshot mismatch in isolated PostgreSQL during read-only analysis.
+- [x] Run every baseline command plus audit/database tests; record the exact known main API08 stale exemption failure honestly in /private/tmp/peter_address_inquiry_red_baseline.log. No other failing command is accepted.
+- [x] Apply the same one-line shared-checker repair already delivered in #62 on this fresh main-based branch, without changing the API08 pair; all 51 documentation checks plus audit/database baselines passed before API10 edits. This bounded repair honors Q15 rather than waiting for #62 to merge; it is not a checker suppression or a general failed-baseline waiver.
+- [x] Revise API10 spec/complete generated sequence together: current credential gate, identical typed filters, consistent count/page snapshot, bounds and complete mapping/outcomes.
+- [x] Add exact SQL/semantic/path/render checks; mutation-test and execute pagination/ownership/snapshot SQL fixtures; inspect the diagram.
+- [x] Run all checkers/audit/database tests and authorized delivery preflight; open API10 PR #65 and continue from main. Main merged #62 during delivery; resume #65 to reconcile shared checker/tasks and verify the combined tree before returning to main again.
+
+Verification before main integration: three character-identical SQL operations, nine terminal traces, 56/56 mutations caught after closing the late-JWT-expiry branch gap; eight synchronized semantic SQL faults and intact pre-credential count/whitespace/old-diagram/render-omission faults rejected. Rendered SQL is 35/35 visible lines; SVG/PNG inspected, eight participants. Isolated PostgreSQL executes actual credential/count/page SQL: typed null filters, wildcard/apostrophe/Thai search, owner/deleted/missing id, status visibility, deterministic ties and four pages/beyond-range, expiry equality/inactive credentials, read-only write rejection and concurrent committed insert/delete between count/page with a consistent snapshot. Reference pagination bounds cover signed Int64 and checked offset; no backend implementation/conformance claim. All 52 documentation commands, audit 53 tables / 0 findings, database ALL PASSED and 12 skeleton tests passed. The initial main API08 exemption failure and its bounded checker-only repair are recorded above.
+
+Integration with origin/main 5dda686 preserves the domain diagram package byte-for-byte; only the five authorized paths differ from that base. API10 pair and checker bytes equal the verified task commit. On the integrated tree all 52 documentation commands, audit 53/0, database ALL PASSED, 12 skeleton tests and 35/35 rendered SQL lines passed again. Authorized preflight passed before the task commit; final committed delivery scope is checked before push.
+
+PR #65 base reconciliation: preserve both completed API09/API10 exemption removals and complete flow-checker functions after #62 merged. The API09 pair/owner decision log remain byte-identical to main; only the five owned API10 paths differ. No PR merge is performed.
 
 ## e-commerce: Peter API review — logout (API 8)
 

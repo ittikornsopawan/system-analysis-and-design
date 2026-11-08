@@ -1,3 +1,11 @@
+---
+name: Own User Address Inquiry API Specification
+description: Defines current caller credential gating, identical nullable address filters, consistent count/page snapshots, safe pagination and complete mapping for GET v1/user/address.
+status: in-review
+approved_by: null
+approved_at: null
+---
+
 # [GET]: v1/user/address
 
 | Title       | Description                                                                                                                                                                              |
@@ -32,20 +40,40 @@
 
 ### Query Parameters
 
-|     | Parameter Name | Data Type    | M/O      | Description                                                                          | Example                              |
-| --- | -------------- | ------------ | -------- | ------------------------------------------------------------------------------------ | ------------------------------------ |
-| 1   | id             | String: UUID | OPTIONAL | User Address Id, Response is a list with one item                                    | d4e5f6a7-b8c9-4d0e-9f1a-2b3c4d5e6f7a |
-| 2   | pageIndex      | Numeric      | OPTIONAL | Page index starting from 1, Defaults to 1                                            | 1                                    |
-| 3   | pageSize       | Numeric      | OPTIONAL | Number of items per page (max 100), Defaults to 10                                   | 10                                   |
-| 4   | search         | String       | OPTIONAL | Search by address title                                                              | home                                 |
-| 5   | rowStatus      | String       | OPTIONAL | Row status filter (ACTIVE, INACTIVE), All statuses except DELETED when not specified | ACTIVE                               |
+|     | Parameter Name | Data Type    | M/O      | Description                                                                                                              | Example                              |
+| --- | -------------- | ------------ | -------- | ------------------------------------------------------------------------------------------------------------------------ | ------------------------------------ |
+| 1   | id             | String: UUID | OPTIONAL | Own address id filter, Combined with search/status and normal pagination, Missing or other-user id returns an empty list | d4e5f6a7-b8c9-4d0e-9f1a-2b3c4d5e6f7a |
+| 2   | pageIndex      | Numeric      | OPTIONAL | Page index starting from 1, Defaults to 1                                                                                | 1                                    |
+| 3   | pageSize       | Numeric      | OPTIONAL | Number of items per page (max 100), Defaults to 10                                                                       | 10                                   |
+| 4   | search         | String       | OPTIONAL | Search by address title                                                                                                  | home                                 |
+| 5   | rowStatus      | String       | OPTIONAL | Row status filter (ACTIVE, INACTIVE), All statuses except DELETED when not specified                                     | ACTIVE                               |
 
 ### User Address Inquiry Rules
 
-- The addresses are the ones of the caller: `userId` comes from the access token. The id of another user's address returns an empty list.
-- Addresses with `rowStatus` DELETED are never returned. Sensitive fields are decrypted by the system and returned as plain text over TLS.
-- Sorted by `is_default` (the default first), then `created_at` descending, then `id`, so that pages never repeat or skip a row.
-- `search` matches the title only (the other fields are encrypted).
+- Governing behavior: WP4 U19 and [owner-confirmed review](../../../../../docs/superpowers/specs/2026-11-07-api-review-design.md), Q13 current credentials and Q15 delivery, approved by the product owner. This detailed revision remains in-review; no backend/schema implementation is included.
+- The addresses are the ones of the caller: userId comes only from verified JWT sub, never a query/body value. No administrator override or live role query is used. The id of another user's address returns an empty list, as does a missing/DELETED id; do not expose ownership or return 404. Reject unknown/repeated query keys, non-empty body or invalid mandatory UTC timestamp with 400 E10001 before SQL. Generate requestId when omitted.
+- The accepted query keys are id/pageIndex/pageSize/search/rowStatus. If supplied, id must be a non-empty UUID. pageIndex/pageSize must be positive signed 64-bit integers; default 1/10 only when omitted, pageSize at most 100. Before SQL reject numeric parse/overflow and offset outside nonnegative BIGINT as 400; compute offset = (pageIndex - 1) * pageSize with checked arithmetic and bind it. Explicit empty/null-like/invalid numerics or rowStatus are not silently defaulted. Row status must be one of ACTIVE, INACTIVE.
+- search is an optional single string; empty string is valid. It matches title only, because address fields are encrypted. Preserve the existing case-insensitive ILIKE wildcard semantics: prepare searchPattern = percent + search + percent on the server, including existing percent/underscore LIKE behavior, then bind the entire pattern as text. Never concatenate client text into SQL. Omitted searchPattern/id/rowStatus bind typed SQL NULL; null-safe OR predicates disable only their corresponding filter. An id filter is still paginated and combined with search/status, not an unpaged alternate API.
+- Verify Bearer JWT signature/issuer/audience/expiry/UUID sub before BEGIN; missing/invalid JWT is generic 401 E10002 `Invalid or expired access token.` without SQL. Derive accessTokenHash as SHA-256 of the exact JWT and userId from verified sub. BEGIN REPEATABLE READ READ ONLY, capture fresh server UTC now immediately before the joined token/user check and recheck JWT expiry. Require matching hash/userId, ACTIVE stored token, expiry > now and ACTIVE user. A missing/inactive user or revoked/expired/mismatched token is the same 401 after ROLLBACK, before any address query.
+- Count and page share the same repeatable-read snapshot as the credential query. No user/address locks or write SQL run. Count first, with the exact same userId/non-DELETED/id/searchPattern/rowStatus predicates as the list query; never mix count and rows from different transactions or filters. When totalItems = 0 skip the list query and return items=[] and totalPages=0. Otherwise fetch the requested page; an offset beyond the range may return items=[] while totalItems/totalPages remain positive. There is no 404 for an empty page.
+- Addresses with rowStatus DELETED are never returned. With rowStatus omitted, preserve existing visibility of every non-DELETED status; an explicit filter accepts only ACTIVE or INACTIVE. Sorted by is_default DESC (the default first), then created_at DESC, then id ASC. The unique tie-break stabilizes one snapshot's order; a later request can observe newer committed data, so pagination is not a frozen cursor across separate calls.
+- Map each row to exactly userAddressId/title/isDefault/address/city/state/postalCode/country/rowStatus. Decrypt the five sensitive fields server-side over TLS; title/default/status/id are copied. Never return userId, token/hash/salt, audit timestamps or other users' data. A missing page is an empty array, not null. Return exactly five data keys: items/pageIndex/pageSize/totalItems/totalPages, echo validated page values and calculate totalPages = 0 when count is 0, otherwise ceiling(totalItems / pageSize), with checked integer arithmetic.
+- This inquiry does not create/modify addresses, default flags, tokens, read markers or audit fields. COMMIT only after complete decryption/mapping succeeds, then 200 S10000 `Inquiry User Address Success`. On timeout before commit ROLLBACK then 408 E90001; unexpected SQL/decryption/mapping failure ROLLBACK then generic 500 without bizCode. Require the returned page row count to equal min(pageSize, max(0, totalItems - offset)); an unexpected mismatch is an internal 500 with rollback. Do not return partially mapped rows. No 403/404/409 is added.
+- Execution order: validate query/body/timestamp and checked pagination -> verify JWT -> derive caller/hash/typed filters -> BEGIN REPEATABLE READ READ ONLY -> fresh now/JWT expiry check -> joined current credential/user -> total count -> optional page when positive -> map each item and all pagination fields -> COMMIT -> 200. Every SQL result returns to Application before branching or mapping.
+
+#### Scenario correspondence with sequence.wsd
+
+| Scenario                                                    | Sequence behavior                                                         | HTTP             | Result/side effects     |
+| ----------------------------------------------------------- | ------------------------------------------------------------------------- | ---------------- | ----------------------- |
+| Invalid filters/page bounds/timestamp/body                  | No SQL/BEGIN                                                              | 400 E10001       | None                    |
+| Invalid JWT                                                 | No SQL/BEGIN                                                              | 401 E10002       | None                    |
+| JWT expires before joined read / current token-user invalid | ROLLBACK before address queries                                           | 401 E10002       | None                    |
+| No matching own non-DELETED row                             | Count=0, skip page SQL, map empty list/zero pages                         | 200 S10000       | No writes               |
+| Positive count and nonempty page                            | Same-filter/snapshot page, map nine fields; decrypt five sensitive fields | 200 S10000       | Five pagination keys    |
+| Page beyond range                                           | Keep positive count/pages, items=[]                                       | 200 S10000       | No 404                  |
+| Other user's id / DELETED id                                | Own-scope count=0                                                         | 200 S10000       | No ownership disclosure |
+| Concurrent address write between reads                      | Count/page use one repeatable-read snapshot                               | 200 S10000       | Consistent count/list   |
+| Timeout / unexpected mapping/SQL failure                    | ROLLBACK, no partial data                                                 | 408 E90001 / 500 | None                    |
 
 ## Example Request
 
@@ -111,7 +139,7 @@ curl --location --request GET 'https://www.domain.com/api-dev/v1/user/address?pa
 | 6   | state          | String       | MANDATORY | Sequence Diagram | data.items[].state         | State (plain text)            | Bangkok                              |
 | 7   | postalCode     | String       | MANDATORY | Sequence Diagram | data.items[].postalCode    | Postal code (plain text)      | 10110                                |
 | 8   | country        | String       | MANDATORY | Sequence Diagram | data.items[].country       | Country (plain text)          | Thailand                             |
-| 9   | rowStatus      | String       | MANDATORY | Sequence Diagram | data.items[].rowStatus     | Row status (ACTIVE, INACTIVE) | ACTIVE                               |
+| 9   | rowStatus      | String       | MANDATORY | Sequence Diagram | data.items[].rowStatus     | Stored non-DELETED row status | ACTIVE                               |
 
 ### Example Response Parameters
 
@@ -285,9 +313,80 @@ Request: `GET v1/user/address?id=d4e5f6a7-b8c9-4d0e-9f1a-2b3c4d5e6f7a`
 }
 ```
 
+#### Success - Page Beyond Range
+
+```JSON
+{
+    "status": {
+        "code": 200,
+        "message": "Ok",
+        "bizCode": "S10000",
+        "bizMessage": "Inquiry User Address Success",
+        "requestId": "req-8f6a2b4c-5d7e-4f9a-b1c3-4d5e6f7a8b9c",
+        "timestamp": "2026-11-06T09:10:00.123Z",
+        "status": "SUCCESS"
+    },
+    "data": {
+        "items": [],
+        "pageIndex": 2,
+        "pageSize": 10,
+        "totalItems": 1,
+        "totalPages": 1
+    }
+}
+```
+
+#### Fail - Internal Server Error
+
+```JSON
+{
+    "status": {
+        "code": 500,
+        "message": "Internal Server Error",
+        "bizMessage": "An unexpected error occurred.",
+        "requestId": "req-address-inquiry-review",
+        "timestamp": "2026-11-08T00:00:00.123Z",
+        "status": "ERROR"
+    }
+}
+```
+
 ---
 
 ## Database Relations
+
+All SELECTs share one read-only repeatable-read snapshot. The credential query joins [authen.m_user](../../../schema/authen/m_user.md). Typed optional filters use SQL NULL when omitted; searchPattern is one bound text value, not SQL interpolation. Count/list WHERE predicates are identical; offset is a checked nonnegative BIGINT.
+
+### Table: [authen.t_user_access_token](../../../schema/authen/t_user_access_token.md)
+
+#### QUERY - Check current credential and user
+
+```SQL
+SELECT
+    at.id as access_token_id
+FROM authen.t_user_access_token at
+JOIN authen.m_user u ON u.id = at.user_id
+WHERE at.token = '<sequence.accessTokenHash>'
+AND at.user_id = '<sequence.userId>'
+AND at.row_status = 'ACTIVE'
+AND at.expired_at > '<sequence.now>'
+AND u.row_status = 'ACTIVE'
+```
+
+### Table: [authen.t_user_address](../../../schema/authen/t_user_address.md)
+
+#### QUERY - Get total items
+
+```SQL
+SELECT
+    COUNT(ua.id) as total_items
+FROM authen.t_user_address ua
+WHERE ua.user_id = '<sequence.userId>'
+AND ua.row_status <> 'DELETED'
+AND ('<sequence.id>' IS NULL OR ua.id = '<sequence.id>') -- only when id is specified
+AND ('<sequence.searchPattern>' IS NULL OR ua.title ILIKE '<sequence.searchPattern>') -- only when search is specified
+AND ('<sequence.rowStatus>' IS NULL OR ua.row_status = '<sequence.rowStatus>') -- only when rowStatus is specified
+```
 
 ### Table: [authen.t_user_address](../../../schema/authen/t_user_address.md)
 
@@ -307,22 +406,9 @@ SELECT
 FROM authen.t_user_address ua
 WHERE ua.user_id = '<sequence.userId>'
 AND ua.row_status <> 'DELETED'
-AND ua.id = '<sequence.id>' -- only when id is specified
-AND ua.title ILIKE '%<sequence.search>%' -- only when search is specified
-AND ua.row_status = '<sequence.rowStatus>' -- only when rowStatus is specified
+AND ('<sequence.id>' IS NULL OR ua.id = '<sequence.id>') -- only when id is specified
+AND ('<sequence.searchPattern>' IS NULL OR ua.title ILIKE '<sequence.searchPattern>') -- only when search is specified
+AND ('<sequence.rowStatus>' IS NULL OR ua.row_status = '<sequence.rowStatus>') -- only when rowStatus is specified
 ORDER BY ua.is_default DESC, ua.created_at DESC, ua.id
-LIMIT <sequence.pageSize> OFFSET (<sequence.pageIndex> - 1) * <sequence.pageSize>
-```
-
-#### QUERY - Get total items
-
-```SQL
-SELECT
-    COUNT(ua.id) as total_items
-FROM authen.t_user_address ua
-WHERE ua.user_id = '<sequence.userId>'
-AND ua.row_status <> 'DELETED'
-AND ua.id = '<sequence.id>' -- only when id is specified
-AND ua.title ILIKE '%<sequence.search>%' -- only when search is specified
-AND ua.row_status = '<sequence.rowStatus>' -- only when rowStatus is specified
+LIMIT '<sequence.pageSize>' OFFSET '<sequence.offset>'
 ```
