@@ -1,6 +1,6 @@
 ---
 name: E-commerce Diagram Set and Reading Guide
-description: สารบัญและวิธีอ่าน diagram ทั้ง15มุมมอง พร้อม native containment แหล่งหลักฐาน วิธีสร้างและเกณฑ์ตรวจ ใช้เมื่ออ่านหรือแก้ไขภาพระบบชุดนี้
+description: สารบัญและวิธีอ่าน diagram ชุดหลัก15มุมมองและdomain modelจากDBอีก4ภาพ พร้อม native containment แหล่งหลักฐาน วิธีสร้างและเกณฑ์ตรวจ ใช้เมื่ออ่านหรือแก้ไขภาพระบบชุดนี้
 ---
 
 # E-commerce diagrams
@@ -39,6 +39,30 @@ Architecture มี Presentation/Application/Domain/Infrastructure/Shared เป
 ทุกภาพมี `.drawio` และ self-contained `.html` ชื่อเดียวกัน PNGฝังmodelที่เปิดแก้ไขได้ HTMLมีinlineSVG, accessible title/description และlocal horizontal scrollingเมื่อหน้าจอแคบ
 
 เพิ่มตาม convention ของเจ้าของงาน: Domain Layer มีกล่องย่อย **`Domain`** สำหรับ business logic ที่ใช้ซ้ำ และ repository view แสดง **`src/Ecommerce.Domain/Authen/Domain/`** ใต้ Domain project กล่องใหม่เป็น `PROPOSED · OWNER REQUEST` เพราะยังไม่อยู่ใน pinned code ตัวอย่างคำนวณภาษีอธิบายชนิดงาน ไม่ใช่ความสามารถ Authen ที่ implement แล้ว อ่านหน้าที่และเหตุผลใน [Architecture](architecture-design.md) และ [Repository](repository-architecture.md)
+
+## Domain model จากฐานข้อมูล
+
+ไฟล์ภาพ คำอธิบาย source และinventoryอยู่ในโฟลเดอร์ [domain/](domain/README.md) แยกจากชุดarchitecture/operationsเดิม
+
+ชุดใหม่อ่านจาก migrations/schema docsครบ **53ตาราง /11schemas /75FK** แสดงภาพรวมและconceptual ERแยกรายละเอียด พร้อมกล่องย่อยจริง ชื่อธุรกิจ attributes และall-row cardinality ไม่ประกาศschemaให้เป็นDDDaggregateหรือmicroserviceโดยอัตโนมัติ
+
+| ภาพแก้ไขได้ | คำอธิบายและsource traceability | ขอบเขต |
+| --- | --- | --- |
+| [domain-model.drawio.png](domain/domain-model.drawio.png) | [domain-model.md](domain/domain-model.md) | ภาพรวม11กลุ่มแนวคิด พร้อมแผนที่53ตาราง |
+| [domain-identity-model.drawio.png](domain/domain-identity-model.drawio.png) | [domain-identity-model.md](domain/domain-identity-model.md) | Identity / Authorization / Consent / Key material:21ตาราง,23FK |
+| [domain-merchandising-model.drawio.png](domain/domain-merchandising-model.drawio.png) | [domain-merchandising-model.md](domain/domain-merchandising-model.md) | Catalog / Merchant offer / Stock:19ตาราง,25FK |
+| [domain-commerce-model.drawio.png](domain/domain-commerce-model.drawio.png) | [domain-commerce-model.md](domain/domain-commerce-model.md) | Cart / Order / Payment / Shipping / Campaign:13ตาราง,27FK |
+
+เส้นในภาพรายละเอียดเลือก35associationsเพื่ออ่านง่าย ส่วนFKcatalogueในMarkdownเก็บครบ75 การอธิบายpartialuniquenessและข้อจำกัดFKแยกจากbusinesslogic candidatesใน `<Feature>/Domain/` ไม่มีการแก้DB/API/backend
+
+Source: [domain_model_content.py](domain/domain_model_content.py), [domain_model_notes.py](domain/domain_model_notes.py), [domain-source-inventory.json](domain/domain-source-inventory.json); [ผลตรวจ](domain/domain-model-verification.md)
+
+```sh
+python3 -B e-commerce/diagram/domain/generate_domain_diagrams.py
+python3 -B e-commerce/diagram/domain/generate_domain_diagrams.py --check
+# Native export each slug at scale1.5 using the draw.io command below
+python3 -B e-commerce/diagram/domain/generate_domain_diagrams.py --finalize-pngs
+```
 
 ## แหล่งหลักฐานและสถานะ
 
