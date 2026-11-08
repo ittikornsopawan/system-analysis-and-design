@@ -13,7 +13,6 @@ Load first: `.agents/README.md`, `.agents/rules/global.md`, `.agents/knowledge/p
 
 - The table(s) the API works on and the rules the business wants. Read the real migration and schema doc; a spec SQL that names a column that does not exist fails `audit_all.py`.
 - The neighbouring specs: the prototype you will copy (table in `references/api-conventions.md`), and any spec that already touches the same tables (shared rules, error codes, and queries must stay identical).
-- The sequence presentation prototype: read `e-commerce/doc/api/authen-and-author/02-login/sequence.wsd` for the required format, visual style and narrative. Use the target endpoint's `spec.md` for its behaviour and SQL; the login example supplies presentation conventions, not approval for another endpoint's rules.
 
 ## Procedure
 
@@ -21,7 +20,7 @@ Load first: `.agents/README.md`, `.agents/rules/global.md`, `.agents/knowledge/p
 2. **List the rules to decide** (who may call, what makes a 409, what happens on delete, what is public, what is hidden). Ask the owner about anything that changes behaviour or data; decide small things yourself and record them (`../data-modeling/references/verification-and-reporting.md`). Changing a delivered spec needs the owner's yes because it reaches several endpoints.
 3. **Settle the schema first.** If a rule needs a column, a unique index or a foreign key action, use the `data-modeling` skill (test red, then migration green) before the spec text, so the SQL in the spec has real columns.
 4. **Write the three specs** (upsert, upsert batch, inquiry) following `references/api-conventions.md` for behaviour and `references/spec-structure.md` for the layout. `scripts/spec_helpers.py` generates the shared parts (tables, status objects, request blocks, error examples) so that they are identical in every file. Realign hand-written tables with `../data-modeling/scripts/realign_tables.py`.
-5. **Finish the sequence diagram.** Follow the [sequence authoring and verification rules](references/api-conventions.md#sequence-diagram-sequencewsd) to produce a complete `sequence.wsd` beside each spec, matching the login prototype's format, style and narrative. `scripts/sequence_skeleton.py` supplies only the starting scaffold: finish the endpoint's checks, branches, input/result mappings, locks, transaction effects and every response. Copy every database SQL block exactly under the reference's strict parity rules, run `check_docs.py api-sequence-spec`, perform the separate character-for-character comparison, and render and inspect the finished diagram. Removing TODO markers alone does not establish completeness.
+5. **Finish the sequence diagram.** Follow the [sequence authoring and verification rules](references/api-conventions.md#sequence-diagram-sequencewsd), including the complete example bundled there, to produce a complete `sequence.wsd` beside each spec. These rules define the required format, style and narrative; the target endpoint's `spec.md` supplies its behaviour and SQL. `scripts/sequence_skeleton.py` supplies only the starting scaffold: finish the endpoint's checks, branches, input/result mappings, locks, transaction effects and every response. Copy every database SQL block exactly under the reference's strict parity rules, run `check_docs.py api-sequence-spec`, perform the separate character-for-character comparison, and render and inspect the finished diagram. Removing TODO markers alone does not establish completeness.
 6. **Make the examples agree with the rules.** Totals add up, ids match between request and response, the batch example shows `items[i]` in its errors, a public API shows no private field, and an example never breaks the rule written above it.
 7. **Add the checker** as a new sub-command in `e-commerce/db/tests/check_docs.py` (`references/checker-patterns.md`) and register the status codes of the new endpoints in the existing `status-codes` / `biz-codes` checks where they apply.
 8. **Run everything** (commands in `../data-modeling/references/verification-and-reporting.md`): all `check_docs.py` sub-commands, `audit_all.py` with `0 findings`, `run_db_tests.sh` when a schema changed.
@@ -30,12 +29,12 @@ Load first: `.agents/README.md`, `.agents/rules/global.md`, `.agents/knowledge/p
 
 ## Outputs
 
-`e-commerce/doc/api/<group>/<NN>-<name>/spec.md` and a complete `sequence.wsd` per endpoint in the login presentation style, the new checker, any schema change with its tests, and the report. Include paired spec/sequence paths, scenario correspondence and strict SQL comparison/render verification evidence in the report.
+`e-commerce/doc/api/<group>/<NN>-<name>/spec.md` and a complete `sequence.wsd` per endpoint in the documented presentation style, the new checker, any schema change with its tests, and the report. Include paired spec/sequence paths, scenario correspondence and strict SQL comparison/render verification evidence in the report.
 
 ## Done when
 
 - Every endpoint of the set has a spec with all sections, every success and every error example, and SQL for every table it touches.
-- Every `sequence.wsd` follows the login format, style and narrative, covers every outcome of its own spec, and has no unfinished scaffold or `' TODO(author)` marker.
+- Every `sequence.wsd` follows the format, style and narrative defined in this skill's sequence reference, covers every outcome of its own spec, and has no unfinished scaffold or `' TODO(author)` marker.
 - Every database SQL block passes both `api-sequence-spec` and the separate strict comparison defined in the sequence reference; every finished diagram has been rendered and inspected with visible SQL occurrences verified.
 - All `check_docs.py` sub-commands are OK, `audit_all.py` says `0 findings`, `run_db_tests.sh` says `ALL PASSED` if a schema changed.
 - The new checker was mutation-tested and caught every case.

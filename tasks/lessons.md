@@ -19,6 +19,12 @@ description: Repository-wide and project-specific lessons captured from user cor
 
 ## Repository-wide
 
+### 2026-11-08 — Keep required skill examples inside the skill
+
+- **Correction**: The sequence guidance required reading a particular endpoint's diagram to learn its format and storytelling, so moving or deleting that file would remove the example.
+- **Root cause**: A live project artifact was treated as the durable definition of reusable authoring conventions.
+- **Corrected behavior**: Put the full presentation rules and a complete illustrative example in the skill or its bundled reference. Use the target spec for actual behavior and SQL; required instructional examples must remain available independently of the project file that inspired them.
+
 ### 2026-11-08 — Reconcile renderer consumers during a rename/modify conflict
 
 - **Correction**: The owner reported PR #64's conflict at the original `e-commerce/diagram/generate_diagrams.py` path after main added the Domain diagram package.
