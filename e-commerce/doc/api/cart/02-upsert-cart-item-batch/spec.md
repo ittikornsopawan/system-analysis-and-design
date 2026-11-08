@@ -49,11 +49,11 @@
 ### Cart Rules (same as the single upsert, applied per item)
 
 - The cart belongs to the user of the access token (customer). The request never carries a user id and a line of another user is treated as not found (404, E10004). A user has one cart that holds lines of any number of shops, the lines are grouped by shop only when the cart is read.
-- A line is one SKU of a shop. `shop_id`, `product_id` and `sku_id` of the line come from `shopProductSkuId`. There is at most one line that is not deleted per user and SKU, and at most 100 lines that are not deleted per user (the limit is a config, a cart over the limit answers 409, E10008).
-- Add (no `id`): when the user already has a line of the same SKU the quantity is added to that line (merge, HTTP 200), otherwise a new line is inserted (HTTP 201). Update (`id`): the quantity of the line is replaced (HTTP 200). Delete (`rowStatus = DELETED`): the line is soft-deleted (HTTP 204, no response body). The cart has no archive.
-- Stock rule: the quantity of the line after the request must not be larger than the remaining quantity of the lot that is on sale, and the SKU must be on sale (the shop, the product, the shop product, the shop product SKU and the product SKU are ACTIVE and one lot is on sale). Otherwise the request is rejected with 409 (E10007) and the cart is not changed. The rule is checked on add, merge and update, not on delete.
+- A line is one SKU of a shop. `shop_id`, `product_id` and `sku_id` of the line come from `shopProductSkuId`. There is at most one line that is not deleted per user and SKU, and at most 100 lines that are not deleted per user (the limit is a config). The limit is checked after the line is written, in the same transaction: when the cart then has more than 100 lines the transaction is rolled back and the request answers 409 (E10008) (approved by the product owner on 2026-11-08).
+- Add (no `id`): when the user already has a line of the same SKU the quantity is added to that line (merge, HTTP 200), otherwise a new line is inserted (HTTP 201). An add is one statement, `INSERT ... ON CONFLICT (user_id, shop_id, product_id, sku_id) WHERE row_status <> 'DELETED' DO UPDATE`, that uses the partial unique index `uq_t_cart_user_id_shop_id_product_id_sku_id` (it covers the lines that are not DELETED): two requests at the same time can never create two lines of the same SKU, the merge is limited by the stock in the same statement, and a line that was deleted is outside the index, so adding the SKU again inserts a new line (approved by the product owner on 2026-11-08). Update (`id`): the quantity of the line is replaced (HTTP 200). Delete (`rowStatus = DELETED`): the line is soft-deleted (HTTP 204, no response body). The cart has no archive.
+- Stock rule: the SKU must be on sale: the shop, the product, the shop product, the shop product SKU and the product SKU must be ACTIVE, otherwise the request is rejected with 404 (E10005) and the cart is not changed. One lot must be on sale and the quantity of the line after the request must not be larger than the remaining quantity of that lot, otherwise the request is rejected with 409 (E10007) and the cart is not changed. The rule is checked on add, merge and update, not on delete (approved by the product owner on 2026-11-08).
 - The cart keeps no price and no lot. The price, the stock status and the total are read from the lot that is on sale each time the cart is read, so they always follow the shop (see the inquiry). A line can later become larger than the stock or no longer on sale, the cart still holds it and the inquiry reports it.
-- Execution order: validate the request (400) -> existence checks (404) -> stock and limit checks (409) -> write the line. The whole request is one transaction.
+- Execution order: validate the request (400) -> existence checks (404, the line of the user and the shop, product and SKU that must be ACTIVE) -> stock checks (409, E10007) -> write the line (an add is the one `INSERT ... ON CONFLICT` that merges) -> line limit check (409, E10008, the transaction is rolled back). The whole request is one transaction.
 - Batch: the HTTP status is always 200. The request based validation (400) of all items runs first in the request order, then the checks that need the database (404, then 409) in the request order, then the writes. The first failing item stops the batch and its error is returned with the position `items[i]`, nothing is changed. The limit of 100 lines is checked against the cart after all items are applied.
 
 #### Example Body Parameters
@@ -350,7 +350,7 @@ curl --location --request POST 'https://www.domain.com/api-dev/v1/cart/item/upse
         "code": 409,
         "message": "Conflict",
         "bizCode": "E10007",
-        "bizMessage": "items[1]: The SKU is out of stock or no longer on sale.",
+        "bizMessage": "items[1]: The SKU is out of stock.",
         "requestId": "req-470a1b2c-3d4e-5f6a-7b8c-9d0e1f2a3b4c",
         "timestamp": "2026-11-06T09:47:29.123Z",
         "status": "ERROR"
@@ -441,20 +441,6 @@ AND c.user_id = '<sequence.userId>'
 AND c.row_status = 'ACTIVE'
 ```
 
-#### QUERY - Get the line of the same SKU for merging
-
-```SQL
-SELECT
-    c.id as cart_id,
-    c.quantity
-FROM cart.t_cart c
-WHERE c.user_id = '<sequence.userId>'
-AND c.shop_id = '<sequence.shopId>'
-AND c.product_id = '<sequence.productId>'
-AND c.sku_id = '<sequence.skuId>'
-AND c.row_status = 'ACTIVE'
-```
-
 #### QUERY - Count the lines of the user
 
 ```SQL
@@ -484,10 +470,16 @@ VALUES (
     '<sequence.skuId>',
     '<sequence.items.quantity>'
 )
-RETURNING id as cart_id, quantity
+ON CONFLICT (user_id, shop_id, product_id, sku_id) WHERE row_status <> 'DELETED' -- the partial unique index uq_t_cart_user_id_shop_id_product_id_sku_id
+DO UPDATE SET
+    updated_by = '<sequence.userId>',
+    updated_at = NOW() AT TIME ZONE 'UTC',
+    quantity = cart.t_cart.quantity + EXCLUDED.quantity
+WHERE cart.t_cart.quantity + EXCLUDED.quantity <= '<sequence.items.maxOrderQuantity>' -- the stock rule of a merge, no row is returned when the merged quantity is over the stock
+RETURNING id as cart_id, quantity, (xmax = 0) as is_insert -- is_insert is true for a new line and false for a merge
 ```
 
-#### UPDATE - Merge, update or delete a line
+#### UPDATE - Update or delete a line
 
 ```SQL
 UPDATE cart.t_cart
@@ -495,7 +487,7 @@ SET
     updated_by = '<sequence.userId>',
     updated_at = NOW() AT TIME ZONE 'UTC',
     row_status = '<sequence.items.rowStatus>',
-    quantity = '<sequence.newQuantity>' -- existing quantity + quantity when merging, quantity when updating, not changed when deleting
+    quantity = '<sequence.newQuantity>' -- quantity when updating, not changed when deleting
 WHERE id = '<sequence.cartId>'
 AND user_id = '<sequence.userId>'
 RETURNING id as cart_id, quantity

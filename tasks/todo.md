@@ -771,3 +771,16 @@ Status: Implemented in the managed workspace of Marry on branch `test/marry-enfo
 - [x] Mutation tests: 15 cases of the harness on the three rules and the list, 13 cases that check which message fires (10 must fail, 3 controls must pass); the earlier mutation sets still behave (see the pull request).
 - [x] Run every `check_docs.py` sub-command, `audit_all.py`, `run_db_tests.sh`, `test_sequence_skeleton.py`.
 - [ ] Merge `main` into the branch, preflight, push, open the pull request, tell the lead; hold the lock until the merge, then release and park.
+
+## e-commerce: Cart upsert (cart/01, 02) — 404 for an inactive SKU, ON CONFLICT merge, line limit after the write (M1)
+
+Status: Implemented in the managed workspace of Marry on branch `docs/marry-cart-sku-404-on-conflict`; the pull request is opened after the checks and the lead is told at once. Scope: `cart/01-upsert-cart-item`, `cart/02-upsert-cart-item-batch`, the needles of `cart-spec` in `check_docs.py`, and `tasks/`. No schema is changed. Decision (C) of the lead, approved by the product owner on 2026-11-08.
+
+- [x] Rule text: a shop, product, shop product, shop product SKU or product SKU that is not ACTIVE answers 404 (E10005) as the SQL already did; 409 (E10007) stays for no lot on sale, not enough stock and a quantity over the maximum. The example "The SKU is out of stock or no longer on sale." becomes "The SKU is out of stock.".
+- [x] The add is one `INSERT ... ON CONFLICT (user_id, shop_id, product_id, sku_id) WHERE row_status <> 'DELETED' DO UPDATE` that merges into the existing line and applies the stock rule in the same statement (no row returned = 409 E10007); `RETURNING ... (xmax = 0) as is_insert` tells 201 from 200. The predicate is required because `uq_t_cart_user_id_shop_id_product_id_sku_id` is a partial index; a soft-deleted line is outside it, so adding the SKU again inserts a new line. The read "Get the line of the same SKU for merging" is removed and "UPDATE - Merge, update or delete a line" is renamed "UPDATE - Update or delete a line".
+- [x] The line limit (100) is checked after the write in the same transaction; more than 100 lines rolls back with 409 (E10008).
+- [x] Spec and diagram changed together (`cart/01` and `cart/02`); the needles of `cart-spec` that depended on the old wording are updated and new needles guard the `ON CONFLICT` clause (tied to the SQL, not to the prose), `DO UPDATE SET`, the stock `WHERE`, `is_insert`, the renamed UPDATE and the limit rule.
+- [x] Proof on PostgreSQL 17 with the real migrations (throw-away cluster): insert, merge, merge over the stock (no row), re-add after a soft delete (new line) and the count behave as designed; without the predicate PostgreSQL rejects the statement.
+- [x] Mutation tests: 24 of 24 caught (each new clause removed from the spec and from the diagram, the 404 rule, the limit rule).
+- [x] Lesson of the notice before the owner merges (see `tasks/lessons.md`).
+- [ ] Merge `main`, preflight, push, open the pull request, tell the lead at once; hold the lock until the merge, then release and park.
