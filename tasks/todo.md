@@ -7,6 +7,17 @@ description: Shared checklist for planning and tracking non-trivial tasks withou
 
 Use one section per task, named `<scope>: <task-name>`. Preserve other task sections and mark an item complete only after its completion criterion is satisfied.
 
+## repository-wide: Improve the API skill after every error
+
+Status: Guidance and follow-up PR package complete. Ittikorn requested that every error lead to an improvement of `api-contract-design`, in addition to correcting the work. The existing skill now requires a root-cause, preventive skill-improvement and verification loop while preserving specification approvals. Follow-up publication continues under the existing direct delivery instruction for this skill work; actual PR state is reported from GitHub.
+
+1. [x] Review the skill's procedure/completion criteria, relevant lessons and applicable authoring rules.
+2. [x] Add the improvement loop and record the owner's correction, with explicit coverage of self-discovered failures and review feedback.
+3. [x] Verify Markdown metadata, references, scope and diff; prepare the follow-up PR under the existing delivery instruction for this skill work.
+
+Verification: YAML parsing passed for all three changed Markdown files; skill name/description constraints, Markdown links/anchors and `git diff --check` passed. Review against the prior missing-example failure confirms owner corrections now trigger an actual preventive skill change, not only an artifact fix; command/check/render failures and self-discovered errors are explicit triggers too. Completion criteria and the report require the improvement and its evidence. Scoped delivery preflight reports three task files and no blockers. No examples, helpers, checkers, API contracts or database artifacts changed, so runtime/database/generator tests and rendering were not repeated. The Python skill validator's missing PyYAML dependency remains covered by YAML and direct metadata/structure validation without installing dependencies. The three unrelated untracked handoff documents are excluded.
+
+Loop exercised during delivery: Rebasing onto current main stopped at overlapping task-plan insertions. The resolved plan retains both independent sections and preserves all upstream content byte-for-byte; the skill's correction step was strengthened to require that preservation check, and the lesson records the cause and evidence.
 ## repository-wide: Integrate main before opening a PR
 
 Status: Guidance, verification and publication package complete. Ittikorn requested that `commit-and-pr` merge the latest main into the task branch, resolve conflicts and verify the result before opening the PR. Update the existing skill, checklist, formats and PR template; clarify the named-workspace rule's merge wording to match the approved design's prohibition on merging PRs into main. Preserve protected-main and no-force-push boundaries. Keep the prior API skill PR separate. The final integrated SHA and actual PR state are reported from Git/GitHub after publication.
