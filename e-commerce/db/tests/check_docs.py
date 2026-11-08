@@ -4694,6 +4694,8 @@ def author_needles(key: str):
     m = next(v for v in AUTHOR_MASTERS.values() if key in v[:3])
     _, _, _, path, title, lower, camel, alias, ucol, idname, _, use_msg = m
     base = [*AUTHOR_ADMIN, "E10009", "#### Fail - Forbidden", f"You do not have permission to {'read' if kind == 'inquiry' else 'manage'} {lower}s."]
+    if key == "03":
+        base = ["use exact PLATFORM_ADMIN in verified JWT role claims", "Approved by the product owner", "E10009", "#### Fail - Forbidden", "You do not have permission to read roles."]
     if kind in ("upsert", "batch"):
         base.append("Permission: only a platform administrator (a user with an ACTIVE `author.t_user_role` row for the ACTIVE role `PLATFORM_ADMIN`) can call this API")
     if kind == "upsert":
@@ -4725,6 +4727,10 @@ def author_needles(key: str):
 
 def author_counted(key: str):
     m = next((v for v in AUTHOR_MASTERS.values() if key in v[:3]), None)
+    if key == "03":
+        return [("AND ('<sequence.id>' IS NULL OR r.id = '<sequence.id>') -- only when id is specified", 2),
+                ("AND ('<sequence.searchPattern>' IS NULL OR r.name ILIKE '<sequence.searchPattern>' OR r.description ILIKE '<sequence.searchPattern>') -- only when search is specified", 2),
+                ("AND ('<sequence.rowStatus>' IS NULL OR r.row_status = '<sequence.rowStatus>') -- only when rowStatus is specified", 2)]
     if m and key == m[2]:
         alias, ucol = m[7], m[8]
         return [(f"AND ({alias}.{ucol} ILIKE '%<sequence.search>%' OR {alias}.description ILIKE '%<sequence.search>%') -- only when search is specified", 2),
@@ -6314,6 +6320,108 @@ def check_author_me_flow() -> int:
 
 
 COMMANDS['author-me-flow'] = check_author_me_flow
+
+
+def check_role_inquiry_flow() -> int:
+    """Check token-claim administration and consistent filtered current role metadata."""
+    path=f'{AUTHOR_DIR}/{AUTHOR_SPECS["03"]}/spec.md';md=read(path);wsd=read(str(Path(path).with_name('sequence.wsd')));errors=[]
+    for n in ('status: in-review','approved_by: null','approved_at: null','2026-11-07-api-review-design.md','exact PLATFORM_ADMIN in verified JWT role claims','positive signed 64-bit integers','nonnegative BIGINT','one bound text searchPattern','Missing/malformed roles is generic 401','Grant withdrawal after token issuance leaves the old privilege usable','same read-only repeatable-read snapshot','identical non-DELETED/id/searchPattern/rowStatus WHERE predicates','an offset beyond the range returns items=[] with positive totals/pages','Sort by name then id ascending','exactly roleId/name/description/rowStatus','exactly five data keys','integer quotient/remainder','Map the full response before COMMIT','Scenario correspondence with sequence.wsd'):
+        if n not in md:errors.append(f'role-inquiry spec missing {n!r}')
+    for n in ('QUERY - Get the platform administrator role','QUERY - Check platform administrator'):
+        if n in md or n in wsd:errors.append('role inquiry authorization must not reload current assignments')
+    ops=spec_database_operations(md);heads=('QUERY - Check current credential and user','QUERY - Get total items','QUERY - Get roles')
+    if tuple(h for _,h,_ in ops)!=heads:errors.append('role inquiry needs credential/count/page in declared order')
+    sql={h:re.sub(r'--[^\n]*','',s) for _,h,s in ops};filters=["WHERE r.row_status <> 'DELETED'","AND ('<sequence.id>' IS NULL OR r.id = '<sequence.id>')","AND ('<sequence.searchPattern>' IS NULL OR r.name ILIKE '<sequence.searchPattern>' OR r.description ILIKE '<sequence.searchPattern>')","AND ('<sequence.rowStatus>' IS NULL OR r.row_status = '<sequence.rowStatus>')"]
+    required={heads[0]:['JOIN authen.m_user u ON u.id = at.user_id',"at.token = '<sequence.accessTokenHash>'","at.user_id = '<sequence.callerUserId>'","at.row_status = 'ACTIVE'","at.expired_at > '<sequence.now>'","u.row_status = 'ACTIVE'"],heads[1]:filters+['COUNT(r.id) as total_items'],heads[2]:filters+["LIMIT '<sequence.pageSize>' OFFSET '<sequence.offset>'"]}
+    for h,ns in required.items():
+        for n in ns:
+            if n not in sql.get(h,''):errors.append(f'{h} missing {n!r}')
+    def where(h):
+        r=re.search(r'\bWHERE\b(.*?)(?:\bORDER BY\b|\bLIMIT\b|$)',sql.get(h,''),re.S);return normalize(r[1]) if r else None
+    if where(heads[1])!=where(heads[2]):errors.append('role count/page WHERE predicates must be identical')
+    projection=re.search(r'SELECT\s+(.*?)\s+FROM\s',sql.get(heads[2],''),re.S)
+    if not projection or normalize(projection[1])!=normalize('r.id as role_id, r.name, r.description, r.row_status'):errors.append('role page returns exactly four role fields, no audit/assignment/caller data')
+    if not re.search(r"ORDER BY r\.name, r\.id(?: ASC)?\s+LIMIT",sql.get(heads[2],'')):errors.append('role page requires name then unique ascending id order')
+    if SEQUENCE_LOCK.search('\n'.join(sql.values())) or 'NOW()' in '\n'.join(sql.values()) or any(not q.lstrip().startswith('SELECT') for q in sql.values()):errors.append('role inquiry must use SELECT-only fresh-bound credential time, with no locks')
+    actual,lifecycle=sequence_database_operations(wsd);errors+=lifecycle
+    if actual!=[(t.split('.')[-1],h,q) for t,h,q in ops]:errors.append('role inquiry SQL differs character-for-character or execution order')
+    lines=wsd.splitlines()
+    for i,l in enumerate(lines):
+        req=re.match(r'^( *)infra -> \w+: QUERY - ',l)
+        if not req:continue
+        pad=' '*(len(req[1])+8);j=i+3
+        while j<len(lines) and lines[j].strip()!='end note':
+            if lines[j] and not lines[j].startswith(pad):errors.append('role SQL must retain exact added presentation prefix and original SQL indentation')
+            j+=1
+    for _,h,_ in ops:
+        if wsd.count('app -> infra: '+h+'\n')!=1:errors.append(f'{h} needs one Application request')
+    for mat in re.finditer(r'(?m)^( *)infra -> (\w+): (QUERY - [^\n]+)\n',wsd):
+        r=re.search(rf'{mat[2]} -> infra: Return ([^\n]+)\n.*?deactivate {mat[2]}\n\s*infra -> app: Return ([^\n]+)',wsd[mat.start():],re.S)
+        if not r or r[1]!=r[2]:errors.append('role database result must return with the same meaning to Application')
+    for n in ('Compute checked offset = (pageIndex - 1) * pageSize; reject numeric/offset overflow beyond nonnegative BIGINT','Verify JWT signature/issuer/audience/expiry/UUID sub and structured unique roleIds/name array','callerUserId = verified sub; accessTokenHash = SHA-256 exact JWT','Bind omitted id/searchPattern/rowStatus as typed SQL NULL; supplied searchPattern = percent + search + percent, preserving ILIKE wildcards','Capture fresh server UTC now immediately before joined credential read; recheck JWT exp','JWT expired before fresh credential read','Missing/invalid JWT or malformed roles','Current token/user missing/inactive/revoked/expired/mismatched','alt totalItems = 0','Authorize once using exact case-sensitive PLATFORM_ADMIN in verified JWT roles; never reload current grants','No exact PLATFORM_ADMIN role claim','integer quotient plus nonzero remainder','items = []; skip page query; totalPages = 0','Require page row count = min(pageSize, max(0, totalItems-offset)); mismatch is internal failure','Map exactly roleId/name/description/rowStatus per row; required values non-null; exclude caller/assignment/token/hash/audit','items = []; retain positive totalItems/totalPages; no 404','data = exactly items/pageIndex/pageSize/totalItems/totalPages; echo validated page values; explicit empty arrays; finish full mapping'):
+        if n not in wsd:errors.append(f'role inquiry sequence missing {n!r}')
+    if wsd.count('Authorize once using exact')!=1:errors.append('role inquiry checks claims permission exactly once')
+    for response in re.finditer(r'(?m)^( *)app -> api: HTTP [^\n]+\n',wsd):
+        following=wsd[response.end():].splitlines()[:2]
+        if len(following)!=2 or not following[0].strip().startswith('api -> page:') or not following[1].strip().startswith('page -> user:'):errors.append('all role inquiry responses must reach frontend and caller')
+    traces,structure=login_sequence_paths(wsd);errors+=structure
+    from collections import Counter
+    outcomes=[];modes=Counter();unauthorized=[]
+    for tr in traces:
+        response=[e for e in tr if e.startswith('app -> api: HTTP ')];joined='\n'.join(tr)
+        if len(response)!=1:errors.append('role inquiry trace needs one terminal outcome');continue
+        code=int(response[0].split('HTTP ')[1].split()[0]);outcomes.append(code);queries=[e for e in tr if e.startswith('infra -> ')];begun=any(e.startswith('app -> infra: BEGIN') for e in tr)
+        def ordered(*parts):
+            pos=[next((i for i,e in enumerate(tr) if p in e),-1) for p in parts]
+            return -1 not in pos and pos==sorted(set(pos))
+        if queries and not ordered('Compute checked offset','Verify JWT','callerUserId = verified sub','Bind omitted id/searchPattern','BEGIN REPEATABLE READ READ ONLY','Capture fresh server UTC now',heads[0]):errors.append('role SQL needs checked pagination, verified caller and fresh read-only credential snapshot')
+        if 'Authorize once using exact' in joined and not ordered(heads[0],'Authorize once using exact'):errors.append('claims permission requires valid current credential')
+        if heads[1] in joined and not ordered('Authorize once using exact',heads[1]):errors.append('no role count may precede claims permission')
+        if heads[2] in joined and not ordered(heads[1],heads[2]):errors.append('role page must follow its identical-filter count')
+        if any(': QUERY' not in e for e in queries):errors.append('role inquiry may never write')
+        if code==200:
+            mode='zero' if 'skip page query' in joined else 'beyond' if 'retain positive totalItems' in joined else 'rows';modes[mode]+=1
+            if len(queries)!=(2 if mode=='zero' else 3):errors.append('zero role count skips page query; positive count queries page')
+            if not ordered(heads[1],'data = exactly items','app -> infra: COMMIT','HTTP 200') or 'ROLLBACK' in joined:errors.append('success needs complete mapped read-only response then commit')
+            if mode!='zero' and 'Require page row count' not in joined:errors.append('positive role count must validate page cardinality')
+            if 'all five pagination keys' not in response[0]:errors.append('role inquiry success must include every pagination key')
+        elif begun:
+            if not ordered('BEGIN','ROLLBACK',f'HTTP {code}') or 'app -> infra: COMMIT' in joined:errors.append('role inquiry transaction failures roll back before response')
+            if code in (401,403) and len(queries)>1:errors.append('invalid credentials or non-admin must not count/read roles')
+        elif code not in (400,401) or queries:errors.append('pre-BEGIN role inquiry reject must be no-SQL validation/JWT error')
+        if code==401:unauthorized.append(len(queries))
+    if Counter(outcomes)!=Counter({400:1,401:3,403:1,200:3,408:1,500:1}) or modes!=Counter({'zero':1,'rows':1,'beyond':1}) or sorted(unauthorized)!=[0,0,1]:errors.append(f'expected 10 role inquiry terminal traces, got {dict(Counter(outcomes))}, modes={dict(modes)},401 SQL={unauthorized}')
+    for title,code in {'Success':200,'Success - By Id':200,'Success - Not Found':200,'Success - Page Beyond Range':200,'Fail - Bad Request':400,'Fail - Unauthorized':401,'Fail - Forbidden':403,'Fail - Request Timeout':408,'Fail - Internal Server Error':500}.items():
+        try:
+            obj=author_json(md,title);status=obj['status']
+            if status['code']!=code or code==500 and 'bizCode' in status:errors.append(f'{title} role inquiry envelope incorrect')
+            if code==200:
+                d=obj['data'];keys={'items','pageIndex','pageSize','totalItems','totalPages'}
+                if set(d)!=keys or type(d['items']) is not list:errors.append(f'{title} needs five keys and items array');continue
+                if any(type(d[k]) is not int for k in keys-{'items'}) or not 1<=d['pageIndex']<=2**63-1 or not 1<=d['pageSize']<=100 or d['totalItems']<0:errors.append(f'{title} invalid role page integers');continue
+                total=d['totalItems'];size=d['pageSize'];offset=(d['pageIndex']-1)*size;pages=total//size+int(total%size!=0)
+                if offset>2**63-1 or d['totalPages']!=pages or len(d['items'])!=min(size,max(0,total-offset)):errors.append(f'{title} page cardinality/totals incorrect')
+                ids=[]
+                for item in d['items']:
+                    if set(item)!={'roleId','name','description','rowStatus'} or any(v is None for v in item.values()) or item['rowStatus']=='DELETED':errors.append(f'{title} role fields missing/null/leaked/DELETED')
+                    ids.append(item['roleId'])
+                if len(ids)!=len(set(ids)):errors.append(f'{title} repeats role id')
+                if title=='Success - Page Beyond Range' and (not total or d['items'] or d['pageIndex']<=pages):errors.append('beyond-range role example must retain positive totals')
+        except (AttributeError,TypeError,KeyError,IndexError,ValueError):errors.append(f'{title} role inquiry example missing/malformed')
+    errors+=json_blocks_parse(md);errors+=table_lines_aligned(md)
+    if '--rendered-svg' in sys.argv:
+        import xml.etree.ElementTree as ET
+        try:
+            root=ET.parse(sys.argv[sys.argv.index('--rendered-svg')+1]).getroot();wanted=Counter(' '.join(l.split()) for _,_,q in ops for l in q.splitlines() if l.strip());visible=Counter(' '.join(''.join(e.itertext()).split()) for e in root.iter() if e.tag.endswith('}text'));missing=wanted-visible
+            if missing:errors.append(f'rendered role-inquiry SQL missing {sum(missing.values())} lines')
+            else:print(f'OK: rendered role-inquiry SQL ({sum(wanted.values())}/{sum(wanted.values())} visible lines)')
+        except (IndexError,OSError,ET.ParseError) as exc:errors.append(f'cannot verify role-inquiry SVG: {exc}')
+    if errors:return fail('; '.join(errors))
+    print('OK: role-inquiry-flow (10 terminal traces; exact SQL, claim administration and consistent filtered pagination)')
+    return 0
+
+
+COMMANDS['role-inquiry-flow'] = check_role_inquiry_flow
 
 
 def check_address_upsert_flow() -> int:

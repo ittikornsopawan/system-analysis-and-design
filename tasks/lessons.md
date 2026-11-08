@@ -311,3 +311,9 @@ description: Repository-wide and project-specific lessons captured from user cor
 - **Finding**: GitHub merge commit 87162eb restored the completed inquiry-profile token/timeout exemption that its first parent b1c5c90 had removed. Endpoint artifacts still passed their flow check, but the combined main failed api-sequence-spec.
 - **Root cause**: A shared checker contains both function logic and changing exemption lists; retaining functions alone does not prove that a merge preserved retired entries.
 - **Corrected behavior**: Compare function registrations and retired exemptions against both parents, run every registered check on the combined tree before delivery, and record/repair an existing failure within the authorized scope rather than masking it or weakening the check.
+
+### 2026-11-08 — Use the returned PR identity, never the next presumed number
+
+- **Finding**: After opening role-batch PR69, the rotation command mistakenly used 68, which another branch had already taken. The identity/head guard stopped rotation before changing active assignment history.
+- **Root cause**: A sequential PR number was assumed instead of consuming the URL returned by the create command; concurrent authors can take intervening numbers.
+- **Corrected behavior**: Capture the actual returned PR URL, verify repository/base/head branch/head commit before any lifecycle action, and pass that same verified URL throughout release/archive/rotation. Keep the identity guard; correct the input rather than relaxing it.
