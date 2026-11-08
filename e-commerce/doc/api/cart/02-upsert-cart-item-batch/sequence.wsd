@@ -132,29 +132,10 @@ activate page
                             end
                         end
                         loop Pass 2 (409): every item in the request order
-                            alt The item has no id (add)
-                                app -> infra: QUERY - Get the line of the same SKU for merging
-                                infra -> t_cart: QUERY - Get the line of the same SKU for merging
-                                activate t_cart
-                                    note right of t_cart
-                                        SELECT
-                                            c.id as cart_id,
-                                            c.quantity
-                                        FROM cart.t_cart c
-                                        WHERE c.user_id = '<sequence.userId>'
-                                        AND c.shop_id = '<sequence.shopId>'
-                                        AND c.product_id = '<sequence.productId>'
-                                        AND c.sku_id = '<sequence.skuId>'
-                                        AND c.row_status = 'ACTIVE'
-                                    end note
-                                    t_cart -> infra: Return query result
-                                deactivate t_cart
-                                infra -> app: Return the line of the same SKU or no row
-                            end
                             alt rowStatus is not DELETED
                                 alt No lot on sale or the lot has no stock
                                     app -> infra: ROLLBACK
-                                    app -> api: HTTP 409 E10007 items[i]: The SKU is out of stock or no longer on sale.
+                                    app -> api: HTTP 409 E10007 items[i]: The SKU is out of stock.
                                     api -> page: Conflict
                                     page -> user: Display which item is out of stock
                                 else Quantity after the request > max_order_quantity
@@ -166,7 +147,7 @@ activate page
                             end
                         end
                         loop Pass 3 (write): every item in the request order
-                            alt Add and the user has no line of the SKU (insert)
+                            alt Add (no id)
                                 app -> infra: INSERT - Add a line
                                 infra -> t_cart: INSERT - Add a line
                                 activate t_cart
@@ -180,21 +161,33 @@ activate page
                                             quantity
                                         )
                                         VALUES (
-                                            &#39;<sequence.userId>',
-                                            &#39;<sequence.userId>',
-                                            &#39;<sequence.shopId>',
-                                            &#39;<sequence.productId>',
-                                            &#39;<sequence.skuId>',
-                                            &#39;<sequence.items.quantity>'
+                                            '<sequence.userId>',
+                                            '<sequence.userId>',
+                                            '<sequence.shopId>',
+                                            '<sequence.productId>',
+                                            '<sequence.skuId>',
+                                            '<sequence.items.quantity>'
                                         )
-                                        RETURNING id as cart_id, quantity
+                                        ON CONFLICT (user_id, shop_id, product_id, sku_id) WHERE row_status <> 'DELETED' -- the partial unique index uq_t_cart_user_id_shop_id_product_id_sku_id
+                                        DO UPDATE SET
+                                            updated_by = '<sequence.userId>',
+                                            updated_at = NOW() AT TIME ZONE 'UTC',
+                                            quantity = cart.t_cart.quantity + EXCLUDED.quantity
+                                        WHERE cart.t_cart.quantity + EXCLUDED.quantity <= '<sequence.items.maxOrderQuantity>' -- the stock rule of a merge, no row is returned when the merged quantity is over the stock
+                                        RETURNING id as cart_id, quantity, (xmax = 0) as is_insert -- is_insert is true for a new line and false for a merge
                                     end note
                                     t_cart -> infra: Return inserted result
                                 deactivate t_cart
-                                infra -> app: Return the new line
-                            else Merge, update or delete
-                                app -> infra: UPDATE - Merge, update or delete a line
-                                infra -> t_cart: UPDATE - Merge, update or delete a line
+                                infra -> app: Return the written line (is_insert) or no row
+                                alt No row returned (the line of the same SKU exists and the merged quantity is over the stock)
+                                    app -> infra: ROLLBACK
+                                    app -> api: HTTP 409 E10007 items[i]: Quantity exceeds the available stock; the SKU can be bought up to max_order_quantity.
+                                    api -> page: Conflict
+                                    page -> user: Display the quantity that can be bought
+                                end
+                            else Update or delete
+                                app -> infra: UPDATE - Update or delete a line
+                                infra -> t_cart: UPDATE - Update or delete a line
                                 activate t_cart
                                     note right of t_cart
                                         UPDATE cart.t_cart
@@ -202,7 +195,7 @@ activate page
                                             updated_by = '<sequence.userId>',
                                             updated_at = NOW() AT TIME ZONE 'UTC',
                                             row_status = '<sequence.items.rowStatus>',
-                                            quantity = '<sequence.newQuantity>' -- existing quantity + quantity when merging, quantity when updating, not changed when deleting
+                                            quantity = '<sequence.newQuantity>' -- quantity when updating, not changed when deleting
                                         WHERE id = '<sequence.cartId>'
                                         AND user_id = '<sequence.userId>'
                                         RETURNING id as cart_id, quantity

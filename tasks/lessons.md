@@ -267,3 +267,9 @@ description: Repository-wide and project-specific lessons captured from user cor
 - **Finding**: After merging origin/main into a task branch, local main was still behind. Delivery preflight compared against that stale base and rejected upstream files outside the assignment; a following shell push nevertheless ran.
 - **Root cause**: The remote-tracking base was mistaken for the local base selected by the helper, and dependent delivery commands did not stop on failure.
 - **Corrected behavior**: Fast-forward the local base safely, verify the task diff against the current base, and make dependent commit/push commands fail immediately if preflight fails. Preserve both histories and never expand scope to hide upstream files.
+
+### 2026-11-08 — Tell the lead when a pull request is opened, before anyone can merge it
+
+- **Correction**: The checker pull request #54 was opened and not reported to the lead; the owner merged it before the lead had reviewed it. The lead asked to be told before the owner merges, every time.
+- **Root cause**: The report to the lead was left for the end of the task, as a part of the final handoff, so the gap between opening and merging was not covered.
+- **Corrected behavior**: Send the lead the link right after `gh pr create` and the first PR status call, before any other step, with the checks and the open questions; never leave it for the final report.
