@@ -173,6 +173,31 @@ Ittikorn's current instruction, "เปิด pr มา", authorizes commit, pus
 
 PR preflight (2026-11-08): 80 paths (78 diagram files +2 task records), no deletions, managed delivery authorized, no blockers. All15 source/geometry checks and HTML checks pass; PNG dimensions/sizes/CRC/extraction/source XML and saved native round trips pass15/15. All27 Markdown frontmatters and276 local links pass. No backend/API/schema paths changed; runtime/provider/load/restore tests are outside this documentation-only delivery.
 
+## e-commerce: Database-grounded domain model diagrams
+
+Status: Complete on `docs/jinny-domain-model` after GitHub verified PR61 merged and agent-workspace parked the previous assignment. Scope: `e-commerce/diagram`, `tasks/todo.md`, `tasks/lessons.md`; delivery none. Existing diagram source checks passed as the prepare baseline; no repository-wide baseline is declared specifically for new diagram artifacts.
+
+Purpose: model business concepts and evidenced relationships from all53 SQL tables in11schemas, rather than software layers, deployment or a copy of the physical ER diagram. Use diagram-design, the owner's light/orange style, A3 landscape and faithful nested detail. Split into `domain-model` overview plus `domain-identity-model` (21 tables), `domain-merchandising-model` (19) and `domain-commerce-model` (13). Detail pages use conceptual ER notation, business names, selected fields and cardinalities; grouping expresses schema/responsibility only, not approved DDD aggregate/transaction boundaries. Omit universal audit fields and secondary relationship lines from images but retain full table/FK traceability in Markdown/inventory. No schema, canonical ER, API or backend implementation changes.
+
+- [x] Reconcile PR61, prepare a fresh scoped Jinny branch/lock, load applicable skills/rules/lessons and inspect the DB/schema inventory.
+- [x] Read every migration/schema explanation and meaningful constraint; generate a source inventory and research the conceptual notation using primary sources.
+- [x] Model the overview and three focused domain diagrams with native parent/child boxes, explicit selected associations and correct cardinality, separating evidence from inferred business ownership/rule candidates.
+- [x] Produce editable PNG/drawio/HTML and detailed Thai companions; map all53 tables and foreign keys and link the index.
+- [x] Verify source coverage, geometry/text/routes, HTML, Markdown, visual output and editable PNG/native round trips; record results and release the editing-session lock.
+
+Verification (2026-11-08): four conceptual domain diagrams and detailed companions cover53SQLtables in11schemas and75FKcolumns. Detail drawings select35entity associations; overview selects7cross-schema references. SQL/schemaaudit reports53tables audited,0findings. Source/model/geometry, packagedHTML/SVG,390pxbrowserbounds, exact editablePNG extraction/nativeXML and pixel-identicalnative round trips pass; PNGs2378x1682 and below1MiB. All7Markdown frontmatters,311local links,23-pathscope andwhitespace checks pass. Prior45image/source/HTML artifacts remain unchanged. Full evidence and limits are in e-commerce/diagram/domain/domain-model-verification.md. No SQL/API/backend implementation or PR is included.
+
+### Separate the Domain package and deliver its PR
+
+The owner's current instruction "แยก folder แล้วเปิด pr ให้หน่อย" authorizes reorganizing this existing package into `e-commerce/diagram/domain/`, updating references/generator paths, committing, pushing the existing task branch and opening one PR against main. This supersedes delivery none for the same task/scope only; it does not authorize merging or backend/schema changes. The grant is persisted after registry/identity validation.
+
+- [x] Verify the existing workspace/branch/assignment, record the direct delivery grant, reacquire the editing-session lock and snapshot the21Domain files before moving.
+- [x] Move the complete Domain package into its own folder, add a local index and update generators/links/commands without changing diagram pixels or database evidence.
+- [x] Recheck53-table/75-FK coverage, source/HTML/Markdown/PNG parity, old diagram preservation and delivery preflight; inspect the exact staged files.
+- [ ] Commit one reviewed package, verify merge compatibility, push the existing branch, open/attach the PR and inspect its status once. Release the session lock after delivery; actual state is derived from Git/GitHub.
+
+Delivery preparation:25files (22dedicatedDomain files, parentREADME, sharedPNGhelper andtaskrecord). Preflight hasno blockers; all4PNG/draw.io pairs andsourceinventory match pre-move SHA-256. All53tables/75FKs,4HTML/SVG checks,PNGIR/native roundtrips,8Markdown frontmatters,328local links andprior45artifact preservation pass. No backend/API/schema implementation; no excluded task files.
+
 ## repository-wide: Make agent instructions operational
 
 Status: Complete
@@ -724,6 +749,8 @@ Authority: original API review, owner Q13 credentials and Q15 immediate main-bas
 - [ ] Run all checkers/audit/database tests and authorized delivery preflight; open one API PR and continue from main.
 
 Verification before main integration: three character-identical SQL operations, nine terminal traces, 56/56 mutations caught after closing the late-JWT-expiry branch gap; eight synchronized semantic SQL faults and intact pre-credential count/whitespace/old-diagram/render-omission faults rejected. Rendered SQL is 35/35 visible lines; SVG/PNG inspected, eight participants. Isolated PostgreSQL executes actual credential/count/page SQL: typed null filters, wildcard/apostrophe/Thai search, owner/deleted/missing id, status visibility, deterministic ties and four pages/beyond-range, expiry equality/inactive credentials, read-only write rejection and concurrent committed insert/delete between count/page with a consistent snapshot. Reference pagination bounds cover signed Int64 and checked offset; no backend implementation/conformance claim. All 52 documentation commands, audit 53 tables / 0 findings, database ALL PASSED and 12 skeleton tests passed. The initial main API08 exemption failure and its bounded checker-only repair are recorded above.
+
+Integration with origin/main 5dda686 preserves the domain diagram package byte-for-byte; only the five authorized paths differ from that base. API10 pair and checker bytes equal the verified task commit. On the integrated tree all 52 documentation commands, audit 53/0, database ALL PASSED, 12 skeleton tests and 35/35 rendered SQL lines passed again. Authorized preflight passed before the task commit; final committed delivery scope is checked before push.
 
 ## e-commerce: Peter API review — logout (API 8)
 
