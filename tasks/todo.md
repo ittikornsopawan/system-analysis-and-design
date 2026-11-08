@@ -7,6 +7,27 @@ description: Shared checklist for planning and tracking non-trivial tasks withou
 
 Use one section per task, named `<scope>: <task-name>`. Preserve other task sections and mark an item complete only after its completion criterion is satisfied.
 
+## repository-wide: Complete API sequence authoring guidance
+
+Status: Complete. Guidance confirmed by Ittikorn on 2026-11-08 with “ใช่” in response to the concrete proposal: complete flow in the login presentation style, strict SQL equality allowing only note indentation and leading-apostrophe escaping, and documentation-only changes. Scope is the API contract skill and its existing sequence reference, with task bookkeeping. The login sequence is the presentation prototype; each endpoint's spec remains the source of behavior and SQL.
+
+1. [x] Read global and Markdown rules, relevant lessons, the requested skills, the existing API skill, login prototype, generator and parity checker; preserve unrelated working-tree changes.
+2. [x] Confirm the concrete sequence guidance, including the meaning of exact SQL parity and the documentation-only change boundary, with the owner before editing the skill.
+3. [x] Update the existing skill and sequence reference to require complete endpoint-specific flows in the login format, with explicit SQL parity and rendered verification criteria.
+4. [x] Validate skill metadata, reference links, consistency with the prototype and tooling, and the scoped diff; report existing checker failures separately.
+
+Discovery evidence: The current sequence reference already copies SQL through a skeleton but does not fully describe the login narrative or require rendering every completed diagram. The SQL checker decodes a leading `&#39;` and normalizes whitespace, so its success alone does not establish character-for-character SQL equality. No endpoint, generator, checker, or backend change is planned.
+
+Verification: Ruby YAML parsing passed for all three changed Markdown files; skill name/description constraints, reference links/anchor, fence balance and `git diff --check` passed. A separate strict comparison of the login prototype passed all 15 SQL occurrences without whitespace normalization; `check_docs.py login-flow` passed all 7 outcome paths. `quick_validate.py` could not start because both installed Python interpreters lack PyYAML; the metadata and structural checks above were used instead, without installing dependencies. `api-sequence-spec` retains the pre-existing failure at `authen-and-author/08-inquiry-user-profile/sequence.wsd`: it already has token/timeout answers but remains in `LEGACY_TOKEN_SEQUENCES`. That unrelated checker issue was not changed. No API spec, sequence, generator, checker or backend was modified; runtime/database tests, generator mutation tests and diagram rendering were not required for this documentation-only change.
+
+Delivery authorization (2026-11-08): Ittikorn requested “ส่ง pr มา”, directly authorizing a commit, task-branch push and PR against `main` for these two skill documents and this task record. The existing checkout sequence diagram edits and three untracked handoff documents belong to other work and are excluded.
+
+- [x] Create the task branch, run scoped delivery preflight and inspect the exact staged files.
+- [x] Commit the three-file package, reconcile with current `origin/main` and verify the final PR diff.
+- [x] Prepare the authorized task-branch push and PR body with verification, approved decisions and exclusions; derive the final publication URL/status from GitHub for the handoff.
+
+Delivery verification: The task commit was rebased onto `origin/main` at `def2eb2`; all five excluded files were restored byte-for-byte, and the PR diff contains only the two skill documents and this task record. Scoped preflight has no blockers. The previously observed legacy-list failure was fixed upstream: `api-sequence-spec` now passes all 83 specs, and `login-flow` passes all 7 outcome paths. No API checker change belongs to this task. The committed checklist records publication readiness; the actual PR URL and remote state are reported from GitHub after publication.
+
 ## e-commerce: Migrate backend to a Component Repository
 
 Status: Implementation and verification complete; approved Showcase PR package prepared. Ittikorn explicitly approved M1–M8 in `docs/superpowers/specs/2026-11-07-e-commerce-component-migration.md` with “อนุมัติตามแผน ใช้ repository แบบ Public”. Approval was persisted at 2026-11-07T14:00:23Z before export/publication/moves. Continue as ordinary Codex in the current checkout under the earlier selected backend-developer perspective. The scope includes public `ittikornsopawan/e-commerce-backend`, filtered backend history, backup, manifest-managed checkout and a separate Showcase migration PR without merging. Actual remote PR delivery is verified through GitHub; PR #33 is merged.
