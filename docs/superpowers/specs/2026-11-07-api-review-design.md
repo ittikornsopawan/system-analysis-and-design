@@ -1,6 +1,6 @@
 ---
 name: Peter API Review Decisions
-description: Owner-confirmed JWT authorization, consent behavior, review scope and delivery rules; read before revising the affected e-commerce API specifications and sequences.
+description: Owner-confirmed JWT authorization, consent/profile/address behavior, review scope and delivery rules; read before revising the affected e-commerce API specifications and sequences.
 status: approved
 approved_by: Ittikorn (product owner, directly in Peter chat)
 approved_at: 2026-11-07T08:31:05+07:00
@@ -60,3 +60,9 @@ Use `commit-and-pr`. Do not merge PRs or enable auto-merge. Follow Q15: leave ea
 Q16: The owner answered **“แสดงหน้านั้นถือว่าอ่านแล้ว ส่งมาก่อน 1 ทีเพื่อ update ว่าอ่าน ถ้ากดส่ง result ก็เส้นเดียวกันนั้นแหละแค่แปะ result มาด้วย ถ้ามี read อยู่แล้วก็ไม่ต้อง update”**. Displaying a consent triggers the same submission endpoint without result and records the displayed version as read. A later answer sends result on that endpoint; a read-only call preserves an existing answer. Already-read evidence keeps its original read flag/timestamp and read-only calls perform no UPDATE. Required registration still needs explicit true.
 
 Q17: The owner answered **“ใช่ บังคับระบุเวอร์ชันที่แสดง”**. Every supplied consent object must identify its displayed consentVersion, including read-only requests; reject an omitted or non-current version without silently accepting a newer unseen version.
+
+## Profile and address decisions (Q20–Q21, 2026-11-08)
+
+Q20: The owner answered **“คืน null สำหรับค่าว่างเดิม (แนะนำ)”**. `08-inquiry-user-profile` projects legacy `gender = ''` to response `null` using `NULLIF`; keep existing NULL/MALE/FEMALE/OTHER values and do not rewrite history. This decision is already recorded in the endpoint revision delivered as PR #60.
+
+Q21: The owner answered **“ตอบ 400 เมื่อ Delete ส่ง true (แนะนำ)”**. `09-upsert-user-address` rejects `rowStatus = DELETED` with explicit `isDefault = true` as 400 E10001, matching the existing normative default rule. Correct the contradictory Delete example and checker exception. A valid delete with false/omitted isDefault still clears the stored default and promotes another ACTIVE address under the existing rule. This does not disallow deletion of a default address.

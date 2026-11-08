@@ -3651,7 +3651,7 @@ def authen_example_errors(key: str, md: str) -> list[str]:
         if bodies["Delete"].get("rowStatus") != "DELETED" or bodies["Update"].get("rowStatus") != "ACTIVE":
             errors.append("Update must be ACTIVE and Delete must be DELETED")
         for label, body in bodies.items():
-            if body.get("isDefault") and body.get("rowStatus") != "ACTIVE" and label != "Delete":
+            if body.get("isDefault") and body.get("rowStatus") != "ACTIVE":
                 errors.append(f"the {label} example sets a default on a row that is not ACTIVE")
         codes = success_codes(md)
         if codes != {"Success - Insert": 201, "Success - Update": 200, "Success - Delete": 204}:
@@ -3862,7 +3862,6 @@ REQUIRED_GROUPS = ("authen-and-author", "consent")
 # check fails when a listed diagram already passes (remove it) or no longer has a write.
 LEGACY_SEQUENCES = (
     # authen-and-author: waiting for a retrofit to the login standard
-    "authen-and-author/09-upsert-user-address",
     # consent: waiting for a retrofit to the login standard
     "consent/02-upsert-consent",
     "consent/06-upsert-consent-type",
@@ -3873,7 +3872,6 @@ LEGACY_SEQUENCES = (
 # must still fail at least one of them: a file that passes both has to leave this list. Remove an entry in the same
 # change that adds the missing answers to the diagram.
 LEGACY_TOKEN_SEQUENCES = (
-    "authen-and-author/09-upsert-user-address",     # no Verify JWT / 401 step, no 408
     "consent/02-upsert-consent",                    # no Verify JWT / 401 step, no 408
     "consent/03-inquiry-consent",                   # no Verify JWT / 401 step, no 408
     "consent/06-upsert-consent-type",               # no Verify JWT / 401 step, no 408
@@ -6316,6 +6314,116 @@ def check_author_me_flow() -> int:
 
 
 COMMANDS['author-me-flow'] = check_author_me_flow
+
+
+def check_address_upsert_flow() -> int:
+    """Check caller-scoped address lifecycle, quota and atomic default transitions."""
+    path=AUTHEN_SPECS['09'];md=read(path);wsd=read(str(Path(path).with_name('sequence.wsd')));errors=[]
+    for needle in ('status: in-review','approved_by: null','approved_at: null','2026-11-07-api-review-design.md',
+                   'Q21 approved by the product owner','ตอบ 400 เมื่อ Delete ส่ง true (แนะนำ)',
+                   'mandatory non-blank strings for insert, update and delete','first ACTIVE, not the first physical/historical row',
+                   'False or omitted preserves an existing ACTIVE','limit is configurable and applies only to insert',
+                   'Count every non-DELETED row regardless of lifecycle','fresh server UTC now','id = SQL NULL',
+                   'Compute shouldPromote = wasDefault AND new rowStatus is not ACTIVE','Clear-before-write',
+                   'zero rows means 404 with full ROLLBACK','Delete 204 No Content has no response body',
+                   'All target/default changes are one transaction','Scenario correspondence with sequence.wsd'):
+        if needle not in md:errors.append(f'address-upsert spec missing {needle!r}')
+    operations=spec_database_operations(md)
+    expected=('QUERY - Lock the user','QUERY - Check the current access token','QUERY - Check existing address','QUERY - Count addresses','QUERY - Check an ACTIVE address exists','UPDATE - Clear the old default','INSERT - Create user address','UPDATE - Update or delete user address','UPDATE - Promote another default address')
+    if tuple(h for _,h,_ in operations)!=expected:errors.append('address contract needs nine SQL definitions in orchestration/branch order')
+    sql={h:re.sub(r'--[^\n]*','',s) for _,h,s in operations}
+    required={expected[0]:["u.id = '<sequence.userId>'","u.row_status = 'ACTIVE'",'FOR UPDATE'],
+              expected[1]:["at.token = '<sequence.accessTokenHash>'","at.user_id = '<sequence.userId>'","at.row_status = 'ACTIVE'","at.expired_at > '<sequence.now>'"],
+              expected[2]:['ua.id as user_address_id','ua.is_default',"WHERE ua.id = '<sequence.id>'","AND ua.user_id = '<sequence.userId>'","AND ua.row_status <> 'DELETED'"],
+              expected[3]:['COUNT(ua.id) as addresses',"ua.user_id = '<sequence.userId>'","ua.row_status <> 'DELETED'","AND '<sequence.id>' IS NULL"],
+              expected[4]:["ua.user_id = '<sequence.userId>'","ua.row_status = 'ACTIVE'","('<sequence.id>' IS NULL OR ua.id <> '<sequence.id>')","AND '<sequence.rowStatus>' = 'ACTIVE'"],
+              expected[5]:["WHERE user_id = '<sequence.userId>'",'AND is_default',"AND row_status <> 'DELETED'","('<sequence.id>' IS NULL OR id <> '<sequence.id>')","AND '<sequence.isDefault>'",'is_default = FALSE'],
+              expected[6]:['created_by,\n    created_at,\n    row_status,\n    user_id',"'<sequence.userId>',\n    '<sequence.now>',\n    '<sequence.rowStatus>',\n    '<sequence.userId>'",'RETURNING id as user_address_id'],
+              expected[7]:["WHERE id = '<sequence.id>'","AND user_id = '<sequence.userId>'","AND row_status <> 'DELETED'",'RETURNING id as user_address_id'],
+              expected[8]:['is_default = TRUE',"ua.user_id = '<sequence.userId>'","ua.row_status = 'ACTIVE'",'ORDER BY COALESCE(ua.updated_at, ua.created_at) DESC, ua.id','LIMIT 1',"AND user_id = '<sequence.userId>'","AND row_status = 'ACTIVE'","AND '<sequence.shouldPromote>'",'RETURNING id as user_address_id']}
+    for h in (expected[5],expected[7],expected[8]):required[h]+=["updated_by = '<sequence.userId>'","updated_at = '<sequence.now>'"]
+    for h in (expected[6],expected[7]):
+        required[h]+=["'<sequence.title>'","'<sequence.isDefault>'"]+[f"'<sequence.{v}Bytes>'" for v in ('address','city','state','postalCode','country')]
+    for h,needles in required.items():
+        for needle in needles:
+            if needle not in sql.get(h,''):errors.append(f'{h} missing {needle}')
+    if re.search(r"row_status\s*=\s*'ACTIVE'",sql.get(expected[3],'')):errors.append('quota must count every non-DELETED status')
+    if 'NOW()' in '\n'.join(sql.values()) or any(t not in ('authen.m_user','authen.t_user_access_token','authen.t_user_address') for t,_,_ in operations):errors.append('address needs fresh bound now and only caller/address credential tables')
+    actual,lifecycle=sequence_database_operations(wsd);errors+=lifecycle
+    from collections import Counter
+    definitions={(t.split('.')[-1],h,s) for t,h,s in operations}
+    if set(actual)!=definitions:errors.append('every reused address SQL block must match its spec definition character-for-character')
+    expected_reuse=Counter({h:2 if h in expected[7:] else 1 for h in expected})
+    if Counter(h for _,h,_ in actual)!=expected_reuse:errors.append('UPDATE/promotion must appear in both existing-id branches; other SQL blocks once')
+    errors+=sequence_login_standard_errors(wsd)
+    for _,heading,_ in operations:
+        requests=list(re.finditer(rf'app -> infra: {re.escape(heading)}\n',wsd));blocks=list(re.finditer(rf'infra -> (\w+): {re.escape(heading)}\n.*?\1 -> infra: Return ([^\n]+)\n.*?deactivate \1\n\s*infra -> app: Return ([^\n]+)',wsd,re.S))
+        if len(requests)!=expected_reuse[heading] or len(blocks)!=expected_reuse[heading] or any(x[2]!=x[3] for x in blocks):errors.append(f'{heading} needs matching Application request and database/result mappings on every reuse')
+    for needle in ('Q21 reject explicit isDefault=true for INACTIVE or DELETED; reject insert DELETED',
+                   'Verify JWT signature/issuer/audience/expiry/UUID sub','userId = verified sub; accessTokenHash = SHA-256 exact JWT',
+                   'id = supplied UUID or server SQL NULL for insert; omitted rowStatus = ACTIVE; preserve requestedTrue separately',
+                   'Capture fresh server UTC now after user lock; recheck JWT exp',
+                   'alt Supplied id and no owned non-DELETED target','wasDefault = returned is_default or false for insert',
+                   'alt Insert id absent and addresses >= 10','otherActiveExists = returned rows not empty',
+                   'isDefault = rowStatus ACTIVE AND (requestedTrue OR wasDefault OR NOT otherActiveExists)',
+                   'shouldPromote = wasDefault AND rowStatus not ACTIVE; flags are server-derived, never caller flags',
+                   'alt Insert with id absent','else Delete existing id with rowStatus DELETED','else Update existing id with rowStatus ACTIVE or INACTIVE'):
+        if needle not in wsd:errors.append(f'address sequence missing {needle!r}')
+    traces,structure=login_sequence_paths(wsd);errors+=structure
+    outcomes=[];unauthorized=[]
+    for trace in traces:
+        response=[e for e in trace if e.startswith('app -> api: HTTP ')]
+        if len(response)!=1:errors.append('address trace needs one outcome; abort must not reach success');continue
+        code=int(response[0].split('HTTP ')[1].split()[0]);outcomes.append(code)
+        def ordered(*parts):
+            pos=[next((i for i,e in enumerate(trace) if part in e),-1) for part in parts]
+            return -1 not in pos and pos==sorted(set(pos))
+        queries=[e for e in trace if e.startswith('infra -> ')];writes=[e for e in queries if ': UPDATE' in e or ': INSERT' in e];begun=any(e.startswith('app -> infra: BEGIN') for e in trace)
+        if queries and not ordered('Q21 reject explicit isDefault=true','Verify JWT','userId = verified sub','BEGIN READ COMMITTED',expected[0]):errors.append('address SQL needs verified identity and user-first transaction')
+        if any(expected[1] in e for e in trace) and not ordered(expected[0],'Capture fresh server UTC now',expected[1]):errors.append('stored credential read must follow user lock and fresh time')
+        if writes and not ordered(expected[1],expected[2],expected[3],expected[4],'isDefault = rowStatus ACTIVE','shouldPromote = wasDefault',expected[5]):errors.append('default/target mutations require fresh credential, owned target, quota and server-computed flags')
+        if code in (200,201,204):
+            target=expected[6] if code==201 else expected[7]
+            need=(expected[5],target) if code==201 else (expected[5],target,expected[8])
+            if not ordered(*need,'app -> infra: COMMIT',f'HTTP {code}') or any('ROLLBACK' in e for e in trace):errors.append('success must commit all required target/default changes first')
+            if sum(target in e for e in writes)!=1 or (code==201 and len(writes)!=2) or (code!=201 and len(writes)!=3):errors.append('insert/update/delete must run mutually exclusive target SQL and appropriate promotion')
+            if code==204 and 'no response body' not in response[0] or code!=204 and 'data.userAddressId only' not in response[0]:errors.append('incorrect address success payload shape')
+        elif begun:
+            if not ordered('BEGIN','ROLLBACK',f'HTTP {code}') or any(e=='app -> infra: COMMIT' for e in trace):errors.append('address failure must roll back every partial/default mutation before response')
+            if code==401 and writes:errors.append('invalid credential must not change any address')
+            if code==400 and writes:errors.append('quota rejection must precede clearing defaults')
+        elif code not in (400,401) or queries:errors.append('early input/JWT rejection must execute no SQL')
+        if code==401:unauthorized.append(len(queries))
+    if Counter(outcomes)!=Counter({200:1,201:1,204:1,400:2,401:3,404:3,408:1,500:2}) or sorted(unauthorized)!=[0,1,2]:errors.append(f'incomplete address paths: {dict(Counter(outcomes))}; 401 SQL={unauthorized}')
+    for title,code in {'Success - Insert':201,'Success - Update':200,'Fail - Bad Request':400,'Fail - Bad Request Row Status':400,'Fail - Bad Request Limit':400,'Fail - Bad Request Default':400,'Fail - Unauthorized':401,'Fail - Not Found':404,'Fail - Request Timeout':408,'Fail - Internal Server Error':500}.items():
+        try:
+            obj=authen_json(md,title);status=obj['status']
+            if status['code']!=code or code==500 and 'bizCode' in status:errors.append(f'incorrect address {title} envelope')
+            if code in (200,201) and set(obj.get('data',{}))!={'userAddressId'}:errors.append('address success returns only target address id')
+        except (TypeError,KeyError,ValueError):errors.append(f'missing address {title} example')
+    try:
+        body=json.loads(re.search(r'##### Delete\n\n```JSON\n(.*?)```',md,re.S)[1])
+        if body.get('isDefault') is True:errors.append('Q21 Delete example must not send true')
+    except (TypeError,KeyError,ValueError):errors.append('missing Delete request example')
+    delete=md.split('#### Success - Delete',1)[-1].split('#### Fail',1)[0]
+    if 'HTTP 204, no response body' not in delete or '```JSON' in delete:errors.append('delete must return 204 without JSON body')
+    errors+=json_blocks_parse(md);errors+=table_lines_aligned(md)
+    if '--rendered-svg' in sys.argv:
+        import xml.etree.ElementTree as ET
+        try:
+            root=ET.parse(sys.argv[sys.argv.index('--rendered-svg')+1]).getroot()
+            expected_lines=Counter(' '.join(l.split()) for _,_,s in actual for l in s.splitlines() if l.strip())
+            visible=Counter(' '.join(''.join(e.itertext()).split()) for e in root.iter() if e.tag.endswith('}text'))
+            missing=expected_lines-visible
+            if missing:errors.append(f'rendered address SQL missing {sum(missing.values())} lines')
+            else:print(f'OK: rendered address SQL ({sum(expected_lines.values())}/{sum(expected_lines.values())} visible lines including reused blocks)')
+        except (IndexError,OSError,ET.ParseError) as exc:errors.append(f'cannot verify address SVG: {exc}')
+    if errors:return fail('; '.join(errors))
+    print('OK: address-upsert-flow (14 terminal traces; nine exact SQL definitions, Q21 and atomic quota/default transitions)')
+    return 0
+
+
+COMMANDS['address-upsert-flow'] = check_address_upsert_flow
 
 
 def check_logout_flow() -> int:
