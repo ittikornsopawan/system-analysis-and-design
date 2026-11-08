@@ -182,12 +182,12 @@ activate page
                                             quantity
                                         )
                                         VALUES (
-                                            '<sequence.userId>',
-                                            '<sequence.userId>',
-                                            '<sequence.shopId>',
-                                            '<sequence.productId>',
-                                            '<sequence.skuId>',
-                                            '<sequence.items.quantity>'
+                                            &#39;<sequence.userId>',
+                                            &#39;<sequence.userId>',
+                                            &#39;<sequence.shopId>',
+                                            &#39;<sequence.productId>',
+                                            &#39;<sequence.skuId>',
+                                            &#39;<sequence.items.quantity>'
                                         )
                                         ON CONFLICT (user_id, shop_id, product_id, sku_id) WHERE row_status <> 'DELETED' -- the partial unique index uq_t_cart_user_id_shop_id_product_id_sku_id
                                         DO UPDATE SET
