@@ -7,6 +7,16 @@ description: Shared checklist for planning and tracking non-trivial tasks withou
 
 Use one section per task, named `<scope>: <task-name>`. Preserve other task sections and mark an item complete only after its completion criterion is satisfied.
 
+## e-commerce: Code structure guide with existing diagrams
+
+Status: In progress. Ittikorn requested `e-commerce/doc/code-structure.md` with diagrams reused from `e-commerce/diagram/`, following the clarification that Service = Domain means reusable business logic and the owner-selected path is `Ecommerce.Domain/Authen/Domain/`. This task writes documentation in the Showcase, reads the pinned component without changing it, reuses existing diagram bundles unchanged and does not include commit/PR delivery.
+
+1. [x] Read applicable rules, lessons, component manifest, current backend conventions and diagram-creator; inspect the three selected renders and their source/companion evidence.
+2. [ ] Write the Thai guide with runtime/repository/identity diagrams, layer and feature responsibilities, Service = Domain terminology, current versus owner-directed structure, CQRS flows and source links.
+3. [ ] Record the terminology correction in lessons; verify Markdown/frontmatter/links, model/PNG integrity, component evidence and unchanged diagram/component hashes; record actual results.
+
+Selected views: runtime architecture explains collaboration and the proposed reusable Domain child; repository architecture explains source ownership and compile references; identity domain explains business concepts derived from schema without implying implemented classes or aggregate ownership. Existing pictures are embedded and linked to editable sources; no new rendering or diagram redesign is requested.
+
 ## repository-wide: Improve the API skill after every error
 
 Status: Guidance and follow-up PR package complete. Ittikorn requested that every error lead to an improvement of `api-contract-design`, in addition to correcting the work. The existing skill now requires a root-cause, preventive skill-improvement and verification loop while preserving specification approvals. Follow-up publication continues under the existing direct delivery instruction for this skill work; actual PR state is reported from GitHub.

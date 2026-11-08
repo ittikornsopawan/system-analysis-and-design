@@ -13,9 +13,9 @@ description: Repository-wide and project-specific lessons captured from user cor
 
 ### 2026-11-08 — Preserve the owner's `Domain` business-logic convention
 
-- **Correction**: The Domain layer also needs a child named `Domain` for reusable business logic, with the owner-specified example path `src/Ecommerce.Domain/Authen/Domain/`.
-- **Root cause**: Decomposition stopped at entities, value objects and repository contracts, omitting reusable domain operations and the project's chosen naming.
-- **Corrected behavior**: Show `Domain` explicitly under the Domain layer and the feature's physical path in the repository view. Explain reusable rules separately from handler orchestration and entity invariants. Treat tax calculation as a generic example owned by the relevant business feature, not an implemented Authen capability; distinguish owner-directed design from the pinned source baseline.
+- **Correction**: The Domain layer also needs a child named `Domain` for reusable business logic, with the owner-specified example path `src/Ecommerce.Domain/Authen/Domain/`. The owner further clarified “service = domain เลยความหมายเดียวกัน” when discussing code structure.
+- **Root cause**: Decomposition stopped at entities, value objects and repository contracts, omitting reusable domain operations and the project's chosen naming. Generic terminology distinctions also obscured the owner's intended business-code area.
+- **Corrected behavior**: Use Service = Domain for reusable business operations in this project's code-structure discussion and preserve the owner-selected `Domain/` name instead of replacing it with Services/Policies. Show `Domain` explicitly under the Domain layer and the feature's physical path in the repository view. Explain reusable rules separately from handler orchestration and entity invariants; infrastructure services and database-domain associations still have their own roles. Treat tax calculation as a generic example owned by the relevant business feature, not an implemented Authen capability; distinguish owner-directed design from the pinned source baseline.
 
 ## Repository-wide
 
