@@ -631,6 +631,8 @@ Integration: GitHub reported a conflict after main advanced. Preserve all upstre
 
 Delivery correction: the first integration preflight compared against stale local main and rejected imported upstream paths. The following shell step pushed despite that failure. Fast-forward local main, prove only the five task paths differ, re-run delivery authorization successfully, and require fail-fast dependent commands. A second upstream checker rule added a token/timeout legacy entry for this API; remove only its completed entry and re-run every check before the follow-up push.
 
+Follow-up: PR #53 was merged externally at head 5635a53 while its final integration correction was being pushed. The local correction is preserved. Main still lists the completed reset in LEGACY_TOKEN_SEQUENCES, which the checker rejects. Deliver a checker/task-only follow-up under this same bounded assignment; the API spec and sequence remain byte-identical to main. Do not overwrite external branch history.
+
 ## e-commerce: Peter API review — logout (API 8)
 
 Status: Author/me delivered as PR #37 (four files; MERGEABLE when opened), branch/history preserved. Clean main-based logout assignment passed baselines under Q15. Q13 keeps immediate credential revocation; WP4 U9/U23 requires the user lock and atomic closure of every token in the caller's session. Management-consent Q18/Q19 remains pending; independent authorized work continues.
@@ -640,8 +642,8 @@ Status: Author/me delivered as PR #37 (four files; MERGEABLE when opened), branc
 - [x] Correct spec with user-first lock, fresh post-lock token/session/expiry validation, server-derived ids, complete atomic revocation and error/retry semantics.
 - [x] Regenerate then finish sequence with actual execution order, every SQL request/result and success/invalid/revoked/rollback/timeout paths; remove its legacy exemption only when the new standard passes.
 - [x] Add logout-flow checks, reject original/synchronized faults and mutation-test ordering, scope, transaction and rendered SQL.
-- [x] Execute exact SQL for session-wide closure, rollback, concurrent refresh/logout and expiry/revocation while waiting; render/inspect SVG/PNG and pass all current delivery checks.
-- [x] Open logout PR #44 through commit-and-pr, preserve its review record and continue from main under Q15; merge verified remotely.
+- [ ] Execute exact SQL for session-wide closure, rollback, concurrent refresh/logout and expiry/revocation while waiting; render/inspect SVG/PNG and pass all current delivery checks.
+- [ ] Open one logout PR through commit-and-pr, preserve its review record and continue from main under Q15.
 
 Logout verification: four identical SQL operations in user-lock -> fresh session -> access closure -> refresh closure order; eight terminal paths. Regenerated via the ready skeleton tool, completed all markers/branches/mappings and removed the now-complete legacy exemption. Original pair rejected; mutations caught 36/36 (durable temporary log retained). Four additional synchronized faults, including moving the complete access UPDATE before the user lock while preserving SQL parity/participant first use, are rejected by logout-flow. Real rendered omission rejected independently; final PlantUML has nine participants, inspected SVG/PNG and 29/29 visible SQL lines. Temporary PostgreSQL executed exact logout and refresh credential statements: full closure includes older/expired ACTIVE access rows, preserves other devices/users even with a shared session id and inactive history, actual mid-transaction error rolls back, zero refresh closure is valid, zero access closure is detected, repeated/concurrent logout sees revocation, both refresh/logout races leave no new usable pair, and post-lock time rejects expiry while waiting. These are design/SQL checks, not backend conformance.
 
@@ -729,6 +731,13 @@ Status: Complete in the branch, waiting for review. Assignment: agent `tommy`, d
 - [x] Check them with `api-sequence-spec`, the skeleton test, PlantUML and mutation tests.
 - [x] Open the PR with `commit-and-pr`; do not merge. The author APIs (`author/01` to `11`) follow in the next pull request.
 
+## repository-wide: Sequence diagrams of the author APIs (set D, author)
+
+Status: Complete in the branch, waiting for review. Assignment: agent `tommy`, delivery `open-pr`, authorized by `josh`, workspace `.workspace/tommy`, branch `feat/tommy-sequence-author`, scopes: the eleven folders `e-commerce/doc/api/author/01-upsert-role` to `11-inquiry-user-role` and `tasks`.
+
+- [x] Write `sequence.wsd` of `author/01` to `11` (role, permission and scope upsert and batch, the three inquiries, the user role upsert with the lock order and the last administrator rule, the user role inquiry) to the agreed standard.
+- [x] Check them with `api-sequence-spec`, the skeleton test, PlantUML and mutation tests.
+- [x] Open the PR with `commit-and-pr`; do not merge. With this set every one of the 83 API specs has a finished diagram.
 ## e-commerce: api-sequence-spec requires the 401 and 408 answers and matching headings
 
 Status: Implemented in the managed workspace of Marry on branch `test/marry-enforce-401-408-heading`; the pull request is opened after the checks and merged by the lead. Scope: `e-commerce/db/tests/check_docs.py` and `tasks/`. No spec and no `sequence.wsd` is changed. Decisions of the lead (chat, 2026-11-07): the token rule applies when the spec has a mandatory `authorization` header only; the verify step may say `JWT` or `access token`; the older diagrams that do not pass are listed by name.

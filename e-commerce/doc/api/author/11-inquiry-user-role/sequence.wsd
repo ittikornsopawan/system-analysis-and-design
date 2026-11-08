@@ -1,0 +1,167 @@
+@startuml InquiryUserRole Sequence
+
+title Inquiry User Role API Sequence
+
+' Leading SQL apostrophes use &#39; so PlantUML preserves literals; parity compares decoded SQL.
+
+' Visual style
+skinparam defaultFontName "Sarabun"
+skinparam defaultFontSize 14
+skinparam backgroundColor #FFFFFF
+skinparam shadowing false
+skinparam roundcorner 10
+skinparam sequence {
+    ArrowColor #475569
+    ArrowFontColor #334155
+    LifeLineBorderColor #CBD5E1
+    LifeLineBackgroundColor #F8FAFC
+    ParticipantBorderColor #94A3B8
+    ParticipantBackgroundColor #F1F5F9
+    ParticipantFontColor #0F172A
+    GroupBorderColor #94A3B8
+    GroupBackgroundColor #F8FAFC
+    GroupFontColor #334155
+}
+
+' Do not show participant footers at the bottom of the diagram
+hide footbox
+
+actor "User" as user
+box "Frontend" #F8FAFC
+    participant "Inquiry User Role Page" as page
+end box
+box "Web API" #F8FAFC
+    participant "API" as api
+    participant "Application" as app
+    participant "Domain" as domain
+    participant "Infrastructure" as infra
+end box
+box "Database" #F8FAFC
+    database "m_role" as m_role
+    database "t_user_role" as t_user_role
+end box
+
+user -> page: Request the user roles
+activate page
+    page -> api: GET v1/author/user/role
+    activate api
+        api -> app: [**InquiryUserRoleQueryHandler**] Process request
+        activate app
+            app -> app: Create request context; generate requestId when omitted
+            app -> app: Validate headers and query parameters: pageIndex and pageSize are greater than 0, pageSize at most 100, rowStatus is a valid status
+            alt Invalid input
+                app -> api: HTTP 400 E10001
+                api -> page: Bad request
+                page -> user: Display validation error
+            else Valid input
+                app -> app: Verify JWT signature, issuer, audience, exp and UUID sub
+                alt Missing, malformed or invalid JWT
+                    app -> api: HTTP 401 E10002 Invalid or expired access token.
+                    api -> page: Authentication error
+                    page -> user: Ask the user to sign in again
+                else Verified JWT
+                    app -> app: userId = verified sub
+                    app -> infra: Execute database operations
+                    activate infra
+                    alt Work completes
+                        app -> infra: QUERY - Get the platform administrator role
+                        infra -> m_role: QUERY - Get the platform administrator role
+                        activate m_role
+                            note right of m_role
+                                SELECT
+                                    r.id as role_id
+                                FROM author.m_role r
+                                WHERE r.name = 'PLATFORM_ADMIN'
+                                AND r.row_status = 'ACTIVE'
+                            end note
+                            m_role -> infra: Return query result
+                        deactivate m_role
+                        infra -> app: Return the role id
+                        app -> infra: QUERY - Check platform administrator
+                        infra -> t_user_role: QUERY - Check platform administrator
+                        activate t_user_role
+                            note right of t_user_role
+                                SELECT
+                                    ur.id as user_role_id
+                                FROM author.t_user_role ur
+                                WHERE ur.user_id = '<sequence.userId>'
+                                AND ur.role_id = '<sequence.roleId>'
+                                AND ur.row_status = 'ACTIVE'
+                            end note
+                            t_user_role -> infra: Return query result
+                        deactivate t_user_role
+                        infra -> app: Return the assignment or no row
+                        alt The caller is not a platform administrator
+                            app -> api: HTTP 403 E10009 You do not have permission to read user roles.
+                            api -> page: Forbidden
+                            page -> user: Display no permission
+                        end
+                        app -> infra: QUERY - Get user roles
+                        infra -> t_user_role: QUERY - Get user roles
+                        activate t_user_role
+                            note right of t_user_role
+                                SELECT
+                                    ur.id as user_role_id,
+                                    ur.user_id,
+                                    u.display_name,
+                                    ur.role_id,
+                                    r.name as role_name,
+                                    ur.row_status
+                                FROM author.t_user_role ur
+                                INNER JOIN authen.m_user u
+                                    ON u.id = ur.user_id
+                                INNER JOIN author.m_role r
+                                    ON r.id = ur.role_id
+                                WHERE ur.row_status <> 'DELETED'
+                                AND ur.id = '<sequence.id>' -- only when id is specified
+                                AND ur.user_id = '<sequence.filterUserId>' -- only when userId is specified
+                                AND ur.role_id = '<sequence.filterRoleId>' -- only when roleId is specified
+                                AND ur.row_status = '<sequence.rowStatus>' -- only when rowStatus is specified
+                                ORDER BY r.name, u.display_name, ur.id
+                                LIMIT <sequence.pageSize> OFFSET (<sequence.pageIndex> - 1) * <sequence.pageSize>
+                            end note
+                            t_user_role -> infra: Return query result
+                        deactivate t_user_role
+                        infra -> app: Return the page of user roles
+                        app -> infra: QUERY - Get total items
+                        infra -> t_user_role: QUERY - Get total items
+                        activate t_user_role
+                            note right of t_user_role
+                                SELECT
+                                    COUNT(ur.id) as total_items
+                                FROM author.t_user_role ur
+                                WHERE ur.row_status <> 'DELETED'
+                                AND ur.id = '<sequence.id>' -- only when id is specified
+                                AND ur.user_id = '<sequence.filterUserId>' -- only when userId is specified
+                                AND ur.role_id = '<sequence.filterRoleId>' -- only when roleId is specified
+                                AND ur.row_status = '<sequence.rowStatus>' -- only when rowStatus is specified
+                            end note
+                            t_user_role -> infra: Return query result
+                        deactivate t_user_role
+                        infra -> app: Return total_items
+                        alt No user role matches
+                            app -> api: HTTP 200 S10000
+                            api -> page: Return an empty list
+                            page -> user: Display no user role
+                        else User roles found
+                            app -> api: HTTP 200 S10000
+                            api -> page: Return the user roles
+                            page -> user: Display the user roles
+                        end
+                    else Timeout
+                        app -> api: HTTP 408 E90001
+                        api -> page: Request timeout
+                        page -> user: Retry if needed
+                    else Unexpected failure
+                        app -> api: HTTP 500 generic error; no new bizCode
+                        api -> page: Internal server error
+                        page -> user: Display generic failure
+                    end
+                    deactivate infra
+                end
+            end
+        deactivate app
+    deactivate api
+deactivate page
+
+@enduml

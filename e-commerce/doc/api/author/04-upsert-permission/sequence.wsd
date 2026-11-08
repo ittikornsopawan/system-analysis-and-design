@@ -1,0 +1,414 @@
+@startuml UpsertPermission Sequence
+
+title Upsert Permission API Sequence
+
+' Leading SQL apostrophes use &#39; so PlantUML preserves literals; parity compares decoded SQL.
+
+' Visual style
+skinparam defaultFontName "Sarabun"
+skinparam defaultFontSize 14
+skinparam backgroundColor #FFFFFF
+skinparam shadowing false
+skinparam roundcorner 10
+skinparam sequence {
+    ArrowColor #475569
+    ArrowFontColor #334155
+    LifeLineBorderColor #CBD5E1
+    LifeLineBackgroundColor #F8FAFC
+    ParticipantBorderColor #94A3B8
+    ParticipantBackgroundColor #F1F5F9
+    ParticipantFontColor #0F172A
+    GroupBorderColor #94A3B8
+    GroupBackgroundColor #F8FAFC
+    GroupFontColor #334155
+}
+
+' Do not show participant footers at the bottom of the diagram
+hide footbox
+
+actor "User" as user
+box "Frontend" #F8FAFC
+    participant "Upsert Permission Page" as page
+end box
+box "Web API" #F8FAFC
+    participant "API" as api
+    participant "Application" as app
+    participant "Domain" as domain
+    participant "Infrastructure" as infra
+end box
+box "Database" #F8FAFC
+    database "m_permission" as m_permission
+    database "m_role" as m_role
+    database "t_user_role" as t_user_role
+    database "m_scope" as m_scope
+    database "t_permission_scope" as t_permission_scope
+    database "t_role_permission" as t_role_permission
+    database "t_user_permission" as t_user_permission
+    database "t_role_permission_scope" as t_role_permission_scope
+end box
+
+user -> page: Submit the permission
+activate page
+    page -> api: POST v1/author/permission/upsert
+    activate api
+        api -> app: [**UpsertPermissionCommandHandler**] Process request
+        activate app
+            app -> app: Create request context; generate requestId when omitted
+            app -> app: Validate headers and body: name is a permission code (lower-case letters, digits, _ and ., at least two parts, at most 64 characters), rowStatus is not DELETED when inserting, scopes as listed
+            alt Invalid input
+                app -> api: HTTP 400 E10001
+                api -> page: Bad request
+                page -> user: Display validation error
+            else Valid input
+                app -> app: Verify JWT signature, issuer, audience, exp and UUID sub
+                alt Missing, malformed or invalid JWT
+                    app -> api: HTTP 401 E10002 Invalid or expired access token.
+                    api -> page: Authentication error
+                    page -> user: Ask the user to sign in again
+                else Verified JWT
+                    app -> app: userId = verified sub
+                    app -> infra: BEGIN READ COMMITTED
+                    activate infra
+                    alt Work completes before commit
+                        alt id is specified (update, delete or archive)
+                            app -> infra: QUERY - Check existing permission
+                            infra -> m_permission: QUERY - Check existing permission
+                            activate m_permission
+                                note right of m_permission
+                                    SELECT
+                                        p.id as permission_id
+                                    FROM author.m_permission p
+                                    WHERE p.id = '<sequence.id>'
+                                    AND p.row_status <> 'DELETED' -- the id of a DELETED permission counts as not found
+                                end note
+                                m_permission -> infra: Return query result
+                            deactivate m_permission
+                            infra -> app: Return the permission or no row
+                            alt Permission not found or DELETED
+                                app -> infra: ROLLBACK
+                                app -> api: HTTP 404 E10004 Permission not found.
+                                api -> page: Not found
+                                page -> user: Display what is not found
+                            end
+                        end
+                        app -> infra: QUERY - Get the platform administrator role
+                        infra -> m_role: QUERY - Get the platform administrator role
+                        activate m_role
+                            note right of m_role
+                                SELECT
+                                    r.id as role_id
+                                FROM author.m_role r
+                                WHERE r.name = 'PLATFORM_ADMIN'
+                                AND r.row_status = 'ACTIVE'
+                            end note
+                            m_role -> infra: Return query result
+                        deactivate m_role
+                        infra -> app: Return the role id
+                        app -> infra: QUERY - Check platform administrator
+                        infra -> t_user_role: QUERY - Check platform administrator
+                        activate t_user_role
+                            note right of t_user_role
+                                SELECT
+                                    ur.id as user_role_id
+                                FROM author.t_user_role ur
+                                WHERE ur.user_id = '<sequence.userId>'
+                                AND ur.role_id = '<sequence.roleId>'
+                                AND ur.row_status = 'ACTIVE'
+                            end note
+                            t_user_role -> infra: Return query result
+                        deactivate t_user_role
+                        infra -> app: Return the assignment or no row
+                        alt The caller is not a platform administrator
+                            app -> infra: ROLLBACK
+                            app -> api: HTTP 403 E10009 You do not have permission to manage permissions.
+                            api -> page: Forbidden
+                            page -> user: Display no permission
+                        end
+                        alt scopes is in the request
+                            loop For every scope of the permission
+                                app -> infra: QUERY - Check scope
+                                infra -> m_scope: QUERY - Check scope
+                                activate m_scope
+                                    note right of m_scope
+                                        SELECT
+                                            s.id as scope_id
+                                        FROM author.m_scope s
+                                        WHERE s.id = '<sequence.scopes.scopeId>'
+                                        AND s.row_status = 'ACTIVE'
+                                    end note
+                                    m_scope -> infra: Return query result
+                                deactivate m_scope
+                                infra -> app: Return the scope or no row
+                                alt Scope does not exist or is not ACTIVE
+                                    app -> infra: ROLLBACK
+                                    app -> api: HTTP 404 E10005 Scope not found.
+                                    api -> page: Not found
+                                    page -> user: Display what is not found
+                                end
+                                alt The scope item has an id
+                                    app -> infra: QUERY - Check existing permission scope
+                                    infra -> t_permission_scope: QUERY - Check existing permission scope
+                                    activate t_permission_scope
+                                        note right of t_permission_scope
+                                            SELECT
+                                                ps.id as permission_scope_id,
+                                                ps.scope_id
+                                            FROM author.t_permission_scope ps
+                                            WHERE ps.id = '<sequence.scopes.id>'
+                                            AND ps.permission_id = '<sequence.id>'
+                                            AND ps.row_status <> 'DELETED' -- only when the scope item has an id
+                                        end note
+                                        t_permission_scope -> infra: Return query result
+                                    deactivate t_permission_scope
+                                    infra -> app: Return the permission scope or no row
+                                    alt The permission scope does not belong to the permission
+                                        app -> infra: ROLLBACK
+                                        app -> api: HTTP 404 E10004 Permission scope not found.
+                                        api -> page: Not found
+                                        page -> user: Display what is not found
+                                    end
+                                end
+                            end
+                        end
+                        app -> infra: QUERY - Check duplicate name
+                        infra -> m_permission: QUERY - Check duplicate name
+                        activate m_permission
+                            note right of m_permission
+                                SELECT
+                                    p.id as permission_id
+                                FROM author.m_permission p
+                                WHERE p.name = '<sequence.name>'
+                                AND p.row_status <> 'DELETED'
+                                AND p.id <> '<sequence.id>' -- only when id is specified
+                            end note
+                            m_permission -> infra: Return query result
+                        deactivate m_permission
+                        infra -> app: Return the permission that holds the name or no row
+                        alt Another permission that is not DELETED holds the name
+                            app -> infra: ROLLBACK
+                            app -> api: HTTP 409 E10003 Permission name already exists.
+                            api -> page: Conflict
+                            page -> user: Display the permission exists
+                        end
+                        alt rowStatus is DELETED or ARCHIVED
+                            app -> infra: QUERY - Check role permission in use
+                            infra -> t_role_permission: QUERY - Check role permission in use
+                            activate t_role_permission
+                                note right of t_role_permission
+                                    SELECT
+                                        rp.id as role_permission_id
+                                    FROM author.t_role_permission rp
+                                    WHERE rp.permission_id = '<sequence.id>' -- only when rowStatus is DELETED or ARCHIVED
+                                    AND rp.row_status <> 'DELETED'
+                                end note
+                                t_role_permission -> infra: Return query result
+                            deactivate t_role_permission
+                            infra -> app: Return a role that holds the permission or no row
+                            app -> infra: QUERY - Check user permission in use
+                            infra -> t_user_permission: QUERY - Check user permission in use
+                            activate t_user_permission
+                                note right of t_user_permission
+                                    SELECT
+                                        up.id as user_permission_id
+                                    FROM author.t_user_permission up
+                                    WHERE up.permission_id = '<sequence.id>' -- only when rowStatus is DELETED or ARCHIVED
+                                    AND up.row_status <> 'DELETED'
+                                end note
+                                t_user_permission -> infra: Return query result
+                            deactivate t_user_permission
+                            infra -> app: Return a user that holds the permission or no row
+                            alt A role or a user still holds the permission
+                                app -> infra: ROLLBACK
+                                app -> api: HTTP 409 E10006 Permission is assigned to roles or users.
+                                api -> page: Conflict
+                                page -> user: Display the permission is in use
+                            end
+                        end
+                        alt scopes is in the request
+                            loop For every scope of the permission
+                                app -> infra: QUERY - Check duplicate permission scope
+                                infra -> t_permission_scope: QUERY - Check duplicate permission scope
+                                activate t_permission_scope
+                                    note right of t_permission_scope
+                                        SELECT
+                                            ps.id as permission_scope_id
+                                        FROM author.t_permission_scope ps
+                                        WHERE ps.permission_id = '<sequence.id>'
+                                        AND ps.scope_id = '<sequence.scopes.scopeId>'
+                                        AND ps.row_status <> 'DELETED'
+                                        AND ps.id <> '<sequence.scopes.id>' -- only when the scope item has an id
+                                    end note
+                                    t_permission_scope -> infra: Return query result
+                                deactivate t_permission_scope
+                                infra -> app: Return the live row of the scope in the permission or no row
+                                alt The scope is already in the permission
+                                    app -> infra: ROLLBACK
+                                    app -> api: HTTP 409 E10003 Scope already exists in the permission.
+                                    api -> page: Conflict
+                                    page -> user: Display the scope exists
+                                end
+                                alt A scope is deleted from the permission
+                                    app -> infra: QUERY - Check role permission scope in use
+                                    infra -> t_role_permission_scope: QUERY - Check role permission scope in use
+                                    activate t_role_permission_scope
+                                        note right of t_role_permission_scope
+                                            SELECT
+                                                rps.id as role_permission_scope_id
+                                            FROM author.t_role_permission_scope rps
+                                            WHERE rps.permission_scope_id = '<sequence.scopes.id>' -- only when the scope item is deleted
+                                            AND rps.row_status <> 'DELETED'
+                                        end note
+                                        t_role_permission_scope -> infra: Return query result
+                                    deactivate t_role_permission_scope
+                                    infra -> app: Return a role that uses the scope of the permission or no row
+                                    app -> infra: QUERY - Check user permission scope in use
+                                    infra -> t_user_permission: QUERY - Check user permission scope in use
+                                    activate t_user_permission
+                                        note right of t_user_permission
+                                            SELECT
+                                                up.id as user_permission_id
+                                            FROM author.t_user_permission up
+                                            WHERE up.permission_scope_id = '<sequence.scopes.id>' -- only when the scope item is deleted
+                                            AND up.row_status <> 'DELETED'
+                                        end note
+                                        t_user_permission -> infra: Return query result
+                                    deactivate t_user_permission
+                                    infra -> app: Return a user that uses the scope of the permission or no row
+                                    alt A role or a user still uses the scope
+                                        app -> infra: ROLLBACK
+                                        app -> api: HTTP 409 E10006 Scope is assigned to roles or users.
+                                        api -> page: Conflict
+                                        page -> user: Display the scope is in use
+                                    end
+                                end
+                            end
+                        end
+                        alt id is not specified (insert)
+                            app -> infra: INSERT - Create permission
+                            infra -> m_permission: INSERT - Create permission
+                            activate m_permission
+                                note right of m_permission
+                                    INSERT INTO author.m_permission (
+                                        created_by,
+                                        row_status,
+                                        name,
+                                        description
+                                    )
+                                    VALUES (
+                                        &#39;<sequence.createdBy>',
+                                        &#39;<sequence.rowStatus>',
+                                        &#39;<sequence.name>',
+                                        &#39;<sequence.description>'
+                                    )
+                                    RETURNING id as permission_id
+                                end note
+                                m_permission -> infra: Return inserted result
+                            deactivate m_permission
+                            infra -> app: Return the new permission
+                        else id is specified (update, delete or archive)
+                            app -> infra: UPDATE - Update or delete permission
+                            infra -> m_permission: UPDATE - Update or delete permission
+                            activate m_permission
+                                note right of m_permission
+                                    UPDATE author.m_permission
+                                    SET
+                                        updated_by = '<sequence.updatedBy>',
+                                        updated_at = NOW() AT TIME ZONE 'UTC',
+                                        row_status = '<sequence.rowStatus>',
+                                        name = '<sequence.name>',
+                                        description = '<sequence.description>'
+                                    WHERE id = '<sequence.id>'
+                                    RETURNING id as permission_id
+                                end note
+                                m_permission -> infra: Return updated result
+                            deactivate m_permission
+                            infra -> app: Return the changed permission
+                        end
+                        alt scopes is in the request
+                            loop For every scope of the permission
+                                alt No row id (insert)
+                                    app -> infra: INSERT - Create permission scope
+                                    infra -> t_permission_scope: INSERT - Create permission scope
+                                    activate t_permission_scope
+                                        note right of t_permission_scope
+                                            INSERT INTO author.t_permission_scope (
+                                                created_by,
+                                                row_status,
+                                                permission_id,
+                                                scope_id
+                                            )
+                                            VALUES (
+                                                &#39;<sequence.createdBy>',
+                                                &#39;<sequence.scopes.rowStatus>',
+                                                &#39;<sequence.id>',
+                                                &#39;<sequence.scopes.scopeId>'
+                                            )
+                                            RETURNING id as permission_scope_id
+                                        end note
+                                        t_permission_scope -> infra: Return inserted result
+                                    deactivate t_permission_scope
+                                    infra -> app: Return the new row
+                                else row id (update or delete)
+                                    app -> infra: UPDATE - Update or delete permission scope
+                                    infra -> t_permission_scope: UPDATE - Update or delete permission scope
+                                    activate t_permission_scope
+                                        note right of t_permission_scope
+                                            UPDATE author.t_permission_scope
+                                            SET
+                                                updated_by = '<sequence.updatedBy>',
+                                                updated_at = NOW() AT TIME ZONE 'UTC',
+                                                row_status = '<sequence.scopes.rowStatus>'
+                                            WHERE id = '<sequence.scopes.id>'
+                                            AND permission_id = '<sequence.id>'
+                                            RETURNING id as permission_scope_id
+                                        end note
+                                        t_permission_scope -> infra: Return updated result
+                                    deactivate t_permission_scope
+                                    infra -> app: Return the changed row
+                                end
+                            end
+                        end
+                        alt Insert
+                            app -> infra: COMMIT
+                            app -> api: HTTP 201 S10000 Insert Permission Success
+                            api -> page: Return the permission
+                            page -> user: Display the permission saved
+                        else rowStatus = DELETED (delete)
+                            app -> infra: COMMIT
+                            app -> api: HTTP 204 No Content; no response body
+                            api -> page: No content
+                            page -> user: Display the permission removed
+                        else rowStatus = ARCHIVED (archive)
+                            app -> infra: COMMIT
+                            app -> api: HTTP 200 S10000 Archive Permission Success
+                            api -> page: Return the permission
+                            page -> user: Display the permission saved
+                        else Update
+                            app -> infra: COMMIT
+                            app -> api: HTTP 200 S10000 Update Permission Success
+                            api -> page: Return the permission
+                            page -> user: Display the permission saved
+                        end
+                    else Timeout before COMMIT
+                        note over app, infra
+                            A timeout can interrupt any preceding SQL or domain step.
+                            No success response is sent without a successful COMMIT.
+                        end note
+                        app -> infra: ROLLBACK
+                        app -> api: HTTP 408 E90001
+                        api -> page: Request timeout
+                        page -> user: Retry if needed
+                    else Unexpected failure before COMMIT
+                        app -> infra: ROLLBACK
+                        app -> api: HTTP 500 generic error; no new bizCode
+                        api -> page: Internal server error
+                        page -> user: Display generic failure
+                    end
+                    deactivate infra
+                end
+            end
+        deactivate app
+    deactivate api
+deactivate page
+
+@enduml
