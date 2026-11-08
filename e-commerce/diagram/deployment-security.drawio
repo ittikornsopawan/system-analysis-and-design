@@ -1,0 +1,161 @@
+<?xml version='1.0' encoding='utf-8'?>
+<mxfile host="app.diagrams.net" agent="Jinny" version="32.6.10" type="device">
+  <diagram id="deployment-security" name="Proposed private host &amp; artifact placement">
+    <mxGraphModel dx="1584" dy="1120" grid="1" gridSize="4" page="1" pageScale="1" pageWidth="1584" pageHeight="1120" background="#f5f5f5">
+      <root>
+        <mxCell id="0" />
+        <mxCell id="1" parent="0" />
+        <mxCell id="private-env" value="&lt;div style=&quot;text-align:left;font-family:Geist,Arial,sans-serif;font-size:12px;font-weight:600;line-height:14px;&quot;&gt;Proposed production reference / self-hosted&lt;/div&gt;&lt;div style=&quot;text-align:left;font-family:Geist Mono,Courier New,monospace;font-size:8px;font-weight:400;line-height:12px;color:#5a6580;&quot;&gt;NO VENDOR, REGION OR RUNNING CLUSTER CLAIM&lt;/div&gt;" style="swimlane;html=1;startSize=36;horizontal=1;container=1;collapsible=0;recursiveResize=0;rounded=1;absoluteArcSize=1;arcSize=8;align=left;verticalAlign=top;spacingLeft=12;spacingTop=3;fillColor=#f0f0f1;swimlaneFillColor=#f0f0f1;strokeColor=#5a6580;fontColor=#5a6580;" parent="1" vertex="1">
+          <mxGeometry as="geometry" x="40" y="160" width="1504" height="828" />
+        </mxCell>
+        <mxCell id="app-zone" value="&lt;div style=&quot;text-align:left;font-family:Geist,Arial,sans-serif;font-size:12px;font-weight:600;line-height:14px;&quot;&gt;Application subnet&lt;/div&gt;&lt;div style=&quot;text-align:left;font-family:Geist Mono,Courier New,monospace;font-size:8px;font-weight:400;line-height:12px;color:#5a6580;&quot;&gt;TRUSTED INGRESS; HTTPS 443&lt;/div&gt;" style="swimlane;html=1;startSize=36;horizontal=1;container=1;collapsible=0;recursiveResize=0;rounded=1;absoluteArcSize=1;arcSize=8;align=left;verticalAlign=top;spacingLeft=12;spacingTop=3;fillColor=#f0f0f1;swimlaneFillColor=#f0f0f1;strokeColor=#5a6580;fontColor=#5a6580;" parent="private-env" vertex="1">
+          <mxGeometry as="geometry" x="24" y="56" width="456" height="744" />
+        </mxCell>
+        <mxCell id="data-zone" value="&lt;div style=&quot;text-align:left;font-family:Geist,Arial,sans-serif;font-size:12px;font-weight:600;line-height:14px;&quot;&gt;Private data subnet&lt;/div&gt;&lt;div style=&quot;text-align:left;font-family:Geist Mono,Courier New,monospace;font-size:8px;font-weight:400;line-height:12px;color:#5a6580;&quot;&gt;NO PUBLIC DATA / ADMIN PORTS&lt;/div&gt;" style="swimlane;html=1;startSize=36;horizontal=1;container=1;collapsible=0;recursiveResize=0;rounded=1;absoluteArcSize=1;arcSize=8;align=left;verticalAlign=top;spacingLeft=12;spacingTop=3;fillColor=#f0f0f1;swimlaneFillColor=#f0f0f1;strokeColor=#5a6580;fontColor=#5a6580;" parent="private-env" vertex="1">
+          <mxGeometry as="geometry" x="512" y="56" width="616" height="744" />
+        </mxCell>
+        <mxCell id="redis-zone" value="&lt;div style=&quot;text-align:left;font-family:Geist,Arial,sans-serif;font-size:12px;font-weight:600;line-height:14px;&quot;&gt;Isolated Redis zone&lt;/div&gt;&lt;div style=&quot;text-align:left;font-family:Geist Mono,Courier New,monospace;font-size:8px;font-weight:400;line-height:12px;color:#5a6580;&quot;&gt;SEPARATE MEMORY + CREDENTIALS&lt;/div&gt;" style="swimlane;html=1;startSize=36;horizontal=1;container=1;collapsible=0;recursiveResize=0;rounded=1;absoluteArcSize=1;arcSize=8;align=left;verticalAlign=top;spacingLeft=12;spacingTop=3;fillColor=#f0f0f1;swimlaneFillColor=#f0f0f1;strokeColor=#5a6580;fontColor=#5a6580;" parent="private-env" vertex="1">
+          <mxGeometry as="geometry" x="1160" y="56" width="320" height="744" />
+        </mxCell>
+        <mxCell id="api-host" value="&lt;div style=&quot;text-align:left;font-family:Geist,Arial,sans-serif;font-size:12px;font-weight:600;line-height:14px;&quot;&gt;API host pool&lt;/div&gt;&lt;div style=&quot;text-align:left;font-family:Geist Mono,Courier New,monospace;font-size:8px;font-weight:400;line-height:12px;color:#5a6580;&quot;&gt;PROPOSED VM POOL / x2&lt;/div&gt;" style="swimlane;html=1;startSize=36;horizontal=1;container=1;collapsible=0;recursiveResize=0;rounded=1;absoluteArcSize=1;arcSize=8;align=left;verticalAlign=top;spacingLeft=12;spacingTop=3;fillColor=#f5f5f5;swimlaneFillColor=#f5f5f5;strokeColor=#5a6580;fontColor=#5a6580;" parent="app-zone" vertex="1">
+          <mxGeometry as="geometry" x="24" y="136" width="408" height="168" />
+        </mxCell>
+        <mxCell id="worker-host" value="&lt;div style=&quot;text-align:left;font-family:Geist,Arial,sans-serif;font-size:12px;font-weight:600;line-height:14px;&quot;&gt;Worker host pool&lt;/div&gt;&lt;div style=&quot;text-align:left;font-family:Geist Mono,Courier New,monospace;font-size:8px;font-weight:400;line-height:12px;color:#5a6580;&quot;&gt;PROPOSED VM POOL / x1&lt;/div&gt;" style="swimlane;html=1;startSize=36;horizontal=1;container=1;collapsible=0;recursiveResize=0;rounded=1;absoluteArcSize=1;arcSize=8;align=left;verticalAlign=top;spacingLeft=12;spacingTop=3;fillColor=#f5f5f5;swimlaneFillColor=#f5f5f5;strokeColor=#5a6580;fontColor=#5a6580;" parent="app-zone" vertex="1">
+          <mxGeometry as="geometry" x="24" y="496" width="408" height="208" />
+        </mxCell>
+        <mxCell id="pg-host" value="&lt;div style=&quot;text-align:left;font-family:Geist,Arial,sans-serif;font-size:12px;font-weight:600;line-height:14px;&quot;&gt;PostgreSQL host pool&lt;/div&gt;&lt;div style=&quot;text-align:left;font-family:Geist Mono,Courier New,monospace;font-size:8px;font-weight:400;line-height:12px;color:#5a6580;&quot;&gt;PROPOSED PRIVATE HOSTS / x2&lt;/div&gt;" style="swimlane;html=1;startSize=36;horizontal=1;container=1;collapsible=0;recursiveResize=0;rounded=1;absoluteArcSize=1;arcSize=8;align=left;verticalAlign=top;spacingLeft=12;spacingTop=3;fillColor=#f5f5f5;swimlaneFillColor=#f5f5f5;strokeColor=#5a6580;fontColor=#5a6580;" parent="data-zone" vertex="1">
+          <mxGeometry as="geometry" x="24" y="136" width="568" height="168" />
+        </mxCell>
+        <mxCell id="mongo-host" value="&lt;div style=&quot;text-align:left;font-family:Geist,Arial,sans-serif;font-size:12px;font-weight:600;line-height:14px;&quot;&gt;MongoDB host pool&lt;/div&gt;&lt;div style=&quot;text-align:left;font-family:Geist Mono,Courier New,monospace;font-size:8px;font-weight:400;line-height:12px;color:#5a6580;&quot;&gt;PROPOSED PRIVATE HOSTS / x3&lt;/div&gt;" style="swimlane;html=1;startSize=36;horizontal=1;container=1;collapsible=0;recursiveResize=0;rounded=1;absoluteArcSize=1;arcSize=8;align=left;verticalAlign=top;spacingLeft=12;spacingTop=3;fillColor=#f5f5f5;swimlaneFillColor=#f5f5f5;strokeColor=#5a6580;fontColor=#5a6580;" parent="data-zone" vertex="1">
+          <mxGeometry as="geometry" x="24" y="496" width="568" height="208" />
+        </mxCell>
+        <mxCell id="cache-host" value="&lt;div style=&quot;text-align:left;font-family:Geist,Arial,sans-serif;font-size:12px;font-weight:600;line-height:14px;&quot;&gt;Cache host&lt;/div&gt;&lt;div style=&quot;text-align:left;font-family:Geist Mono,Courier New,monospace;font-size:8px;font-weight:400;line-height:12px;color:#5a6580;&quot;&gt;PROPOSED PRIVATE HOST / x1&lt;/div&gt;" style="swimlane;html=1;startSize=36;horizontal=1;container=1;collapsible=0;recursiveResize=0;rounded=1;absoluteArcSize=1;arcSize=8;align=left;verticalAlign=top;spacingLeft=12;spacingTop=3;fillColor=#f5f5f5;swimlaneFillColor=#f5f5f5;strokeColor=#5a6580;fontColor=#5a6580;" parent="redis-zone" vertex="1">
+          <mxGeometry as="geometry" x="24" y="136" width="272" height="168" />
+        </mxCell>
+        <mxCell id="rate-host" value="&lt;div style=&quot;text-align:left;font-family:Geist,Arial,sans-serif;font-size:12px;font-weight:600;line-height:14px;&quot;&gt;Admission hosts&lt;/div&gt;&lt;div style=&quot;text-align:left;font-family:Geist Mono,Courier New,monospace;font-size:8px;font-weight:400;line-height:12px;color:#5a6580;&quot;&gt;PROPOSED PRIVATE HOSTS / x2&lt;/div&gt;" style="swimlane;html=1;startSize=36;horizontal=1;container=1;collapsible=0;recursiveResize=0;rounded=1;absoluteArcSize=1;arcSize=8;align=left;verticalAlign=top;spacingLeft=12;spacingTop=3;fillColor=#f5f5f5;swimlaneFillColor=#f5f5f5;strokeColor=#5a6580;fontColor=#5a6580;" parent="redis-zone" vertex="1">
+          <mxGeometry as="geometry" x="24" y="496" width="272" height="208" />
+        </mxCell>
+        <mxCell id="edge-0" value="" style="edgeStyle=none;rounded=1;arcSize=8;html=0;endArrow=block;endFill=1;strokeColor=#4f5d75;strokeWidth=1.2;exitX=1;exitY=0.285714;exitDx=0;exitDy=0;entryX=0;entryY=0.285714;entryDx=0;entryDy=0;" parent="1" edge="1" source="api-host" target="pg-host">
+          <mxGeometry as="geometry" relative="1">
+            <mxPoint as="sourcePoint" x="496" y="400" />
+            <mxPoint as="targetPoint" x="576" y="400" />
+          </mxGeometry>
+        </mxCell>
+        <mxCell id="edge-label-0" value="TLS:5432" style="text;html=0;spacing=0;align=center;verticalAlign=middle;fontSize=8;fontFamily=Geist Mono,Courier New,monospace;fontColor=#5a6580;" parent="1" vertex="1">
+          <mxGeometry as="geometry" x="508" y="380" width="56" height="12" />
+        </mxCell>
+        <mxCell id="edge-1" value="" style="edgeStyle=none;rounded=1;arcSize=8;html=0;endArrow=block;endFill=1;strokeColor=#4f5d75;strokeWidth=1.2;dashed=1;dashPattern=5 4;exitX=1;exitY=0.192308;exitDx=0;exitDy=0;entryX=0;entryY=0.714286;entryDx=0;entryDy=0;" parent="1" edge="1" source="worker-host" target="pg-host">
+          <mxGeometry as="geometry" relative="1">
+            <mxPoint as="sourcePoint" x="496" y="752" />
+            <mxPoint as="targetPoint" x="576" y="472" />
+            <Array as="points">
+              <mxPoint x="536" y="752" />
+              <mxPoint x="536" y="472" />
+            </Array>
+          </mxGeometry>
+        </mxCell>
+        <mxCell id="edge-label-1" value="TLS:5432" style="text;html=0;spacing=0;align=center;verticalAlign=middle;fontSize=8;fontFamily=Geist Mono,Courier New,monospace;fontColor=#5a6580;" parent="1" vertex="1">
+          <mxGeometry as="geometry" x="528" y="452" width="56" height="12" />
+        </mxCell>
+        <mxCell id="edge-2" value="" style="edgeStyle=none;rounded=1;arcSize=8;html=0;endArrow=block;endFill=1;strokeColor=#4f5d75;strokeWidth=1.2;dashed=1;dashPattern=5 4;exitX=1;exitY=0.538462;exitDx=0;exitDy=0;entryX=0;entryY=0.538462;entryDx=0;entryDy=0;" parent="1" edge="1" source="worker-host" target="mongo-host">
+          <mxGeometry as="geometry" relative="1">
+            <mxPoint as="sourcePoint" x="496" y="824" />
+            <mxPoint as="targetPoint" x="576" y="824" />
+          </mxGeometry>
+        </mxCell>
+        <mxCell id="edge-label-2" value="TLS:27017" style="text;html=0;spacing=0;align=center;verticalAlign=middle;fontSize=8;fontFamily=Geist Mono,Courier New,monospace;fontColor=#5a6580;" parent="1" vertex="1">
+          <mxGeometry as="geometry" x="504" y="804" width="64" height="12" />
+        </mxCell>
+        <mxCell id="edge-3" value="" style="edgeStyle=none;rounded=1;arcSize=8;html=0;endArrow=block;endFill=1;strokeColor=#4f5d75;strokeWidth=1.2;exitX=0.627451;exitY=0;exitDx=0;exitDy=0;entryX=1;entryY=0.711538;entryDx=0;entryDy=0;" parent="1" edge="1" source="api-host" target="mongo-host">
+          <mxGeometry as="geometry" relative="1">
+            <mxPoint as="sourcePoint" x="344" y="352" />
+            <mxPoint as="targetPoint" x="1144" y="860" />
+            <Array as="points">
+              <mxPoint x="344" y="328" />
+              <mxPoint x="1176" y="328" />
+              <mxPoint x="1176" y="860" />
+            </Array>
+          </mxGeometry>
+        </mxCell>
+        <mxCell id="edge-label-3" value="TLS:27017" style="text;html=0;spacing=0;align=center;verticalAlign=middle;fontSize=8;fontFamily=Geist Mono,Courier New,monospace;fontColor=#5a6580;" parent="1" vertex="1">
+          <mxGeometry as="geometry" x="728" y="308" width="64" height="12" />
+        </mxCell>
+        <mxCell id="edge-4" value="" style="edgeStyle=none;rounded=1;arcSize=8;html=0;endArrow=block;endFill=1;strokeColor=#4f5d75;strokeWidth=1.2;exitX=0.372549;exitY=0;exitDx=0;exitDy=0;entryX=0.5;entryY=0;entryDx=0;entryDy=0;" parent="1" edge="1" source="api-host" target="cache-host">
+          <mxGeometry as="geometry" relative="1">
+            <mxPoint as="sourcePoint" x="240" y="352" />
+            <mxPoint as="targetPoint" x="1360" y="352" />
+            <Array as="points">
+              <mxPoint x="240" y="296" />
+              <mxPoint x="1360" y="296" />
+            </Array>
+          </mxGeometry>
+        </mxCell>
+        <mxCell id="edge-label-4" value="TLS:6379" style="text;html=0;spacing=0;align=center;verticalAlign=middle;fontSize=8;fontFamily=Geist Mono,Courier New,monospace;fontColor=#5a6580;" parent="1" vertex="1">
+          <mxGeometry as="geometry" x="1368" y="320" width="56" height="12" />
+        </mxCell>
+        <mxCell id="edge-5" value="" style="edgeStyle=none;rounded=1;arcSize=8;html=0;endArrow=block;endFill=1;strokeColor=#4f5d75;strokeWidth=1.2;exitX=0.245098;exitY=0;exitDx=0;exitDy=0;entryX=1;entryY=0.192308;entryDx=0;entryDy=0;" parent="1" edge="1" source="api-host" target="rate-host">
+          <mxGeometry as="geometry" relative="1">
+            <mxPoint as="sourcePoint" x="188" y="352" />
+            <mxPoint as="targetPoint" x="1496" y="752" />
+            <Array as="points">
+              <mxPoint x="188" y="280" />
+              <mxPoint x="1512" y="280" />
+              <mxPoint x="1512" y="752" />
+            </Array>
+          </mxGeometry>
+        </mxCell>
+        <mxCell id="edge-label-5" value="TLS:6379" style="text;html=0;spacing=0;align=center;verticalAlign=middle;fontSize=8;fontFamily=Geist Mono,Courier New,monospace;fontColor=#5a6580;" parent="1" vertex="1">
+          <mxGeometry as="geometry" x="822" y="260" width="56" height="12" />
+        </mxCell>
+        <mxCell id="api-artifact" value="&lt;div style=&quot;position:relative;box-sizing:border-box;width:376px;height:88px;text-align:left;&quot;&gt;&lt;div style=&quot;position:absolute;left:12px;top:8px;font-size:12px;font-family:Geist,Arial,sans-serif;font-weight:600;line-height:18px;white-space:nowrap;&quot;&gt;Ecommerce.Api&lt;/div&gt;&lt;div style=&quot;position:absolute;left:12px;top:29px;font-size:8px;font-family:Geist Mono,Courier New,monospace;line-height:12px;white-space:nowrap;color:#5a6580;&quot;&gt;ARTIFACT / releaseSha&lt;/div&gt;&lt;div style=&quot;position:absolute;left:12px;top:43px;font-size:11px;font-family:Geist,Arial,sans-serif;line-height:14px;color:#4f5d75;white-space:nowrap;&quot;&gt;x2 stateless API replicas&lt;/div&gt;&lt;div style=&quot;position:absolute;left:12px;top:57px;font-size:11px;font-family:Geist,Arial,sans-serif;line-height:14px;color:#4f5d75;white-space:nowrap;&quot;&gt;JWT + live SQL permissions&lt;/div&gt;&lt;/div&gt;" style="rounded=1;absoluteArcSize=1;arcSize=8;html=1;whiteSpace=wrap;align=left;verticalAlign=top;spacing=0;overflow=hidden;fillColor=#f1e7e4;strokeColor=#bf4520;fontSize=12;fontFamily=Geist,Arial,sans-serif;" parent="api-host" vertex="1">
+          <mxGeometry as="geometry" x="16" y="60" width="376" height="88" />
+        </mxCell>
+        <mxCell id="worker-artifact" value="&lt;div style=&quot;position:relative;box-sizing:border-box;width:376px;height:104px;text-align:left;&quot;&gt;&lt;div style=&quot;position:absolute;left:12px;top:8px;font-size:12px;font-family:Geist,Arial,sans-serif;font-weight:600;line-height:18px;white-space:nowrap;&quot;&gt;Background responsibilities&lt;/div&gt;&lt;div style=&quot;position:absolute;left:12px;top:29px;font-size:8px;font-family:Geist Mono,Courier New,monospace;line-height:12px;white-space:nowrap;color:#5a6580;&quot;&gt;ARTIFACT / releaseSha&lt;/div&gt;&lt;div style=&quot;position:absolute;left:12px;top:43px;font-size:11px;font-family:Geist,Arial,sans-serif;line-height:14px;color:#4f5d75;white-space:nowrap;&quot;&gt;x1 scheduling / relay pool&lt;/div&gt;&lt;div style=&quot;position:absolute;left:12px;top:57px;font-size:11px;font-family:Geist,Arial,sans-serif;line-height:14px;color:#4f5d75;white-space:nowrap;&quot;&gt;Leases + bounded concurrency&lt;/div&gt;&lt;/div&gt;" style="rounded=1;absoluteArcSize=1;arcSize=8;html=1;whiteSpace=wrap;align=left;verticalAlign=top;spacing=0;overflow=hidden;fillColor=#ffffff;strokeColor=#2d3142;fontSize=12;fontFamily=Geist,Arial,sans-serif;" parent="worker-host" vertex="1">
+          <mxGeometry as="geometry" x="16" y="68" width="376" height="104" />
+        </mxCell>
+        <mxCell id="pg-artifact" value="&lt;div style=&quot;position:relative;box-sizing:border-box;width:536px;height:88px;text-align:left;&quot;&gt;&lt;div style=&quot;position:absolute;left:12px;top:8px;font-size:12px;font-family:Geist,Arial,sans-serif;font-weight:600;line-height:18px;white-space:nowrap;&quot;&gt;PostgreSQL&lt;/div&gt;&lt;div style=&quot;position:absolute;left:12px;top:29px;font-size:8px;font-family:Geist Mono,Courier New,monospace;line-height:12px;white-space:nowrap;color:#5a6580;&quot;&gt;ARTIFACT / PIN SUPPORTED MAJOR&lt;/div&gt;&lt;div style=&quot;position:absolute;left:12px;top:43px;font-size:11px;font-family:Geist,Arial,sans-serif;line-height:14px;color:#4f5d75;white-space:nowrap;&quot;&gt;x2: primary + standby; business + outbox&lt;/div&gt;&lt;div style=&quot;position:absolute;left:12px;top:57px;font-size:11px;font-family:Geist,Arial,sans-serif;line-height:14px;color:#4f5d75;white-space:nowrap;&quot;&gt;TLS / least-privilege SQL roles&lt;/div&gt;&lt;/div&gt;" style="rounded=1;absoluteArcSize=1;arcSize=8;html=1;whiteSpace=wrap;align=left;verticalAlign=top;spacing=0;overflow=hidden;fillColor=#ebebec;strokeColor=#4f5d75;fontSize=12;fontFamily=Geist,Arial,sans-serif;" parent="pg-host" vertex="1">
+          <mxGeometry as="geometry" x="16" y="60" width="536" height="88" />
+        </mxCell>
+        <mxCell id="mongo-artifact" value="&lt;div style=&quot;position:relative;box-sizing:border-box;width:536px;height:104px;text-align:left;&quot;&gt;&lt;div style=&quot;position:absolute;left:12px;top:8px;font-size:12px;font-family:Geist,Arial,sans-serif;font-weight:600;line-height:18px;white-space:nowrap;&quot;&gt;MongoDB&lt;/div&gt;&lt;div style=&quot;position:absolute;left:12px;top:29px;font-size:8px;font-family:Geist Mono,Courier New,monospace;line-height:12px;white-space:nowrap;color:#5a6580;&quot;&gt;ARTIFACT / PIN SUPPORTED MAJOR&lt;/div&gt;&lt;div style=&quot;position:absolute;left:12px;top:43px;font-size:11px;font-family:Geist,Arial,sans-serif;line-height:14px;color:#4f5d75;white-space:nowrap;&quot;&gt;x3 data-bearing replica-set members&lt;/div&gt;&lt;div style=&quot;position:absolute;left:12px;top:57px;font-size:11px;font-family:Geist,Arial,sans-serif;line-height:14px;color:#4f5d75;white-space:nowrap;&quot;&gt;Config reader / publisher / writer roles&lt;/div&gt;&lt;/div&gt;" style="rounded=1;absoluteArcSize=1;arcSize=8;html=1;whiteSpace=wrap;align=left;verticalAlign=top;spacing=0;overflow=hidden;fillColor=#ebebec;strokeColor=#4f5d75;fontSize=12;fontFamily=Geist,Arial,sans-serif;" parent="mongo-host" vertex="1">
+          <mxGeometry as="geometry" x="16" y="68" width="536" height="104" />
+        </mxCell>
+        <mxCell id="cache-artifact" value="&lt;div style=&quot;position:relative;box-sizing:border-box;width:240px;height:88px;text-align:left;&quot;&gt;&lt;div style=&quot;position:absolute;left:12px;top:8px;font-size:12px;font-family:Geist,Arial,sans-serif;font-weight:600;line-height:18px;white-space:nowrap;&quot;&gt;Redis cache&lt;/div&gt;&lt;div style=&quot;position:absolute;left:12px;top:29px;font-size:8px;font-family:Geist Mono,Courier New,monospace;line-height:12px;white-space:nowrap;color:#5a6580;&quot;&gt;PIN SUPPORTED RELEASE&lt;/div&gt;&lt;div style=&quot;position:absolute;left:12px;top:43px;font-size:11px;font-family:Geist,Arial,sans-serif;line-height:14px;color:#4f5d75;white-space:nowrap;&quot;&gt;x1; loss tolerated&lt;/div&gt;&lt;div style=&quot;position:absolute;left:12px;top:57px;font-size:11px;font-family:Geist,Arial,sans-serif;line-height:14px;color:#4f5d75;white-space:nowrap;&quot;&gt;allkeys-lfu; cache ACL&lt;/div&gt;&lt;/div&gt;" style="rounded=1;absoluteArcSize=1;arcSize=8;html=1;whiteSpace=wrap;align=left;verticalAlign=top;spacing=0;overflow=hidden;fillColor=#efeff0;strokeColor=#5a6580;fontSize=12;fontFamily=Geist,Arial,sans-serif;dashed=1;dashPattern=5 4;" parent="cache-host" vertex="1">
+          <mxGeometry as="geometry" x="16" y="60" width="240" height="88" />
+        </mxCell>
+        <mxCell id="rate-artifact" value="&lt;div style=&quot;position:relative;box-sizing:border-box;width:240px;height:104px;text-align:left;&quot;&gt;&lt;div style=&quot;position:absolute;left:12px;top:8px;font-size:12px;font-family:Geist,Arial,sans-serif;font-weight:600;line-height:18px;white-space:nowrap;&quot;&gt;Redis admission&lt;/div&gt;&lt;div style=&quot;position:absolute;left:12px;top:29px;font-size:8px;font-family:Geist Mono,Courier New,monospace;line-height:12px;white-space:nowrap;color:#5a6580;&quot;&gt;PIN SUPPORTED RELEASE&lt;/div&gt;&lt;div style=&quot;position:absolute;left:12px;top:43px;font-size:11px;font-family:Geist,Arial,sans-serif;line-height:14px;color:#4f5d75;white-space:nowrap;&quot;&gt;x2: primary + replica&lt;/div&gt;&lt;div style=&quot;position:absolute;left:12px;top:57px;font-size:11px;font-family:Geist,Arial,sans-serif;line-height:14px;color:#4f5d75;white-space:nowrap;&quot;&gt;noeviction; limiter ACL&lt;/div&gt;&lt;/div&gt;" style="rounded=1;absoluteArcSize=1;arcSize=8;html=1;whiteSpace=wrap;align=left;verticalAlign=top;spacing=0;overflow=hidden;fillColor=#efeff0;strokeColor=#5a6580;fontSize=12;fontFamily=Geist,Arial,sans-serif;dashed=1;dashPattern=5 4;" parent="rate-host" vertex="1">
+          <mxGeometry as="geometry" x="16" y="68" width="240" height="104" />
+        </mxCell>
+        <mxCell id="note-0" value="Reference placement only. Version pins and replica counts need approval + capacity/failover tests; replication does not replace backup." style="text;html=0;spacing=0;align=left;verticalAlign=middle;fontSize=11;fontFamily=Geist,Arial,sans-serif;fontColor=#4f5d75;" parent="1" vertex="1">
+          <mxGeometry as="geometry" x="40" y="1000" width="973.25" height="17" />
+        </mxCell>
+        <mxCell id="page-eyebrow" value="E-COMMERCE / LAYERED SUPPORTING DESIGN / IN REVIEW" style="text;html=0;spacing=0;align=left;verticalAlign=middle;fontSize=8;fontFamily=Geist Mono,Courier New,monospace;fontColor=#5a6580;" parent="1" vertex="1">
+          <mxGeometry as="geometry" x="40" y="38" width="1504" height="16" />
+        </mxCell>
+        <mxCell id="page-title" value="Proposed private host &amp; artifact placement" style="text;html=0;spacing=0;align=left;verticalAlign=middle;fontSize=32;fontFamily=Instrument Serif,Georgia,serif;fontColor=#2d3142;" parent="1" vertex="1">
+          <mxGeometry as="geometry" x="40" y="54" width="1504" height="40" />
+        </mxCell>
+        <mxCell id="page-subtitle" value="Specified business responsibilities; proposed data and operating controls remain in review." style="text;html=0;spacing=0;align=left;verticalAlign=middle;fontSize=12;fontFamily=Geist,Arial,sans-serif;fontColor=#4f5d75;" parent="1" vertex="1">
+          <mxGeometry as="geometry" x="40" y="102" width="1504" height="20" />
+        </mxCell>
+        <mxCell id="page-source" value="Commerce API specifications + MongoDB/Redis proposals + supporting operations research | No implementation change" style="text;html=0;spacing=0;align=left;verticalAlign=middle;fontSize=9;fontFamily=Geist Mono,Courier New,monospace;fontColor=#5a6580;" parent="1" vertex="1">
+          <mxGeometry as="geometry" x="40" y="1025" width="1504" height="17" />
+        </mxCell>
+        <mxCell id="legend-line" value="" style="shape=line;strokeColor=#bfc0c0;" parent="1" vertex="1">
+          <mxGeometry as="geometry" x="40" y="1052" width="1504" height="1" />
+        </mxCell>
+        <mxCell id="legend-0" value="Deployable artifact" style="text;html=0;spacing=0;align=left;verticalAlign=middle;fontSize=9;fontFamily=Geist,Arial,sans-serif;fontColor=#4f5d75;" parent="1" vertex="1">
+          <mxGeometry as="geometry" x="40" y="1063" width="368" height="20" />
+        </mxCell>
+        <mxCell id="legend-1" value="Parent = zone / host pool" style="text;html=0;spacing=0;align=left;verticalAlign=middle;fontSize=9;fontFamily=Geist,Arial,sans-serif;fontColor=#4f5d75;" parent="1" vertex="1">
+          <mxGeometry as="geometry" x="416" y="1063" width="368" height="20" />
+        </mxCell>
+        <mxCell id="legend-2" value="Permitted TLS path" style="text;html=0;spacing=0;align=left;verticalAlign=middle;fontSize=9;fontFamily=Geist,Arial,sans-serif;fontColor=#4f5d75;" parent="1" vertex="1">
+          <mxGeometry as="geometry" x="792" y="1063" width="368" height="20" />
+        </mxCell>
+        <mxCell id="legend-3" value="Proposed isolated service" style="text;html=0;spacing=0;align=left;verticalAlign=middle;fontSize=9;fontFamily=Geist,Arial,sans-serif;fontColor=#4f5d75;" parent="1" vertex="1">
+          <mxGeometry as="geometry" x="1168" y="1063" width="368" height="20" />
+        </mxCell>
+      </root>
+    </mxGraphModel>
+  </diagram>
+</mxfile>

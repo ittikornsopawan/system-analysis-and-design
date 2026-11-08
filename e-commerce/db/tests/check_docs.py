@@ -1043,12 +1043,16 @@ def check_cart_spec() -> int:
                "\nON CONFLICT (user_id, shop_id, product_id, sku_id) WHERE row_status <> 'DELETED' -- the partial unique index uq_t_cart_user_id_shop_id_product_id_sku_id\nDO UPDATE SET",
                "WHERE cart.t_cart.quantity + EXCLUDED.quantity <= '<sequence.maxOrderQuantity>'", "(xmax = 0) as is_insert",
                "#### UPDATE - Update or delete a line", "more than 100 lines",
+               "#### QUERY - Lock the user", "AND u.row_status = 'ACTIVE'\nFOR UPDATE -- every authen API locks the user row first",
+               "locking the ACTIVE row of the user",
                "#### QUERY - Count the lines of the user", "HTTP/1.1 204 No Content",
                "must be ACTIVE, otherwise the request is rejected with 404 (E10005)"],
         "02": ["#### Cart Item Object", "always HTTP 200", "items[1]: Shop Product SKU Id is duplicated with items[0].", "MERGE",
                "\nON CONFLICT (user_id, shop_id, product_id, sku_id) WHERE row_status <> 'DELETED' -- the partial unique index uq_t_cart_user_id_shop_id_product_id_sku_id\nDO UPDATE SET",
                "WHERE cart.t_cart.quantity + EXCLUDED.quantity <= '<sequence.items.maxOrderQuantity>'", "(xmax = 0) as is_insert",
                "#### UPDATE - Update or delete a line", "more than 100 lines",
+               "#### QUERY - Lock the user", "AND u.row_status = 'ACTIVE'\nFOR UPDATE -- every authen API locks the user row first",
+               "locking the ACTIVE row of the user",
                "must be ACTIVE, otherwise the request is rejected with 404 (E10005)"],
         "03": ["### Availability Rules", "QUANTITY_EXCEEDS_STOCK", "#### QUERY - Get the lot that is on sale of each shop product SKU", "no paging"],
     }
@@ -3868,6 +3872,7 @@ LEGACY_SEQUENCES = (
 # must still fail at least one of them: a file that passes both has to leave this list. Remove an entry in the same
 # change that adds the missing answers to the diagram.
 LEGACY_TOKEN_SEQUENCES = (
+    "authen-and-author/08-inquiry-user-profile",    # no Verify JWT / 401 step, no 408
     "authen-and-author/09-upsert-user-address",     # no Verify JWT / 401 step, no 408
     "authen-and-author/10-inquiry-user-address",    # no Verify JWT / 401 step, no 408
     "consent/02-upsert-consent",                    # no Verify JWT / 401 step, no 408

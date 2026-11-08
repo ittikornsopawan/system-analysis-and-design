@@ -9,7 +9,7 @@ Research date: 2026-11-07. This note supports the proposed diagram revision; it 
 
 ## Fit with the current backend
 
-The inspected [backend architecture](../repository/project-structure.md) uses controllers, a custom CQRS dispatcher, inner interfaces and Infrastructure adapters; [shared build settings](../repository/Directory.Build.props) target .NET 10. **Recommendation:** retain those boundaries: admission middleware calls a limiter adapter; eligible query handlers use an application cache port implemented in Infrastructure. PostgreSQL remains authoritative. Label Redis components **proposed** rather than implying existing implementation.
+The inspected [backend architecture](https://github.com/ittikornsopawan/e-commerce-backend/blob/d8255183cba54d0c2b218607456b895a70df32f0/project-structure.md) uses controllers, a custom CQRS dispatcher, inner interfaces and Infrastructure adapters; [shared build settings](https://github.com/ittikornsopawan/e-commerce-backend/blob/d8255183cba54d0c2b218607456b895a70df32f0/Directory.Build.props) target .NET 10. **Recommendation:** retain those boundaries: admission middleware calls a limiter adapter; eligible query handlers use an application cache port implemented in Infrastructure. PostgreSQL remains authoritative. Label Redis components **proposed** rather than implying existing implementation.
 
 ## Shared admission control
 

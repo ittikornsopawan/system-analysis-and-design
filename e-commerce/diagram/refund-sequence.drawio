@@ -1,0 +1,416 @@
+<?xml version='1.0' encoding='utf-8'?>
+<mxfile host="app.diagrams.net" agent="Jinny" version="32.6.10" type="device">
+  <diagram id="refund-sequence" name="Refund: confirmed money before inventory release">
+    <mxGraphModel dx="1584" dy="1120" grid="1" gridSize="4" page="1" pageScale="1" pageWidth="1584" pageHeight="1120" background="#f5f5f5">
+      <root>
+        <mxCell id="0" />
+        <mxCell id="1" parent="0" />
+        <mxCell id="op-0" value="E-COMMERCE / PROPOSED TEMPORAL INTERACTION / NATIVE BOUNDARY GROUPS" style="text;html=0;spacing=0;align=left;verticalAlign=middle;fontSize=8;fontFamily=Geist Mono,Courier New,monospace;fontColor=#5a6580;" parent="1" vertex="1">
+          <mxGeometry as="geometry" x="40" y="39" width="361.76" height="14" />
+        </mxCell>
+        <mxCell id="op-1" value="Refund: confirmed money before inventory release" style="text;html=0;spacing=0;align=left;verticalAlign=middle;fontSize=32;fontFamily=Instrument Serif,Georgia,serif;fontColor=#2d3142;" parent="1" vertex="1">
+          <mxGeometry as="geometry" x="40" y="55" width="1021.76" height="38" />
+        </mxCell>
+        <mxCell id="op-2" value="Time flows down. Header nesting shows ownership; each lifeline represents the named interaction boundary." style="text;html=0;spacing=0;align=left;verticalAlign=middle;fontSize=12;fontFamily=Geist,Arial,sans-serif;fontColor=#4f5d75;" parent="1" vertex="1">
+          <mxGeometry as="geometry" x="40" y="103" width="839.6" height="18" />
+        </mxCell>
+        <mxCell id="group-alt" value="" style="rounded=1;absoluteArcSize=1;arcSize=8;html=0;fillColor=#f1f1f1;strokeColor=#bfc0c0;strokeWidth=0.8;container=1;collapsible=0;recursiveResize=0;" parent="1" vertex="1">
+          <mxGeometry as="geometry" x="136" y="584" width="892" height="296" />
+        </mxCell>
+        <mxCell id="op-4" value="" style="rounded=1;absoluteArcSize=1;arcSize=4;html=0;fillColor=#f5f5f5;strokeColor=#bfc0c0;strokeWidth=0.8;" parent="group-alt" vertex="1">
+          <mxGeometry as="geometry" x="0.0" y="0.0" width="40" height="16" />
+        </mxCell>
+        <mxCell id="op-5" value="ALT" style="text;html=0;spacing=0;align=center;verticalAlign=middle;fontSize=8;fontFamily=Geist Mono,Courier New,monospace;fontColor=#5a6580;" parent="group-alt" vertex="1">
+          <mxGeometry as="geometry" x="8.0" y="3.0" width="24" height="14" />
+        </mxCell>
+        <mxCell id="op-6" value="[full amount + successful terminal provider status]" style="text;html=0;spacing=0;align=left;verticalAlign=middle;fontSize=8;fontFamily=Geist Mono,Courier New,monospace;fontColor=#5a6580;" parent="group-alt" vertex="1">
+          <mxGeometry as="geometry" x="12.0" y="15.0" width="277.28" height="14" />
+        </mxCell>
+        <mxCell id="op-7" value="" style="rounded=1;arcSize=8;html=0;endArrow=none;endFill=1;strokeColor=#bfc0c0;strokeWidth=0.8;dashed=1;dashPattern=4 4;" parent="group-alt" edge="1">
+          <mxGeometry as="geometry" relative="1">
+            <mxPoint as="sourcePoint" x="8.0" y="172.0" />
+            <mxPoint as="targetPoint" x="884.0" y="172.0" />
+          </mxGeometry>
+        </mxCell>
+        <mxCell id="op-8" value="[pending / failed / partial / unknown or SQL failure]" style="text;html=0;spacing=0;align=left;verticalAlign=middle;fontSize=8;fontFamily=Geist Mono,Courier New,monospace;fontColor=#5a6580;" parent="group-alt" vertex="1">
+          <mxGeometry as="geometry" x="12.0" y="187.0" width="287.84" height="14" />
+        </mxCell>
+        <mxCell id="op-9" value="" style="rounded=1;arcSize=8;html=0;endArrow=none;endFill=1;strokeColor=#bfc0c0;strokeWidth=0.8;dashed=1;dashPattern=4 4;" parent="1" edge="1">
+          <mxGeometry as="geometry" relative="1">
+            <mxPoint as="sourcePoint" x="160" y="336" />
+            <mxPoint as="targetPoint" x="160" y="944" />
+          </mxGeometry>
+        </mxCell>
+        <mxCell id="group-boundary-operator" value="" style="rounded=1;absoluteArcSize=1;arcSize=8;html=0;fillColor=#f0f0f1;strokeColor=#5a6580;strokeWidth=0.8;container=1;collapsible=0;recursiveResize=0;" parent="1" vertex="1">
+          <mxGeometry as="geometry" x="40" y="160" width="240" height="176" />
+        </mxCell>
+        <mxCell id="op-11" value="SHOP / ADMIN CALLER" style="text;html=0;spacing=0;align=center;verticalAlign=middle;fontSize=8;fontFamily=Geist Mono,Courier New,monospace;fontColor=#5a6580;" parent="group-boundary-operator" vertex="1">
+          <mxGeometry as="geometry" x="65.84" y="11.0" width="108.32" height="14" />
+        </mxCell>
+        <mxCell id="op-12" value="Shop / admin" style="text;html=0;spacing=0;align=center;verticalAlign=middle;fontSize=12;fontFamily=Geist,Arial,sans-serif;fontColor=#2d3142;fontStyle=1;" parent="group-boundary-operator" vertex="1">
+          <mxGeometry as="geometry" x="68.48" y="27.0" width="103.04" height="18" />
+        </mxCell>
+        <mxCell id="group-participant-operator" value="" style="rounded=1;absoluteArcSize=1;arcSize=8;html=0;fillColor=#ffffff;strokeColor=#bfc0c0;strokeWidth=0.8;container=1;collapsible=0;recursiveResize=0;" parent="group-boundary-operator" vertex="1">
+          <mxGeometry as="geometry" x="12" y="52" width="216" height="112" />
+        </mxCell>
+        <mxCell id="op-14" value="LIVE SQL PERMISSION" style="text;html=0;spacing=0;align=center;verticalAlign=middle;fontSize=8;fontFamily=Geist Mono,Courier New,monospace;fontColor=#5a6580;" parent="group-participant-operator" vertex="1">
+          <mxGeometry as="geometry" x="53.84" y="11.0" width="108.32" height="14" />
+        </mxCell>
+        <mxCell id="op-15" value="External request / response" style="text;html=0;spacing=0;align=center;verticalAlign=middle;fontSize=11;fontFamily=Geist,Arial,sans-serif;fontColor=#4f5d75;" parent="group-participant-operator" vertex="1">
+          <mxGeometry as="geometry" x="5.990000000000002" y="36.0" width="204.02" height="17" />
+        </mxCell>
+        <mxCell id="op-16" value="No direct data-store access" style="text;html=0;spacing=0;align=center;verticalAlign=middle;fontSize=11;fontFamily=Geist,Arial,sans-serif;fontColor=#4f5d75;" parent="group-participant-operator" vertex="1">
+          <mxGeometry as="geometry" x="5.990000000000002" y="60.0" width="204.02" height="17" />
+        </mxCell>
+        <mxCell id="op-17" value="" style="rounded=1;arcSize=8;html=0;endArrow=none;endFill=1;strokeColor=#bfc0c0;strokeWidth=0.8;dashed=1;dashPattern=4 4;" parent="1" edge="1">
+          <mxGeometry as="geometry" relative="1">
+            <mxPoint as="sourcePoint" x="580" y="336" />
+            <mxPoint as="targetPoint" x="580" y="944" />
+          </mxGeometry>
+        </mxCell>
+        <mxCell id="group-boundary-api" value="" style="rounded=1;absoluteArcSize=1;arcSize=8;html=0;fillColor=#f1e7e4;strokeColor=#bf4520;strokeWidth=0.8;container=1;collapsible=0;recursiveResize=0;" parent="1" vertex="1">
+          <mxGeometry as="geometry" x="460" y="160" width="240" height="176" />
+        </mxCell>
+        <mxCell id="op-19" value="BACKEND REQUEST BOUNDARY" style="text;html=0;spacing=0;align=center;verticalAlign=middle;fontSize=8;fontFamily=Geist Mono,Courier New,monospace;fontColor=#5a6580;" parent="group-boundary-api" vertex="1">
+          <mxGeometry as="geometry" x="52.639999999999986" y="11.0" width="134.72" height="14" />
+        </mxCell>
+        <mxCell id="op-20" value="Refund use case" style="text;html=0;spacing=0;align=center;verticalAlign=middle;fontSize=12;fontFamily=Geist,Arial,sans-serif;fontColor=#2d3142;fontStyle=1;" parent="group-boundary-api" vertex="1">
+          <mxGeometry as="geometry" x="56.60000000000002" y="27.0" width="126.8" height="18" />
+        </mxCell>
+        <mxCell id="group-application-api" value="" style="rounded=1;absoluteArcSize=1;arcSize=8;html=0;fillColor=#f5f5f5;strokeColor=#5a6580;strokeWidth=0.8;container=1;collapsible=0;recursiveResize=0;" parent="group-boundary-api" vertex="1">
+          <mxGeometry as="geometry" x="12" y="52" width="216" height="112" />
+        </mxCell>
+        <mxCell id="op-22" value="Application coordination" style="text;html=0;spacing=0;align=center;verticalAlign=middle;fontSize=9;fontFamily=Geist,Arial,sans-serif;fontColor=#2d3142;fontStyle=1;" parent="group-application-api" vertex="1">
+          <mxGeometry as="geometry" x="32.72000000000003" y="6.0" width="150.56" height="15" />
+        </mxCell>
+        <mxCell id="group-role-api-0" value="" style="rounded=1;absoluteArcSize=1;arcSize=8;html=0;fillColor=#ffffff;strokeColor=#bfc0c0;strokeWidth=0.8;container=1;collapsible=0;recursiveResize=0;" parent="group-application-api" vertex="1">
+          <mxGeometry as="geometry" x="12" y="24" width="192" height="24" />
+        </mxCell>
+        <mxCell id="op-24" value="Command / Query" style="text;html=0;spacing=0;align=center;verticalAlign=middle;fontSize=10;fontFamily=Geist,Arial,sans-serif;fontColor=#4f5d75;" parent="group-role-api-0" vertex="1">
+          <mxGeometry as="geometry" x="42.5" y="5.0" width="107" height="16" />
+        </mxCell>
+        <mxCell id="group-role-api-1" value="" style="rounded=1;absoluteArcSize=1;arcSize=8;html=0;fillColor=#ffffff;strokeColor=#bfc0c0;strokeWidth=0.8;container=1;collapsible=0;recursiveResize=0;" parent="group-application-api" vertex="1">
+          <mxGeometry as="geometry" x="12" y="52" width="192" height="24" />
+        </mxCell>
+        <mxCell id="op-26" value="Validator / policy guard" style="text;html=0;spacing=0;align=center;verticalAlign=middle;fontSize=10;fontFamily=Geist,Arial,sans-serif;fontColor=#4f5d75;" parent="group-role-api-1" vertex="1">
+          <mxGeometry as="geometry" x="12.800000000000011" y="5.0" width="166.4" height="16" />
+        </mxCell>
+        <mxCell id="group-role-api-2" value="" style="rounded=1;absoluteArcSize=1;arcSize=8;html=0;fillColor=#ffffff;strokeColor=#bfc0c0;strokeWidth=0.8;container=1;collapsible=0;recursiveResize=0;" parent="group-application-api" vertex="1">
+          <mxGeometry as="geometry" x="12" y="80" width="192" height="24" />
+        </mxCell>
+        <mxCell id="op-28" value="Handler / transaction ports" style="text;html=0;spacing=0;align=center;verticalAlign=middle;fontSize=10;fontFamily=Geist,Arial,sans-serif;fontColor=#4f5d75;" parent="group-role-api-2" vertex="1">
+          <mxGeometry as="geometry" x="2.8999999999999773" y="5.0" width="186.2" height="16" />
+        </mxCell>
+        <mxCell id="op-29" value="" style="rounded=1;arcSize=8;html=0;endArrow=none;endFill=1;strokeColor=#bfc0c0;strokeWidth=0.8;dashed=1;dashPattern=4 4;" parent="1" edge="1">
+          <mxGeometry as="geometry" relative="1">
+            <mxPoint as="sourcePoint" x="1004" y="336" />
+            <mxPoint as="targetPoint" x="1004" y="944" />
+          </mxGeometry>
+        </mxCell>
+        <mxCell id="group-boundary-sql" value="" style="rounded=1;absoluteArcSize=1;arcSize=8;html=0;fillColor=#f0f0f1;strokeColor=#5a6580;strokeWidth=0.8;container=1;collapsible=0;recursiveResize=0;" parent="1" vertex="1">
+          <mxGeometry as="geometry" x="884" y="160" width="240" height="176" />
+        </mxCell>
+        <mxCell id="op-31" value="AUTHORITATIVE DATA BOUNDARY" style="text;html=0;spacing=0;align=center;verticalAlign=middle;fontSize=8;fontFamily=Geist Mono,Courier New,monospace;fontColor=#5a6580;" parent="group-boundary-sql" vertex="1">
+          <mxGeometry as="geometry" x="44.72000000000003" y="11.0" width="150.56" height="14" />
+        </mxCell>
+        <mxCell id="op-32" value="PostgreSQL" style="text;html=0;spacing=0;align=center;verticalAlign=middle;fontSize=12;fontFamily=Geist,Arial,sans-serif;fontColor=#2d3142;fontStyle=1;" parent="group-boundary-sql" vertex="1">
+          <mxGeometry as="geometry" x="76.39999999999998" y="27.0" width="87.2" height="18" />
+        </mxCell>
+        <mxCell id="group-participant-sql" value="" style="rounded=1;absoluteArcSize=1;arcSize=8;html=0;fillColor=#ffffff;strokeColor=#bfc0c0;strokeWidth=0.8;container=1;collapsible=0;recursiveResize=0;" parent="group-boundary-sql" vertex="1">
+          <mxGeometry as="geometry" x="12" y="52" width="216" height="112" />
+        </mxCell>
+        <mxCell id="op-34" value="ORDER + DURABLE INTENT" style="text;html=0;spacing=0;align=center;verticalAlign=middle;fontSize=8;fontFamily=Geist Mono,Courier New,monospace;fontColor=#5a6580;" parent="group-participant-sql" vertex="1">
+          <mxGeometry as="geometry" x="45.91999999999996" y="11.0" width="124.16" height="14" />
+        </mxCell>
+        <mxCell id="op-35" value="Refund operation / order guard" style="text;html=0;spacing=0;align=center;verticalAlign=middle;fontSize=11;fontFamily=Geist,Arial,sans-serif;fontColor=#4f5d75;" parent="group-boundary-sql" vertex="1">
+          <mxGeometry as="geometry" x="7.100000000000023" y="88.0" width="225.8" height="17" />
+        </mxCell>
+        <mxCell id="op-36" value="Once-only stock/budget release" style="text;html=0;spacing=0;align=center;verticalAlign=middle;fontSize=11;fontFamily=Geist,Arial,sans-serif;fontColor=#4f5d75;" parent="group-boundary-sql" vertex="1">
+          <mxGeometry as="geometry" x="7.100000000000023" y="112.0" width="225.8" height="17" />
+        </mxCell>
+        <mxCell id="op-37" value="" style="rounded=1;arcSize=8;html=0;endArrow=none;endFill=1;strokeColor=#bfc0c0;strokeWidth=0.8;dashed=1;dashPattern=4 4;" parent="1" edge="1">
+          <mxGeometry as="geometry" relative="1">
+            <mxPoint as="sourcePoint" x="1424" y="336" />
+            <mxPoint as="targetPoint" x="1424" y="944" />
+          </mxGeometry>
+        </mxCell>
+        <mxCell id="group-boundary-stripe" value="" style="rounded=1;absoluteArcSize=1;arcSize=8;html=0;fillColor=#f0f0f1;strokeColor=#5a6580;strokeWidth=0.8;container=1;collapsible=0;recursiveResize=0;" parent="1" vertex="1">
+          <mxGeometry as="geometry" x="1304" y="160" width="240" height="176" />
+        </mxCell>
+        <mxCell id="op-39" value="EXTERNAL PROVIDER" style="text;html=0;spacing=0;align=center;verticalAlign=middle;fontSize=8;fontFamily=Geist Mono,Courier New,monospace;fontColor=#5a6580;" parent="group-boundary-stripe" vertex="1">
+          <mxGeometry as="geometry" x="71.11999999999989" y="11.0" width="97.76" height="14" />
+        </mxCell>
+        <mxCell id="op-40" value="Stripe" style="text;html=0;spacing=0;align=center;verticalAlign=middle;fontSize=12;fontFamily=Geist,Arial,sans-serif;fontColor=#2d3142;fontStyle=1;" parent="group-boundary-stripe" vertex="1">
+          <mxGeometry as="geometry" x="92.24000000000001" y="27.0" width="55.52" height="18" />
+        </mxCell>
+        <mxCell id="group-participant-stripe" value="" style="rounded=1;absoluteArcSize=1;arcSize=8;html=0;fillColor=#ffffff;strokeColor=#bfc0c0;strokeWidth=0.8;container=1;collapsible=0;recursiveResize=0;" parent="group-boundary-stripe" vertex="1">
+          <mxGeometry as="geometry" x="12" y="52" width="216" height="112" />
+        </mxCell>
+        <mxCell id="op-42" value="EXTERNAL PROVIDER" style="text;html=0;spacing=0;align=center;verticalAlign=middle;fontSize=8;fontFamily=Geist Mono,Courier New,monospace;fontColor=#5a6580;" parent="group-participant-stripe" vertex="1">
+          <mxGeometry as="geometry" x="59.11999999999989" y="11.0" width="97.76" height="14" />
+        </mxCell>
+        <mxCell id="op-43" value="Provider side effects" style="text;html=0;spacing=0;align=center;verticalAlign=middle;fontSize=11;fontFamily=Geist,Arial,sans-serif;fontColor=#4f5d75;" parent="group-participant-stripe" vertex="1">
+          <mxGeometry as="geometry" x="27.769999999999982" y="36.0" width="160.46" height="17" />
+        </mxCell>
+        <mxCell id="op-44" value="Independent durable state" style="text;html=0;spacing=0;align=center;verticalAlign=middle;fontSize=11;fontFamily=Geist,Arial,sans-serif;fontColor=#4f5d75;" parent="group-participant-stripe" vertex="1">
+          <mxGeometry as="geometry" x="13.25" y="60.0" width="189.5" height="17" />
+        </mxCell>
+        <mxCell id="op-45" value="" style="rounded=1;absoluteArcSize=1;arcSize=0;html=0;fillColor=#e4e6e8;strokeColor=#4f5d75;strokeWidth=0.8;" parent="1" vertex="1">
+          <mxGeometry as="geometry" x="1000" y="428" width="8" height="52" />
+        </mxCell>
+        <mxCell id="op-46" value="" style="rounded=1;absoluteArcSize=1;arcSize=0;html=0;fillColor=#e4e6e8;strokeColor=#4f5d75;strokeWidth=0.8;" parent="1" vertex="1">
+          <mxGeometry as="geometry" x="1420" y="516" width="8" height="52" />
+        </mxCell>
+        <mxCell id="op-47" value="" style="rounded=1;absoluteArcSize=1;arcSize=0;html=0;fillColor=#e4e6e8;strokeColor=#4f5d75;strokeWidth=0.8;" parent="group-alt" vertex="1">
+          <mxGeometry as="geometry" x="864.0" y="52.0" width="8" height="52" />
+        </mxCell>
+        <mxCell id="op-48" value="" style="rounded=1;absoluteArcSize=1;arcSize=0;html=0;fillColor=#e4e6e8;strokeColor=#4f5d75;strokeWidth=0.8;" parent="1" vertex="1">
+          <mxGeometry as="geometry" x="576" y="384" width="8" height="476" />
+        </mxCell>
+        <mxCell id="op-49" value="" style="rounded=1;arcSize=8;html=0;endArrow=block;endFill=1;strokeColor=#4f5d75;strokeWidth=1.2;" parent="1" edge="1">
+          <mxGeometry as="geometry" relative="1">
+            <mxPoint as="sourcePoint" x="164" y="384" />
+            <mxPoint as="targetPoint" x="576" y="384" />
+          </mxGeometry>
+        </mxCell>
+        <mxCell id="op-50" value="" style="rounded=1;absoluteArcSize=1;arcSize=4;html=0;fillColor=#f5f5f5;strokeColor=#f5f5f5;strokeWidth=0.8;" parent="1" vertex="1">
+          <mxGeometry as="geometry" x="326" y="364" width="88" height="12" />
+        </mxCell>
+        <mxCell id="op-51" value="REQUEST REFUND" style="text;html=0;spacing=0;align=center;verticalAlign=middle;fontSize=8;fontFamily=Geist Mono,Courier New,monospace;fontColor=#5a6580;" parent="1" vertex="1">
+          <mxGeometry as="geometry" x="329.04" y="364" width="81.92" height="14" />
+        </mxCell>
+        <mxCell id="op-52" value="01" style="text;html=0;spacing=0;align=left;verticalAlign=middle;fontSize=9;fontFamily=Geist Mono,Courier New,monospace;fontColor=#5a6580;" parent="1" vertex="1">
+          <mxGeometry as="geometry" x="40" y="377" width="24" height="15" />
+        </mxCell>
+        <mxCell id="op-53" value="" style="rounded=1;absoluteArcSize=1;arcSize=4;html=0;fillColor=#f5f5f5;strokeColor=#f5f5f5;strokeWidth=0.8;" parent="1" vertex="1">
+          <mxGeometry as="geometry" x="258" y="392" width="224" height="14" />
+        </mxCell>
+        <mxCell id="op-54" value="Order PAYMENT_CONFIRMED; payment COMPLETED" style="text;html=0;spacing=0;align=center;verticalAlign=middle;fontSize=9;fontFamily=Geist,Arial,sans-serif;fontColor=#4f5d75;" parent="1" vertex="1">
+          <mxGeometry as="geometry" x="241.26" y="393" width="257.48" height="15" />
+        </mxCell>
+        <mxCell id="op-55" value="" style="rounded=1;arcSize=8;html=0;endArrow=block;endFill=1;strokeColor=#4f5d75;strokeWidth=1.2;" parent="1" edge="1">
+          <mxGeometry as="geometry" relative="1">
+            <mxPoint as="sourcePoint" x="584" y="428" />
+            <mxPoint as="targetPoint" x="1000" y="428" />
+          </mxGeometry>
+        </mxCell>
+        <mxCell id="op-56" value="" style="rounded=1;absoluteArcSize=1;arcSize=4;html=0;fillColor=#f5f5f5;strokeColor=#f5f5f5;strokeWidth=0.8;" parent="1" vertex="1">
+          <mxGeometry as="geometry" x="748" y="408" width="88" height="12" />
+        </mxCell>
+        <mxCell id="op-57" value="GUARD + INTENT" style="text;html=0;spacing=0;align=center;verticalAlign=middle;fontSize=8;fontFamily=Geist Mono,Courier New,monospace;fontColor=#5a6580;" parent="1" vertex="1">
+          <mxGeometry as="geometry" x="751.04" y="408" width="81.92" height="14" />
+        </mxCell>
+        <mxCell id="op-58" value="02" style="text;html=0;spacing=0;align=left;verticalAlign=middle;fontSize=9;fontFamily=Geist Mono,Courier New,monospace;fontColor=#5a6580;" parent="1" vertex="1">
+          <mxGeometry as="geometry" x="40" y="421" width="24" height="15" />
+        </mxCell>
+        <mxCell id="op-59" value="" style="rounded=1;absoluteArcSize=1;arcSize=4;html=0;fillColor=#f5f5f5;strokeColor=#f5f5f5;strokeWidth=0.8;" parent="1" vertex="1">
+          <mxGeometry as="geometry" x="676" y="436" width="232" height="14" />
+        </mxCell>
+        <mxCell id="op-60" value="Order lock; persist stable refund operation" style="text;html=0;spacing=0;align=center;verticalAlign=middle;fontSize=9;fontFamily=Geist,Arial,sans-serif;fontColor=#4f5d75;" parent="1" vertex="1">
+          <mxGeometry as="geometry" x="660.29" y="437" width="263.42" height="15" />
+        </mxCell>
+        <mxCell id="op-61" value="" style="rounded=1;arcSize=8;html=0;endArrow=block;endFill=1;strokeColor=#4f5d75;strokeWidth=1.2;dashed=1;dashPattern=4 4;" parent="1" edge="1">
+          <mxGeometry as="geometry" relative="1">
+            <mxPoint as="sourcePoint" x="1000" y="472" />
+            <mxPoint as="targetPoint" x="584" y="472" />
+          </mxGeometry>
+        </mxCell>
+        <mxCell id="op-62" value="" style="rounded=1;absoluteArcSize=1;arcSize=4;html=0;fillColor=#f5f5f5;strokeColor=#f5f5f5;strokeWidth=0.8;" parent="1" vertex="1">
+          <mxGeometry as="geometry" x="754" y="452" width="76" height="12" />
+        </mxCell>
+        <mxCell id="op-63" value="STABLE OP ID" style="text;html=0;spacing=0;align=center;verticalAlign=middle;fontSize=8;fontFamily=Geist Mono,Courier New,monospace;fontColor=#5a6580;" parent="1" vertex="1">
+          <mxGeometry as="geometry" x="756.32" y="452" width="71.36" height="14" />
+        </mxCell>
+        <mxCell id="op-64" value="03" style="text;html=0;spacing=0;align=left;verticalAlign=middle;fontSize=9;fontFamily=Geist Mono,Courier New,monospace;fontColor=#5a6580;" parent="1" vertex="1">
+          <mxGeometry as="geometry" x="40" y="465" width="24" height="15" />
+        </mxCell>
+        <mxCell id="op-65" value="" style="rounded=1;absoluteArcSize=1;arcSize=4;html=0;fillColor=#f5f5f5;strokeColor=#f5f5f5;strokeWidth=0.8;" parent="1" vertex="1">
+          <mxGeometry as="geometry" x="672" y="480" width="240" height="14" />
+        </mxCell>
+        <mxCell id="op-66" value="Recoverable intent commit before provider I/O" style="text;html=0;spacing=0;align=center;verticalAlign=middle;fontSize=9;fontFamily=Geist,Arial,sans-serif;fontColor=#4f5d75;" parent="1" vertex="1">
+          <mxGeometry as="geometry" x="654.35" y="481" width="275.3" height="15" />
+        </mxCell>
+        <mxCell id="op-67" value="" style="rounded=1;arcSize=8;html=0;endArrow=block;endFill=1;strokeColor=#4f5d75;strokeWidth=1.2;" parent="1" edge="1">
+          <mxGeometry as="geometry" relative="1">
+            <mxPoint as="sourcePoint" x="584" y="516" />
+            <mxPoint as="targetPoint" x="1420" y="516" />
+          </mxGeometry>
+        </mxCell>
+        <mxCell id="op-68" value="" style="rounded=1;absoluteArcSize=1;arcSize=4;html=0;fillColor=#f5f5f5;strokeColor=#f5f5f5;strokeWidth=0.8;" parent="1" vertex="1">
+          <mxGeometry as="geometry" x="756" y="496" width="72" height="12" />
+        </mxCell>
+        <mxCell id="op-69" value="FULL REFUND" style="text;html=0;spacing=0;align=center;verticalAlign=middle;fontSize=8;fontFamily=Geist Mono,Courier New,monospace;fontColor=#5a6580;" parent="1" vertex="1">
+          <mxGeometry as="geometry" x="758.96" y="496" width="66.08" height="14" />
+        </mxCell>
+        <mxCell id="op-70" value="04" style="text;html=0;spacing=0;align=left;verticalAlign=middle;fontSize=9;fontFamily=Geist Mono,Courier New,monospace;fontColor=#5a6580;" parent="1" vertex="1">
+          <mxGeometry as="geometry" x="40" y="509" width="24" height="15" />
+        </mxCell>
+        <mxCell id="op-71" value="" style="rounded=1;absoluteArcSize=1;arcSize=4;html=0;fillColor=#f5f5f5;strokeColor=#f5f5f5;strokeWidth=0.8;" parent="1" vertex="1">
+          <mxGeometry as="geometry" x="674" y="524" width="236" height="14" />
+        </mxCell>
+        <mxCell id="op-72" value="Stable key; whole payment including shipping" style="text;html=0;spacing=0;align=center;verticalAlign=middle;fontSize=9;fontFamily=Geist,Arial,sans-serif;fontColor=#4f5d75;" parent="1" vertex="1">
+          <mxGeometry as="geometry" x="657.32" y="525" width="269.36" height="15" />
+        </mxCell>
+        <mxCell id="op-73" value="" style="rounded=1;arcSize=8;html=0;endArrow=block;endFill=1;strokeColor=#4f5d75;strokeWidth=1.2;dashed=1;dashPattern=4 4;" parent="1" edge="1">
+          <mxGeometry as="geometry" relative="1">
+            <mxPoint as="sourcePoint" x="1420" y="560" />
+            <mxPoint as="targetPoint" x="584" y="560" />
+          </mxGeometry>
+        </mxCell>
+        <mxCell id="op-74" value="" style="rounded=1;absoluteArcSize=1;arcSize=4;html=0;fillColor=#f5f5f5;strokeColor=#f5f5f5;strokeWidth=0.8;" parent="1" vertex="1">
+          <mxGeometry as="geometry" x="750" y="540" width="84" height="12" />
+        </mxCell>
+        <mxCell id="op-75" value="REFUND STATUS" style="text;html=0;spacing=0;align=center;verticalAlign=middle;fontSize=8;fontFamily=Geist Mono,Courier New,monospace;fontColor=#5a6580;" parent="1" vertex="1">
+          <mxGeometry as="geometry" x="753.68" y="540" width="76.64" height="14" />
+        </mxCell>
+        <mxCell id="op-76" value="05" style="text;html=0;spacing=0;align=left;verticalAlign=middle;fontSize=9;fontFamily=Geist Mono,Courier New,monospace;fontColor=#5a6580;" parent="1" vertex="1">
+          <mxGeometry as="geometry" x="40" y="553" width="24" height="15" />
+        </mxCell>
+        <mxCell id="op-77" value="" style="rounded=1;absoluteArcSize=1;arcSize=4;html=0;fillColor=#f5f5f5;strokeColor=#f5f5f5;strokeWidth=0.8;" parent="1" vertex="1">
+          <mxGeometry as="geometry" x="684" y="568" width="216" height="14" />
+        </mxCell>
+        <mxCell id="op-78" value="Check actual amount and terminal success" style="text;html=0;spacing=0;align=center;verticalAlign=middle;fontSize=9;fontFamily=Geist,Arial,sans-serif;fontColor=#4f5d75;" parent="1" vertex="1">
+          <mxGeometry as="geometry" x="669.2" y="569" width="245.6" height="15" />
+        </mxCell>
+        <mxCell id="op-79" value="" style="rounded=1;arcSize=8;html=0;endArrow=block;endFill=1;strokeColor=#4f5d75;strokeWidth=1.2;" parent="group-alt" edge="1">
+          <mxGeometry as="geometry" relative="1">
+            <mxPoint as="sourcePoint" x="448.0" y="52.0" />
+            <mxPoint as="targetPoint" x="864.0" y="52.0" />
+          </mxGeometry>
+        </mxCell>
+        <mxCell id="op-80" value="" style="rounded=1;absoluteArcSize=1;arcSize=4;html=0;fillColor=#f5f5f5;strokeColor=#f5f5f5;strokeWidth=0.8;" parent="group-alt" vertex="1">
+          <mxGeometry as="geometry" x="614.0" y="32.0" width="84" height="12" />
+        </mxCell>
+        <mxCell id="op-81" value="FINALIZE ONCE" style="text;html=0;spacing=0;align=center;verticalAlign=middle;fontSize=8;fontFamily=Geist Mono,Courier New,monospace;fontColor=#5a6580;" parent="group-alt" vertex="1">
+          <mxGeometry as="geometry" x="617.68" y="32.0" width="76.64" height="14" />
+        </mxCell>
+        <mxCell id="op-82" value="06" style="text;html=0;spacing=0;align=left;verticalAlign=middle;fontSize=9;fontFamily=Geist Mono,Courier New,monospace;fontColor=#5a6580;" parent="1" vertex="1">
+          <mxGeometry as="geometry" x="40" y="629" width="24" height="15" />
+        </mxCell>
+        <mxCell id="op-83" value="" style="rounded=1;absoluteArcSize=1;arcSize=4;html=0;fillColor=#f5f5f5;strokeColor=#f5f5f5;strokeWidth=0.8;" parent="group-alt" vertex="1">
+          <mxGeometry as="geometry" x="516.0" y="60.0" width="280" height="14" />
+        </mxCell>
+        <mxCell id="op-84" value="Full settled success: refund + original lots + budget" style="text;html=0;spacing=0;align=center;verticalAlign=middle;fontSize=9;fontFamily=Geist,Arial,sans-serif;fontColor=#4f5d75;" parent="group-alt" vertex="1">
+          <mxGeometry as="geometry" x="494.59000000000003" y="61.0" width="322.82" height="15" />
+        </mxCell>
+        <mxCell id="op-85" value="" style="rounded=1;arcSize=8;html=0;endArrow=block;endFill=1;strokeColor=#4f5d75;strokeWidth=1.2;dashed=1;dashPattern=4 4;" parent="group-alt" edge="1">
+          <mxGeometry as="geometry" relative="1">
+            <mxPoint as="sourcePoint" x="864.0" y="96.0" />
+            <mxPoint as="targetPoint" x="448.0" y="96.0" />
+          </mxGeometry>
+        </mxCell>
+        <mxCell id="op-86" value="" style="rounded=1;absoluteArcSize=1;arcSize=4;html=0;fillColor=#f5f5f5;strokeColor=#f5f5f5;strokeWidth=0.8;" parent="group-alt" vertex="1">
+          <mxGeometry as="geometry" x="624.0" y="76.0" width="64" height="12" />
+        </mxCell>
+        <mxCell id="op-87" value="COMMITTED" style="text;html=0;spacing=0;align=center;verticalAlign=middle;fontSize=8;fontFamily=Geist Mono,Courier New,monospace;fontColor=#5a6580;" parent="group-alt" vertex="1">
+          <mxGeometry as="geometry" x="628.24" y="76.0" width="55.52" height="14" />
+        </mxCell>
+        <mxCell id="op-88" value="07" style="text;html=0;spacing=0;align=left;verticalAlign=middle;fontSize=9;fontFamily=Geist Mono,Courier New,monospace;fontColor=#5a6580;" parent="1" vertex="1">
+          <mxGeometry as="geometry" x="40" y="673" width="24" height="15" />
+        </mxCell>
+        <mxCell id="op-89" value="" style="rounded=1;absoluteArcSize=1;arcSize=4;html=0;fillColor=#f5f5f5;strokeColor=#f5f5f5;strokeWidth=0.8;" parent="group-alt" vertex="1">
+          <mxGeometry as="geometry" x="548.0" y="104.0" width="216" height="14" />
+        </mxCell>
+        <mxCell id="op-90" value="State guards + release evidence + outbox" style="text;html=0;spacing=0;align=center;verticalAlign=middle;fontSize=9;fontFamily=Geist,Arial,sans-serif;fontColor=#4f5d75;" parent="group-alt" vertex="1">
+          <mxGeometry as="geometry" x="533.2" y="105.0" width="245.6" height="15" />
+        </mxCell>
+        <mxCell id="op-91" value="" style="rounded=1;arcSize=8;html=0;endArrow=block;endFill=1;strokeColor=#bf4520;strokeWidth=1.2;" parent="group-alt" edge="1">
+          <mxGeometry as="geometry" relative="1">
+            <mxPoint as="sourcePoint" x="440.0" y="140.0" />
+            <mxPoint as="targetPoint" x="28.0" y="140.0" />
+          </mxGeometry>
+        </mxCell>
+        <mxCell id="op-92" value="" style="rounded=1;absoluteArcSize=1;arcSize=4;html=0;fillColor=#f5f5f5;strokeColor=#f5f5f5;strokeWidth=0.8;" parent="group-alt" vertex="1">
+          <mxGeometry as="geometry" x="202.0" y="120.0" width="64" height="12" />
+        </mxCell>
+        <mxCell id="op-93" value="CONFIRMED" style="text;html=0;spacing=0;align=center;verticalAlign=middle;fontSize=8;fontFamily=Geist Mono,Courier New,monospace;fontColor=#5a6580;" parent="group-alt" vertex="1">
+          <mxGeometry as="geometry" x="206.24" y="120.0" width="55.52" height="14" />
+        </mxCell>
+        <mxCell id="op-94" value="08" style="text;html=0;spacing=0;align=left;verticalAlign=middle;fontSize=9;fontFamily=Geist Mono,Courier New,monospace;fontColor=#5a6580;" parent="1" vertex="1">
+          <mxGeometry as="geometry" x="40" y="717" width="24" height="15" />
+        </mxCell>
+        <mxCell id="op-95" value="" style="rounded=1;absoluteArcSize=1;arcSize=4;html=0;fillColor=#f5f5f5;strokeColor=#f5f5f5;strokeWidth=0.8;" parent="group-alt" vertex="1">
+          <mxGeometry as="geometry" x="134.0" y="148.0" width="200" height="14" />
+        </mxCell>
+        <mxCell id="op-96" value="Only after authoritative finalization" style="text;html=0;spacing=0;align=center;verticalAlign=middle;fontSize=9;fontFamily=Geist,Arial,sans-serif;fontColor=#4f5d75;" parent="group-alt" vertex="1">
+          <mxGeometry as="geometry" x="120.11000000000001" y="149.0" width="227.78" height="15" />
+        </mxCell>
+        <mxCell id="op-97" value="" style="rounded=1;arcSize=8;html=0;endArrow=block;endFill=1;strokeColor=#4f5d75;strokeWidth=1.2;" parent="group-alt" edge="1">
+          <mxGeometry as="geometry" relative="1">
+            <mxPoint as="sourcePoint" x="448.0" y="224.0" />
+            <mxPoint as="targetPoint" x="864.0" y="224.0" />
+          </mxGeometry>
+        </mxCell>
+        <mxCell id="op-98" value="" style="rounded=1;absoluteArcSize=1;arcSize=4;html=0;fillColor=#f5f5f5;strokeColor=#f5f5f5;strokeWidth=0.8;" parent="group-alt" vertex="1">
+          <mxGeometry as="geometry" x="614.0" y="204.0" width="84" height="12" />
+        </mxCell>
+        <mxCell id="op-99" value="WAIT / REVIEW" style="text;html=0;spacing=0;align=center;verticalAlign=middle;fontSize=8;fontFamily=Geist Mono,Courier New,monospace;fontColor=#5a6580;" parent="group-alt" vertex="1">
+          <mxGeometry as="geometry" x="617.68" y="204.0" width="76.64" height="14" />
+        </mxCell>
+        <mxCell id="op-100" value="09" style="text;html=0;spacing=0;align=left;verticalAlign=middle;fontSize=9;fontFamily=Geist Mono,Courier New,monospace;fontColor=#5a6580;" parent="1" vertex="1">
+          <mxGeometry as="geometry" x="40" y="801" width="24" height="15" />
+        </mxCell>
+        <mxCell id="op-101" value="" style="rounded=1;absoluteArcSize=1;arcSize=4;html=0;fillColor=#f5f5f5;strokeColor=#f5f5f5;strokeWidth=0.8;" parent="group-alt" vertex="1">
+          <mxGeometry as="geometry" x="518.0" y="232.0" width="276" height="14" />
+        </mxCell>
+        <mxCell id="op-102" value="Pending/failed/partial/ambiguous -&gt; retain operation" style="text;html=0;spacing=0;align=center;verticalAlign=middle;fontSize=9;fontFamily=Geist,Arial,sans-serif;fontColor=#4f5d75;" parent="group-alt" vertex="1">
+          <mxGeometry as="geometry" x="497.55999999999995" y="233.0" width="316.88" height="15" />
+        </mxCell>
+        <mxCell id="op-103" value="" style="rounded=1;arcSize=8;html=0;endArrow=block;endFill=1;strokeColor=#4f5d75;strokeWidth=1.2;dashed=1;dashPattern=4 4;" parent="group-alt" edge="1">
+          <mxGeometry as="geometry" relative="1">
+            <mxPoint as="sourcePoint" x="440.0" y="268.0" />
+            <mxPoint as="targetPoint" x="28.0" y="268.0" />
+          </mxGeometry>
+        </mxCell>
+        <mxCell id="op-104" value="" style="rounded=1;absoluteArcSize=1;arcSize=4;html=0;fillColor=#f5f5f5;strokeColor=#f5f5f5;strokeWidth=0.8;" parent="group-alt" vertex="1">
+          <mxGeometry as="geometry" x="202.0" y="248.0" width="64" height="12" />
+        </mxCell>
+        <mxCell id="op-105" value="NOT FINAL" style="text;html=0;spacing=0;align=center;verticalAlign=middle;fontSize=8;fontFamily=Geist Mono,Courier New,monospace;fontColor=#5a6580;" parent="group-alt" vertex="1">
+          <mxGeometry as="geometry" x="206.24" y="248.0" width="55.52" height="14" />
+        </mxCell>
+        <mxCell id="op-106" value="10" style="text;html=0;spacing=0;align=left;verticalAlign=middle;fontSize=9;fontFamily=Geist Mono,Courier New,monospace;fontColor=#5a6580;" parent="1" vertex="1">
+          <mxGeometry as="geometry" x="40" y="845" width="24" height="15" />
+        </mxCell>
+        <mxCell id="op-107" value="" style="rounded=1;absoluteArcSize=1;arcSize=4;html=0;fillColor=#f5f5f5;strokeColor=#f5f5f5;strokeWidth=0.8;" parent="group-alt" vertex="1">
+          <mxGeometry as="geometry" x="94.0" y="276.0" width="280" height="14" />
+        </mxCell>
+        <mxCell id="op-108" value="No premature restock; future response contract needed" style="text;html=0;spacing=0;align=center;verticalAlign=middle;fontSize=9;fontFamily=Geist,Arial,sans-serif;fontColor=#4f5d75;" parent="group-alt" vertex="1">
+          <mxGeometry as="geometry" x="72.59" y="277.0" width="322.82" height="15" />
+        </mxCell>
+        <mxCell id="op-109" value="Header nesting shows ownership. Each lifeline is one interaction boundary; child boxes are structural context, not extra timings." style="text;html=0;spacing=0;align=left;verticalAlign=middle;fontSize=10;fontFamily=Geist,Arial,sans-serif;fontColor=#4f5d75;" parent="1" vertex="1">
+          <mxGeometry as="geometry" x="40" y="953" width="859.4" height="16" />
+        </mxCell>
+        <mxCell id="op-110" value="PROPOSED: a refund request accepted by Stripe is not always a completed full refund. Current specifications need reconciliation." style="text;html=0;spacing=0;align=left;verticalAlign=middle;fontSize=10;fontFamily=Geist,Arial,sans-serif;fontColor=#4f5d75;" parent="1" vertex="1">
+          <mxGeometry as="geometry" x="40" y="977" width="852.8" height="16" />
+        </mxCell>
+        <mxCell id="op-111" value="Concurrent provider callbacks use the same durable identity and SQL guards; no double stock/budget release." style="text;html=0;spacing=0;align=left;verticalAlign=middle;fontSize=10;fontFamily=Geist,Arial,sans-serif;fontColor=#4f5d75;" parent="1" vertex="1">
+          <mxGeometry as="geometry" x="40" y="997" width="714.2" height="16" />
+        </mxCell>
+        <mxCell id="op-112" value="Sources: linked spec.md + sequence.wsd, diagram-semantics.md and supporting research | Proposed coordination; exact SQL remains in API sequences." style="text;html=0;spacing=0;align=left;verticalAlign=middle;fontSize=9;fontFamily=Geist Mono,Courier New,monospace;fontColor=#5a6580;" parent="1" vertex="1">
+          <mxGeometry as="geometry" x="40" y="1026" width="869.3" height="15" />
+        </mxCell>
+        <mxCell id="op-113" value="" style="rounded=1;arcSize=8;html=0;endArrow=none;endFill=1;strokeColor=#bfc0c0;strokeWidth=0.8;" parent="1" edge="1">
+          <mxGeometry as="geometry" relative="1">
+            <mxPoint as="sourcePoint" x="40" y="1052" />
+            <mxPoint as="targetPoint" x="1544" y="1052" />
+          </mxGeometry>
+        </mxCell>
+        <mxCell id="op-114" value="Solid = synchronous call" style="text;html=0;spacing=0;align=left;verticalAlign=middle;fontSize=9;fontFamily=Geist,Arial,sans-serif;fontColor=#4f5d75;" parent="1" vertex="1">
+          <mxGeometry as="geometry" x="40" y="1066" width="150.56" height="15" />
+        </mxCell>
+        <mxCell id="op-115" value="Dashed filled = return" style="text;html=0;spacing=0;align=left;verticalAlign=middle;fontSize=9;fontFamily=Geist,Arial,sans-serif;fontColor=#4f5d75;" parent="1" vertex="1">
+          <mxGeometry as="geometry" x="336" y="1066" width="138.68" height="15" />
+        </mxCell>
+        <mxCell id="op-116" value="Dashed open = async hint" style="text;html=0;spacing=0;align=left;verticalAlign=middle;fontSize=9;fontFamily=Geist,Arial,sans-serif;fontColor=#4f5d75;" parent="1" vertex="1">
+          <mxGeometry as="geometry" x="632" y="1066" width="150.56" height="15" />
+        </mxCell>
+        <mxCell id="op-117" value="ALT = mutually exclusive" style="text;html=0;spacing=0;align=left;verticalAlign=middle;fontSize=9;fontFamily=Geist,Arial,sans-serif;fontColor=#4f5d75;" parent="1" vertex="1">
+          <mxGeometry as="geometry" x="928" y="1066" width="150.56" height="15" />
+        </mxCell>
+        <mxCell id="op-118" value="Header boxes = ownership" style="text;html=0;spacing=0;align=left;verticalAlign=middle;fontSize=9;fontFamily=Geist,Arial,sans-serif;fontColor=#4f5d75;" parent="1" vertex="1">
+          <mxGeometry as="geometry" x="1224" y="1066" width="150.56" height="15" />
+        </mxCell>
+      </root>
+    </mxGraphModel>
+  </diagram>
+</mxfile>

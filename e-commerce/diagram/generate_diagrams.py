@@ -351,6 +351,9 @@ def finalise_png(d):
 
 
 def main():
+    # Keep previous entrypoints safe: the owner-requested hierarchy renderer is authoritative.
+    from generate_layered_diagrams import main as layered_main
+    return layered_main()
     parser=argparse.ArgumentParser(description=__doc__);parser.add_argument('--finalize-pngs',action='store_true');args=parser.parse_args()
     verify_evidence()
     for d in DIAGRAMS:

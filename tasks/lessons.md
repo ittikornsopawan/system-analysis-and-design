@@ -5,6 +5,18 @@ description: Repository-wide and project-specific lessons captured from user cor
 
 # Lessons
 
+### 2026-11-08 — Show real decomposition and choose semantics before layout
+
+- **Correction**: The owner rejected the detail and layer grouping across the whole diagram set. Application must expose Command/Query, Validator and Handler as smaller boxes inside its layer; different diagram meanings must be researched before rendering.
+- **Root cause**: The shared flat-card renderer and short node budget shaped the models before their analytical viewpoints and ownership hierarchy were settled. Long bullet lists substituted for actual subcomponents; several operational checkpoints were also presented using the same state/card grammar.
+- **Corrected behavior**: Define the question, notation, ownership/decomposition levels and edge semantics for every diagram first. Use true native parent/child containment for structural views, time/activation/fragments for sequence, state/guard/effect for lifecycle, physical host/artifact placement for deployment, entity/field/cardinality for document models, and lanes/actions/gates for recovery. Do not force application layers into unrelated business or data views. Visually compare the complete set and verify the requested sublayers are actual editable child boxes rather than descriptive rows.
+
+### 2026-11-08 — Preserve the owner's `Domain` business-logic convention
+
+- **Correction**: The Domain layer also needs a child named `Domain` for reusable business logic, with the owner-specified example path `src/Ecommerce.Domain/Authen/Domain/`.
+- **Root cause**: Decomposition stopped at entities, value objects and repository contracts, omitting reusable domain operations and the project's chosen naming.
+- **Corrected behavior**: Show `Domain` explicitly under the Domain layer and the feature's physical path in the repository view. Explain reusable rules separately from handler orchestration and entity invariants. Treat tax calculation as a generic example owned by the relevant business feature, not an implemented Authen capability; distinguish owner-directed design from the pinned source baseline.
+
 ## Repository-wide
 
 ### 2026-11-06 — Keep agent reviews within the requested adaptation scope
@@ -273,3 +285,9 @@ description: Repository-wide and project-specific lessons captured from user cor
 - **Correction**: The checker pull request #54 was opened and not reported to the lead; the owner merged it before the lead had reviewed it. The lead asked to be told before the owner merges, every time.
 - **Root cause**: The report to the lead was left for the end of the task, as a part of the final handoff, so the gap between opening and merging was not covered.
 - **Corrected behavior**: Send the lead the link right after `gh pr create` and the first PR status call, before any other step, with the checks and the open questions; never leave it for the final report.
+
+### 2026-11-08 — Prove that every SQL line is drawn, not only that the SQL equals the spec
+
+- **Correction**: The INSERT written by hand in PR #58 had value lines that start with a quote after the indentation; PlantUML draws such a line as a comment, so six lines were missing from the picture. `api-sequence-spec` passed because it reads the raw text, and my first rendered check passed too because it asked only whether each line appears somewhere in the picture.
+- **Root cause**: The edit script encoded a line only when the quote was in the first column, and the rendered check used a substring test that a repeated line (`'<sequence.userId>',` appears twice) satisfies by luck.
+- **Corrected behavior**: Encode a leading quote after the indentation (`&#39;`), and check the render by counting: every SQL line must appear in the picture at least as many times as it appears in the spec.

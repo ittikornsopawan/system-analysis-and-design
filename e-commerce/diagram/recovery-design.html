@@ -1,0 +1,131 @@
+<!DOCTYPE html>
+<html lang="en"><head><meta charset="UTF-8"><meta name="viewport" content="width=device-width,initial-scale=1.0">
+<title>Recovery activity &amp; owner handoffs</title><link href="https://fonts.googleapis.com/css2?family=Instrument+Serif:ital@0;1&amp;family=Geist:wght@400;500;600&amp;family=Geist+Mono:wght@400;500;600&amp;display=swap" rel="stylesheet">
+<style>
+* {box-sizing:border-box;} body {margin:0;padding:24px;background:#f5f5f5;color:#2d3142;font-family:'Geist',Arial,sans-serif;}
+main {width:100%;max-width:1584px;min-width:0;margin:0 auto;} h1 {font-family:'Instrument Serif',Georgia,serif;font-size:32px;font-weight:400;}
+.diagram-container {width:100%;overflow-x:auto;} svg {display:block;width:100%;min-width:1584px;}
+.source-note {font-size:12px;line-height:1.6;color:#4f5d75;} @media print {body {padding:0;} .diagram-container {overflow-x:visible;} svg {min-width:0;}}
+</style></head><body><main><h1>Recovery activity &amp; owner handoffs</h1><div class="diagram-container"><svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 1584 1120" role="img" aria-labelledby="recovery-design-title recovery-design-desc">
+<title id="recovery-design-title">Recovery activity &amp; owner handoffs</title>
+<desc id="recovery-design-desc">A proposed owner-lane activity flow fences workers, restores authority, reconciles provider effects and gates rebuilt projections before reopening; these are actions and decisions, not persisted commerce states.</desc>
+<defs>
+<marker id="recovery-design-arrow" markerWidth="8" markerHeight="6" refX="7" refY="3" orient="auto"><polygon points="0 0,8 3,0 6" fill="#4f5d75"/></marker>
+<marker id="recovery-design-accent" markerWidth="8" markerHeight="6" refX="7" refY="3" orient="auto"><polygon points="0 0,8 3,0 6" fill="#bf4520"/></marker>
+<marker id="recovery-design-link" markerWidth="8" markerHeight="6" refX="7" refY="3" orient="auto"><polygon points="0 0,8 3,0 6" fill="#2e5aa8"/></marker>
+</defs>
+<rect width="1584" height="1120" fill="#f5f5f5"/>
+<g data-container-id="incident-owner" data-parent="root"><rect data-role="container-bounds" x="40" y="160" width="336" height="828" rx="4" fill="#f0f0f1" stroke="#5a6580" stroke-width="1"/>
+<line x1="40" y1="196" x2="376" y2="196" stroke="#bfc0c0" stroke-width="0.8"/>
+<text x="52" y="176" font-size="12" font-family="Geist,Arial,sans-serif" font-weight="600" fill="#5a6580" text-anchor="start">Incident command</text>
+<text x="52" y="189" font-size="8" font-family="Geist Mono,Courier New,monospace" font-weight="400" fill="#5a6580" text-anchor="start">PROPOSED OWNER LANE</text>
+</g>
+<g data-container-id="data-owner" data-parent="root"><rect data-role="container-bounds" x="408" y="160" width="352" height="828" rx="4" fill="#f0f0f1" stroke="#5a6580" stroke-width="1"/>
+<line x1="408" y1="196" x2="760" y2="196" stroke="#bfc0c0" stroke-width="0.8"/>
+<text x="420" y="176" font-size="12" font-family="Geist,Arial,sans-serif" font-weight="600" fill="#5a6580" text-anchor="start">Data / platform operator</text>
+<text x="420" y="189" font-size="8" font-family="Geist Mono,Courier New,monospace" font-weight="400" fill="#5a6580" text-anchor="start">PROPOSED OWNER LANE</text>
+</g>
+<g data-container-id="payment-owner" data-parent="root"><rect data-role="container-bounds" x="792" y="160" width="352" height="828" rx="4" fill="#f0f0f1" stroke="#5a6580" stroke-width="1"/>
+<line x1="792" y1="196" x2="1144" y2="196" stroke="#bfc0c0" stroke-width="0.8"/>
+<text x="804" y="176" font-size="12" font-family="Geist,Arial,sans-serif" font-weight="600" fill="#5a6580" text-anchor="start">Payment operations</text>
+<text x="804" y="189" font-size="8" font-family="Geist Mono,Courier New,monospace" font-weight="400" fill="#5a6580" text-anchor="start">PROPOSED OWNER LANE</text>
+</g>
+<g data-container-id="service-owner" data-parent="root"><rect data-role="container-bounds" x="1192" y="160" width="352" height="828" rx="4" fill="#f0f0f1" stroke="#5a6580" stroke-width="1"/>
+<line x1="1192" y1="196" x2="1544" y2="196" stroke="#bfc0c0" stroke-width="0.8"/>
+<text x="1204" y="176" font-size="12" font-family="Geist,Arial,sans-serif" font-weight="600" fill="#5a6580" text-anchor="start">Application service owner</text>
+<text x="1204" y="189" font-size="8" font-family="Geist Mono,Courier New,monospace" font-weight="400" fill="#5a6580" text-anchor="start">PROPOSED OWNER LANE</text>
+</g>
+<path d="M 352 272 L 432 272" fill="none" stroke="#4f5d75" stroke-width="1.2" marker-end="url(#recovery-design-arrow)"/>
+<rect x="366" y="252" width="52" height="12" rx="2" fill="#f5f5f5"/>
+<text x="392" y="261" font-size="8" font-family="Geist Mono,Courier New,monospace" font-weight="400" fill="#5a6580" text-anchor="middle">CONTAIN</text>
+<path d="M 584 344 L 584 432" fill="none" stroke="#4f5d75" stroke-width="1.2" marker-end="url(#recovery-design-arrow)"/>
+<path d="M 736 484 L 816 484" fill="none" stroke="#4f5d75" stroke-width="1.2" marker-end="url(#recovery-design-arrow)"/>
+<rect x="750" y="464" width="52" height="12" rx="2" fill="#f5f5f5"/>
+<text x="776" y="473" font-size="8" font-family="Geist Mono,Courier New,monospace" font-weight="400" fill="#5a6580" text-anchor="middle">COMPARE</text>
+<path d="M 968 536 L 968 616" fill="none" stroke="#4f5d75" stroke-width="1.2" marker-end="url(#recovery-design-arrow)"/>
+<path d="M 1080 668 L 1216 668" fill="none" stroke="#4f5d75" stroke-width="1.2" marker-end="url(#recovery-design-arrow)"/>
+<rect x="1132" y="648" width="32" height="12" rx="2" fill="#f5f5f5"/>
+<text x="1148" y="657" font-size="8" font-family="Geist Mono,Courier New,monospace" font-weight="400" fill="#5a6580" text-anchor="middle">YES</text>
+<path d="M 856 668 L 352 668" fill="none" stroke="#4f5d75" stroke-width="1.2" stroke-dasharray="5,4" marker-end="url(#recovery-design-arrow)"/>
+<rect x="590" y="648" width="28" height="12" rx="2" fill="#f5f5f5"/>
+<text x="604" y="657" font-size="8" font-family="Geist Mono,Courier New,monospace" font-weight="400" fill="#5a6580" text-anchor="middle">NO</text>
+<path d="M 208 616 L 208 392 Q 208 384 216 384 L 392 384 Q 400 384 400 376 L 400 328 Q 400 320 408 320 L 432 320" fill="none" stroke="#4f5d75" stroke-width="1.2" stroke-dasharray="5,4" marker-end="url(#recovery-design-arrow)"/>
+<rect x="280" y="364" width="48" height="12" rx="2" fill="#f5f5f5"/>
+<text x="304" y="373" font-size="8" font-family="Geist Mono,Courier New,monospace" font-weight="400" fill="#5a6580" text-anchor="middle">REVIEW</text>
+<path d="M 1368 720 L 1368 752 Q 1368 760 1368 768 L 1368 792" fill="none" stroke="#4f5d75" stroke-width="1.2" marker-end="url(#recovery-design-arrow)"/>
+<path d="M 1368 896 L 1368 928" fill="none" stroke="#4f5d75" stroke-width="1.2" marker-end="url(#recovery-design-arrow)"/>
+<rect x="1376" y="896" width="32" height="12" rx="2" fill="#f5f5f5"/>
+<text x="1392" y="905" font-size="8" font-family="Geist Mono,Courier New,monospace" font-weight="400" fill="#5a6580" text-anchor="middle">YES</text>
+<path d="M 1248 844 L 1184 844 Q 1176 844 1176 852 L 1176 948 Q 1176 956 1168 956 L 392 956 Q 384 956 384 948 L 384 760 Q 384 752 376 752 L 216 752 Q 208 752 208 744 L 208 720" fill="none" stroke="#4f5d75" stroke-width="1.2" stroke-dasharray="5,4" marker-end="url(#recovery-design-arrow)"/>
+<rect x="766" y="936" width="28" height="12" rx="2" fill="#f5f5f5"/>
+<text x="780" y="945" font-size="8" font-family="Geist Mono,Courier New,monospace" font-weight="400" fill="#5a6580" text-anchor="middle">NO</text>
+<g data-node-id="declare" data-parent="incident-owner">
+<rect data-role="node-bounds" x="64" y="240" width="288" height="104" rx="4" fill="#ffffff" stroke="#2d3142" stroke-width="1"/>
+<text x="76" y="262" font-size="12" font-family="Geist,Arial,sans-serif" font-weight="600" fill="#2d3142" text-anchor="start">Declare incident</text>
+<text x="76" y="278" font-size="8" font-family="Geist Mono,Courier New,monospace" font-weight="400" fill="#5a6580" text-anchor="start">INCIDENT COMMANDER</text>
+<text x="76" y="294" font-size="11" font-family="Geist,Arial,sans-serif" font-weight="400" fill="#4f5d75" text-anchor="start">Scope + evidence + backup points</text>
+<text x="76" y="308" font-size="11" font-family="Geist,Arial,sans-serif" font-weight="400" fill="#4f5d75" text-anchor="start">Record impact and recovery owner</text>
+</g>
+<g data-node-id="contain" data-parent="data-owner">
+<rect data-role="node-bounds" x="432" y="240" width="304" height="104" rx="4" fill="#ffffff" stroke="#2d3142" stroke-width="1"/>
+<text x="444" y="262" font-size="12" font-family="Geist,Arial,sans-serif" font-weight="600" fill="#2d3142" text-anchor="start">Contain &amp; fence</text>
+<text x="444" y="278" font-size="8" font-family="Geist Mono,Courier New,monospace" font-weight="400" fill="#5a6580" text-anchor="start">DATA / PLATFORM OPERATOR</text>
+<text x="444" y="294" font-size="11" font-family="Geist,Arial,sans-serif" font-weight="400" fill="#4f5d75" text-anchor="start">Pause unsafe writes and old relays</text>
+<text x="444" y="308" font-size="11" font-family="Geist,Arial,sans-serif" font-weight="400" fill="#4f5d75" text-anchor="start">Revoke old worker credentials/epoch</text>
+</g>
+<g data-node-id="restore" data-parent="data-owner">
+<rect data-role="node-bounds" x="432" y="432" width="304" height="104" rx="4" fill="#ffffff" stroke="#2d3142" stroke-width="1"/>
+<text x="444" y="454" font-size="12" font-family="Geist,Arial,sans-serif" font-weight="600" fill="#2d3142" text-anchor="start">Restore authority</text>
+<text x="444" y="470" font-size="8" font-family="Geist Mono,Courier New,monospace" font-weight="400" fill="#5a6580" text-anchor="start">DATA / PLATFORM OPERATOR</text>
+<text x="444" y="486" font-size="11" font-family="Geist,Arial,sans-serif" font-weight="400" fill="#4f5d75" text-anchor="start">Recorded SQL point + Mongo config</text>
+<text x="444" y="500" font-size="11" font-family="Geist,Arial,sans-serif" font-weight="400" fill="#4f5d75" text-anchor="start">Issue external new sourceEpoch</text>
+</g>
+<g data-node-id="reconcile" data-parent="payment-owner">
+<rect data-role="node-bounds" x="816" y="432" width="304" height="104" rx="4" fill="#ffffff" stroke="#2d3142" stroke-width="1"/>
+<text x="828" y="454" font-size="12" font-family="Geist,Arial,sans-serif" font-weight="600" fill="#2d3142" text-anchor="start">Reconcile provider money</text>
+<text x="828" y="470" font-size="8" font-family="Geist Mono,Courier New,monospace" font-weight="400" fill="#5a6580" text-anchor="start">PAYMENT OPERATIONS</text>
+<text x="828" y="486" font-size="11" font-family="Geist,Arial,sans-serif" font-weight="400" fill="#4f5d75" text-anchor="start">Compare actual provider effects</text>
+<text x="828" y="500" font-size="11" font-family="Geist,Arial,sans-serif" font-weight="400" fill="#4f5d75" text-anchor="start">Restore never reverses Stripe</text>
+</g>
+<g data-node-id="money-gate" data-parent="payment-owner">
+<polygon points="968.0,616 1080,668.0 968.0,720 856,668.0" fill="#ffffff" stroke="#2d3142"/>
+<text x="968" y="663" font-size="11" font-family="Geist,Arial,sans-serif" font-weight="600" fill="#2d3142" text-anchor="middle">MATCH?</text>
+<text x="968" y="681" font-size="9" font-family="Geist,Arial,sans-serif" font-weight="400" fill="#4f5d75" text-anchor="middle">Source + money verified</text>
+</g>
+<g data-node-id="hold" data-parent="incident-owner">
+<rect data-role="node-bounds" x="64" y="616" width="288" height="104" rx="4" fill="#efeff0" stroke="#5a6580" stroke-width="1" stroke-dasharray="5,4"/>
+<text x="76" y="638" font-size="12" font-family="Geist,Arial,sans-serif" font-weight="600" fill="#2d3142" text-anchor="start">Hold &amp; investigate</text>
+<text x="76" y="654" font-size="8" font-family="Geist Mono,Courier New,monospace" font-weight="400" fill="#5a6580" text-anchor="start">INCIDENT COMMANDER</text>
+<text x="76" y="670" font-size="11" font-family="Geist,Arial,sans-serif" font-weight="400" fill="#4f5d75" text-anchor="start">Keep uncertain writes disabled</text>
+<text x="76" y="684" font-size="11" font-family="Geist,Arial,sans-serif" font-weight="400" fill="#4f5d75" text-anchor="start">Review timeline + record corrections</text>
+</g>
+<g data-node-id="rebuild" data-parent="service-owner">
+<rect data-role="node-bounds" x="1216" y="616" width="304" height="104" rx="4" fill="#ffffff" stroke="#2d3142" stroke-width="1"/>
+<text x="1228" y="638" font-size="12" font-family="Geist,Arial,sans-serif" font-weight="600" fill="#2d3142" text-anchor="start">Rebuild derived data</text>
+<text x="1228" y="654" font-size="8" font-family="Geist Mono,Courier New,monospace" font-weight="400" fill="#5a6580" text-anchor="start">APPLICATION / SERVICE OWNER</text>
+<text x="1228" y="670" font-size="11" font-family="Geist,Arial,sans-serif" font-weight="400" fill="#4f5d75" text-anchor="start">New-epoch snapshots; fence old reads</text>
+<text x="1228" y="684" font-size="11" font-family="Geist,Arial,sans-serif" font-weight="400" fill="#4f5d75" text-anchor="start">Cold cache + bounded refill</text>
+</g>
+<g data-node-id="reopen-gate" data-parent="service-owner">
+<polygon points="1368.0,792 1488,844.0 1368.0,896 1248,844.0" fill="#f1e7e4" stroke="#bf4520"/>
+<text x="1368" y="839" font-size="11" font-family="Geist,Arial,sans-serif" font-weight="600" fill="#2d3142" text-anchor="middle">READY?</text>
+<text x="1368" y="857" font-size="9" font-family="Geist,Arial,sans-serif" font-weight="400" fill="#4f5d75" text-anchor="middle">Checks + operator approval</text>
+</g>
+<g data-node-id="resumed" data-parent="service-owner">
+<rect data-role="node-bounds" x="1248" y="928" width="240" height="44" rx="22.0" fill="#ffffff" stroke="#2d3142"/>
+<text x="1368" y="954" font-size="12" font-family="Geist,Arial,sans-serif" font-weight="600" fill="#2d3142" text-anchor="middle">Reopen &amp; watch</text>
+</g>
+<text x="40" y="1012" font-size="11" font-family="Geist,Arial,sans-serif" font-weight="400" fill="#4f5d75" text-anchor="start">READY = smoke + invariants + load check; accept recorded data-loss window. Measure RPO/RTO in drills; audit history requires its own backup.</text>
+<text x="40" y="48" font-size="8" font-family="Geist Mono,Courier New,monospace" font-weight="500" fill="#5a6580" text-anchor="start">E-COMMERCE / LAYERED SUPPORTING DESIGN / IN REVIEW</text>
+<text x="40" y="88" font-size="32" font-family="Instrument Serif,Georgia,serif" font-weight="400" fill="#2d3142" text-anchor="start">Recovery activity &amp; owner handoffs</text>
+<text x="40" y="116" font-size="12" font-family="Geist,Arial,sans-serif" font-weight="400" fill="#4f5d75" text-anchor="start">Specified business responsibilities; proposed data and operating controls remain in review.</text>
+<text x="40" y="1036" font-size="9" font-family="Geist Mono,Courier New,monospace" font-weight="400" fill="#5a6580" text-anchor="start">Commerce API specifications + MongoDB/Redis proposals + supporting operations research | No implementation change</text>
+<line x1="40" y1="1052" x2="1544" y2="1052" stroke="#bfc0c0"/>
+<text x="40" y="1076" font-size="9" font-family="Geist,Arial,sans-serif" font-weight="400" fill="#4f5d75" text-anchor="start">Owned action</text>
+<text x="416" y="1076" font-size="9" font-family="Geist,Arial,sans-serif" font-weight="400" fill="#4f5d75" text-anchor="start">Diamond = decision gate</text>
+<text x="792" y="1076" font-size="9" font-family="Geist,Arial,sans-serif" font-weight="400" fill="#4f5d75" text-anchor="start">Control / owner handoff</text>
+<text x="1168" y="1076" font-size="9" font-family="Geist,Arial,sans-serif" font-weight="400" fill="#4f5d75" text-anchor="start">Hold unsafe reopening</text>
+</svg></div>
+<p class="source-note">View: Swimlane. A3 landscape, 1584 × 1120. Default light style.
+The matching PNG contains editable draw.io data. Supplied font fallbacks: Georgia, Arial and Courier New. Research, evidence and limitations: research.md and README.md.</p>
+</main></body></html>

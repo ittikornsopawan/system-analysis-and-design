@@ -12,7 +12,7 @@ approved_at: null
 
 Ittikorn requested Redis for caching, rate limiting and appropriate related uses on 2026-11-07. That establishes the requested direction. The concrete policies below are **proposed initial settings for approval**, not measured production limits or an already implemented feature.
 
-The current .NET 10 backend has custom CQRS, inner interfaces and Dapper/Npgsql adapters. `Program.cs` and `DependencyInjection.cs` contain no Redis service, distributed cache or rate limiter. The existing Authen design excluded infrastructure/IP rate limiting; this proposal is a separate extension, and retains its SQL-backed account lock/session rules. Those rules describe the specified design; the current Authen subset is not claimed to implement all of them. See [research](redis-research.md), [current architecture](../repository/project-structure.md), [Authen design](../../docs/superpowers/specs/2026-11-06-authen-design.md), and the [diagram source map](README.md).
+The current .NET 10 backend has custom CQRS, inner interfaces and Dapper/Npgsql adapters. `Program.cs` and `DependencyInjection.cs` contain no Redis service, distributed cache or rate limiter. The existing Authen design excluded infrastructure/IP rate limiting; this proposal is a separate extension, and retains its SQL-backed account lock/session rules. Those rules describe the specified design; the current Authen subset is not claimed to implement all of them. See [research](redis-research.md), [current architecture](https://github.com/ittikornsopawan/e-commerce-backend/blob/d8255183cba54d0c2b218607456b895a70df32f0/project-structure.md), [Authen design](../../docs/superpowers/specs/2026-11-06-authen-design.md), and the [diagram source map](README.md).
 
 This in-review document governs **proposed diagrams only**. Approval here is requested for the cache scope, freshness, quota settings, isolation and outage policy. Endpoint error-body contracts, actual dependencies, Redis deployment configuration and backend implementation require the subsequent approved specifications and verification. No package, service, API, migration or application code is changed by this proposal.
 
@@ -127,7 +127,7 @@ No runtime Redis tests, load tests, security exploit tests or backend builds hav
 
 ## 6. Diagram Changes and Decision Requested
 
-- Architecture: two **PROPOSED** Redis roles with separate eviction domains, Infrastructure access, cache fallback and distributed-limit behavior. The expiry responsibility moves to explanatory text to retain the nine-node budget.
+- Architecture: two **PROPOSED** Redis roles with separate eviction domains, Infrastructure access, cache fallback and distributed-limit behavior. Expiry/completion responsibilities remain explicit in notes; the revised logical view uses native layer/child decomposition rather than flattening responsibilities to meet the earlier nine-node budget.
 - Repository: proposed middleware/ports/adapters/tests are identified as proposed paths within existing layers; current source/project references remain factual.
 - System: Redis is an admission/cache boundary around the existing order lifecycle. It adds no order state, does not join PostgreSQL transactions, and invalidation happens after commit.
 
