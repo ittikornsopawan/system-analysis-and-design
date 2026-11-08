@@ -7,6 +7,19 @@ description: Shared checklist for planning and tracking non-trivial tasks withou
 
 Use one section per task, named `<scope>: <task-name>`. Preserve other task sections and mark an item complete only after its completion criterion is satisfied.
 
+## repository-wide: Make sequence guidance self-contained
+
+Status: Guidance correction and publication package complete under Ittikorn's existing “ส่ง pr มา” instruction for this skill change and subsequent direction to continue the correction. The example and presentation rules now live in the skill's existing reference and remain available if the original project example is moved or deleted. The agreed complete-flow and exact-SQL requirements are preserved. Actual remote publication is reported from GitHub in the handoff.
+
+1. [x] Inspect the current guidance, generator and original visual conventions; identify mandatory references to the external example.
+2. [x] Replace those references with explicit presentation rules and an embedded, complete spec/sequence example in the skill's existing reference.
+3. [x] Record the correction and verify metadata, links, example SQL parity, rendered output and independence from the original file.
+4. [x] Prepare the four-file follow-up commit and PR package, preserving the three unrelated handoffs; report the actual PR URL and state from GitHub.
+
+Verification: YAML parsing passed for the skill, reference and both task records. Markdown links/anchors resolve, and neither skill document retains a login-file dependency. The embedded sample's SQL matches its sample spec character-for-character; database lifecycle, structure, request-heading and public response checks pass. Copying only the generator and sample spec to an isolated temporary directory with no project/login files successfully generated the matching scaffold. PlantUML rendered the embedded complete example to PNG/SVG; visual inspection passed and occurrence counting found all 6 SQL lines visible. `api-sequence-spec` passed all 83 current specs; `git diff --check` passed. No generator, checker, endpoint contract or production diagram was changed.
+
+Delivery readiness: `codex/self-contained-api-sequence` targets `main`; scoped preflight reports 4 task files and no blockers. The three untracked handoff documents stay outside this package. The commit message and six-section PR body are prepared; the actual PR link and status are determined after publication.
+
 ## repository-wide: Complete API sequence authoring guidance
 
 Status: Complete. Guidance confirmed by Ittikorn on 2026-11-08 with “ใช่” in response to the concrete proposal: complete flow in the login presentation style, strict SQL equality allowing only note indentation and leading-apostrophe escaping, and documentation-only changes. Scope is the API contract skill and its existing sequence reference, with task bookkeeping. The login sequence is the presentation prototype; each endpoint's spec remains the source of behavior and SQL.
