@@ -19,6 +19,12 @@ description: Repository-wide and project-specific lessons captured from user cor
 
 ## Repository-wide
 
+### 2026-11-08 — Integrate current main before PR publication
+
+- **Correction**: The owner requires merging current main into the task branch and resolving conflicts before opening a PR.
+- **Root cause**: The delivery skill went directly from task commit to push/PR, while its blanket merge prohibition also obscured the permitted direction of integration.
+- **Corrected behavior**: The `commit-and-pr` skill now distinguishes main-to-task integration from merging a PR. Fetch the base, merge into the task branch, preserve valid work on both sides, verify the merged result and publish only after the integration gate passes; keep main and published history protected.
+
 ### 2026-11-08 — Keep required skill examples inside the skill
 
 - **Correction**: The sequence guidance required reading a particular endpoint's diagram to learn its format and storytelling, so moving or deleting that file would remove the example.

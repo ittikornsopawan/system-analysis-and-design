@@ -7,6 +7,19 @@ description: Shared checklist for planning and tracking non-trivial tasks withou
 
 Use one section per task, named `<scope>: <task-name>`. Preserve other task sections and mark an item complete only after its completion criterion is satisfied.
 
+## repository-wide: Integrate main before opening a PR
+
+Status: Guidance, verification and publication package complete. Ittikorn requested that `commit-and-pr` merge the latest main into the task branch, resolve conflicts and verify the result before opening the PR. Update the existing skill, checklist, formats and PR template; clarify the named-workspace rule's merge wording to match the approved design's prohibition on merging PRs into main. Preserve protected-main and no-force-push boundaries. Keep the prior API skill PR separate. The final integrated SHA and actual PR state are reported from Git/GitHub after publication.
+
+1. [x] Read the delivery skill, preflight behavior, applicable rules and lessons; start an independent task branch from current origin/main.
+2. [x] Define the mandatory main-to-task merge, conflict resolution, post-merge checks and publication evidence consistently across the existing resources.
+3. [x] Exercise clean and conflicting merges in isolated temporary repositories; verify metadata, links and the scoped diff.
+4. [x] Prepare the scoped delivery package and integration/check commands; report actual base integration and publication evidence from Git/GitHub.
+
+Verification: Isolated local Git repositories exercised a real clean merge, a real same-position task-plan conflict, an already-up-to-date result and an ordinary push after integrating main into a previously published task branch. Both sides' content survived, the integrated base was an ancestor of HEAD, no unmerged entries remained, final PR diffs contained only task changes and integration did not change remote main. YAML, skill metadata/link/anchor checks and `git diff --check` passed. The preflight script is unchanged and its limited uncommitted-file coverage is now explicit; integration evidence is a separate required gate. The named-workspace clarification follows the approved design's explicit no-PR-merge safety boundary; no registry capability or lifecycle operation changed.
+
+Delivery readiness: Named-workspace regression tests passed 15/15, scoped preflight reports seven task files and no blockers, and the task commit/PR messages are prepared. The three untracked handoff documents remain excluded. No API, schema, backend or production diagram changes require project runtime/database tests. The Python skill validator's missing PyYAML dependency is covered by Ruby YAML parsing and direct metadata/reference validation without installing dependencies.
+
 ## repository-wide: Operational diagram-creator and script separation
 
 Status: Implementation and verification complete on `chore/jinny-diagram-creator-skill`. Direct owner request: adapt Jinny's verified diagram work into the existing `.agents/skills/diagram-creator` and move reusable Python out of `e-commerce/diagram`. Scope includes that skill, its registry/role pointer, task plan, diagram references and `e-commerce/scripts/diagrams`; delivery none. Named workspace prepared from current main; both existing diagram generator checks passed before changes.
