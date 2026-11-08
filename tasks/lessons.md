@@ -19,6 +19,13 @@ description: Repository-wide and project-specific lessons captured from user cor
 
 ## Repository-wide
 
+### 2026-11-08 — Feed every API authoring error back into the skill
+
+- **Correction**: The owner requires every error to produce a skill improvement as well as a correction to the work.
+- **Root cause**: The API skill's completion criteria covered artifact verification but did not require every discovered failure to improve the reusable authoring method.
+- **Corrected behavior**: Apply the error improvement loop in `.agents/skills/api-contract-design/SKILL.md` for self-discovered, tooling/check/render and review failures; complete and verify the preventive skill change before closing the task.
+- **Applied evidence**: Delivery rebase stopped because two independent task sections were inserted at the same position in `tasks/todo.md`. Both sections were retained and all upstream task content was verified byte-for-byte. The loop's correction step now explicitly requires preserving valid overlapping edits and verifying unrelated content.
+
 ### 2026-11-08 — Keep required skill examples inside the skill
 
 - **Correction**: The sequence guidance required reading a particular endpoint's diagram to learn its format and storytelling, so moving or deleting that file would remove the example.

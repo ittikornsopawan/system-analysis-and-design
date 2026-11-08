@@ -16,6 +16,8 @@ Load first: `.agents/README.md`, `.agents/rules/global.md`, `.agents/knowledge/p
 
 ## Procedure
 
+Apply the [error improvement loop](#learn-from-every-error) whenever an error is discovered during any step, then resume the procedure with the corrected guidance.
+
 1. **Inspect and pick a prototype.** Read the schema, then choose the closest existing spec folder (simple master table, table with a parent, table with nested children, public page, permission-guarded write). **Copy the whole folder** and edit it; do not write from scratch. Sentences and SQL that were already reviewed are worth reusing.
 2. **List the rules to decide** (who may call, what makes a 409, what happens on delete, what is public, what is hidden). Ask the owner about anything that changes behaviour or data; decide small things yourself and record them (`../data-modeling/references/verification-and-reporting.md`). Changing a delivered spec needs the owner's yes because it reaches several endpoints.
 3. **Settle the schema first.** If a rule needs a column, a unique index or a foreign key action, use the `data-modeling` skill (test red, then migration green) before the spec text, so the SQL in the spec has real columns.
@@ -25,7 +27,16 @@ Load first: `.agents/README.md`, `.agents/rules/global.md`, `.agents/knowledge/p
 7. **Add the checker** as a new sub-command in `e-commerce/db/tests/check_docs.py` (`references/checker-patterns.md`) and register the status codes of the new endpoints in the existing `status-codes` / `biz-codes` checks where they apply.
 8. **Run everything** (commands in `../data-modeling/references/verification-and-reporting.md`): all `check_docs.py` sub-commands, `audit_all.py` with `0 findings`, `run_db_tests.sh` when a schema changed.
 9. **Mutation-test the checker** with `../data-modeling/scripts/mutation_harness.py`. Aim for every case caught; a slip means the checker is too loose.
-10. **Report** with the decision-report template. State which rules are decided by the lead SA and which the owner approved, and write the approval sentence into the spec ("approved by the product owner"). Do not `git add` or commit.
+10. **Report** with the decision-report template. State which rules are decided by the lead SA and which the owner approved, and write the approval sentence into the spec ("approved by the product owner"). Include the preventive skill changes and verification evidence for errors encountered during the task. Do not `git add` or commit.
+
+## Learn from every error
+
+Every error encountered while using this skill triggers an improvement in the same task, whether discovered by the author, a failed command/check/render, or feedback from the owner or reviewer.
+
+1. **Find and correct the cause.** Capture the failing evidence, distinguish an authoring mistake from a tooling/environment failure, and correct every affected artifact. For overlapping edits, preserve both valid contributions and verify that unrelated content remains unchanged. Recheck paired specs/sequences and shared rules where relevant; keep behavior changes within the specification approval process.
+2. **Improve the skill immediately.** Make the smallest preventive change in the governing instructions, bundled reference, example, template or helper. If a rule already covers the error, strengthen its trigger, example or completion check so the mistake is caught next time. Update the existing source of truth rather than accumulating duplicate rules or incident stories. Every error requires an actual skill improvement before the task closes.
+3. **Prove the improvement.** Repeat the scenario that exposed the error, then run the checks appropriate to the changed material. For prose, review the revised instruction against that concrete failure; for a changed helper/checker, run its tests and required mutation checks. Preserve the intended requirement when fixing a check. Report any blocked verification and leave its completion criterion open.
+4. **Record and hand off.** Update `tasks/lessons.md` with the error, root cause, corrected behavior and the path of the preventive skill change. Update `tasks/todo.md`, and report what changed in the skill and what evidence verifies it. Complete both the artifact correction and the reusable improvement before declaring the task done.
 
 ## Outputs
 
@@ -39,6 +50,7 @@ Load first: `.agents/README.md`, `.agents/rules/global.md`, `.agents/knowledge/p
 - All `check_docs.py` sub-commands are OK, `audit_all.py` says `0 findings`, `run_db_tests.sh` says `ALL PASSED` if a schema changed.
 - The new checker was mutation-tested and caught every case.
 - The report lists every decision made without the owner and every open question.
+- Every encountered error has a corrected artifact, a preventive improvement in the skill or its bundled resources, a lesson record and verification evidence under the error improvement loop.
 
 ## Where the detail is
 
