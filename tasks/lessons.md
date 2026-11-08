@@ -273,3 +273,9 @@ description: Repository-wide and project-specific lessons captured from user cor
 - **Correction**: The checker pull request #54 was opened and not reported to the lead; the owner merged it before the lead had reviewed it. The lead asked to be told before the owner merges, every time.
 - **Root cause**: The report to the lead was left for the end of the task, as a part of the final handoff, so the gap between opening and merging was not covered.
 - **Corrected behavior**: Send the lead the link right after `gh pr create` and the first PR status call, before any other step, with the checks and the open questions; never leave it for the final report.
+
+### 2026-11-08 — Prove that every SQL line is drawn, not only that the SQL equals the spec
+
+- **Correction**: The INSERT written by hand in PR #58 had value lines that start with a quote after the indentation; PlantUML draws such a line as a comment, so six lines were missing from the picture. `api-sequence-spec` passed because it reads the raw text, and my first rendered check passed too because it asked only whether each line appears somewhere in the picture.
+- **Root cause**: The edit script encoded a line only when the quote was in the first column, and the rendered check used a substring test that a repeated line (`'<sequence.userId>',` appears twice) satisfies by luck.
+- **Corrected behavior**: Encode a leading quote after the indentation (`&#39;`), and check the render by counting: every SQL line must appear in the picture at least as many times as it appears in the spec.
