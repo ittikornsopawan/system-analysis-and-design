@@ -17,7 +17,7 @@ The **primary checkout** is the repository checkout that owns the root `.workspa
 - Use only enabled agents whose lowercase slug, role, scope, and workspace key pass registry validation.
 - Only the authorized user grants or revokes `delegate-delivery`. An agent cannot grant the capability to itself or another agent, and the capability is never transitive.
 - Registry changes affect authority only after merge into `origin/main`. Never trust authority read from a task branch or managed workspace.
-- `delegate-delivery` authorizes another agent to commit, push its task branch, and open its own pull request when the assignment explicitly says `delivery: open-pr`. It does not authorize business or design approval, merging, auto-merge, force pushing, hook bypass, or pushing to `main`.
+- `delegate-delivery` authorizes another agent to commit, integrate the latest base into its task branch, push that branch, and open its own pull request when the assignment explicitly says `delivery: open-pr`. It does not authorize business or design approval, merging a PR or task branch into `main`, auto-merge, force pushing, hook bypass, or pushing to `main`.
 - Every named agent may open only its own task pull request and only under explicit user or validated delegated authorization. No agent merges a pull request.
 
 ## Assignment Contract
@@ -58,6 +58,6 @@ Before assigning new work, reconcile the previous pull request. A closed but unm
 ## Safety Gates
 
 - Block on an unsafe or symlinked path, invalid registry, disabled agent, remote mismatch, nested workspace, dirty state, divergent `main`, branch collision, concurrent lock, unauthorized delivery, baseline failure, missing GitHub evidence, mismatched pull-request base or head, or local commits that are not the verified PR head.
-- Never stash, reset, clean, overwrite, re-clone, force push, bypass hooks, merge, enable auto-merge, delete a remote branch, or delete a workspace automatically.
+- Never stash, reset, clean, overwrite, re-clone, force push, bypass hooks, merge a PR or task branch into `main`, enable auto-merge, delete a remote branch, or delete a workspace automatically. Base-to-task integration for authorized PR delivery follows `commit-and-pr` and must preserve unrelated work and the protected base branch.
 - Treat stale locks as evidence to inspect, not permission to remove them. Only the user or an authorized lead may approve lock recovery after proving no session is active.
 - Existing `.claude/worktrees/*`, external Codex worktrees, and unrelated dirty worktrees remain untouched.
