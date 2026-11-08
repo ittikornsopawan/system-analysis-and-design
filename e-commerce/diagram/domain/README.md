@@ -26,7 +26,7 @@ description: สารบัญdomain modelจากฐานข้อมูล5
 - [generate_domain_diagrams.py](generate_domain_diagrams.py): สร้างภาพ/คำอธิบายและตรวจcoverageกับsource
 - [domain-model-verification.md](domain-model-verification.md): ผลตรวจภาพจริง, browser, extractionและnative round trips
 
-ใช้คำสั่งต่อไปนี้จากrepository root Generatorใช้shared rendering helpersในโฟลเดอร์แม่โดยไม่ย้ายชุดarchitecture/operationsเดิม
+ใช้คำสั่งต่อไปนี้จากrepository root Generatorใช้ shared rendering helpers ใน `../scripts/` โดยเก็บ model, inventory และ output ของชุดนี้ไว้ใน `domain/`
 
 ```sh
 python3 -B e-commerce/diagram/domain/generate_domain_diagrams.py

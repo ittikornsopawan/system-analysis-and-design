@@ -3550,8 +3550,9 @@ AUTHEN_NEEDLES = {
            "Row status must be one of ACTIVE, INACTIVE.", "Page Index and Page Size must be greater than 0", "Request: `GET v1/user/address?id=%s`" % AUTHEN_ADDRESS_ID],
 }
 AUTHEN_COUNTED = {
-    "10": [("WHERE ua.user_id = '<sequence.userId>'\nAND ua.row_status <> 'DELETED'", 2), ("AND ua.title ILIKE '%<sequence.search>%' -- only when search is specified", 2),
-           ("AND ua.row_status = '<sequence.rowStatus>' -- only when rowStatus is specified", 2)],
+    "10": [("WHERE ua.user_id = '<sequence.userId>'\nAND ua.row_status <> 'DELETED'", 2), ("AND ('<sequence.searchPattern>' IS NULL OR ua.title ILIKE '<sequence.searchPattern>') -- only when search is specified", 2),
+           ("AND ('<sequence.rowStatus>' IS NULL OR ua.row_status = '<sequence.rowStatus>') -- only when rowStatus is specified", 2),
+           ("AND ('<sequence.id>' IS NULL OR ua.id = '<sequence.id>') -- only when id is specified", 2)],
     "05": [("INSERT INTO authen.t_user_access_token (", 1), ("INSERT INTO authen.t_user_refresh_token (", 1),
            ("AND row_status = 'ACTIVE' -- only on replay outside the 10-second grace window", 2)],
     "06": [("WHERE session_id = '<sequence.sessionId>'\nAND user_id = '<sequence.userId>'\nAND row_status = 'ACTIVE'", 2)],
@@ -3871,7 +3872,6 @@ LEGACY_SEQUENCES = (
 # must still fail at least one of them: a file that passes both has to leave this list. Remove an entry in the same
 # change that adds the missing answers to the diagram.
 LEGACY_TOKEN_SEQUENCES = (
-    "authen-and-author/10-inquiry-user-address",    # no Verify JWT / 401 step, no 408
     "consent/02-upsert-consent",                    # no Verify JWT / 401 step, no 408
     "consent/03-inquiry-consent",                   # no Verify JWT / 401 step, no 408
     "consent/06-upsert-consent-type",               # no Verify JWT / 401 step, no 408
@@ -6014,6 +6014,122 @@ def check_active_consent_flow() -> int:
 COMMANDS['active-consent-flow'] = check_active_consent_flow
 
 
+def check_address_inquiry_flow() -> int:
+    """Check current-caller address count/page consistency and safe bound filters."""
+    path=AUTHEN_SPECS['10'];md=read(path);wsd=read(str(Path(path).with_name('sequence.wsd')));errors=[]
+    for needle in ('status: in-review','approved_by: null','approved_at: null','2026-11-07-api-review-design.md',
+                   'Count and page share the same repeatable-read snapshot','exact same userId/non-DELETED/id/searchPattern/rowStatus predicates',
+                   'offset outside nonnegative BIGINT','entire pattern as text','existing case-insensitive ILIKE wildcard semantics',
+                   'other user\'s address returns an empty list','An id filter is still paginated',
+                   'skip the list query','items=[] while totalItems/totalPages remain positive',
+                   'exactly five data keys','Require the returned page row count','COMMIT only after complete decryption/mapping succeeds',
+                   'Scenario correspondence with sequence.wsd'):
+        if needle not in md:errors.append(f'address-inquiry spec missing {needle!r}')
+    operations=spec_database_operations(md);expected=('QUERY - Check current credential and user','QUERY - Get total items','QUERY - Get user addresses')
+    if tuple(h for _,h,_ in operations)!=expected:errors.append('inquiry needs current credential, identical-filter count and optional page in execution order')
+    sql={h:re.sub(r'--[^\n]*','',s) for _,h,s in operations}
+    required={expected[0]:['JOIN authen.m_user u ON u.id = at.user_id',"at.token = '<sequence.accessTokenHash>'","at.user_id = '<sequence.userId>'","at.row_status = 'ACTIVE'","at.expired_at > '<sequence.now>'","u.row_status = 'ACTIVE'"]}
+    filters=["WHERE ua.user_id = '<sequence.userId>'","AND ua.row_status <> 'DELETED'","AND ('<sequence.id>' IS NULL OR ua.id = '<sequence.id>')","AND ('<sequence.searchPattern>' IS NULL OR ua.title ILIKE '<sequence.searchPattern>')","AND ('<sequence.rowStatus>' IS NULL OR ua.row_status = '<sequence.rowStatus>')"]
+    for h in expected[1:]:required[h]=filters
+    required[expected[1]]=filters+['COUNT(ua.id) as total_items']
+    required[expected[2]]=filters+["LIMIT '<sequence.pageSize>' OFFSET '<sequence.offset>'"]
+    for h,needles in required.items():
+        for needle in needles:
+            if needle not in sql.get(h,''):errors.append(f'{h} missing {needle}')
+    def where(h):
+        match=re.search(r'\bWHERE\b(.*?)(?:\bORDER BY\b|\bLIMIT\b|$)',sql.get(h,''),re.S)
+        return normalize(match[1]) if match else None
+    if where(expected[1])!=where(expected[2]):errors.append('count/list WHERE predicates must be identical')
+    projection=re.search(r'SELECT\s+(.*?)\s+FROM\s',sql.get(expected[2],''),re.S)
+    columns=['ua.id as user_address_id','ua.title','ua.is_default','ua.address','ua.city','ua.state','ua.postal_code','ua.country','ua.row_status']
+    if not projection or normalize(projection[1])!=normalize(',\n'.join(columns)):errors.append('page must return only nine address fields, no user/token/audit data')
+    if not re.search(r"ORDER BY ua\.is_default DESC, ua\.created_at DESC, ua\.id(?: ASC)?\s+LIMIT",sql.get(expected[2],'')):errors.append('page sort must end with ascending unique id after default/newest')
+    if 'NOW()' in '\n'.join(sql.values()) or SEQUENCE_LOCK.search('\n'.join(sql.values())) or any(not s.lstrip().startswith('SELECT') for s in sql.values()):errors.append('inquiry must be SELECT-only without locks and use freshly bound now')
+    actual,lifecycle=sequence_database_operations(wsd);errors+=lifecycle
+    if [(t.split('.')[-1],h,s) for t,h,s in operations]!=actual:errors.append('address-inquiry spec/sequence SQL differs character-for-character or order')
+    for _,heading,_ in operations:
+        if f'app -> infra: {heading}' not in wsd:errors.append(f'{heading} needs Application request')
+        mapping=re.search(rf'infra -> (\w+): {re.escape(heading)}\n.*?\1 -> infra: Return ([^\n]+)\n.*?deactivate \1\n\s*infra -> app: Return ([^\n]+)',wsd,re.S)
+        if not mapping or mapping[2]!=mapping[3]:errors.append(f'{heading} database/Application result mapping differs')
+    for needle in ('Verify JWT signature/issuer/audience/expiry/UUID sub','userId = verified sub; accessTokenHash = SHA-256 exact JWT',
+                   'checked offset = (pageIndex - 1) * pageSize; reject BIGINT overflow',
+                   'Bind omitted id/rowStatus/searchPattern as typed SQL NULL; searchPattern = percent + supplied search + percent, preserve ILIKE wildcards',
+                   'Capture fresh server UTC now immediately before credential read; recheck JWT exp',
+                   'alt JWT still unexpired at fresh now',
+                   'alt totalItems = 0','items = []; skip page query',
+                   'Require returned row count = min(pageSize, max(0, totalItems - offset)); mismatch is internal failure',
+                   'Map each row to exactly userAddressId/title/isDefault/address/city/state/postalCode/country/rowStatus; decrypt five sensitive fields',
+                   'items = []; preserve positive totalItems/totalPages; do not return 404',
+                   'data = items/pageIndex/pageSize/totalItems/totalPages; explicit empty array; exclude userId/token/hash/audit'):
+        if needle not in wsd:errors.append(f'address inquiry sequence missing {needle!r}')
+    traces,structure=login_sequence_paths(wsd);errors+=structure
+    from collections import Counter
+    outcomes=[];modes=Counter();unauthorized=[]
+    for trace in traces:
+        response=[e for e in trace if e.startswith('app -> api: HTTP ')]
+        if len(response)!=1:errors.append('address inquiry trace needs one terminal outcome');continue
+        code=int(response[0].split('HTTP ')[1].split()[0]);outcomes.append(code)
+        def ordered(*parts):
+            pos=[next((i for i,e in enumerate(trace) if part in e),-1) for part in parts]
+            return -1 not in pos and pos==sorted(set(pos))
+        queries=[e for e in trace if e.startswith('infra -> ')];begun=any(e.startswith('app -> infra: BEGIN') for e in trace)
+        if queries and not ordered('checked offset = (pageIndex - 1) * pageSize','Verify JWT','userId = verified sub','Bind omitted id/rowStatus/searchPattern','BEGIN REPEATABLE READ READ ONLY','Capture fresh server UTC now',expected[0]):errors.append('address read needs verified caller, typed filters and fresh credential snapshot')
+        if any(expected[1] in e for e in trace) and not ordered(expected[0],expected[1]):errors.append('count must follow current token/user gate')
+        if any(expected[2] in e for e in trace) and not ordered(expected[1],expected[2]):errors.append('page must follow its same-snapshot total count')
+        if any(': QUERY' not in e for e in queries):errors.append('address inquiry may never write')
+        if code==200:
+            if any('items = []; skip page query' in e for e in trace):mode='zero'
+            elif any('preserve positive totalItems/totalPages' in e for e in trace):mode='beyond'
+            else:mode='rows'
+            modes[mode]+=1
+            if len(queries)!=(2 if mode=='zero' else 3):errors.append('zero count skips page; positive count must query page')
+            if not ordered(expected[1],'data = items/pageIndex','app -> infra: COMMIT','HTTP 200') or any('ROLLBACK' in e for e in trace):errors.append('success requires complete mapping/commit before 200')
+            if mode!='zero' and not any('Require returned row count =' in e for e in trace):errors.append('positive count must validate page cardinality')
+            if 'all five pagination keys' not in response[0]:errors.append('address list response must have complete metadata')
+        elif begun:
+            if not ordered('BEGIN','ROLLBACK',f'HTTP {code}') or any(e=='app -> infra: COMMIT' for e in trace):errors.append('read/mapping failure rolls back before error')
+            if code==401 and len(queries)>1:errors.append('invalid current credential must not query addresses')
+        elif code not in (400,401) or queries:errors.append('invalid input/JWT must execute no SQL')
+        if code==401:unauthorized.append(len(queries))
+    if Counter(outcomes)!=Counter({200:3,400:1,401:3,408:1,500:1}) or modes!=Counter({'zero':1,'rows':1,'beyond':1}) or sorted(unauthorized)!=[0,0,1]:errors.append(f'incomplete address inquiry paths: {dict(Counter(outcomes))}; modes={dict(modes)}; 401 SQL={unauthorized}')
+    item_keys={'userAddressId','title','isDefault','address','city','state','postalCode','country','rowStatus'}
+    for title,code in {'Success':200,'Success - By Id':200,'Success - Not Found':200,'Success - Page Beyond Range':200,'Fail - Bad Request':400,'Fail - Unauthorized':401,'Fail - Request Timeout':408,'Fail - Internal Server Error':500}.items():
+        try:
+            obj=authen_json(md,title);status=obj['status']
+            if status['code']!=code or code==500 and 'bizCode' in status:errors.append(f'incorrect address inquiry {title} envelope')
+            if code==200:
+                data=obj['data']
+                if set(data)!={'items','pageIndex','pageSize','totalItems','totalPages'}:errors.append(f'{title} needs exactly five data keys');continue
+                if any(type(data[k]) is not int for k in ('pageIndex','pageSize','totalItems','totalPages')) or data['pageIndex']<1 or not 1<=data['pageSize']<=100 or data['totalItems']<0:errors.append(f'{title} pagination must use valid integer bounds');continue
+                total=data['totalItems'];size=data['pageSize'];offset=(data['pageIndex']-1)*size
+                if data['totalPages']!=(0 if total==0 else (total+size-1)//size) or len(data['items'])!=min(size,max(0,total-offset)):errors.append(f'{title} totals/page cardinality incorrect')
+                for item in data['items']:
+                    if set(item)!=item_keys or item['rowStatus']=='DELETED':errors.append(f'{title} leaks/misses fields or lists DELETED')
+                ids=[x['userAddressId'] for x in data['items']]
+                if len(ids)!=len(set(ids)):errors.append(f'{title} duplicates address ids')
+                flags=[x['isDefault'] for x in data['items']]
+                if any(type(x) is not bool for x in flags) or sum(flags)>1 or flags!=sorted(flags,reverse=True):errors.append(f'{title} default flag/order incorrect')
+                if title=='Success - Page Beyond Range' and (data['items'] or total==0 or data['pageIndex']<=data['totalPages']):errors.append('beyond-range example needs empty page with positive totals')
+        except (TypeError,KeyError,ValueError):errors.append(f'missing/malformed address inquiry {title} example')
+    errors+=json_blocks_parse(md);errors+=table_lines_aligned(md)
+    if '--rendered-svg' in sys.argv:
+        import xml.etree.ElementTree as ET
+        try:
+            root=ET.parse(sys.argv[sys.argv.index('--rendered-svg')+1]).getroot()
+            expected_lines=Counter(' '.join(l.split()) for _,_,s in operations for l in s.splitlines() if l.strip())
+            visible=Counter(' '.join(''.join(e.itertext()).split()) for e in root.iter() if e.tag.endswith('}text'))
+            missing=expected_lines-visible
+            if missing:errors.append(f'rendered address-inquiry SQL missing {sum(missing.values())} lines')
+            else:print(f'OK: rendered address-inquiry SQL ({sum(expected_lines.values())}/{sum(expected_lines.values())} visible lines)')
+        except (IndexError,OSError,ET.ParseError) as exc:errors.append(f'cannot verify address inquiry SVG: {exc}')
+    if errors:return fail('; '.join(errors))
+    print('OK: address-inquiry-flow (9 terminal traces; exact SQL, current credential gate and consistent filtered pagination)')
+    return 0
+
+
+COMMANDS['address-inquiry-flow'] = check_address_inquiry_flow
+
+
 def check_profile_inquiry_flow() -> int:
     """Check own-profile live credential projection, read consistency and complete nullable output."""
     path=AUTHEN_SPECS['08'];md=read(path);wsd=read(str(Path(path).with_name('sequence.wsd')));errors=[]
@@ -6230,6 +6346,16 @@ def check_role_upsert_flow() -> int:
         for n in ns:
             if n not in sql.get(h,''):errors.append(f'{h} missing {n!r}')
     if 'NOW()' in '\n'.join(sql.values()) or 'created_at =' in sql.get(heads[8],''):errors.append('role upsert uses fresh bound now and preserves creation audit on update')
+    # Strict presentation decoding removes only the added note prefix, never SQL whitespace.
+    source_lines=wsd.splitlines()
+    for i,line in enumerate(source_lines):
+        request=re.match(r'^( *)infra -> \w+: (?:QUERY|INSERT|UPDATE) - ',line)
+        if not request:continue
+        prefix=' '*(len(request[1])+8);cursor=i+3
+        while cursor<len(source_lines) and source_lines[cursor].strip()!='end note':
+            raw=source_lines[cursor]
+            if raw and not raw.startswith(prefix):errors.append('every SQL line must retain the exact added presentation prefix')
+            cursor+=1
     actual,lifecycle=sequence_database_operations(wsd);errors+=lifecycle
     from collections import Counter
     expected=Counter((t.split('.')[-1],h,s) for t,h,s in ops)

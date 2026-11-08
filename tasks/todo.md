@@ -7,6 +7,27 @@ description: Shared checklist for planning and tracking non-trivial tasks withou
 
 Use one section per task, named `<scope>: <task-name>`. Preserve other task sections and mark an item complete only after its completion criterion is satisfied.
 
+## repository-wide: Complete API sequence authoring guidance
+
+Status: Complete. Guidance confirmed by Ittikorn on 2026-11-08 with “ใช่” in response to the concrete proposal: complete flow in the login presentation style, strict SQL equality allowing only note indentation and leading-apostrophe escaping, and documentation-only changes. Scope is the API contract skill and its existing sequence reference, with task bookkeeping. The login sequence is the presentation prototype; each endpoint's spec remains the source of behavior and SQL.
+
+1. [x] Read global and Markdown rules, relevant lessons, the requested skills, the existing API skill, login prototype, generator and parity checker; preserve unrelated working-tree changes.
+2. [x] Confirm the concrete sequence guidance, including the meaning of exact SQL parity and the documentation-only change boundary, with the owner before editing the skill.
+3. [x] Update the existing skill and sequence reference to require complete endpoint-specific flows in the login format, with explicit SQL parity and rendered verification criteria.
+4. [x] Validate skill metadata, reference links, consistency with the prototype and tooling, and the scoped diff; report existing checker failures separately.
+
+Discovery evidence: The current sequence reference already copies SQL through a skeleton but does not fully describe the login narrative or require rendering every completed diagram. The SQL checker decodes a leading `&#39;` and normalizes whitespace, so its success alone does not establish character-for-character SQL equality. No endpoint, generator, checker, or backend change is planned.
+
+Verification: Ruby YAML parsing passed for all three changed Markdown files; skill name/description constraints, reference links/anchor, fence balance and `git diff --check` passed. A separate strict comparison of the login prototype passed all 15 SQL occurrences without whitespace normalization; `check_docs.py login-flow` passed all 7 outcome paths. `quick_validate.py` could not start because both installed Python interpreters lack PyYAML; the metadata and structural checks above were used instead, without installing dependencies. `api-sequence-spec` retains the pre-existing failure at `authen-and-author/08-inquiry-user-profile/sequence.wsd`: it already has token/timeout answers but remains in `LEGACY_TOKEN_SEQUENCES`. That unrelated checker issue was not changed. No API spec, sequence, generator, checker or backend was modified; runtime/database tests, generator mutation tests and diagram rendering were not required for this documentation-only change.
+
+Delivery authorization (2026-11-08): Ittikorn requested “ส่ง pr มา”, directly authorizing a commit, task-branch push and PR against `main` for these two skill documents and this task record. The existing checkout sequence diagram edits and three untracked handoff documents belong to other work and are excluded.
+
+- [x] Create the task branch, run scoped delivery preflight and inspect the exact staged files.
+- [x] Commit the three-file package, reconcile with current `origin/main` and verify the final PR diff.
+- [x] Prepare the authorized task-branch push and PR body with verification, approved decisions and exclusions; derive the final publication URL/status from GitHub for the handoff.
+
+Delivery verification: The task commit was rebased onto `origin/main` at `def2eb2`; all five excluded files were restored byte-for-byte, and the PR diff contains only the two skill documents and this task record. Scoped preflight has no blockers. The previously observed legacy-list failure was fixed upstream: `api-sequence-spec` now passes all 83 specs, and `login-flow` passes all 7 outcome paths. No API checker change belongs to this task. The committed checklist records publication readiness; the actual PR URL and remote state are reported from GitHub after publication.
+
 ## e-commerce: Migrate backend to a Component Repository
 
 Status: Implementation and verification complete; approved Showcase PR package prepared. Ittikorn explicitly approved M1–M8 in `docs/superpowers/specs/2026-11-07-e-commerce-component-migration.md` with “อนุมัติตามแผน ใช้ repository แบบ Public”. Approval was persisted at 2026-11-07T14:00:23Z before export/publication/moves. Continue as ordinary Codex in the current checkout under the earlier selected backend-developer perspective. The scope includes public `ittikornsopawan/e-commerce-backend`, filtered backend history, backup, manifest-managed checkout and a separate Showcase migration PR without merging. Actual remote PR delivery is verified through GitHub; PR #33 is merged.
@@ -746,10 +767,27 @@ Scope: authen-and-author/09-upsert-user-address plus checker, shared confirmed-d
 - [x] Revise spec and generated-then-completed sequence together: full-body/Q21 validation, post-lock current credential, owned/non-DELETED target, serialized quota, nullable insert id, computed default and 14 atomic insert/update/delete/promotion traces.
 - [x] Add exact SQL/path/semantic/render checks: 66/66 mutations caught, including old checker Delete exception; synchronized wrong guards, clear-after-insert and Q21-after-BEGIN ordering, original sequence, whitespace and real renderer omission rejected. Nine exact SQL definitions passed UTC PostgreSQL reference Application/default logic, quota and credential lock waits confirmed via pg_stat_activity, rollback/default promotion/soft-history/ownership fixtures. Diagram inspected with nine participants and 136/136 visible SQL lines including reused blocks; no backend/encryption-runtime claim.
 - [x] Run pre-integration checkers (51/51), audit (53 tables/0 findings), database suite (ALL PASSED), skeleton tests (12/12), and authorized preflight (five paths/no blockers).
-- [ ] Integrate latest main including inquiry #60 and architecture #61, rerun all combined checks, open one address API PR and continue from main.
+- [x] Integrate latest main including inquiry #60 and architecture #61, rerun all combined checks, deliver address API PR #62 and continue from main; #62 is now verified merged.
 
 
 Integration finding: GitHub merge commit 87162eb for inquiry #60 re-added its completed API 08 token/timeout exemption (verified against its first parent b1c5c90). The full merged check rejects it. Remove only that stale checker entry; preserve the API 08 artifacts and every imported checker/function. This is the cause of the main baseline regression, not permission to weaken the legacy check or modify another endpoint.
+
+## e-commerce: Peter API review — own-user address inquiry (API 14, 2026-11-08)
+
+Authority: original API review, owner Q13 credentials and Q15 immediate main-based continuation without a merge gate; every checker must pass before push. One API pair per PR. Assignment includes the shared checker and tasks. No backend/schema implementation.
+
+- [x] Preserve PR #62/history and return to clean main. Reproduce list/count snapshot mismatch in isolated PostgreSQL during read-only analysis.
+- [x] Run every baseline command plus audit/database tests; record the exact known main API08 stale exemption failure honestly in /private/tmp/peter_address_inquiry_red_baseline.log. No other failing command is accepted.
+- [x] Apply the same one-line shared-checker repair already delivered in #62 on this fresh main-based branch, without changing the API08 pair; all 51 documentation checks plus audit/database baselines passed before API10 edits. This bounded repair honors Q15 rather than waiting for #62 to merge; it is not a checker suppression or a general failed-baseline waiver.
+- [x] Revise API10 spec/complete generated sequence together: current credential gate, identical typed filters, consistent count/page snapshot, bounds and complete mapping/outcomes.
+- [x] Add exact SQL/semantic/path/render checks; mutation-test and execute pagination/ownership/snapshot SQL fixtures; inspect the diagram.
+- [x] Run all checkers/audit/database tests and authorized delivery preflight; open API10 PR #65 and continue from main. Main merged #62 during delivery; resume #65 to reconcile shared checker/tasks and verify the combined tree before returning to main again.
+
+Verification before main integration: three character-identical SQL operations, nine terminal traces, 56/56 mutations caught after closing the late-JWT-expiry branch gap; eight synchronized semantic SQL faults and intact pre-credential count/whitespace/old-diagram/render-omission faults rejected. Rendered SQL is 35/35 visible lines; SVG/PNG inspected, eight participants. Isolated PostgreSQL executes actual credential/count/page SQL: typed null filters, wildcard/apostrophe/Thai search, owner/deleted/missing id, status visibility, deterministic ties and four pages/beyond-range, expiry equality/inactive credentials, read-only write rejection and concurrent committed insert/delete between count/page with a consistent snapshot. Reference pagination bounds cover signed Int64 and checked offset; no backend implementation/conformance claim. All 52 documentation commands, audit 53 tables / 0 findings, database ALL PASSED and 12 skeleton tests passed. The initial main API08 exemption failure and its bounded checker-only repair are recorded above.
+
+Integration with origin/main 5dda686 preserves the domain diagram package byte-for-byte; only the five authorized paths differ from that base. API10 pair and checker bytes equal the verified task commit. On the integrated tree all 52 documentation commands, audit 53/0, database ALL PASSED, 12 skeleton tests and 35/35 rendered SQL lines passed again. Authorized preflight passed before the task commit; final committed delivery scope is checked before push.
+
+PR #65 base reconciliation: preserve both completed API09/API10 exemption removals and complete flow-checker functions after #62 merged. The API09 pair/owner decision log remain byte-identical to main; only the five owned API10 paths differ. No PR merge is performed.
 
 ## e-commerce: Peter API review — logout (API 8)
 
@@ -886,6 +924,42 @@ Status: Implemented in the managed workspace of Marry on branch `docs/marry-cart
 - [x] Found while rendering the changed diagrams: the INSERT of `cart/01` and `cart/02` merged in #58 had its value lines (`'<sequence.userId>',`) written with a bare leading quote, which PlantUML draws as a comment, so six lines were missing from the picture while the checker (which reads raw text) passed. They are written `&#39;` now, as the skeleton script does; every SQL line shows at least as often as in the spec. The same defect is in four older diagrams outside this assignment (`authen-and-author/09` 10 lines, `consent/02` 11, `consent/06` 5, `consent/07` 5), reported to the lead.
 - [ ] Merge `main`, preflight, push, open the follow-up pull request, tell the lead at once; hold the lock until the merge, then release and park.
 
+## e-commerce: Curate four presentation diagrams from the owner handoff
+
+Assignment: Codex executing with the Diagram Designer perspective; delivery `none`; authorized by `ittikorn`. The owner explicitly requested a separate workspace after Jinny's managed clone was found locked by an active domain-model task. This task uses the app-managed `diagram-handoff` worktree on `codex/diagram-handoff`; it does not acquire, release or modify Jinny's workspace or assignment. Scope: `e-commerce/diagram/` and required task records. Governing content: owner handoff in this chat, existing diagram companions and API-source references. Outbox remains proposed; no backend/API/schema implementation or approval is included.
+
+- [x] Inspect sources, task isolation, existing changes and baseline checks for the four diagrams.
+- [x] Add the Controller → Dispatcher → Handler → Domain/ports → Infrastructure call paths, preserving real layer containment and CODE/SPEC/PROPOSED distinctions.
+- [x] Show checkout's atomic source transaction before READY and mandatory operator review before controlled quarantine replay.
+- [x] Retain and clarify outbox sequence claim transaction, destination transaction, fenced ACK, replay and lease expiry.
+- [x] Rename system-design to order-lifecycle and remove Redis/MongoDB detail from its image and companion.
+- [x] Curate the four primary images and topic-based references; synchronize source generators, companions and links.
+- [x] Regenerate only the four selected views; export editable PNGs and verify source parity, geometry, HTML accessibility, links and final visual renders.
+- [x] Record final results and hand off the separate workspace without committing or opening a PR.
+
+## e-commerce: Organize diagram folders and deliver the handoff PR
+
+Authority: direct request from Ittikorn in this chat to separate folders and open a PR; delivery is now `open-pr` for this task's existing Codex worktree/branch. The prior Jinny workspace remains untouched. Scope: `e-commerce/diagram/` plus required task records. The owner handoff still governs content; proposed outbox design remains unapproved for implementation.
+
+- [x] Inspect delivery rules, baseline, existing files and generator/link dependencies.
+- [x] Group four primary bundles under main/, eleven reference bundles by topic under reference/, supporting design records under design/, and generators under scripts/.
+- [x] Adapt generator output resolution and update all affected Markdown links, HTML navigation and reproduction commands.
+- [x] Verify all fifteen generated views, editable PNG/source parity, folder membership, Markdown links/frontmatter, HTML checks and preservation of reference diagram content.
+- [x] Update final verification and task records; run delivery preflight and inspect the staged diff.
+- [x] Commit the scoped work, push codex/diagram-handoff and open a PR targeting main; report checks and remaining limitations. PR #64 is open at cfd6f72.
+
+Delivery state in this checklist is the pre-send snapshot captured by the commit. Confirm the actual commit, branch push and PR outcome from Git/GitHub; do not infer an open or merged PR from a checkbox.
+
+## e-commerce: Resolve PR #64 conflicts with the Domain diagram package
+
+Authority: Ittikorn requested resolving branch conflicts in this chat, specifically the shared `e-commerce/diagram/generate_diagrams.py` renderer (renamed to `scripts/generate_diagrams.py` here). Integrate `origin/main` into `codex/diagram-handoff`; this does not authorize merging PR #64 into main. Main now contains PR #63's dedicated domain/ package. The worktree was clean before integration; Git reported one content conflict in the renamed renderer.
+
+- [x] Refresh main/PR state and identify the incoming Domain package and exact renderer conflict.
+- [x] Preserve output_dir support and new artifact routing in the shared PNG finalizer.
+- [x] Adapt Domain imports/HTML navigation to the scripts/ layout; preserve all incoming domain models and PNGs, and retain Domain entries in the guide.
+- [x] Verify the original fifteen diagrams plus four Domain diagrams, source/editable PNG parity, local links and Markdown frontmatter; resolve all index conflicts.
+- [ ] Run preflight, inspect the merge diff and record verification; commit the resolved merge and push to PR #64, then confirm its mergeability.
+
 ## e-commerce: Peter API review — single role upsert (API 15, 2026-11-08)
 
 Authority: owner Q2/Q4/Q10/Q13/Q15; one API pair per PR, claims authorize until access expiry but current credentials still revoke immediately. Main-based branch passed 52 documentation baseline commands plus audit/database tests after PR #62 merged. PR #65 was delivered and its conflicting base reconciled with 53 passing commands; preserve its branch/revision history without a merge gate. Scope: author/01 pair, shared checker, tasks; no backend/schema implementation.
@@ -899,3 +973,5 @@ Authority: owner Q2/Q4/Q10/Q13/Q15; one API pair per PR, claims authorize until 
 Verification: nine SQL definitions copied character-for-character across eleven executed note occurrences; 21 terminal paths. Focused mutation tests caught 80/80 faults (initial 75/78 exposed missing per-branch UPDATE-result/guard checks, now fixed), eight synchronized SQL faults still pass normalized parity but fail semantics; authorization moved before existence, exact SQL whitespace drift, the old live-grant diagram and a real rendered VALUES omission are rejected. The final narrative includes every API/frontend/caller outcome, user-first and target locks, explicit activations and full rollback/commit effects. Actual PostgreSQL reproduced baseline NULL-exclusion and deleted-row resurrection risks, then passed lifecycle/system-role/binding status/name reuse, bound apostrophe/Thai/audit, actual error rollback, two-caller unique-index race, deletion lock wait, revocation/expiry wait and inactive-user checks. Reference Application driver only; unmigrated binding writers and backend/JWT/encryption implementation are not certified.
 
 Pre-integration: all 53 documentation commands, audit 53/0, database ALL PASSED, 12 skeleton tests, 85/85 rendered SQL lines. The skeleton initially counted a repeated BEGIN token inside its copied execution hint; rephrase the hint without changing SQL, and the unchanged generator tests pass. PR65 is now verified merged; integrate its checker plus the new sequence guidance and diagram package, preserving every unrelated artifact.
+
+Integrated origin/main aab155b: API10 review, updated sequence guidance and diagram organization retained exactly, with no off-scope changes relative to main. Final 54/54 documentation commands, audit 53/0, database ALL PASSED, 12 skeleton tests, 80/80 mutations and eight synchronized semantic SQL faults passed/rejected as expected; all 85/85 SQL lines visible, including repeated blocks. Four owned files differ from main. Recovered SQL preserves note prefixes and original whitespace exactly.

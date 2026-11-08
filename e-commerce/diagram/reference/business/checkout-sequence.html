@@ -1,0 +1,146 @@
+<!DOCTYPE html>
+<html lang="en"><head><meta charset="UTF-8"><meta name="viewport" content="width=device-width,initial-scale=1.0">
+<title>Checkout: authoritative commit before copies</title><link href="https://fonts.googleapis.com/css2?family=Instrument+Serif:ital@0;1&amp;family=Geist:wght@400;500;600&amp;family=Geist+Mono:wght@400;500;600&amp;display=swap" rel="stylesheet">
+<style>
+* {box-sizing:border-box;} body {margin:0;padding:24px;background:#f5f5f5;color:#2d3142;font-family:'Geist',Arial,sans-serif;}
+main {width:100%;max-width:1584px;min-width:0;margin:0 auto;} h1 {font-family:'Instrument Serif',Georgia,serif;font-size:32px;font-weight:400;}
+.diagram-container {width:100%;overflow-x:auto;} svg {display:block;width:100%;min-width:1584px;}
+.source-note {font-size:12px;line-height:1.6;color:#4f5d75;} @media print {body {padding:0;} .diagram-container {overflow-x:visible;} svg {min-width:0;}}
+</style></head><body><main><h1>Checkout: authoritative commit before copies</h1><div class="diagram-container"><svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 1584 1120" role="img" aria-labelledby="checkout-sequence-title checkout-sequence-desc">
+<title id="checkout-sequence-title">Checkout: authoritative commit before copies</title>
+<desc id="checkout-sequence-desc">Checkout: authoritative commit before copies. Time ordered coordination with explicit proposal and transaction boundaries.</desc>
+<defs>
+<marker id="checkout-sequence-arrow" markerWidth="8" markerHeight="6" refX="7" refY="3" orient="auto"><polygon points="0 0,8 3,0 6" fill="#4f5d75"/></marker>
+<marker id="checkout-sequence-accent" markerWidth="8" markerHeight="6" refX="7" refY="3" orient="auto"><polygon points="0 0,8 3,0 6" fill="#bf4520"/></marker>
+<marker id="checkout-sequence-open" markerWidth="8" markerHeight="6" refX="7" refY="3" orient="auto"><polyline points="0 0,8 3,0 6" fill="none" stroke="#4f5d75"/></marker>
+</defs>
+<rect width="1584" height="1120" fill="#f5f5f5"/>
+<text x="40" y="48" font-size="8" font-family="Geist Mono,Courier New,monospace" font-weight="500" fill="#5a6580" text-anchor="start">E-COMMERCE / PROPOSED TEMPORAL INTERACTION / NATIVE BOUNDARY GROUPS</text>
+<text x="40" y="88" font-size="32" font-family="Instrument Serif,Georgia,serif" font-weight="400" fill="#2d3142" text-anchor="start">Checkout: authoritative commit before copies</text>
+<text x="40" y="116" font-size="12" font-family="Geist,Arial,sans-serif" font-weight="400" fill="#4f5d75" text-anchor="start">Time flows down. Header nesting shows ownership; each lifeline represents the named interaction boundary.</text>
+<g data-node-id="alt"><rect data-role="node-bounds" x="136" y="496" width="996" height="256" rx="4" fill="#f1f1f1" stroke="#bfc0c0"/></g>
+<rect x="136" y="496" width="40" height="16" rx="2" fill="#f5f5f5" stroke="#bfc0c0"/>
+<text x="156" y="508" font-size="8" font-family="Geist Mono,Courier New,monospace" font-weight="400" fill="#5a6580" text-anchor="middle">OPT</text>
+<text x="148" y="520" font-size="8" font-family="Geist Mono,Courier New,monospace" font-weight="400" fill="#5a6580" text-anchor="start">[admitted request; shown SQL guards and commit succeed]</text>
+<path d="M 160 336 L 160 944" fill="none" stroke="#bfc0c0" stroke-width="0.8" stroke-dasharray="4,4"/>
+<g data-node-id="boundary-customer"><rect data-role="node-bounds" x="40" y="160" width="240" height="176" rx="4" fill="#f0f0f1" stroke="#5a6580"/></g>
+<text x="160" y="180" font-size="8" font-family="Geist Mono,Courier New,monospace" font-weight="400" fill="#5a6580" text-anchor="middle">CUSTOMER / CALLER</text>
+<text x="160" y="200" font-size="12" font-family="Geist,Arial,sans-serif" font-weight="600" fill="#2d3142" text-anchor="middle">Customer</text>
+<g data-node-id="participant-customer"><rect data-role="node-bounds" x="52" y="212" width="216" height="112" rx="4" fill="#ffffff" stroke="#bfc0c0"/></g>
+<text x="160" y="232" font-size="8" font-family="Geist Mono,Courier New,monospace" font-weight="400" fill="#5a6580" text-anchor="middle">ORDER OWNER</text>
+<text x="160" y="260" font-size="11" font-family="Geist,Arial,sans-serif" font-weight="400" fill="#4f5d75" text-anchor="middle">External request / response</text>
+<text x="160" y="284" font-size="11" font-family="Geist,Arial,sans-serif" font-weight="400" fill="#4f5d75" text-anchor="middle">No direct data-store access</text>
+<path d="M 476 336 L 476 944" fill="none" stroke="#bfc0c0" stroke-width="0.8" stroke-dasharray="4,4"/>
+<g data-node-id="boundary-api"><rect data-role="node-bounds" x="356" y="160" width="240" height="176" rx="4" fill="#f1e7e4" stroke="#bf4520"/></g>
+<text x="476" y="180" font-size="8" font-family="Geist Mono,Courier New,monospace" font-weight="400" fill="#5a6580" text-anchor="middle">BACKEND REQUEST BOUNDARY</text>
+<text x="476" y="200" font-size="12" font-family="Geist,Arial,sans-serif" font-weight="600" fill="#2d3142" text-anchor="middle">API / use case</text>
+<g data-node-id="application-api"><rect data-role="node-bounds" x="368" y="212" width="216" height="112" rx="4" fill="#f5f5f5" stroke="#5a6580"/></g>
+<text x="476" y="228" font-size="9" font-family="Geist,Arial,sans-serif" font-weight="600" fill="#2d3142" text-anchor="middle">Application coordination</text>
+<g data-node-id="role-api-0"><rect data-role="node-bounds" x="380" y="236" width="192" height="24" rx="4" fill="#ffffff" stroke="#bfc0c0"/></g>
+<text x="476" y="252" font-size="10" font-family="Geist,Arial,sans-serif" font-weight="400" fill="#4f5d75" text-anchor="middle">Command / Query</text>
+<g data-node-id="role-api-1"><rect data-role="node-bounds" x="380" y="264" width="192" height="24" rx="4" fill="#ffffff" stroke="#bfc0c0"/></g>
+<text x="476" y="280" font-size="10" font-family="Geist,Arial,sans-serif" font-weight="400" fill="#4f5d75" text-anchor="middle">Validator / policy guard</text>
+<g data-node-id="role-api-2"><rect data-role="node-bounds" x="380" y="292" width="192" height="24" rx="4" fill="#ffffff" stroke="#bfc0c0"/></g>
+<text x="476" y="308" font-size="10" font-family="Geist,Arial,sans-serif" font-weight="400" fill="#4f5d75" text-anchor="middle">Handler / transaction ports</text>
+<path d="M 792 336 L 792 944" fill="none" stroke="#bfc0c0" stroke-width="0.8" stroke-dasharray="4,4"/>
+<g data-node-id="boundary-redis"><rect data-role="node-bounds" x="672" y="160" width="240" height="176" rx="4" fill="#f0f0f1" stroke="#5a6580"/></g>
+<text x="792" y="180" font-size="8" font-family="Geist Mono,Courier New,monospace" font-weight="400" fill="#5a6580" text-anchor="middle">ADMISSION STORE BOUNDARY</text>
+<text x="792" y="200" font-size="12" font-family="Geist,Arial,sans-serif" font-weight="600" fill="#2d3142" text-anchor="middle">Redis rate store</text>
+<g data-node-id="participant-redis"><rect data-role="node-bounds" x="684" y="212" width="216" height="112" rx="4" fill="#ffffff" stroke="#bfc0c0"/></g>
+<text x="792" y="232" font-size="8" font-family="Geist Mono,Courier New,monospace" font-weight="400" fill="#5a6580" text-anchor="middle">PROPOSED ADMISSION</text>
+<text x="792" y="260" font-size="11" font-family="Geist,Arial,sans-serif" font-weight="400" fill="#4f5d75" text-anchor="middle">Atomic token buckets</text>
+<text x="792" y="284" font-size="11" font-family="Geist,Arial,sans-serif" font-weight="400" fill="#4f5d75" text-anchor="middle">Independent memory budget</text>
+<path d="M 1108 336 L 1108 944" fill="none" stroke="#bfc0c0" stroke-width="0.8" stroke-dasharray="4,4"/>
+<g data-node-id="boundary-sql"><rect data-role="node-bounds" x="988" y="160" width="240" height="176" rx="4" fill="#f0f0f1" stroke="#5a6580"/></g>
+<text x="1108" y="180" font-size="8" font-family="Geist Mono,Courier New,monospace" font-weight="400" fill="#5a6580" text-anchor="middle">AUTHORITATIVE DATA BOUNDARY</text>
+<text x="1108" y="200" font-size="12" font-family="Geist,Arial,sans-serif" font-weight="600" fill="#2d3142" text-anchor="middle">PostgreSQL</text>
+<g data-node-id="participant-sql"><rect data-role="node-bounds" x="1000" y="212" width="216" height="112" rx="4" fill="#ffffff" stroke="#bfc0c0"/></g>
+<text x="1108" y="232" font-size="8" font-family="Geist Mono,Courier New,monospace" font-weight="400" fill="#5a6580" text-anchor="middle">BUSINESS AUTHORITY</text>
+<text x="1108" y="260" font-size="11" font-family="Geist,Arial,sans-serif" font-weight="400" fill="#4f5d75" text-anchor="middle">Orders / lots / budgets</text>
+<text x="1108" y="284" font-size="11" font-family="Geist,Arial,sans-serif" font-weight="400" fill="#4f5d75" text-anchor="middle">Source transaction + outbox</text>
+<path d="M 1424 336 L 1424 944" fill="none" stroke="#bfc0c0" stroke-width="0.8" stroke-dasharray="4,4"/>
+<g data-node-id="boundary-relay"><rect data-role="node-bounds" x="1304" y="160" width="240" height="176" rx="4" fill="#f0f0f1" stroke="#5a6580"/></g>
+<text x="1424" y="180" font-size="8" font-family="Geist Mono,Courier New,monospace" font-weight="400" fill="#5a6580" text-anchor="middle">BACKGROUND WORKER BOUNDARY</text>
+<text x="1424" y="200" font-size="12" font-family="Geist,Arial,sans-serif" font-weight="600" fill="#2d3142" text-anchor="middle">Outbox relay</text>
+<g data-node-id="participant-relay"><rect data-role="node-bounds" x="1316" y="212" width="216" height="112" rx="4" fill="#ffffff" stroke="#bfc0c0"/></g>
+<text x="1424" y="232" font-size="8" font-family="Geist Mono,Courier New,monospace" font-weight="400" fill="#5a6580" text-anchor="middle">PROPOSED WORKER</text>
+<text x="1424" y="260" font-size="11" font-family="Geist,Arial,sans-serif" font-weight="400" fill="#4f5d75" text-anchor="middle">Lease / retry / ACK</text>
+<text x="1424" y="284" font-size="11" font-family="Geist,Arial,sans-serif" font-weight="400" fill="#4f5d75" text-anchor="middle">No business-operation replay</text>
+<rect x="788" y="428" width="8" height="52" rx="0" fill="#e4e6e8" stroke="#4f5d75"/>
+<rect x="1104" y="548" width="8" height="140" rx="0" fill="#e4e6e8" stroke="#4f5d75"/>
+<rect x="472" y="384" width="8" height="348" rx="0" fill="#e4e6e8" stroke="#4f5d75"/>
+<rect x="1104" y="780" width="8" height="52" rx="0" fill="#e4e6e8" stroke="#4f5d75"/>
+<path d="M 164 384 L 472 384" fill="none" stroke="#4f5d75" stroke-width="1.2" marker-end="url(#checkout-sequence-arrow)"/>
+<rect x="290" y="364" width="56" height="12" rx="2" fill="#f5f5f5" stroke="#f5f5f5"/>
+<text x="318" y="373" font-size="8" font-family="Geist Mono,Courier New,monospace" font-weight="400" fill="#5a6580" text-anchor="middle">CHECKOUT</text>
+<text x="40" y="387" font-size="9" font-family="Geist Mono,Courier New,monospace" font-weight="400" fill="#5a6580" text-anchor="start">01</text>
+<rect x="192" y="392" width="252" height="14" rx="2" fill="#f5f5f5" stroke="#f5f5f5"/>
+<text x="318" y="403" font-size="9" font-family="Geist,Arial,sans-serif" font-weight="400" fill="#4f5d75" text-anchor="middle">Owned cart + address; no client price authority</text>
+<path d="M 480 428 L 788 428" fill="none" stroke="#4f5d75" stroke-width="1.2" marker-end="url(#checkout-sequence-arrow)"/>
+<rect x="612" y="408" width="44" height="12" rx="2" fill="#f5f5f5" stroke="#f5f5f5"/>
+<text x="634" y="417" font-size="8" font-family="Geist Mono,Courier New,monospace" font-weight="400" fill="#5a6580" text-anchor="middle">ADMIT</text>
+<text x="40" y="431" font-size="9" font-family="Geist Mono,Courier New,monospace" font-weight="400" fill="#5a6580" text-anchor="start">02</text>
+<rect x="544" y="436" width="180" height="14" rx="2" fill="#f5f5f5" stroke="#f5f5f5"/>
+<text x="634" y="447" font-size="9" font-family="Geist,Arial,sans-serif" font-weight="400" fill="#4f5d75" text-anchor="middle">Validated subject + active policy</text>
+<path d="M 788 472 L 480 472" fill="none" stroke="#4f5d75" stroke-width="1.2" stroke-dasharray="4,4" marker-end="url(#checkout-sequence-arrow)"/>
+<rect x="596" y="452" width="76" height="12" rx="2" fill="#f5f5f5" stroke="#f5f5f5"/>
+<text x="634" y="461" font-size="8" font-family="Geist Mono,Courier New,monospace" font-weight="400" fill="#5a6580" text-anchor="middle">ALLOW / DENY</text>
+<text x="40" y="475" font-size="9" font-family="Geist Mono,Courier New,monospace" font-weight="400" fill="#5a6580" text-anchor="start">03</text>
+<rect x="532" y="480" width="204" height="14" rx="2" fill="#f5f5f5" stroke="#f5f5f5"/>
+<text x="634" y="491" font-size="9" font-family="Geist,Arial,sans-serif" font-weight="400" fill="#4f5d75" text-anchor="middle">429 or protected outage 503 before SQL</text>
+<path d="M 480 548 L 1104 548" fill="none" stroke="#4f5d75" stroke-width="1.2" marker-end="url(#checkout-sequence-arrow)"/>
+<rect x="592" y="528" width="84" height="12" rx="2" fill="#f5f5f5" stroke="#f5f5f5"/>
+<text x="634" y="537" font-size="8" font-family="Geist Mono,Courier New,monospace" font-weight="400" fill="#5a6580" text-anchor="middle">BEGIN + GUARD</text>
+<text x="40" y="551" font-size="9" font-family="Geist Mono,Courier New,monospace" font-weight="400" fill="#5a6580" text-anchor="start">04</text>
+<rect x="514" y="556" width="240" height="14" rx="2" fill="#f5f5f5" stroke="#f5f5f5"/>
+<text x="634" y="567" font-size="9" font-family="Geist,Arial,sans-serif" font-weight="400" fill="#4f5d75" text-anchor="middle">Check ownership, visibility, lots and budgets</text>
+<path d="M 1104 592 L 480 592" fill="none" stroke="#4f5d75" stroke-width="1.2" stroke-dasharray="4,4" marker-end="url(#checkout-sequence-arrow)"/>
+<rect x="592" y="572" width="84" height="12" rx="2" fill="#f5f5f5" stroke="#f5f5f5"/>
+<text x="634" y="581" font-size="8" font-family="Geist Mono,Courier New,monospace" font-weight="400" fill="#5a6580" text-anchor="middle">LOCKED INPUTS</text>
+<text x="40" y="595" font-size="9" font-family="Geist Mono,Courier New,monospace" font-weight="400" fill="#5a6580" text-anchor="start">05</text>
+<rect x="516" y="600" width="236" height="14" rx="2" fill="#f5f5f5" stroke="#f5f5f5"/>
+<text x="634" y="611" font-size="9" font-family="Geist,Arial,sans-serif" font-weight="400" fill="#4f5d75" text-anchor="middle">Stable lock order; live authoritative values</text>
+<path d="M 480 636 L 1104 636" fill="none" stroke="#4f5d75" stroke-width="1.2" marker-end="url(#checkout-sequence-arrow)"/>
+<rect x="590" y="616" width="88" height="12" rx="2" fill="#f5f5f5" stroke="#f5f5f5"/>
+<text x="634" y="625" font-size="8" font-family="Geist Mono,Courier New,monospace" font-weight="400" fill="#5a6580" text-anchor="middle">WRITE + COMMIT</text>
+<text x="40" y="639" font-size="9" font-family="Geist Mono,Courier New,monospace" font-weight="400" fill="#5a6580" text-anchor="start">06</text>
+<rect x="502" y="644" width="264" height="14" rx="2" fill="#f5f5f5" stroke="#f5f5f5"/>
+<text x="634" y="655" font-size="9" font-family="Geist,Arial,sans-serif" font-weight="400" fill="#4f5d75" text-anchor="middle">All orders + reservations + proposed outbox intent</text>
+<path d="M 1104 680 L 480 680" fill="none" stroke="#4f5d75" stroke-width="1.2" stroke-dasharray="4,4" marker-end="url(#checkout-sequence-arrow)"/>
+<rect x="602" y="660" width="64" height="12" rx="2" fill="#f5f5f5" stroke="#f5f5f5"/>
+<text x="634" y="669" font-size="8" font-family="Geist Mono,Courier New,monospace" font-weight="400" fill="#5a6580" text-anchor="middle">COMMITTED</text>
+<text x="40" y="683" font-size="9" font-family="Geist Mono,Courier New,monospace" font-weight="400" fill="#5a6580" text-anchor="start">07</text>
+<rect x="534" y="688" width="200" height="14" rx="2" fill="#f5f5f5" stroke="#f5f5f5"/>
+<text x="634" y="699" font-size="9" font-family="Geist,Arial,sans-serif" font-weight="400" fill="#4f5d75" text-anchor="middle">Otherwise rollback all selected shops</text>
+<path d="M 472 724 L 164 724" fill="none" stroke="#bf4520" stroke-width="1.2" marker-end="url(#checkout-sequence-accent)"/>
+<rect x="280" y="704" width="76" height="12" rx="2" fill="#f5f5f5" stroke="#f5f5f5"/>
+<text x="318" y="713" font-size="8" font-family="Geist Mono,Courier New,monospace" font-weight="400" fill="#5a6580" text-anchor="middle">WAIT_PAYMENT</text>
+<text x="40" y="727" font-size="9" font-family="Geist Mono,Courier New,monospace" font-weight="400" fill="#5a6580" text-anchor="start">08</text>
+<rect x="228" y="732" width="180" height="14" rx="2" fill="#f5f5f5" stroke="#f5f5f5"/>
+<text x="318" y="743" font-size="9" font-family="Geist,Arial,sans-serif" font-weight="400" fill="#4f5d75" text-anchor="middle">Response only after source commit</text>
+<path d="M 1420 780 L 1112 780" fill="none" stroke="#4f5d75" stroke-width="1.2" marker-end="url(#checkout-sequence-arrow)"/>
+<rect x="1230" y="760" width="72" height="12" rx="2" fill="#f5f5f5" stroke="#f5f5f5"/>
+<text x="1266" y="769" font-size="8" font-family="Geist Mono,Courier New,monospace" font-weight="400" fill="#5a6580" text-anchor="middle">CLAIM LATER</text>
+<text x="40" y="783" font-size="9" font-family="Geist Mono,Courier New,monospace" font-weight="400" fill="#5a6580" text-anchor="start">09</text>
+<rect x="1146" y="788" width="240" height="14" rx="2" fill="#f5f5f5" stroke="#f5f5f5"/>
+<text x="1266" y="799" font-size="9" font-family="Geist,Arial,sans-serif" font-weight="400" fill="#4f5d75" text-anchor="middle">Separate delivery; no request fire-and-forget</text>
+<path d="M 1112 824 L 1420 824" fill="none" stroke="#4f5d75" stroke-width="1.2" stroke-dasharray="4,4" marker-end="url(#checkout-sequence-arrow)"/>
+<rect x="1230" y="804" width="72" height="12" rx="2" fill="#f5f5f5" stroke="#f5f5f5"/>
+<text x="1266" y="813" font-size="8" font-family="Geist Mono,Courier New,monospace" font-weight="400" fill="#5a6580" text-anchor="middle">EVENT BATCH</text>
+<text x="40" y="827" font-size="9" font-family="Geist Mono,Courier New,monospace" font-weight="400" fill="#5a6580" text-anchor="start">10</text>
+<rect x="1154" y="832" width="224" height="14" rx="2" fill="#f5f5f5" stroke="#f5f5f5"/>
+<text x="1266" y="843" font-size="9" font-family="Geist,Arial,sans-serif" font-weight="400" fill="#4f5d75" text-anchor="middle">Claim/lease commits before destination I/O</text>
+<text x="40" y="964" font-size="10" font-family="Geist,Arial,sans-serif" font-weight="400" fill="#4f5d75" text-anchor="start">Header nesting shows ownership. Each lifeline is one interaction boundary; child boxes are structural context, not extra timings.</text>
+<text x="40" y="988" font-size="10" font-family="Geist,Arial,sans-serif" font-weight="400" fill="#4f5d75" text-anchor="start">SPEC: price/address snapshots, one order per shop, stock/budget reserve and selected-cart deletion share SQL commit.</text>
+<text x="40" y="1008" font-size="10" font-family="Geist,Arial,sans-serif" font-weight="400" fill="#4f5d75" text-anchor="start">PROPOSED: public-cache invalidation follows commit; MongoDB delivery is asynchronous and cannot repeat checkout.</text>
+<text x="40" y="1036" font-size="9" font-family="Geist Mono,Courier New,monospace" font-weight="400" fill="#5a6580" text-anchor="start">Sources: linked spec.md + sequence.wsd, diagram-semantics.md and supporting research | Proposed coordination; exact SQL remains in API sequences.</text>
+<path d="M 40 1052 L 1544 1052" fill="none" stroke="#bfc0c0" stroke-width="0.8"/>
+<text x="40" y="1076" font-size="9" font-family="Geist,Arial,sans-serif" font-weight="400" fill="#4f5d75" text-anchor="start">Solid = synchronous call</text>
+<text x="336" y="1076" font-size="9" font-family="Geist,Arial,sans-serif" font-weight="400" fill="#4f5d75" text-anchor="start">Dashed filled = return</text>
+<text x="632" y="1076" font-size="9" font-family="Geist,Arial,sans-serif" font-weight="400" fill="#4f5d75" text-anchor="start">Dashed open = async hint</text>
+<text x="928" y="1076" font-size="9" font-family="Geist,Arial,sans-serif" font-weight="400" fill="#4f5d75" text-anchor="start">OPT = guarded path</text>
+<text x="1224" y="1076" font-size="9" font-family="Geist,Arial,sans-serif" font-weight="400" fill="#4f5d75" text-anchor="start">Header boxes = ownership</text>
+</svg></div>
+<p class="source-note">View: Sequence. A3 landscape, 1584 × 1120. Default light style.
+The matching PNG contains editable draw.io data. Supplied font fallbacks: Georgia, Arial and Courier New. Research, evidence and limitations: <a href="../../design/research.md">research</a> and <a href="../../README.md">diagram guide</a>.</p>
+</main></body></html>
