@@ -23,12 +23,13 @@ diagram/
 │   ├── data/              # MongoDB documents และ configuration
 │   ├── operations/        # Deployment, observability และ recovery
 │   └── repository/        # Source code และ tests
-├── domain/                # Domain model 4 ภาพ, SQL inventory และตัวสร้างเฉพาะชุด
-├── design/                # Design proposals, research, semantics และผลตรวจ
-└── scripts/               # Content models, generators และ output-path map
+├── domain/                # Domain model 4 ภาพ และ SQL inventory
+└── design/                # Design proposals, research, semantics และผลตรวจ
 ```
 
-ไฟล์ทั้งสี่รูปแบบของแต่ละภาพอยู่โฟลเดอร์เดียวกัน เปิด PNG เพื่อนำเสนอหรือเปิดแก้ใน draw.io; อ่าน `.md` สำหรับขอบเขตและแหล่งอ้างอิง ส่วน `scripts/diagram_paths.py` กำหนดตำแหน่ง output ของตัวสร้างภาพ
+ไฟล์ทั้งสี่รูปแบบของแต่ละภาพอยู่โฟลเดอร์เดียวกัน เปิด PNG เพื่อนำเสนอหรือเปิดแก้ใน draw.io; อ่าน `.md` สำหรับขอบเขตและแหล่งอ้างอิง ส่วน [`../scripts/diagrams/diagram_paths.py`](../scripts/diagrams/diagram_paths.py) กำหนดตำแหน่ง output ของตัวสร้างภาพ
+
+Python ของโครงการอยู่ที่ `e-commerce/scripts/diagrams/`; helper ที่ไม่ผูกกับโครงการอยู่ใน [diagram-creator](../../.agents/skills/diagram-creator/SKILL.md) ส่วนโฟลเดอร์นี้เก็บภาพ เอกสารประกอบ และหลักฐานต้นทาง
 
 ## ชุดนำเสนอหลัก — 4 ภาพ
 
@@ -72,13 +73,13 @@ Checkout สร้าง `WAIT_PAYMENT`, จอง stock/budget, บันทึ
 
 เส้นในภาพรายละเอียดเลือก35associationsเพื่ออ่านง่าย ส่วนFKcatalogueในMarkdownเก็บครบ75 การอธิบายpartialuniquenessและข้อจำกัดFKแยกจากbusinesslogic candidatesใน `<Feature>/Domain/` ไม่มีการแก้DB/API/backend
 
-Source: [domain_model_content.py](domain/domain_model_content.py), [domain_model_notes.py](domain/domain_model_notes.py), [domain-source-inventory.json](domain/domain-source-inventory.json); [ผลตรวจ](domain/domain-model-verification.md)
+Source: [domain_model_content.py](../scripts/diagrams/domain_model_content.py), [domain_model_notes.py](../scripts/diagrams/domain_model_notes.py), [domain-source-inventory.json](domain/domain-source-inventory.json); [ผลตรวจ](domain/domain-model-verification.md)
 
 ```sh
-python3 -B e-commerce/diagram/domain/generate_domain_diagrams.py
-python3 -B e-commerce/diagram/domain/generate_domain_diagrams.py --check
+python3 -B e-commerce/scripts/diagrams/generate_domain_diagrams.py
+python3 -B e-commerce/scripts/diagrams/generate_domain_diagrams.py --check
 # Native export each slug at scale1.5 using the draw.io command below
-python3 -B e-commerce/diagram/domain/generate_domain_diagrams.py --finalize-pngs
+python3 -B e-commerce/scripts/diagrams/generate_domain_diagrams.py --finalize-pngs
 ```
 
 ## แหล่งหลักฐานและสถานะ
@@ -112,8 +113,8 @@ Provider researchพบว่าSQLrollbackไม่ย้อนprovider success
 `generate_layered_diagrams.py` เป็นentrypointปัจจุบัน ใช้paper `#f5f5f5`, ink `#2d3142`, accent `#bf4520` ตามที่เจ้าของงานเลือก Canvas A3แนวนอน1584×1120 พร้อมprinttype ramp ไม่ติดตั้งdependenciesหรือfontsเพิ่ม
 
 ```sh
-python3 -B e-commerce/diagram/scripts/generate_layered_diagrams.py
-python3 -B e-commerce/diagram/scripts/generate_layered_diagrams.py --check
+python3 -B e-commerce/scripts/diagrams/generate_layered_diagrams.py
+python3 -B e-commerce/scripts/diagrams/generate_layered_diagrams.py --check
 ```
 
 ส่งออกด้วยdraw.io Desktopที่ติดตั้งอยู่ ตัวอย่างหนึ่งไฟล์ (ทำกับทุกslugในสารบัญ):
@@ -125,7 +126,7 @@ python3 -B e-commerce/diagram/scripts/generate_layered_diagrams.py --check
   -o e-commerce/diagram/main/architecture-design.drawio.png \
   e-commerce/diagram/main/architecture-design.drawio
 
-python3 -B e-commerce/diagram/scripts/generate_layered_diagrams.py --finalize-pngs
+python3 -B e-commerce/scripts/diagrams/generate_layered_diagrams.py --finalize-pngs
 ```
 
 draw.io Desktop32.6.10มีpage frameหนึ่งpixelก่อนscale ผลscale1.5คือ2378×1682 Native PNGเก็บcompressed `mxGraphModel` metadata; finalizerตรวจว่าตรงXMLsourceและเพิ่มcompressed compatible `mxfile` key โดยไม่เปลี่ยนIDAT pixels ไม่cropหรือraster-resampleหลังexport Native outputใช้Georgia/Arial/Courier New fallbacks; HTMLยังประกาศInstrument Serif/Geist/Geist Mono web stacks Python PNGhelperของskillไม่มีPlaywright จึงใช้native rendererและตรวจผลจริง

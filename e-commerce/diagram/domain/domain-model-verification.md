@@ -17,7 +17,7 @@ description: ผลตรวจdomain modelทั้ง4ภาพกับSQLแ
 python3 -B e-commerce/db/tests/audit_all.py
 53 tables audited, 0 findings
 
-python3 -B e-commerce/diagram/domain/generate_domain_diagrams.py --check
+python3 -B e-commerce/scripts/diagrams/generate_domain_diagrams.py --check
 PASS domain source coverage: 53/53 tables; 75/75 FK columns; schema documentation comparison 0 findings
 ```
 

@@ -11,19 +11,7 @@ from diagram_paths import DIAGRAM_ROOT
 OUT=DIAGRAM_ROOT
 
 
-def add_cell(root,key,value,x,y,w,h,style,parent='1',edge=False,points=None):
-    c=ET.SubElement(root,'mxCell',id=key,value=value,style=style,parent=parent,**({'edge':'1'} if edge else {'vertex':'1'}))
-    geo=ET.SubElement(c,'mxGeometry',attrib={'as':'geometry'})
-    if edge:
-        geo.set('relative','1');p=points
-        ET.SubElement(geo,'mxPoint',x=f'{p[0][0]:g}',y=f'{p[0][1]:g}',attrib={'as':'sourcePoint'})
-        ET.SubElement(geo,'mxPoint',x=f'{p[-1][0]:g}',y=f'{p[-1][1]:g}',attrib={'as':'targetPoint'})
-        if len(p)>2:
-            a=ET.SubElement(geo,'Array',attrib={'as':'points'})
-            for px,py in p[1:-1]:ET.SubElement(a,'mxPoint',x=f'{px:g}',y=f'{py:g}')
-    else:
-        for k,v in dict(x=x,y=y,width=w,height=h).items():geo.set(k,f'{v:g}')
-    return c
+add_cell = g.add_cell
 
 
 def sheet_sources(d):
