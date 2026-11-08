@@ -995,3 +995,17 @@ Authority: Ittikorn requested resolving branch conflicts in this chat, specifica
 - [x] Adapt Domain imports/HTML navigation to the scripts/ layout; preserve all incoming domain models and PNGs, and retain Domain entries in the guide.
 - [x] Verify the original fifteen diagrams plus four Domain diagrams, source/editable PNG parity, local links and Markdown frontmatter; resolve all index conflicts.
 - [ ] Run preflight, inspect the merge diff and record verification; commit the resolved merge and push to PR #64, then confirm its mergeability.
+
+## e-commerce: Peter API review — role batch upsert (API 16, 2026-11-08)
+
+Authority: owner Q2/Q4/Q10/Q13/Q15, one paired API per PR; author/01 was delivered as PR67 (four files, MERGEABLE, 54 checks/80 mutations/85 visible SQL lines) and preserved without a merge gate. Main-based batch baseline is green. Scope: author/02 pair, shared checker and tasks; no schema/backend implementation.
+
+- [x] Deliver PR67, archive assignment/history, return to main and prepare a fresh authorized batch branch with complete baselines. Read the full batch pair, role schema and single-role review.
+- [x] Reconcile whole-request 400/existence-before-permission with ordered per-item checks/writes; preserve earlier-item visibility, indexed errors, all-or-nothing response and delete/name-reuse behavior.
+- [x] Update spec/complete sequence together: verified claims and current credentials, caller-first/sorted target locks, null-safe conflict checks, immutable system role, guarded writes and exact ordered result mapping.
+- [x] Add strict SQL/path/loop/semantic/render checks; execute exact PostgreSQL mixed-batch, ordering, rollback and concurrency fixtures; mutation-test and inspect the finished diagram.
+- [ ] Integrate current main preserving other artifacts, run all checkers/audit/database/skeleton/preflight, open one batch PR and continue immediately from main.
+
+Verification: nine exact SQL definitions across ten note occurrences; one request-order loop, one claims permission and one final commit. The checker expands 19 representative single-iteration terminal traces; actual multi-item semantics are verified by PostgreSQL fixtures, not inferred from one unrolled iteration. Mutations caught 87/87 faults after closing initial repeated-rule/lock-description gaps (83/85 first pass), including explicit caller/target SQL lock-strength faults. Eight synchronized SQL semantic faults, early permission, COMMIT moved into the loop, SQL whitespace drift, the original diagram and a real rendered VALUES omission are rejected. Final SVG/PNG inspected with 11 participants and 75/75 visible SQL lines including the repeated duplicate query.
+
+Actual PostgreSQL fixtures passed mixed four-action and all-delete batches, insert-ARCHIVED action, canonical duplicate ids, whole-target 404 precedence, one exact claims permission, delete/rename-then-name-reuse and reversed-order failure, later conflict/system/binding rollback, real SQL error and zero guarded update rollback, concurrent unique-index collision at item 1 undoing its earlier insert, opposite input orders over sorted role locks, caller revocation/expiry lock waits, inactive caller, and all 100 returned indexed results at the maximum. These are exact SQL with reference Application orchestration; backend/JWT crypto and unmigrated cross-API reference writers remain outside certification. All 54 documentation commands, audit 53/0, database ALL PASSED, 12 skeleton tests and authorized dirty-tree preflight are required before delivery.
