@@ -1,6 +1,8 @@
-@startuml InquiryUserProfile Sequence
+@startuml InquiryUserProfile
 
 title Inquiry User Profile API Sequence
+
+' Leading SQL apostrophes use &#39; so PlantUML preserves literals; parity compares decoded SQL.
 
 ' Visual style
 skinparam defaultFontName "Sarabun"
@@ -24,57 +26,67 @@ skinparam sequence {
 ' Do not show participant footers at the bottom of the diagram
 hide footbox
 
-
 actor "User" as user
-
 box "Frontend" #F8FAFC
     participant "Inquiry User Profile Page" as page
 end box
-
 box "Web API" #F8FAFC
     participant "API" as api
     participant "Application" as app
     participant "Domain" as domain
     participant "Infrastructure" as infra
 end box
-
 box "Database" #F8FAFC
     database "m_user" as m_user
     database "m_user_information" as m_user_information
 end box
 
-user -> page: Request Inquiry User Profile
-
+user -> page: Read own profile
 activate page
-    page -> api: Call GET v1/user/profile
-    activate api
-        api -> app: [**InquiryUserProfileQueryHandler**] Process request
-        activate app
-            app -> app: Validate request parameters and business rules
-            alt If request is invalid
-                app -> api: Return error response
-                api -> page: Return error response
-                page -> user: Display error message
-            else If request is valid
-                app -> infra: Execute database operations
-                activate infra
-                    infra -> m_user: QUERY - Get user
-                    activate m_user
-                        note right of m_user
-                            SELECT
-                                u.id as user_id,
-                                u.email_address,
-                                u.first_name,
-                                u.last_name,
-                                u.display_name,
-                                u.profile_picture_path
-                            FROM authen.m_user u
-                            WHERE u.id = '<sequence.userId>'
-                            AND u.row_status = 'ACTIVE'
-                        end note
-                        m_user -> infra: Return query result
-                    deactivate m_user
-
+page -> api: GET v1/user/profile (Bearer JWT, UTC timestamp; no query/body)
+activate api
+api -> app: [**InquiryUserProfileQueryHandler**] Process request
+activate app
+app -> app: Generate requestId; validate UTC timestamp and empty query/body
+alt Invalid timestamp or non-empty query/body
+    app -> api: HTTP 400 E10001
+    api -> page: Display failure; no partial profile
+else Valid input
+    app -> app: Verify JWT signature/issuer/audience/expiry/UUID sub
+    alt Missing or invalid JWT
+        app -> api: HTTP 401 E10002 Invalid or expired access token.
+        api -> page: Display failure; no partial profile
+    else Verified JWT
+        app -> app: userId = verified sub; accessTokenHash = SHA-256 exact JWT
+        app -> infra: BEGIN REPEATABLE READ READ ONLY
+        alt Read and mapping work completes
+            app -> app: Capture fresh server UTC now immediately before joined read; recheck JWT exp
+            alt JWT still unexpired at fresh now
+                app -> infra: QUERY - Get user
+                infra -> m_user: QUERY - Get user
+                activate m_user
+                    note right of m_user
+                        SELECT
+                            u.id as user_id,
+                            u.email_address,
+                            u.first_name,
+                            u.last_name,
+                            u.display_name,
+                            u.profile_picture_path
+                        FROM authen.m_user u
+                        JOIN authen.t_user_access_token at ON at.user_id = u.id
+                        WHERE u.id = '<sequence.userId>'
+                        AND u.row_status = 'ACTIVE'
+                        AND at.token = '<sequence.accessTokenHash>'
+                        AND at.user_id = '<sequence.userId>'
+                        AND at.row_status = 'ACTIVE'
+                        AND at.expired_at > '<sequence.now>'
+                    end note
+                    m_user -> infra: Return six own-user fields gated by ACTIVE matching stored token/user, or no row
+                deactivate m_user
+                infra -> app: Return six own-user fields gated by ACTIVE matching stored token/user, or no row
+                alt Exactly one eligible user profile returned
+                    app -> infra: QUERY - Get information
                     infra -> m_user_information: QUERY - Get information
                     activate m_user_information
                         note right of m_user_information
@@ -82,28 +94,49 @@ activate page
                                 ui.phone_number,
                                 ui.address,
                                 ui.date_of_birth,
-                                ui.gender
+                                NULLIF(ui.gender, '') as gender
                             FROM authen.m_user_information ui
                             WHERE ui.user_id = '<sequence.userId>'
                             AND ui.row_status <> 'DELETED'
                         end note
-                        m_user_information -> infra: Return query result
+                        m_user_information -> infra: Return non-DELETED information with NULLIF gender, or no row
                     deactivate m_user_information
-
-                    infra -> app: Return database result
-                deactivate infra
-
-                app -> domain: Apply domain rules and prepare response
-                activate domain
-                    domain -> app: Return response data
-                deactivate domain
-
-                app -> api: Return success response
-                api -> page: Return success response
-                page -> user: Display success result
-            end alt
-        deactivate app
-    deactivate api
+                    infra -> app: Return non-DELETED information with NULLIF gender, or no row
+                    app -> app: data.userId = verified sub; data.emailAddress = decrypt stored email
+                    app -> app: data.firstName/lastName = decrypt non-null stored values; data.displayName/profilePicturePath = stored values or null
+                    alt Information row returned
+                        app -> app: data.phoneNumber/address = decrypt non-null stored values; data.dateOfBirth = YYYY-MM-DD or null; data.gender = SQL normalized gender
+                    else No non-DELETED information row
+                        app -> app: data.phoneNumber/address/dateOfBirth/gender = null; do not create a row
+                    end
+                    app -> app: Emit exactly ten profile keys including explicit nulls; exclude username/password/token/hash/salt/session/audit/roles
+                    app -> infra: COMMIT
+                    infra -> app: Return completed consistent read-only profile
+                    app -> api: HTTP 200 S10000 Inquiry User Profile Success; all ten data keys
+                    api -> page: Show own profile
+                    page -> user: Display profile values
+                else User or stored token missing/inactive/revoked/expired/mismatched
+                    app -> infra: ROLLBACK
+                    app -> api: HTTP 401 E10002 Invalid or expired access token.
+                    api -> page: Display failure; no partial profile
+                end
+            else JWT expired before the joined read
+                app -> infra: ROLLBACK
+                app -> api: HTTP 401 E10002 Invalid or expired access token.
+                api -> page: Display failure; no partial profile
+            end
+        else Timeout before COMMIT
+            app -> infra: ROLLBACK
+            app -> api: HTTP 408 E90001
+            api -> page: Display failure; no partial profile
+        else Unexpected SQL/decryption/mapping failure before COMMIT
+            app -> infra: ROLLBACK
+            app -> api: HTTP 500 Internal Server Error; omit bizCode
+            api -> page: Display failure; no partial profile
+        end
+    end
+end
+deactivate app
+deactivate api
 deactivate page
-
 @enduml
