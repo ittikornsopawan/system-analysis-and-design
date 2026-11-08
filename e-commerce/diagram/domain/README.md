@@ -20,17 +20,17 @@ description: สารบัญdomain modelจากฐานข้อมูล5
 
 ## Source และการตรวจ
 
-- [domain_model_content.py](domain_model_content.py): business names, selected attributes, native hierarchyและassociations
-- [domain_model_notes.py](domain_model_notes.py): เหตุผลและข้อจำกัดที่ประกอบแต่ละภาพ
+- [domain_model_content.py](../../scripts/diagrams/domain_model_content.py): business names, selected attributes, native hierarchyและassociations
+- [domain_model_notes.py](../../scripts/diagrams/domain_model_notes.py): เหตุผลและข้อจำกัดที่ประกอบแต่ละภาพ
 - [domain-source-inventory.json](domain-source-inventory.json): SQL/schema baselineและhashของ64source files
-- [generate_domain_diagrams.py](generate_domain_diagrams.py): สร้างภาพ/คำอธิบายและตรวจcoverageกับsource
+- [generate_domain_diagrams.py](../../scripts/diagrams/generate_domain_diagrams.py): สร้างภาพ/คำอธิบายและตรวจcoverageกับsource
 - [domain-model-verification.md](domain-model-verification.md): ผลตรวจภาพจริง, browser, extractionและnative round trips
 
-ใช้คำสั่งต่อไปนี้จากrepository root Generatorใช้ shared rendering helpers ใน `../scripts/` โดยเก็บ model, inventory และ output ของชุดนี้ไว้ใน `domain/`
+ใช้คำสั่งต่อไปนี้จากrepository root Generator และ model อยู่ใน `e-commerce/scripts/diagrams/` ใช้ native draw.io/PNG helpers จาก `.agents/skills/diagram-creator/scripts/` โดยเก็บ inventory และ output ของชุดนี้ไว้ใน `domain/`
 
 ```sh
-python3 -B e-commerce/diagram/domain/generate_domain_diagrams.py
-python3 -B e-commerce/diagram/domain/generate_domain_diagrams.py --check
+python3 -B e-commerce/scripts/diagrams/generate_domain_diagrams.py
+python3 -B e-commerce/scripts/diagrams/generate_domain_diagrams.py --check
 ```
 
 หากDBหรือmappingเปลี่ยน ให้reviewmodelก่อนใช้ `--refresh-inventory` แล้วสร้างภาพและตรวจใหม่ ส่งออกPNGด้วยdraw.io Desktopที่ติดตั้งไว้ ตัวอย่างภาพรวม (ทำเช่นเดียวกันกับอีกสามslug):
@@ -42,7 +42,7 @@ python3 -B e-commerce/diagram/domain/generate_domain_diagrams.py --check
   -o e-commerce/diagram/domain/domain-model.drawio.png \
   e-commerce/diagram/domain/domain-model.drawio
 
-python3 -B e-commerce/diagram/domain/generate_domain_diagrams.py --finalize-pngs
+python3 -B e-commerce/scripts/diagrams/generate_domain_diagrams.py --finalize-pngs
 ```
 
 A3landscape1584×1120และstyleอ่อน/แต้มส้มตามชุดเดิม NativePNG2378×1682ใช้Georgia/Arial/CourierNewfallbacksและcompressed editablemetadata; HTMLใช้webfontstacksเดิม ไม่ติดตั้งdependencies/fontsเพิ่ม ไม่มีbackend/API/schema implementationในpackageนี้ Business namingและrule candidatesยังรอreviewตามSDDก่อนimplementation

@@ -12,7 +12,7 @@ Create diagrams that explain system structure and relationships accurately. Use 
 ## Workflow
 
 1. Identify the diagram's purpose, audience, output paths, and governing sources. Read the active project's knowledge and relevant specifications, architecture documents, and code. Distinguish approved design, unapproved proposals, and implemented behavior.
-2. Load the requested diagram skill. For `diagram-design`, resolve the project style and complete its first-run gate, then state the visual type, size, detail, and planned cuts before drawing.
+2. Load `.agents/skills/diagram-creator/SKILL.md` for evidence, viewpoint selection, editable artifacts and review. Also load the requested visual skill; for an available `diagram-design`, resolve project style and its first-run gate when unresolved. State each view's question, notation, hierarchy, edge meaning and cuts before drawing.
 3. Record the checkable plan in `tasks/todo.md`. For an existing diagram, extract its editable model and account for meaningful components and relationships. For an empty file, build from inspected project evidence.
 4. Produce the requested artifacts and the source files required for reproducibility. A `.drawio.png` must be a valid PNG containing a draw.io model that reopens with editable nodes and connectors.
 5. Verify content against its sources. Check labels, direction, grouping, implementation status, text bounds, and connector routing. Run the skill's checks and inspect every final rendered image; correct all observed defects before delivery.

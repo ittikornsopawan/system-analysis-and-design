@@ -4,9 +4,8 @@ from __future__ import annotations
 import argparse, hashlib, importlib.util, json, math, re, subprocess, sys
 from pathlib import Path
 import xml.etree.ElementTree as ET
-OUT=Path(__file__).resolve().parent
-ROOT=OUT.parents[2]
-sys.path.insert(1,str(OUT.parent/'scripts'))
+ROOT=Path(__file__).resolve().parents[3]
+OUT=ROOT/'e-commerce/diagram/domain'
 
 import generate_layered_diagrams as layered
 import generate_diagrams as g
@@ -141,15 +140,15 @@ approved_at: null
 ## การตรวจและการสร้างซ้ำ
 
 ```sh
-python3 -B e-commerce/diagram/domain/generate_domain_diagrams.py --check
+python3 -B e-commerce/scripts/diagrams/generate_domain_diagrams.py --check
 ```
 
 Generatorเทียบtable/column/nullability/reference/constraint/indexและhashของmigration/schema docsกับ [source inventory](domain-source-inventory.json) ก่อนตรวจmodel, nativeparent/child, text capacity, routesและcardinality positions ถ้าDBหรือmappingเปลี่ยนให้reviewmodelแล้วใช้ `--refresh-inventory` และสร้างภาพใหม่ ไม่แก้DDLเพื่อให้ภาพผ่าน
 
 ```sh
-python3 -B e-commerce/diagram/domain/generate_domain_diagrams.py
+python3 -B e-commerce/scripts/diagrams/generate_domain_diagrams.py
 # export each .drawio with draw.io Desktop as shown in README
-python3 -B e-commerce/diagram/domain/generate_domain_diagrams.py --finalize-pngs
+python3 -B e-commerce/scripts/diagrams/generate_domain_diagrams.py --finalize-pngs
 ```
 
 ใช้styleอ่อน/แต้มส้มเดิมและA3landscape1584×1120 NativePNGใช้fontfallbacksที่READMEเปิดเผย ผลตรวจภาพจริงและeditabilityอยู่ใน [domain-model-verification.md](domain-model-verification.md) ไม่มีbackend/API/schema implementationหรือruntimeDB/provider testsในงานนี้

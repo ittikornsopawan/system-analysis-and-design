@@ -7,14 +7,17 @@ import argparse
 import html
 import math
 from pathlib import Path
-import struct
+import sys
 import textwrap
-from urllib.parse import unquote
 import xml.etree.ElementTree as ET
-import zlib
 
 from diagram_content import DIAGRAMS
 from diagram_paths import DIAGRAM_ROOT, artifact_dir, resource_link
+
+# Shared deterministic helpers belong to the repository skill; content stays here.
+sys.path.insert(1, str(DIAGRAM_ROOT.parents[1] / '.agents/skills/diagram-creator/scripts'))
+from drawio_core import (add_cell, finalize_png, overlap, png_chunks,
+                         rounded_path, segment_hits_box, xml_signature)
 
 
 OUT = DIAGRAM_ROOT
@@ -49,19 +52,6 @@ def row_layout(n):
         for line in textwrap.wrap(value,width=capacity,break_long_words=False,break_on_hyphens=False):
             laid_out.append((line,role))
     return laid_out
-
-
-def rounded_path(points):
-    commands=[f'M {points[0][0]:g} {points[0][1]:g}']
-    for a,b,c in zip(points,points[1:],points[2:]):
-        da,dc=math.dist(a,b),math.dist(b,c)
-        r=min(8,da/2,dc/2)
-        assert r>=6, ('Corner radius below skill minimum',a,b,c)
-        p=(b[0]+(a[0]-b[0])*r/da,b[1]+(a[1]-b[1])*r/da)
-        q=(b[0]+(c[0]-b[0])*r/dc,b[1]+(c[1]-b[1])*r/dc)
-        commands.append(f'L {p[0]:g} {p[1]:g} Q {b[0]:g} {b[1]:g} {q[0]:g} {q[1]:g}')
-    commands.append(f'L {points[-1][0]:g} {points[-1][1]:g}')
-    return ' '.join(commands)
 
 
 def label_box(label):
@@ -238,16 +228,6 @@ def make_drawio(d):
     return ET.tostring(mx,encoding="unicode",xml_declaration=True)+'\n'
 
 
-def overlap(a,b):
-    return a[0]<b[0]+b[2] and b[0]<a[0]+a[2] and a[1]<b[1]+b[3] and b[1]<a[1]+a[3]
-
-
-def segment_hits_box(p,q,box):
-    x,y,w,h=box
-    if p[1]==q[1]:return y<p[1]<y+h and max(min(p[0],q[0]),x)<min(max(p[0],q[0]),x+w)
-    return x<p[0]<x+w and max(min(p[1],q[1]),y)<min(max(p[1],q[1]),y+h)
-
-
 def verify(d):
     assert len(d["nodes"])+bool(d.get("start"))<=9 and len(d["edges"])<=12
     assert sum(n["kind"]=="focal" for n in d["nodes"])<=2
@@ -316,39 +296,10 @@ def verify_evidence():
     print('PASS shipping baseline: merged seven-day automatic completion rules present')
 
 
-def png_chunks(raw):
-    assert raw[:8]==b'\x89PNG\r\n\x1a\n','Not a PNG'
-    cursor=8;chunks=[]
-    while cursor<len(raw):
-        size=struct.unpack('>I',raw[cursor:cursor+4])[0];kind=raw[cursor+4:cursor+8];payload=raw[cursor+8:cursor+8+size]
-        crc=struct.unpack('>I',raw[cursor+8+size:cursor+12+size])[0]
-        assert len(payload)==size and zlib.crc32(kind+payload)&0xffffffff==crc,'Invalid PNG CRC'
-        chunks.append((kind,payload));cursor+=size+12
-    assert chunks[-1][0]==b'IEND' and cursor==len(raw)
-    return chunks
-
-
-def xml_signature(e):
-    return e.tag,tuple(sorted(e.attrib.items())),(e.text or '').strip(),tuple(xml_signature(c) for c in e)
-
-
 def finalise_png(d, output_dir=None):
-    destination=Path(output_dir) if output_dir is not None else artifact_dir(d['slug'])
-    path=destination/f'{d["slug"]}.drawio.png';chunks=png_chunks(path.read_bytes());native=None
-    for kind,payload in chunks:
-        if kind==b'zTXt' and payload.startswith(b'mxGraphModel\0\0'):native=zlib.decompress(payload[len(b'mxGraphModel\0\0'):])
-    assert native is not None,f'{path.name}: native editable model missing'
-    source=ET.parse(destination/f'{d["slug"]}.drawio').getroot()
-    assert xml_signature(ET.fromstring(unquote(native.decode('ascii'))))==xml_signature(source),f'{path.name}: embedded model differs'
-    before=b''.join(v for k,v in chunks if k==b'IDAT');result=bytearray(b'\x89PNG\r\n\x1a\n')
-    for kind,payload in chunks:
-        if kind in {b'tEXt',b'zTXt',b'iTXt'} and payload.split(b'\0',1)[0]==b'mxfile':continue
-        if kind==b'IEND':
-            extra=b'mxfile\0\0'+zlib.compress(native,9)
-            result+=struct.pack('>I',len(extra))+b'zTXt'+extra+struct.pack('>I',zlib.crc32(b'zTXt'+extra)&0xffffffff)
-        result+=struct.pack('>I',len(payload))+kind+payload+struct.pack('>I',zlib.crc32(kind+payload)&0xffffffff)
-    after=png_chunks(bytes(result));assert before==b''.join(v for k,v in after if k==b'IDAT')
-    path.write_bytes(result);width,height=struct.unpack('>II',after[0][1][:8])
+    destination = Path(output_dir) if output_dir is not None else artifact_dir(d['slug'])
+    path = destination / f'{d["slug"]}.drawio.png'
+    width, height = finalize_png(destination / f'{d["slug"]}.drawio', path)
     print(f'PASS {path.name}: {width} x {height}; exact editable source, compatible metadata, pixel bytes preserved')
 
 

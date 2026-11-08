@@ -24,7 +24,7 @@ description: ผลตรวจชุดนำเสนอหลักสี่�
 
 ## ผลตรวจที่รันจริง
 
-- `python3 -B e-commerce/diagram/scripts/generate_layered_diagrams.py --check`: PASS ทั้ง 15 views รวม renamed Order view ตรวจ source/HTML/XML parity, text capacity, native parent/child, grid, geometry และ orthogonal connector routes; แก้ connector crossings ที่ checker พบก่อนส่งออก
+- `python3 -B e-commerce/scripts/diagrams/generate_layered_diagrams.py --check`: PASS ทั้ง 15 views รวม renamed Order view ตรวจ source/HTML/XML parity, text capacity, native parent/child, grid, geometry และ orthogonal connector routes; แก้ connector crossings ที่ checker พบก่อนส่งออก
 - Packaged `self_check.py`: PASS HTML ทั้ง 4 ภาพ Accessible SVG, title/description, single-file safety และ viewBox ผ่าน
 - Headless Chromium / Playwright ที่ 390 × 844: PASS ทั้ง 4 ภาพ SVG กว้าง 1584px, min-width ตรงกัน, local horizontal scroller ทำงาน, ไม่มี page overflow, text เกิน viewBox หรือ text ล้น leaf boxes ตรวจแบบ offline โดย block remote font requests จึงเป็นผลของ fallback fonts
 - Native draw.io export: PASS ทั้ง 4 PNG ขนาด 2378 × 1682 ทุกไฟล์ต่ำกว่า 1 MiB ใช้ installed renderer และ Georgia/Arial/Courier New fallbacks ตามชุดเดิม ไม่ติดตั้ง dependencies/fonts
@@ -39,8 +39,8 @@ description: ผลตรวจชุดนำเสนอหลักสี่�
 คำสั่งสร้างและตรวจซ้ำเฉพาะชุดหลัก:
 
 ```sh
-python3 -B e-commerce/diagram/scripts/generate_layered_diagrams.py --only architecture-design event-outbox-design outbox-delivery-sequence order-lifecycle
-python3 -B e-commerce/diagram/scripts/generate_layered_diagrams.py --check
+python3 -B e-commerce/scripts/diagrams/generate_layered_diagrams.py --only architecture-design event-outbox-design outbox-delivery-sequence order-lifecycle
+python3 -B e-commerce/scripts/diagrams/generate_layered_diagrams.py --check
 ```
 
 ส่งออกด้วย native draw.io ตาม [README](../README.md) แล้วใช้ `--finalize-pngs --only` กับสี่ slugs เพื่อรักษา editable PNG contract ผลตรวจชุดเดิมทั้งสิบห้าภาพอยู่ใน [historical verification](verification.md); ค่าจำนวนกล่องและ bytes ของสี่ภาพในรอบนี้ให้ยึดตารางข้างต้น
@@ -55,8 +55,8 @@ Outbox ยัง PROPOSED / in-review ต้องออกแบบ SQL/worker/
 
 ผลตรวจหลังย้ายโฟลเดอร์:
 
-- `python3 -B e-commerce/diagram/scripts/generate_layered_diagrams.py --check`: PASS semantic hierarchy package ทั้ง 15 views
-- `python3 -B e-commerce/diagram/scripts/generate_layered_diagrams.py --finalize-pngs`: PASS editable source/CRC/pixel preservation ทั้ง 15 PNG จากตำแหน่งใหม่
+- `python3 -B e-commerce/scripts/diagrams/generate_layered_diagrams.py --check`: PASS semantic hierarchy package ทั้ง 15 views
+- `python3 -B e-commerce/scripts/diagrams/generate_layered_diagrams.py --finalize-pngs`: PASS editable source/CRC/pixel preservation ทั้ง 15 PNG จากตำแหน่งใหม่
 - เทียบ SHA-256 กับ snapshot ก่อนย้าย: PASS PNG/draw.io ทั้ง 30 ไฟล์เหมือนเดิมทุก byte การจัดโฟลเดอร์ไม่เปลี่ยนภาพหรือ editable model
 - Folder membership: PASS สี่ main bundles และสิบเอ็ด reference bundles; ทุก bundle มี PNG/draw.io/HTML/Markdown ครบ
 - Packaged HTML self-check: PASS 15/15; HTML footer links เปลี่ยนเพื่อ navigation แต่ diagram SVG/PNG ไม่ต้อง render ใหม่จากการย้าย
@@ -74,10 +74,10 @@ Integrated `origin/main` at `def2eb2` into the PR branch after PR #63 added `dom
 Before the consumer fix, the Domain checker reproduced `ModuleNotFoundError: No module named 'generate_layered_diagrams'`. After resolution, both families pass:
 
 ```text
-python3 -B e-commerce/diagram/scripts/generate_layered_diagrams.py --check
+python3 -B e-commerce/scripts/diagrams/generate_layered_diagrams.py --check
 PASS semantic hierarchy package: source and native containment checks
 
-python3 -B e-commerce/diagram/domain/generate_domain_diagrams.py --check
+python3 -B e-commerce/scripts/diagrams/generate_domain_diagrams.py --check
 PASS domain source coverage: 53/53 tables; 75/75 FK columns; schema documentation comparison 0 findings
 ```
 
@@ -86,3 +86,12 @@ Both `--finalize-pngs` commands pass for all 19 PNGs, exercising routed defaults
 The incoming API-review spec, checker and address-upsert spec/sequence changes from main are retained byte-for-byte from `MERGE_HEAD`; they are not changes introduced by this diagram PR. Preflight is scoped to diagram/task paths for that reason. This is a branch integration commit to resolve PR conflicts; PR #64 remains subject to owner review before merging into main.
 
 Final conflict-resolution checks: Chromium 390px passed 19/19 with working local navigation and no page/text overflow using offline fonts. `git diff --cached --check` passed; scoped preflight reported `no blockers found`. The PR diff against the integrated main parent contains only diagram/task paths, and the index has no unmerged entries.
+
+
+## Skill extraction and script separation — 2026-11-08
+
+Moved all 13 project Python modules from `diagram/scripts/` and `diagram/domain/` to `e-commerce/scripts/diagrams/`. The commands above now point to their current locations; the earlier visual/editor results remain historical observations. Project content, style and output routing remain project-owned. Generic cell/geometry helpers, editable PNG finalization and artifact verification now live in `.agents/skills/diagram-creator/scripts/`.
+
+Both relocated generator families pass `--check` and `--finalize-pngs`. SHA-256 comparison against the pre-extraction snapshot confirms all 19 `.drawio`, 19 PNGs, 19 HTML previews and the SQL inventory are byte-identical. The shared verifier passes all 19 bundles with native nesting required. Domain evidence still accounts for 53/53 tables and 75/75 FK columns with zero schema documentation findings. No new image rendering, browser inspection or native edit session was performed for this code/path-only refactor; artifact parity preserves the existing visual evidence.
+
+The new artifact regression suite passes 11 tests covering PNG corruption/truncation, stale/conflicting embedded models, missing references, cycles, false nesting, compatibility finalization, compressed pages, metadata encodings, size limits and same-renderer pixel streams. Run it with `python3 -B -m unittest discover -s .agents/skills/diagram-creator/tests -v`.

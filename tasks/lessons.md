@@ -19,6 +19,18 @@ description: Repository-wide and project-specific lessons captured from user cor
 
 ## Repository-wide
 
+### 2026-11-08 — Feed every API authoring error back into the skill
+
+- **Correction**: The owner requires every error to produce a skill improvement as well as a correction to the work.
+- **Root cause**: The API skill's completion criteria covered artifact verification but did not require every discovered failure to improve the reusable authoring method.
+- **Corrected behavior**: Apply the error improvement loop in `.agents/skills/api-contract-design/SKILL.md` for self-discovered, tooling/check/render and review failures; complete and verify the preventive skill change before closing the task.
+- **Applied evidence**: Delivery rebase stopped because two independent task sections were inserted at the same position in `tasks/todo.md`. Both sections were retained and all upstream task content was verified byte-for-byte. The loop's correction step now explicitly requires preserving valid overlapping edits and verifying unrelated content.
+### 2026-11-08 — Integrate current main before PR publication
+
+- **Correction**: The owner requires merging current main into the task branch and resolving conflicts before opening a PR.
+- **Root cause**: The delivery skill went directly from task commit to push/PR, while its blanket merge prohibition also obscured the permitted direction of integration.
+- **Corrected behavior**: The `commit-and-pr` skill now distinguishes main-to-task integration from merging a PR. Fetch the base, merge into the task branch, preserve valid work on both sides, verify the merged result and publish only after the integration gate passes; keep main and published history protected.
+
 ### 2026-11-08 — Keep required skill examples inside the skill
 
 - **Correction**: The sequence guidance required reading a particular endpoint's diagram to learn its format and storytelling, so moving or deleting that file would remove the example.
@@ -323,3 +335,9 @@ description: Repository-wide and project-specific lessons captured from user cor
 - **Finding**: After opening role-batch PR69, the rotation command mistakenly used 68, which another branch had already taken. The identity/head guard stopped rotation before changing active assignment history.
 - **Root cause**: A sequential PR number was assumed instead of consuming the URL returned by the create command; concurrent authors can take intervening numbers.
 - **Corrected behavior**: Capture the actual returned PR URL, verify repository/base/head branch/head commit before any lifecycle action, and pass that same verified URL throughout release/archive/rotation. Keep the identity guard; correct the input rather than relaxing it.
+
+### 2026-11-08 — A replacement PR does not authorize closing the original
+
+- **Finding**: Automatic approval review rejected closing PR67 after replacement PR73 opened because the owner had explicitly instructed leaving PRs open. No closure was performed.
+- **Root cause**: Replacement delivery was incorrectly treated as an exception to the earlier leave-open instruction.
+- **Corrected behavior**: Keep original PRs and branches intact unless the owner explicitly authorizes closing that specific PR; creating a replacement and resuming other work do not supply that authorization.

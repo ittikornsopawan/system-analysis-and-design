@@ -5,7 +5,7 @@ description: Research defining the distinct purposes, ownership, nesting and rel
 
 # Define the view before drawing
 
-This research separates **source facts** from **editorial choices for this package**. The view map below is a drawing contract, not evidence that proposed software exists. Local evidence is [project-structure.md](https://github.com/ittikornsopawan/e-commerce-backend/blob/d8255183cba54d0c2b218607456b895a70df32f0/project-structure.md), [current structural models](../scripts/layered_core_content.py), [lifecycle models](../scripts/layered_lifecycle_content.py), [operational models](../scripts/layered_operations_content.py) and [interaction renderer](../scripts/layered_sequence_content.py), [README](../README.md) and [readiness plan](implementation-readiness-plan.md). Preserve `CODE`, `SPEC` and `PROPOSED` on the individual elements to which they apply.
+This research separates **source facts** from **editorial choices for this package**. The view map below is a drawing contract, not evidence that proposed software exists. Local evidence is [project-structure.md](https://github.com/ittikornsopawan/e-commerce-backend/blob/d8255183cba54d0c2b218607456b895a70df32f0/project-structure.md), [current structural models](../../scripts/diagrams/layered_core_content.py), [lifecycle models](../../scripts/diagrams/layered_lifecycle_content.py), [operational models](../../scripts/diagrams/layered_operations_content.py) and [interaction renderer](../../scripts/diagrams/layered_sequence_content.py), [README](../README.md) and [readiness plan](implementation-readiness-plan.md). Preserve `CODE`, `SPEC` and `PROPOSED` on the individual elements to which they apply.
 
 ## Source facts: different diagrams make different claims
 

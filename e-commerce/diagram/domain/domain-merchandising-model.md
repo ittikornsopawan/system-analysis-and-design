@@ -139,15 +139,15 @@ Candidateสำหรับ `<Feature>/Domain/` ได้แก่ SKU combinati
 ## การตรวจและการสร้างซ้ำ
 
 ```sh
-python3 -B e-commerce/diagram/domain/generate_domain_diagrams.py --check
+python3 -B e-commerce/scripts/diagrams/generate_domain_diagrams.py --check
 ```
 
 Generatorเทียบtable/column/nullability/reference/constraint/indexและhashของmigration/schema docsกับ [source inventory](domain-source-inventory.json) ก่อนตรวจmodel, nativeparent/child, text capacity, routesและcardinality positions ถ้าDBหรือmappingเปลี่ยนให้reviewmodelแล้วใช้ `--refresh-inventory` และสร้างภาพใหม่ ไม่แก้DDLเพื่อให้ภาพผ่าน
 
 ```sh
-python3 -B e-commerce/diagram/domain/generate_domain_diagrams.py
+python3 -B e-commerce/scripts/diagrams/generate_domain_diagrams.py
 # export each .drawio with draw.io Desktop as shown in README
-python3 -B e-commerce/diagram/domain/generate_domain_diagrams.py --finalize-pngs
+python3 -B e-commerce/scripts/diagrams/generate_domain_diagrams.py --finalize-pngs
 ```
 
 ใช้styleอ่อน/แต้มส้มเดิมและA3landscape1584×1120 NativePNGใช้fontfallbacksที่READMEเปิดเผย ผลตรวจภาพจริงและeditabilityอยู่ใน [domain-model-verification.md](domain-model-verification.md) ไม่มีbackend/API/schema implementationหรือruntimeDB/provider testsในงานนี้
