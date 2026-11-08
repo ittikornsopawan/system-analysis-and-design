@@ -733,9 +733,23 @@ Scope: authen-and-author/08-inquiry-user-profile with checker/task evidence. Own
 - [x] Update spec and generated-then-completed sequence together: verified caller, joined current token/user projection, consistent read-only snapshot, all ten keys/null mappings and eight terminal traces; owner Q20 projects legacy empty gender to null without rewriting history.
 - [x] Add exact SQL/semantic/path/render checks; 39/39 mutations caught after tightening the unique snapshot-rule needle (initially 38/39); synchronized credential/projection/Q20 faults, early information query, SQL whitespace and real renderer omission rejected. Exact PostgreSQL SELECTs passed own-user/current token, strict expiry, non-DELETED visibility, immutable Q20 normalization, READ ONLY rejection and two-connection snapshot consistency. PlantUML inspected with eight participants and 23/23 visible SQL lines; no backend/decryption-runtime claim.
 - [x] Run pre-integration checkers (49/49), audit (53 tables/0 findings), database suite (ALL PASSED), skeleton tests (12/12), and authorized preflight (four paths/no blockers).
-- [ ] Preserve latest main changes (including merged #56/#57 and cart #58), rerun the complete merged checker set, open one inquiry API PR and continue from main.
+- [x] Preserve latest main, remove restored stale exemptions for #56/#57, pass all 51 integrated checker commands/audit/database tests and deliver inquiry PR #60. Preserve branch/history and continue from main under Q15.
 
 Integration finding: current main restored stale transaction/token-timeout exemptions for already-complete API #56 (reset request) and #57 (profile upsert). The full merged check catches this. Remove only those four stale checker entries, preserve their API artifacts byte-for-byte and keep every registered function; rerun all commands before push. This is checker reconciliation within the existing assignment scope, not another API revision.
+
+## e-commerce: Peter API review — own-user address upsert (API 13, 2026-11-08)
+
+Scope: authen-and-author/09-upsert-user-address plus checker, shared confirmed-decision log and task evidence. WP4 U19/U23 and owner Q13 govern ownership/current credentials, quota and default invariant. Q21 explicitly rejects DELETED plus isDefault=true with 400. Q20 is recorded in the shared decision log from its already-delivered profile inquiry. No backend/schema implementation. Q15 permits independent PRs without a merge gate.
+
+- [x] Preserve inquiry PR #60/history and return to main. Its checker repair merged before successful fresh address branch preparation; no baseline failure was bypassed.
+- [x] Read spec/sequence, address schema/unique index, inquiry rules and existing checker. Ask Q21 about the contradictory Delete example/checker and persist the owner's explicit answer.
+- [x] Revise spec and generated-then-completed sequence together: full-body/Q21 validation, post-lock current credential, owned/non-DELETED target, serialized quota, nullable insert id, computed default and 14 atomic insert/update/delete/promotion traces.
+- [x] Add exact SQL/path/semantic/render checks: 66/66 mutations caught, including old checker Delete exception; synchronized wrong guards, clear-after-insert and Q21-after-BEGIN ordering, original sequence, whitespace and real renderer omission rejected. Nine exact SQL definitions passed UTC PostgreSQL reference Application/default logic, quota and credential lock waits confirmed via pg_stat_activity, rollback/default promotion/soft-history/ownership fixtures. Diagram inspected with nine participants and 136/136 visible SQL lines including reused blocks; no backend/encryption-runtime claim.
+- [x] Run pre-integration checkers (51/51), audit (53 tables/0 findings), database suite (ALL PASSED), skeleton tests (12/12), and authorized preflight (five paths/no blockers).
+- [ ] Integrate latest main including inquiry #60 and architecture #61, rerun all combined checks, open one address API PR and continue from main.
+
+
+Integration finding: GitHub merge commit 87162eb for inquiry #60 re-added its completed API 08 token/timeout exemption (verified against its first parent b1c5c90). The full merged check rejects it. Remove only that stale checker entry; preserve the API 08 artifacts and every imported checker/function. This is the cause of the main baseline regression, not permission to weaken the legacy check or modify another endpoint.
 
 ## e-commerce: Peter API review — logout (API 8)
 
