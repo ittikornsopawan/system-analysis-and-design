@@ -699,6 +699,19 @@ Delivery correction: the first integration preflight compared against stale loca
 
 Follow-up: PR #53 was merged externally at head 5635a53 while its final integration correction was being pushed. The local correction is preserved. Main still lists the completed reset in LEGACY_TOKEN_SEQUENCES, which the checker rejects. Deliver a checker/task-only follow-up under this same bounded assignment; the API spec and sequence remain byte-identical to main. Do not overwrite external branch history.
 
+## e-commerce: Peter API review — own-user profile inquiry (API 12, 2026-11-08)
+
+Scope: authen-and-author/08-inquiry-user-profile with checker/task evidence. Owner Q13 requires current token/user checks; existing profile inquiry returns the caller's ten keys and non-DELETED information. Q15 permits immediate fresh main-based branch after PR #57, without waiting for merge. Q20 approved by Ittikorn on 2026-11-08: “คืน null สำหรับค่าว่างเดิม (แนะนำ)”. Normalize legacy empty gender to response null with NULLIF and preserve stored history; detailed endpoint revision remains in-review. No backend/schema implementation.
+
+- [x] Preserve profile-upsert PR #57/history, return to clean main and prepare an authorized fresh inquiry branch with all baselines.
+- [x] Read both profile contracts and actual nullable/lifecycle schema. Identify missing current credential checks, missing explicit outcomes, and multi-read consistency; ask Q20 and persist the explicit owner response.
+- [x] Update spec and generated-then-completed sequence together: verified caller, joined current token/user projection, consistent read-only snapshot, all ten keys/null mappings and eight terminal traces; owner Q20 projects legacy empty gender to null without rewriting history.
+- [x] Add exact SQL/semantic/path/render checks; 39/39 mutations caught after tightening the unique snapshot-rule needle (initially 38/39); synchronized credential/projection/Q20 faults, early information query, SQL whitespace and real renderer omission rejected. Exact PostgreSQL SELECTs passed own-user/current token, strict expiry, non-DELETED visibility, immutable Q20 normalization, READ ONLY rejection and two-connection snapshot consistency. PlantUML inspected with eight participants and 23/23 visible SQL lines; no backend/decryption-runtime claim.
+- [x] Run pre-integration checkers (49/49), audit (53 tables/0 findings), database suite (ALL PASSED), skeleton tests (12/12), and authorized preflight (four paths/no blockers).
+- [ ] Preserve latest main changes (including merged #56/#57 and cart #58), rerun the complete merged checker set, open one inquiry API PR and continue from main.
+
+Integration finding: current main restored stale transaction/token-timeout exemptions for already-complete API #56 (reset request) and #57 (profile upsert). The full merged check catches this. Remove only those four stale checker entries, preserve their API artifacts byte-for-byte and keep every registered function; rerun all commands before push. This is checker reconciliation within the existing assignment scope, not another API revision.
+
 ## e-commerce: Peter API review — logout (API 8)
 
 Status: Author/me delivered as PR #37 (four files; MERGEABLE when opened), branch/history preserved. Clean main-based logout assignment passed baselines under Q15. Q13 keeps immediate credential revocation; WP4 U9/U23 requires the user lock and atomic closure of every token in the caller's session. Management-consent Q18/Q19 remains pending; independent authorized work continues.
