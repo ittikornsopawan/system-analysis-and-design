@@ -4694,9 +4694,9 @@ def author_needles(key: str):
     m = next(v for v in AUTHOR_MASTERS.values() if key in v[:3])
     _, _, _, path, title, lower, camel, alias, ucol, idname, _, use_msg = m
     base = [*AUTHOR_ADMIN, "E10009", "#### Fail - Forbidden", f"You do not have permission to {'read' if kind == 'inquiry' else 'manage'} {lower}s."]
-    if key == "02":
+    if key in ("01", "02"):
         base = ["Permission: only a platform administrator from the verified JWT roles claim", "Approved by the product owner", "E10009", "#### Fail - Forbidden", "You do not have permission to manage roles."]
-    if kind in ("upsert", "batch") and key != "02":
+    if kind in ("upsert", "batch") and key not in ("01", "02"):
         base.append("Permission: only a platform administrator (a user with an ACTIVE `author.t_user_role` row for the ACTIVE role `PLATFORM_ADMIN`) can call this API")
     if kind == "upsert":
         need = [f"# [POST]: v1/author/{path}/upsert", f"### {title} Rules", "-> permission (403, E10009) ->", f"{title} not found.", use_msg, f"{title} {ucol} already exists.",
@@ -4708,6 +4708,8 @@ def author_needles(key: str):
         if lower == "permission":
             need += ["#### Scope Object", "#### QUERY - Check scope", "#### QUERY - Check role permission scope in use", "#### QUERY - Check user permission scope in use", "Scope is used by roles or users.",
                      "#### Fail - Not Found Scope", "Scopes that are not listed are kept."]
+        if key == "01":
+            need = [x.replace("AND r.id <> '<sequence.id>'", "AND ('<sequence.id>' IS NULL OR r.id <> '<sequence.id>')") for x in need]
         return base + need
     if kind == "batch":
         need = [f"# [POST]: v1/author/{path}/upsert/batch", f"### {title} Rules (same as the single upsert, applied per {lower})", f"{camel}s[2]: Id is duplicated with {camel}s[1].", f"{camel}s[2]: {ucol.capitalize()} is duplicated with {camel}s[0].",
@@ -6316,6 +6318,116 @@ def check_author_me_flow() -> int:
 
 
 COMMANDS['author-me-flow'] = check_author_me_flow
+
+
+def check_role_upsert_flow() -> int:
+    """Verify role upsert claim authorization independently of live business-invariant reads."""
+    path=f'{AUTHOR_DIR}/{AUTHOR_SPECS["01"]}/spec.md';md=read(path);wsd=read(str(Path(path).with_name('sequence.wsd')));errors=[]
+    for n in ('status: in-review','approved_by: null','approved_at: null','2026-11-07-api-review-design.md',
+              'Permission: only a platform administrator from the verified JWT roles claim','exact case-sensitive role name PLATFORM_ADMIN',
+              'Malformed/missing roles is 401','Grant withdrawal alone does not invalidate','fresh server UTC now after that lock',
+              'Lock order is caller user -> target role -> binding checks/write','Reference/assignment writers must lock and recheck their target role',
+              'must not be presented as certification of an unmigrated cross-API writer','Duplicate name exclusion is null-safe','lock the non-DELETED target role FOR UPDATE',
+              'Insert-ARCHIVED is allowed (201 insert)','zero returned rows is 404 E10004','exactly roleId from RETURNING',
+              'SQLSTATE 23505','uq_m_role_name','Scenario correspondence with sequence.wsd'):
+        if n not in md:errors.append(f'role-upsert spec missing {n!r}')
+    for n in ('QUERY - Get the platform administrator role','QUERY - Check platform administrator'):
+        if n in md or n in wsd:errors.append('role-upsert may not reload live caller grants')
+    ops=spec_database_operations(md);heads=('QUERY - Lock the caller user','QUERY - Check current credential and user','QUERY - Check existing role','QUERY - Check system role','QUERY - Check duplicate name','QUERY - Check user in use','QUERY - Check role permission in use','INSERT - Create role','UPDATE - Update or delete role')
+    if tuple(h for _,h,_ in ops)!=heads:errors.append('role-upsert needs nine operations in declared lock/credential/business/write order')
+    sql={h:re.sub(r'--[^\n]*','',s) for _,h,s in ops}
+    need={heads[0]:["WHERE u.id = '<sequence.callerUserId>'",'FOR UPDATE'],heads[1]:['JOIN authen.m_user u ON u.id = at.user_id',"at.token = '<sequence.accessTokenHash>'","at.user_id = '<sequence.callerUserId>'","at.row_status = 'ACTIVE'","at.expired_at > '<sequence.now>'","u.row_status = 'ACTIVE'"],
+          heads[2]:['r.id as role_id,','r.name',"WHERE r.id = '<sequence.id>'","AND r.row_status <> 'DELETED'",'FOR UPDATE'],heads[3]:["WHERE r.id = '<sequence.id>'","AND r.name = 'PLATFORM_ADMIN'"],
+          heads[4]:["WHERE r.name = '<sequence.name>'","AND r.row_status <> 'DELETED'","AND ('<sequence.id>' IS NULL OR r.id <> '<sequence.id>')"],
+          heads[5]:["WHERE ur.role_id = '<sequence.id>'","AND ur.row_status <> 'DELETED'"],heads[6]:["WHERE rp.role_id = '<sequence.id>'","AND rp.row_status <> 'DELETED'"],
+          heads[7]:['created_by,\n    created_at,','<sequence.createdBy>','<sequence.now>','<sequence.rowStatus>','<sequence.name>','<sequence.description>','RETURNING id as role_id'],
+          heads[8]:["updated_by = '<sequence.updatedBy>'","updated_at = '<sequence.now>'","row_status = '<sequence.rowStatus>'","name = '<sequence.name>'","description = '<sequence.description>'","WHERE id = '<sequence.id>'","AND row_status <> 'DELETED'","AND name <> 'PLATFORM_ADMIN'",'RETURNING id as role_id']}
+    for h,ns in need.items():
+        for n in ns:
+            if n not in sql.get(h,''):errors.append(f'{h} missing {n!r}')
+    if 'NOW()' in '\n'.join(sql.values()) or 'created_at =' in sql.get(heads[8],''):errors.append('role upsert uses fresh bound now and preserves creation audit on update')
+    # Strict presentation decoding removes only the added note prefix, never SQL whitespace.
+    source_lines=wsd.splitlines()
+    for i,line in enumerate(source_lines):
+        request=re.match(r'^( *)infra -> \w+: (?:QUERY|INSERT|UPDATE) - ',line)
+        if not request:continue
+        prefix=' '*(len(request[1])+8);cursor=i+3
+        while cursor<len(source_lines) and source_lines[cursor].strip()!='end note':
+            raw=source_lines[cursor]
+            if raw and not raw.startswith(prefix):errors.append('every SQL line must retain the exact added presentation prefix')
+            cursor+=1
+    actual,lifecycle=sequence_database_operations(wsd);errors+=lifecycle
+    from collections import Counter
+    expected=Counter((t.split('.')[-1],h,s) for t,h,s in ops)
+    for t,h,s in ops:
+        if h in (heads[4],heads[8]):expected[(t.split('.')[-1],h,s)]+=1
+    if Counter(actual)!=expected:errors.append('role-upsert SQL differs character-for-character, has missing/excess or wrong repeated operations')
+    for _,h,_ in ops:
+        count=2 if h in (heads[4],heads[8]) else 1
+        if wsd.count('app -> infra: '+h+'\n')!=count:errors.append(f'{h} Application orchestration count incorrect')
+    for match in re.finditer(r'(?m)^( *)infra -> (\w+): ((?:QUERY|INSERT|UPDATE) - [^\n]+)\n',wsd):
+        tail=wsd[match.start():];r=re.search(rf'{match[2]} -> infra: Return ([^\n]+)\n.*?deactivate {match[2]}\n\s*infra -> app: Return ([^\n]+)',tail,re.S)
+        if not r or r[1]!=r[2]:errors.append('database result must be mapped identically back to Application')
+    for n in ('Verify JWT signature/issuer/audience/expiry/UUID sub and structured unique roleIds/name array','callerUserId = verified sub; accessTokenHash = SHA-256 exact JWT; createdBy/updatedBy = caller UUID string; omitted id = typed SQL NULL','Capture fresh server UTC now after caller lock; recheck JWT exp','JWT expired while waiting for caller lock','Authorize only exact case-sensitive PLATFORM_ADMIN in verified JWT roles; never reload live grants','Stored target is PLATFORM_ADMIN','Either non-DELETED binding exists','Guarded UPDATE returned zero rows','Require exactly one returned role_id equal to requested id','Require exactly one inserted role_id; missing or malformed result is internal failure','SQLSTATE 23505 from uq_m_role_name','data = exactly roleId from RETURNING; exclude caller/token/audit/grants','Suppress response body/status/data for 204'):
+        if n not in wsd:errors.append(f'role-upsert sequence missing {n!r}')
+    if wsd.count('alt Guarded UPDATE returned zero rows')!=2:errors.append('both destructive and reversible UPDATE branches must reject zero returned rows')
+    for response in re.finditer(r'(?m)^( *)app -> api: HTTP [^\n]+\n',wsd):
+        following=wsd[response.end():].splitlines()[:2]
+        if len(following)!=2 or not following[0].strip().startswith('api -> page:') or not following[1].strip().startswith('page -> user:'):errors.append('every HTTP outcome must reach the frontend and caller')
+    traces,structure=login_sequence_paths(wsd);errors+=structure;outcomes=[];unauthorized=[]
+    for tr in traces:
+        responses=[e for e in tr if e.startswith('app -> api: HTTP ')];joined='\n'.join(tr)
+        if len(responses)!=1:errors.append('role-upsert trace needs exactly one HTTP outcome');continue
+        code=int(responses[0].split('HTTP ')[1].split()[0]);outcomes.append(code)
+        def ordered(*parts):
+            positions=[next((i for i,e in enumerate(tr) if n in e),-1) for n in parts]
+            return -1 not in positions and positions==sorted(set(positions))
+        db=[e for e in tr if e.startswith('infra -> ')];begun=any(e.startswith('app -> infra: BEGIN') for e in tr)
+        writes=[e for e in db if ': INSERT' in e or ': UPDATE' in e];target=any(heads[2] in e for e in db);permission=any('Authorize only exact' in e for e in tr)
+        if db and not ordered('Verify JWT','callerUserId = verified sub','BEGIN READ COMMITTED',heads[0]):errors.append('DB work requires verified caller and user-first transaction lock')
+        if any(heads[1] in e for e in db) and not ordered(heads[0],'Capture fresh server UTC now',heads[1]):errors.append('fresh credentials must follow caller lock')
+        if target and not ordered(heads[1],heads[2]):errors.append('target existence requires valid current credential first')
+        if permission and not ordered(heads[1],*([heads[2]] if target else []),'Authorize only exact'):errors.append('claims permission must follow current credential and optional target existence')
+        if any(heads[3] in e for e in db) and not ordered('Authorize only exact',heads[3]):errors.append('system role check must follow caller claims permission')
+        if any(heads[4] in e for e in db) and not ordered('Authorize only exact',*([heads[3]] if target else []),heads[4]):errors.append('duplicate check must follow permission and optional system role check')
+        if any(heads[5] in e for e in db) and not ordered(heads[4],heads[5],heads[6]):errors.append('in-use checks must follow duplicate check in declared order')
+        if code in (200,201,204):
+            if len(writes)!=1 or not ordered(heads[4],writes[0] if writes else 'missing','app -> infra: COMMIT',f'HTTP {code}') or 'ROLLBACK' in joined:errors.append('successful role action requires one guarded write then commit before response')
+            if code==201:
+                if target or any(h in joined for h in (heads[3],heads[5],heads[6],heads[8])) or heads[7] not in joined:errors.append('insert skips target/system/binding reads and only inserts')
+            elif not target or heads[8] not in joined or heads[7] in joined:errors.append('existing success requires locked target and guarded update only')
+            if code!=201 and not ordered(heads[8],'Require exactly one returned role_id equal to requested id','app -> infra: COMMIT'):errors.append('each existing success must validate returned id after UPDATE and before commit')
+            destructive=code==204 or 'Archive Role Success' in responses[0]
+            if destructive!=(heads[5] in joined and heads[6] in joined):errors.append('only existing delete/archive must check both binding types')
+            if code==204 and ('no response body' not in responses[0] or 'data = exactly roleId' in joined):errors.append('204 must have no mapped response body')
+            if code!=204 and not ordered('data = exactly roleId','app -> infra: COMMIT'):errors.append('body must be mapped before commit')
+        elif begun:
+            if not ordered('BEGIN','ROLLBACK',f'HTTP {code}') or any(e=='app -> infra: COMMIT' for e in tr):errors.append('all rejected transactional role paths roll back before the error')
+            if code in (401,403,409,408,500) and writes:errors.append('visible reject path must not proceed past a failed check into a write')
+            if code==401 and any(e for e in db if 'm_role:' in e or 't_user_role:' in e or 't_role_permission:' in e):errors.append('invalid current credentials must not inspect target roles/bindings')
+            if code==403 and any(h in joined for h in heads[3:]):errors.append('403 must precede system/duplicate/in-use/write')
+        elif code not in (400,401) or db:errors.append('pre-transaction reject may only be no-SQL validation or JWT failure')
+        if code==401:unauthorized.append(len(db))
+    if Counter(outcomes)!=Counter({400:1,401:4,403:2,404:3,409:5,201:1,200:2,204:1,408:1,500:1}) or sorted(unauthorized)!=[0,1,1,2]:errors.append(f'role-upsert terminal paths incorrect: {dict(Counter(outcomes))},401 SQL={unauthorized}')
+    for title in ('Success - Insert','Success - Update','Success - Archive'):
+        obj=author_json(md,title)
+        if not obj or set(obj.get('data',{}))!={'roleId'}:errors.append(f'{title} must return exactly roleId')
+    obj=author_json(md,'Fail - Internal Server Error')
+    if not obj or obj['status']['code']!=500 or 'bizCode' in obj['status']:errors.append('internal error example must be generic 500 without bizCode')
+    errors+=json_blocks_parse(md);errors+=table_lines_aligned(md)
+    if '--rendered-svg' in sys.argv:
+        import xml.etree.ElementTree as ET
+        try:
+            root=ET.parse(sys.argv[sys.argv.index('--rendered-svg')+1]).getroot();wanted=Counter(' '.join(l.split()) for _,_,s in actual for l in s.splitlines() if l.strip());visible=Counter(' '.join(''.join(e.itertext()).split()) for e in root.iter() if e.tag.endswith('}text'));missing=wanted-visible
+            if missing:errors.append(f'rendered role-upsert SQL missing {sum(missing.values())} lines')
+            else:print(f'OK: rendered role-upsert SQL ({sum(wanted.values())}/{sum(wanted.values())} visible lines)')
+        except (IndexError,OSError,ET.ParseError) as exc:errors.append(f'cannot verify role-upsert SVG: {exc}')
+    if errors:return fail('; '.join(errors))
+    print('OK: role-upsert-flow (21 terminal traces; nine exact SQL definitions, claims and current credential gates)')
+    return 0
+
+
+COMMANDS['role-upsert-flow'] = check_role_upsert_flow
 
 
 def check_role_batch_flow() -> int:
