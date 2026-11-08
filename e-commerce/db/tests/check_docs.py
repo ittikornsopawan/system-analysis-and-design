@@ -4694,7 +4694,9 @@ def author_needles(key: str):
     m = next(v for v in AUTHOR_MASTERS.values() if key in v[:3])
     _, _, _, path, title, lower, camel, alias, ucol, idname, _, use_msg = m
     base = [*AUTHOR_ADMIN, "E10009", "#### Fail - Forbidden", f"You do not have permission to {'read' if kind == 'inquiry' else 'manage'} {lower}s."]
-    if kind in ("upsert", "batch"):
+    if key == "02":
+        base = ["Permission: only a platform administrator from the verified JWT roles claim", "Approved by the product owner", "E10009", "#### Fail - Forbidden", "You do not have permission to manage roles."]
+    if kind in ("upsert", "batch") and key != "02":
         base.append("Permission: only a platform administrator (a user with an ACTIVE `author.t_user_role` row for the ACTIVE role `PLATFORM_ADMIN`) can call this API")
     if kind == "upsert":
         need = [f"# [POST]: v1/author/{path}/upsert", f"### {title} Rules", "-> permission (403, E10009) ->", f"{title} not found.", use_msg, f"{title} {ucol} already exists.",
@@ -6314,6 +6316,123 @@ def check_author_me_flow() -> int:
 
 
 COMMANDS['author-me-flow'] = check_author_me_flow
+
+
+def check_role_batch_flow() -> int:
+    """Verify whole-batch preflight and ordered atomic role mutations; unroll one representative item."""
+    path=f'{AUTHOR_DIR}/{AUTHOR_SPECS["02"]}/spec.md';md=read(path);wsd=read(str(Path(path).with_name('sequence.wsd')));errors=[]
+    for n in ('status: in-review','approved_by: null','approved_at: null','2026-11-07-api-review-design.md','Validate the whole request before SQL','Compare parsed canonical UUIDs','exact case-sensitive PLATFORM_ADMIN','all target existence checks','after all target existence checks and before any conflict or write','with one SELECT FOR UPDATE','Withdrawal of a grant alone does not invalidate','first missing/DELETED target in original request order','Each item\'s conflict reads see preceding item writes','reversing those items returns duplicate 409','does not apply a final-state rename plan','exactly one result per input item in the same order','batch never sends per-item 201/204 or partial success','SQLSTATE 23505','uq_m_role_name','reference/assignment writers must lock and recheck','Scenario correspondence with sequence.wsd'):
+        if n not in md:errors.append(f'role-batch spec missing {n!r}')
+    for n in ('QUERY - Get the platform administrator role','QUERY - Check platform administrator'):
+        if n in md or n in wsd:errors.append('batch caller authorization must not reload live assignments')
+    ops=spec_database_operations(md);heads=('QUERY - Lock the caller user','QUERY - Check current credential and user','QUERY - Lock existing roles','QUERY - Check system role','QUERY - Check duplicate name','QUERY - Check user in use','QUERY - Check role permission in use','INSERT - Create role','UPDATE - Update or delete role')
+    if tuple(h for _,h,_ in ops)!=heads:errors.append('batch needs nine declared caller/credential/sorted-target/business/write SQL definitions')
+    sql={h:re.sub(r'--[^\n]*','',s) for _,h,s in ops};required={
+        heads[0]:["WHERE u.id = '<sequence.callerUserId>'",'FOR UPDATE'],
+        heads[1]:['JOIN authen.m_user u ON u.id = at.user_id',"at.token = '<sequence.accessTokenHash>'","at.user_id = '<sequence.callerUserId>'","at.row_status = 'ACTIVE'","at.expired_at > '<sequence.now>'","u.row_status = 'ACTIVE'"],
+        heads[2]:['r.id as role_id,','r.name',"WHERE r.id = ANY ('<sequence.targetRoleIds>'::UUID[])","AND r.row_status <> 'DELETED'",'ORDER BY r.id\nFOR UPDATE'],
+        heads[3]:["WHERE r.id = '<sequence.roles.id>'","AND r.name = 'PLATFORM_ADMIN'"],
+        heads[4]:["WHERE r.name = '<sequence.roles.name>'","AND r.row_status <> 'DELETED'","AND ('<sequence.roles.id>' IS NULL OR r.id <> '<sequence.roles.id>')"],
+        heads[5]:["WHERE ur.role_id = '<sequence.roles.id>'","AND ur.row_status <> 'DELETED'"],heads[6]:["WHERE rp.role_id = '<sequence.roles.id>'","AND rp.row_status <> 'DELETED'"],
+        heads[7]:['created_by,\n    created_at,','<sequence.createdBy>','<sequence.now>','<sequence.roles.rowStatus>','<sequence.roles.name>','<sequence.roles.description>','RETURNING id as role_id'],
+        heads[8]:["updated_by = '<sequence.updatedBy>'","updated_at = '<sequence.now>'","row_status = '<sequence.roles.rowStatus>'","name = '<sequence.roles.name>'","description = '<sequence.roles.description>'","WHERE id = '<sequence.roles.id>'","AND row_status <> 'DELETED'","AND name <> 'PLATFORM_ADMIN'",'RETURNING id as role_id']}
+    for h,needles in required.items():
+        for n in needles:
+            if n not in sql.get(h,''):errors.append(f'{h} missing {n!r}')
+    if 'NOW()' in '\n'.join(sql.values()) or 'created_at =' in sql.get(heads[8],''):errors.append('batch must use bound server now and preserve creation audit on updates')
+    actual,lifecycle=sequence_database_operations(wsd);errors+=lifecycle
+    from collections import Counter
+    wanted=Counter((t.split('.')[-1],h,s) for t,h,s in ops)
+    for t,h,s in ops:
+        if h==heads[4]:wanted[(t.split('.')[-1],h,s)]+=1
+    if Counter(actual)!=wanted:errors.append('batch SQL differs character-for-character or has missing/excess/repeated blocks')
+    lines=wsd.splitlines()
+    for i,l in enumerate(lines):
+        request=re.match(r'^( *)infra -> \w+: (?:QUERY|INSERT|UPDATE) - ',l)
+        if not request:continue
+        prefix=' '*(len(request[1])+8);j=i+3
+        while j<len(lines) and lines[j].strip()!='end note':
+            if lines[j] and not lines[j].startswith(prefix):errors.append('batch SQL must retain exactly added note indentation and original SQL whitespace')
+            j+=1
+    for _,h,_ in ops:
+        if wsd.count('app -> infra: '+h+'\n')!=(2 if h==heads[4] else 1):errors.append(f'{h} needs matching Application request count')
+    for mat in re.finditer(r'(?m)^( *)infra -> (\w+): ((?:QUERY|INSERT|UPDATE) - [^\n]+)\n',wsd):
+        r=re.search(rf'{mat[2]} -> infra: Return ([^\n]+)\n.*?deactivate {mat[2]}\n\s*infra -> app: Return ([^\n]+)',wsd[mat.start():],re.S)
+        if not r or r[1]!=r[2]:errors.append('each database result must return with its meaning to Application')
+    for n in ('Validate all items in input order; canonical duplicate ids and exact duplicate non-DELETED names are 400 before SQL','Verify JWT signature/issuer/audience/expiry/UUID sub and structured unique roleIds/name array','callerUserId = verified sub; accessTokenHash = SHA-256 exact JWT; createdBy/updatedBy = caller UUID string','targetRoleIds = typed UUID[] of supplied canonical ids, empty for all inserts; omitted per-item id = typed SQL NULL','Capture fresh server UTC now after caller lock; recheck JWT exp','JWT expired while waiting for caller lock','Map locked roles by id; check all supplied target ids in original input order; choose first missing index i','Authorize once using only exact case-sensitive PLATFORM_ADMIN in verified JWT roles; never reload live grants','loop For every roles[i] in original request order; all writes remain provisional','currentIndex = i; bind this item fields and server audit/now; prior item writes are visible','Stored target is PLATFORM_ADMIN','Either non-DELETED binding exists','Guarded UPDATE returned zero rows','Require exactly one returned role_id equal to this input id','Require exactly one inserted role_id','action = DELETE for DELETED, ARCHIVE for ARCHIVED, otherwise UPDATE','Append exactly index=i, roleId from RETURNING and action to ordered results; do not emit per-item HTTP','Require results count equals input count, original index order and unique returned roleIds; data = exactly roles array of index/roleId/action; map all before COMMIT','SQLSTATE 23505 from uq_m_role_name at currentIndex'):
+        if n not in wsd:errors.append(f'batch sequence missing {n!r}')
+    if wsd.count('app -> infra: COMMIT')!=1 or wsd.count('Authorize once using only exact')!=1:errors.append('batch has exactly one permission decision and one final commit')
+    # Expand a single representative loop iteration. Real multi-item ordering/rollback is verified by SQL fixtures.
+    flattened=[];stack=[];note=False;loop_ranges=[];loop_start=None
+    for i,l in enumerate(lines):
+        t=l.strip()
+        if t.startswith('note ') and ':' not in t:note=True
+        if note:
+            flattened.append(l)
+            if t=='end note':note=False
+            continue
+        if t.startswith('loop '):stack.append('loop');loop_start=i;continue
+        if t.startswith('alt '):stack.append('alt')
+        elif t in ('end','end alt'):
+            if not stack:errors.append('batch loop/alternative unbalanced');continue
+            kind=stack.pop()
+            if kind=='loop':loop_ranges.append((loop_start,i));continue
+        flattened.append(l)
+    if stack or len(loop_ranges)!=1:errors.append('batch requires one balanced request-order item loop')
+    elif any('app -> infra: COMMIT' in l or 'app -> api: HTTP 200' in l for l in lines[loop_ranges[0][0]:loop_ranges[0][1]]):errors.append('no success/commit may occur inside the item loop')
+    for response in re.finditer(r'(?m)^( *)app -> api: HTTP [^\n]+\n',wsd):
+        next_lines=wsd[response.end():].splitlines()[:2]
+        if len(next_lines)!=2 or not next_lines[0].strip().startswith('api -> page:') or not next_lines[1].strip().startswith('page -> user:'):errors.append('every batch outcome must reach frontend and caller')
+    traces,structure=login_sequence_paths('\n'.join(flattened));errors+=structure;outcomes=[];unauthorized=[]
+    for tr in traces:
+        responses=[e for e in tr if e.startswith('app -> api: HTTP ')];joined='\n'.join(tr)
+        if len(responses)!=1:errors.append('batch representative trace needs one terminal HTTP outcome');continue
+        code=int(responses[0].split('HTTP ')[1].split()[0]);outcomes.append(code);db=[e for e in tr if e.startswith('infra -> ')];begun=any(e.startswith('app -> infra: BEGIN') for e in tr);writes=[e for e in db if ': INSERT' in e or ': UPDATE' in e]
+        def ordered(*parts):
+            pos=[next((i for i,e in enumerate(tr) if p in e),-1) for p in parts]
+            return -1 not in pos and pos==sorted(set(pos))
+        if db and not ordered('Validate all items','Verify JWT','callerUserId = verified sub','BEGIN READ COMMITTED',heads[0]):errors.append('batch must validate all items/claims before user-first transactional SQL')
+        if heads[1] in joined and not ordered(heads[0],'Capture fresh server UTC now',heads[1]):errors.append('batch credential read requires post-user-lock fresh now')
+        if heads[2] in joined and not ordered(heads[1],heads[2]):errors.append('target locks require valid current credential')
+        if 'Authorize once using only exact' in joined and not ordered(heads[2],'Map locked roles by id','Authorize once using only exact'):errors.append('whole-target existence must precede one claims permission')
+        if heads[4] in joined and not ordered('Authorize once using only exact','currentIndex = i',*([heads[3]] if heads[3] in joined else []),heads[4]):errors.append('item conflicts require preflight permission, item index and stored system-role check for existing items')
+        if heads[5] in joined and not ordered(heads[4],heads[5],heads[6]):errors.append('binding checks follow current-item duplicate in order')
+        if code==200:
+            if len(writes)!=1 or not ordered(heads[4],writes[0] if writes else 'missing','Append exactly index=i','Require results count equals input count','app -> infra: COMMIT','HTTP 200') or 'ROLLBACK' in joined:errors.append('representative item must map its returned id/action then one final committed whole-batch 200')
+            if heads[7] in joined and (heads[3] in joined or heads[5] in joined or not ordered(heads[7],'Require exactly one inserted role_id','Append exactly')):errors.append('insert iteration only inserts and validates returned id/action')
+            if heads[8] in joined and not ordered(heads[3],heads[8],'Require exactly one returned role_id equal to this input id','action = DELETE','Append exactly'):errors.append('existing iteration must protect system role and validate update id/action before result mapping')
+        elif begun:
+            if not ordered('BEGIN','ROLLBACK',f'HTTP {code}') or 'app -> infra: COMMIT' in joined:errors.append('all transactional batch failures roll back before response')
+            if code in (401,403,409,408,500) and writes:errors.append('rejected representative item must not continue into a write')
+            if code==401 and heads[2] in joined:errors.append('invalid credential must not lock/read target roles')
+            if code==403 and any(h in joined for h in heads[3:]):errors.append('single 403 must precede every item conflict/write')
+            if code in (404,409) and 'roles[i]:' not in responses[0]:errors.append('item 404/409 needs roles[i] position')
+        elif code not in (400,401) or db:errors.append('pre-BEGIN failure must be validation/JWT with no SQL')
+        if code==401:unauthorized.append(len(db))
+    if Counter(outcomes)!=Counter({400:1,401:4,404:3,403:1,409:5,200:3,408:1,500:1}) or sorted(unauthorized)!=[0,1,1,2]:errors.append(f'expected 19 representative item traces, got {dict(Counter(outcomes))},401 SQL={unauthorized}')
+    try:
+        body=json.loads(re.search(r'#### Example Body Parameters\n\n```JSON\n(.*?)```',md,re.S)[1]);result=author_json(md,'Success');items=body['roles'];rows=result['data']['roles']
+        if set(result['data'])!={'roles'} or len(items)!=len(rows) or len({x['roleId'] for x in rows})!=len(rows):errors.append('batch example needs one uniquely identified result per input')
+        for i,(item,row) in enumerate(zip(items,rows)):
+            action='INSERT' if 'id' not in item else {'DELETED':'DELETE','ARCHIVED':'ARCHIVE'}.get(item.get('rowStatus'),'UPDATE')
+            if set(row)!={'index','roleId','action'} or type(row['index']) is not int or row['index']!=i or row['action']!=action or ('id' in item and row['roleId']!=item['id']):errors.append('batch example result mapping/order/action is incorrect')
+        internal=author_json(md,'Fail - Internal Server Error')
+        if internal['status']['code']!=500 or 'bizCode' in internal['status']:errors.append('batch internal failure must omit bizCode')
+    except (AttributeError,TypeError,KeyError,IndexError,ValueError):errors.append('batch example shape malformed')
+    errors+=json_blocks_parse(md);errors+=table_lines_aligned(md)
+    if '--rendered-svg' in sys.argv:
+        import xml.etree.ElementTree as ET
+        try:
+            root=ET.parse(sys.argv[sys.argv.index('--rendered-svg')+1]).getroot();wanted=Counter(' '.join(l.split()) for _,_,s in actual for l in s.splitlines() if l.strip());visible=Counter(' '.join(''.join(e.itertext()).split()) for e in root.iter() if e.tag.endswith('}text'));missing=wanted-visible
+            if missing:errors.append(f'rendered role-batch SQL missing {sum(missing.values())} lines')
+            else:print(f'OK: rendered role-batch SQL ({sum(wanted.values())}/{sum(wanted.values())} visible lines)')
+        except (IndexError,OSError,ET.ParseError) as exc:errors.append(f'cannot verify role-batch SVG: {exc}')
+    if errors:return fail('; '.join(errors))
+    print('OK: role-batch-flow (19 representative item traces; nine exact SQL definitions, whole-target preflight and one final commit)')
+    return 0
+
+
+COMMANDS['role-batch-flow'] = check_role_batch_flow
 
 
 def check_address_upsert_flow() -> int:
