@@ -261,3 +261,9 @@ description: Repository-wide and project-specific lessons captured from user cor
 - **Finding**: The diagram branch retained the earlier shipping rule without automatic completion while WP3b had already merged into main.
 - **Root cause**: Local specifications were used without comparing changes on the refreshed PR base before delivery.
 - **Corrected behavior**: Before a diagram PR, compare governing sources against current origin/main, reconcile affected diagrams and explanations, and rerun rendered/source checks; do not ship a known superseded lifecycle rule.
+
+### 2026-11-07 — Reconcile the local PR base and stop delivery on a failed preflight
+
+- **Finding**: After merging origin/main into a task branch, local main was still behind. Delivery preflight compared against that stale base and rejected upstream files outside the assignment; a following shell push nevertheless ran.
+- **Root cause**: The remote-tracking base was mistaken for the local base selected by the helper, and dependent delivery commands did not stop on failure.
+- **Corrected behavior**: Fast-forward the local base safely, verify the task diff against the current base, and make dependent commit/push commands fail immediately if preflight fails. Preserve both histories and never expand scope to hide upstream files.

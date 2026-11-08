@@ -3865,7 +3865,6 @@ LEGACY_SEQUENCES = (
 # change that adds the missing answers to the diagram.
 LEGACY_TOKEN_SEQUENCES = (
     "authen-and-author/03-reset-password",          # no 408
-    "authen-and-author/04-create-new-password",     # no 408
     "authen-and-author/07-upsert-user-profile",     # no Verify JWT / 401 step, no 408
     "authen-and-author/08-inquiry-user-profile",    # no Verify JWT / 401 step, no 408
     "authen-and-author/09-upsert-user-address",     # no Verify JWT / 401 step, no 408
