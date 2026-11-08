@@ -6,7 +6,7 @@ from pathlib import Path
 import xml.etree.ElementTree as ET
 OUT=Path(__file__).resolve().parent
 ROOT=OUT.parents[2]
-sys.path.insert(1,str(OUT.parent))
+sys.path.insert(1,str(OUT.parent/'scripts'))
 
 import generate_layered_diagrams as layered
 import generate_diagrams as g
@@ -94,7 +94,8 @@ def render(d,labels):
   x,y,w,h=label['rect'];parent=label['parent'];px,py=(items[parent]['x'],items[parent]['y'])if parent!='1'else(0,0)
   extra.append(f'<g data-cardinality="{label["id"]}"><rect x="{x:g}" y="{y:g}" width="{w}" height="{h}" rx="2" fill="{g.PAPER}"/>'+g.text_svg(x+w/2,y+9,label['value'],8,g.MONO,g.MUTED,anchor='middle')+'</g>')
   add_cell(root,label['id'],label['value'],x-px,y-py,w,h,f'text;html=0;align=center;verticalAlign=middle;spacing=0;fontSize=8;fontFamily={g.MONO};fontColor={g.MUTED};fillColor={g.PAPER};strokeColor=none;',parent=parent)
- html=html.replace('Research, evidence and limitations: research.md and README.md.', 'Domain source, evidence and limitations: domain-model.md and README.md.')
+ footer=f'Research, evidence and limitations: <a href="{g.resource_link(d["slug"], "design/research.md")}">research</a> and <a href="{g.resource_link(d["slug"], "README.md")}">diagram guide</a>.'
+ html=html.replace(footer, 'Domain source, evidence and limitations: <a href="domain-model.md">domain model</a> and <a href="README.md">domain guide</a>.')
  html=html.replace('</svg>','\n'.join(extra)+'</svg>');ET.indent(mx,space='  ')
  return html,ET.tostring(mx,encoding='unicode',xml_declaration=True)+'\n'
 
