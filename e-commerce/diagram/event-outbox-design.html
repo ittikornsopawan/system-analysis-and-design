@@ -1,0 +1,165 @@
+<!DOCTYPE html>
+<html lang="en"><head><meta charset="UTF-8"><meta name="viewport" content="width=device-width,initial-scale=1.0">
+<title>Publication lifecycle · delivery control</title><link href="https://fonts.googleapis.com/css2?family=Instrument+Serif:ital@0;1&amp;family=Geist:wght@400;500;600&amp;family=Geist+Mono:wght@400;500;600&amp;display=swap" rel="stylesheet">
+<style>
+* {box-sizing:border-box;} body {margin:0;padding:24px;background:#f5f5f5;color:#2d3142;font-family:'Geist',Arial,sans-serif;}
+main {width:100%;max-width:1584px;min-width:0;margin:0 auto;} h1 {font-family:'Instrument Serif',Georgia,serif;font-size:32px;font-weight:400;}
+.diagram-container {width:100%;overflow-x:auto;} svg {display:block;width:100%;min-width:1584px;}
+.source-note {font-size:12px;line-height:1.6;color:#4f5d75;} @media print {body {padding:0;} .diagram-container {overflow-x:visible;} svg {min-width:0;}}
+</style></head><body><main><h1>Publication lifecycle · delivery control</h1><div class="diagram-container"><svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 1584 1120" role="img" aria-labelledby="event-outbox-design-title event-outbox-design-desc">
+<title id="event-outbox-design-title">Publication lifecycle · delivery control</title>
+<desc id="event-outbox-design-desc">Proposed publication lifecycle with claim leases, destination commit, retry, quarantine and immutable event identity.</desc>
+<defs>
+<marker id="event-outbox-design-arrow" markerWidth="8" markerHeight="6" refX="7" refY="3" orient="auto"><polygon points="0 0,8 3,0 6" fill="#4f5d75"/></marker>
+<marker id="event-outbox-design-accent" markerWidth="8" markerHeight="6" refX="7" refY="3" orient="auto"><polygon points="0 0,8 3,0 6" fill="#bf4520"/></marker>
+<marker id="event-outbox-design-link" markerWidth="8" markerHeight="6" refX="7" refY="3" orient="auto"><polygon points="0 0,8 3,0 6" fill="#2e5aa8"/></marker>
+</defs>
+<rect width="1584" height="1120" fill="#f5f5f5"/>
+<g data-container-id="ready" data-parent="root"><rect data-role="container-bounds" x="40" y="328" width="280" height="248" rx="8" fill="#f5f5f5" stroke="#2d3142" stroke-width="1"/>
+<line x1="40" y1="364" x2="320" y2="364" stroke="#bfc0c0" stroke-width="0.8"/>
+<text x="52" y="344" font-size="12" font-family="Geist,Arial,sans-serif" font-weight="600" fill="#2d3142" text-anchor="start">READY</text>
+<text x="52" y="357" font-size="8" font-family="Geist Mono,Courier New,monospace" font-weight="400" fill="#5a6580" text-anchor="start">COMMITTED PUBLICATION</text>
+</g>
+<g data-container-id="claimed" data-parent="root"><rect data-role="container-bounds" x="392" y="328" width="320" height="248" rx="8" fill="#f5f5f5" stroke="#2d3142" stroke-width="1"/>
+<line x1="392" y1="364" x2="712" y2="364" stroke="#bfc0c0" stroke-width="0.8"/>
+<text x="404" y="344" font-size="12" font-family="Geist,Arial,sans-serif" font-weight="600" fill="#2d3142" text-anchor="start">CLAIMED</text>
+<text x="404" y="357" font-size="8" font-family="Geist Mono,Courier New,monospace" font-weight="400" fill="#5a6580" text-anchor="start">LEASE OWNED</text>
+</g>
+<g data-container-id="delivered" data-parent="root"><rect data-role="container-bounds" x="784" y="328" width="320" height="248" rx="8" fill="#f1e7e4" stroke="#bf4520" stroke-width="1"/>
+<line x1="784" y1="364" x2="1104" y2="364" stroke="#bfc0c0" stroke-width="0.8"/>
+<text x="796" y="344" font-size="12" font-family="Geist,Arial,sans-serif" font-weight="600" fill="#bf4520" text-anchor="start">DELIVERED</text>
+<text x="796" y="357" font-size="8" font-family="Geist Mono,Courier New,monospace" font-weight="400" fill="#5a6580" text-anchor="start">DESTINATION COMMIT + ACK</text>
+</g>
+<g data-container-id="retry" data-parent="root"><rect data-role="container-bounds" x="392" y="760" width="320" height="248" rx="8" fill="#f5f5f5" stroke="#2d3142" stroke-width="1"/>
+<line x1="392" y1="796" x2="712" y2="796" stroke="#bfc0c0" stroke-width="0.8"/>
+<text x="404" y="776" font-size="12" font-family="Geist,Arial,sans-serif" font-weight="600" fill="#2d3142" text-anchor="start">RETRY_WAIT</text>
+<text x="404" y="789" font-size="8" font-family="Geist Mono,Courier New,monospace" font-weight="400" fill="#5a6580" text-anchor="start">TRANSIENT / AMBIGUOUS</text>
+</g>
+<g data-container-id="quarantine" data-parent="root"><rect data-role="container-bounds" x="784" y="760" width="320" height="248" rx="8" fill="#f5f5f5" stroke="#2d3142" stroke-width="1"/>
+<line x1="784" y1="796" x2="1104" y2="796" stroke="#bfc0c0" stroke-width="0.8"/>
+<text x="796" y="776" font-size="12" font-family="Geist,Arial,sans-serif" font-weight="600" fill="#2d3142" text-anchor="start">QUARANTINED</text>
+<text x="796" y="789" font-size="8" font-family="Geist Mono,Courier New,monospace" font-weight="400" fill="#5a6580" text-anchor="start">MANUAL REVIEW</text>
+</g>
+<g data-container-id="envelope" data-parent="root"><rect data-role="container-bounds" x="1160" y="328" width="384" height="384" rx="4" fill="#f0f0f1" stroke="#5a6580" stroke-width="1"/>
+<line x1="1160" y1="364" x2="1544" y2="364" stroke="#bfc0c0" stroke-width="0.8"/>
+<text x="1172" y="344" font-size="12" font-family="Geist,Arial,sans-serif" font-weight="600" fill="#5a6580" text-anchor="start">Event envelope</text>
+<text x="1172" y="357" font-size="8" font-family="Geist Mono,Courier New,monospace" font-weight="400" fill="#5a6580" text-anchor="start">CONTRACT COMPARTMENTS / NOT A STATE</text>
+</g>
+<path d="M 62 224 L 172 224 Q 180 224 180 232 L 180 328" fill="none" stroke="#4f5d75" stroke-width="1.2" marker-end="url(#event-outbox-design-arrow)"/>
+<rect x="86" y="204" width="68" height="12" rx="2" fill="#f5f5f5"/>
+<text x="120" y="213" font-size="8" font-family="Geist Mono,Courier New,monospace" font-weight="400" fill="#5a6580" text-anchor="middle">SQL COMMIT</text>
+<path d="M 320 452 L 392 452" fill="none" stroke="#4f5d75" stroke-width="1.2" marker-end="url(#event-outbox-design-arrow)"/>
+<rect x="334" y="432" width="44" height="12" rx="2" fill="#f5f5f5"/>
+<text x="356" y="441" font-size="8" font-family="Geist Mono,Courier New,monospace" font-weight="400" fill="#5a6580" text-anchor="middle">CLAIM</text>
+<path d="M 712 452 L 784 452" fill="none" stroke="#4f5d75" stroke-width="1.2" marker-end="url(#event-outbox-design-arrow)"/>
+<rect x="732" y="432" width="32" height="12" rx="2" fill="#f5f5f5"/>
+<text x="748" y="441" font-size="8" font-family="Geist Mono,Courier New,monospace" font-weight="400" fill="#5a6580" text-anchor="middle">ACK</text>
+<path d="M 498.667 576 L 498.667 664 Q 498.667 672 506.667 672 L 544 672 Q 552 672 552 680 L 552 760" fill="none" stroke="#4f5d75" stroke-width="1.2" stroke-dasharray="5,4" marker-end="url(#event-outbox-design-arrow)"/>
+<rect x="560" y="708" width="44" height="12" rx="2" fill="#f5f5f5"/>
+<text x="582" y="717" font-size="8" font-family="Geist Mono,Courier New,monospace" font-weight="400" fill="#5a6580" text-anchor="middle">RETRY</text>
+<path d="M 605.333 576 L 605.333 632 Q 605.333 640 613.333 640 L 936 640 Q 944 640 944 648 L 944 760" fill="none" stroke="#4f5d75" stroke-width="1.2" stroke-dasharray="5,4" marker-end="url(#event-outbox-design-arrow)"/>
+<rect x="752" y="620" width="48" height="12" rx="2" fill="#f5f5f5"/>
+<text x="776" y="629" font-size="8" font-family="Geist Mono,Courier New,monospace" font-weight="400" fill="#5a6580" text-anchor="middle">POISON</text>
+<path d="M 392 884 L 352 884 Q 344 884 344 876 L 344 624 Q 344 616 336 616 L 188 616 Q 180 616 180 608 L 180 576" fill="none" stroke="#4f5d75" stroke-width="1.2" stroke-dasharray="5,4" marker-end="url(#event-outbox-design-arrow)"/>
+<rect x="244" y="596" width="32" height="12" rx="2" fill="#f5f5f5"/>
+<text x="260" y="605" font-size="8" font-family="Geist Mono,Courier New,monospace" font-weight="400" fill="#5a6580" text-anchor="middle">DUE</text>
+<path d="M 552 328 L 552 256 Q 552 248 560 248 L 736 248 Q 744 248 744 256 L 744 402 Q 744 410 736 410 L 712 410" fill="none" stroke="#4f5d75" stroke-width="1.2" stroke-dasharray="5,4" marker-end="url(#event-outbox-design-arrow)"/>
+<rect x="606" y="228" width="84" height="12" rx="2" fill="#f5f5f5"/>
+<text x="648" y="237" font-size="8" font-family="Geist Mono,Courier New,monospace" font-weight="400" fill="#5a6580" text-anchor="middle">LEASE EXPIRED</text>
+<circle cx="56" cy="224" r="6" fill="#2d3142"/>
+<g data-node-id="ready-data" data-parent="ready">
+<rect data-role="node-bounds" x="56" y="376" width="248" height="80" rx="4" fill="#ffffff" stroke="#2d3142" stroke-width="1"/>
+<text x="68" y="398" font-size="12" font-family="Geist,Arial,sans-serif" font-weight="600" fill="#2d3142" text-anchor="start">IMMUTABLE IDENTITY</text>
+<text x="68" y="412" font-size="11" font-family="Geist,Arial,sans-serif" font-weight="400" fill="#4f5d75" text-anchor="start">eventId / payloadHash</text>
+<text x="68" y="426" font-size="11" font-family="Geist,Arial,sans-serif" font-weight="400" fill="#4f5d75" text-anchor="start">sourceEpoch + aggregateVersion</text>
+</g>
+<g data-node-id="ready-gate" data-parent="ready">
+<rect data-role="node-bounds" x="56" y="480" width="248" height="80" rx="4" fill="#ffffff" stroke="#2d3142" stroke-width="1"/>
+<text x="68" y="502" font-size="12" font-family="Geist,Arial,sans-serif" font-weight="600" fill="#2d3142" text-anchor="start">ELIGIBILITY</text>
+<text x="68" y="516" font-size="11" font-family="Geist,Arial,sans-serif" font-weight="400" fill="#4f5d75" text-anchor="start">SQL source and intent committed</text>
+<text x="68" y="530" font-size="11" font-family="Geist,Arial,sans-serif" font-weight="400" fill="#4f5d75" text-anchor="start">availableAt reached; no business</text>
+<text x="68" y="544" font-size="11" font-family="Geist,Arial,sans-serif" font-weight="400" fill="#4f5d75" text-anchor="start">retry</text>
+</g>
+<g data-node-id="claimed-data" data-parent="claimed">
+<rect data-role="node-bounds" x="408" y="376" width="288" height="80" rx="4" fill="#ffffff" stroke="#2d3142" stroke-width="1"/>
+<text x="420" y="398" font-size="12" font-family="Geist,Arial,sans-serif" font-weight="600" fill="#2d3142" text-anchor="start">DURABLE LEASE</text>
+<text x="420" y="412" font-size="11" font-family="Geist,Arial,sans-serif" font-weight="400" fill="#4f5d75" text-anchor="start">leaseOwner / token / leaseUntil</text>
+<text x="420" y="426" font-size="11" font-family="Geist,Arial,sans-serif" font-weight="400" fill="#4f5d75" text-anchor="start">Short claim TX; then release SQL lock</text>
+</g>
+<g data-node-id="claimed-work" data-parent="claimed">
+<rect data-role="node-bounds" x="408" y="480" width="288" height="80" rx="4" fill="#ffffff" stroke="#2d3142" stroke-width="1"/>
+<text x="420" y="502" font-size="12" font-family="Geist,Arial,sans-serif" font-weight="600" fill="#2d3142" text-anchor="start">DESTINATION WORK</text>
+<text x="420" y="516" font-size="11" font-family="Geist,Arial,sans-serif" font-weight="400" fill="#4f5d75" text-anchor="start">Bounded worker batch and concurrency</text>
+<text x="420" y="530" font-size="11" font-family="Geist,Arial,sans-serif" font-weight="400" fill="#4f5d75" text-anchor="start">Network deadline is not rollback</text>
+</g>
+<g data-node-id="delivered-proof" data-parent="delivered">
+<rect data-role="node-bounds" x="800" y="376" width="288" height="80" rx="4" fill="#ffffff" stroke="#2d3142" stroke-width="1"/>
+<text x="812" y="398" font-size="12" font-family="Geist,Arial,sans-serif" font-weight="600" fill="#2d3142" text-anchor="start">DESTINATION ATOMICITY</text>
+<text x="812" y="412" font-size="11" font-family="Geist,Arial,sans-serif" font-weight="400" fill="#4f5d75" text-anchor="start">Mongo marker + projection + audit</text>
+<text x="812" y="426" font-size="11" font-family="Geist,Arial,sans-serif" font-weight="400" fill="#4f5d75" text-anchor="start">Majority outcome confirmed</text>
+</g>
+<g data-node-id="delivered-ack" data-parent="delivered">
+<rect data-role="node-bounds" x="800" y="480" width="288" height="80" rx="4" fill="#ffffff" stroke="#2d3142" stroke-width="1"/>
+<text x="812" y="502" font-size="12" font-family="Geist,Arial,sans-serif" font-weight="600" fill="#2d3142" text-anchor="start">SOURCE ACK</text>
+<text x="812" y="516" font-size="11" font-family="Geist,Arial,sans-serif" font-weight="400" fill="#4f5d75" text-anchor="start">SQL ACK guarded by current lease</text>
+<text x="812" y="530" font-size="11" font-family="Geist,Arial,sans-serif" font-weight="400" fill="#4f5d75" text-anchor="start">Lost ACK may replay the same event</text>
+</g>
+<g data-node-id="retry-policy" data-parent="retry">
+<rect data-role="node-bounds" x="408" y="808" width="288" height="80" rx="4" fill="#ffffff" stroke="#2d3142" stroke-width="1"/>
+<text x="420" y="830" font-size="12" font-family="Geist,Arial,sans-serif" font-weight="600" fill="#2d3142" text-anchor="start">RETRY POLICY</text>
+<text x="420" y="844" font-size="11" font-family="Geist,Arial,sans-serif" font-weight="400" fill="#4f5d75" text-anchor="start">Same event ID and immutable payload</text>
+<text x="420" y="858" font-size="11" font-family="Geist,Arial,sans-serif" font-weight="400" fill="#4f5d75" text-anchor="start">Backoff + jitter; no second charge</text>
+</g>
+<g data-node-id="retry-gate" data-parent="retry">
+<rect data-role="node-bounds" x="408" y="912" width="288" height="80" rx="4" fill="#ffffff" stroke="#2d3142" stroke-width="1"/>
+<text x="420" y="934" font-size="12" font-family="Geist,Arial,sans-serif" font-weight="600" fill="#2d3142" text-anchor="start">RECLAIM GATE</text>
+<text x="420" y="948" font-size="11" font-family="Geist,Arial,sans-serif" font-weight="400" fill="#4f5d75" text-anchor="start">Expired lease may be reclaimed</text>
+<text x="420" y="962" font-size="11" font-family="Geist,Arial,sans-serif" font-weight="400" fill="#4f5d75" text-anchor="start">Old owner cannot ACK the new claim</text>
+</g>
+<g data-node-id="quarantine-data" data-parent="quarantine">
+<rect data-role="node-bounds" x="800" y="808" width="288" height="80" rx="4" fill="#ffffff" stroke="#2d3142" stroke-width="1"/>
+<text x="812" y="830" font-size="12" font-family="Geist,Arial,sans-serif" font-weight="600" fill="#2d3142" text-anchor="start">WHY HELD</text>
+<text x="812" y="844" font-size="11" font-family="Geist,Arial,sans-serif" font-weight="400" fill="#4f5d75" text-anchor="start">Unsupported schema / poison event</text>
+<text x="812" y="858" font-size="11" font-family="Geist,Arial,sans-serif" font-weight="400" fill="#4f5d75" text-anchor="start">Same ID with different hash</text>
+</g>
+<g data-node-id="quarantine-action" data-parent="quarantine">
+<rect data-role="node-bounds" x="800" y="912" width="288" height="80" rx="4" fill="#ffffff" stroke="#2d3142" stroke-width="1"/>
+<text x="812" y="934" font-size="12" font-family="Geist,Arial,sans-serif" font-weight="600" fill="#2d3142" text-anchor="start">OPERATOR ACTION</text>
+<text x="812" y="948" font-size="11" font-family="Geist,Arial,sans-serif" font-weight="400" fill="#4f5d75" text-anchor="start">Investigate, correct mapping, audit</text>
+<text x="812" y="962" font-size="11" font-family="Geist,Arial,sans-serif" font-weight="400" fill="#4f5d75" text-anchor="start">Replay original event identity</text>
+</g>
+<g data-node-id="identity" data-parent="envelope">
+<rect data-role="node-bounds" x="1176" y="376" width="352" height="80" rx="4" fill="#ffffff" stroke="#2d3142" stroke-width="1"/>
+<text x="1188" y="398" font-size="12" font-family="Geist,Arial,sans-serif" font-weight="600" fill="#2d3142" text-anchor="start">IDENTITY</text>
+<text x="1188" y="412" font-size="11" font-family="Geist,Arial,sans-serif" font-weight="400" fill="#4f5d75" text-anchor="start">Globally unique eventId</text>
+<text x="1188" y="426" font-size="11" font-family="Geist,Arial,sans-serif" font-weight="400" fill="#4f5d75" text-anchor="start">Immutable payload fingerprint</text>
+</g>
+<g data-node-id="envelope-source" data-parent="envelope">
+<rect data-role="node-bounds" x="1176" y="480" width="352" height="80" rx="4" fill="#ffffff" stroke="#2d3142" stroke-width="1"/>
+<text x="1188" y="502" font-size="12" font-family="Geist,Arial,sans-serif" font-weight="600" fill="#2d3142" text-anchor="start">SOURCE / VERSION</text>
+<text x="1188" y="516" font-size="11" font-family="Geist,Arial,sans-serif" font-weight="400" fill="#4f5d75" text-anchor="start">sourceEpoch + aggregate identity</text>
+<text x="1188" y="530" font-size="11" font-family="Geist,Arial,sans-serif" font-weight="400" fill="#4f5d75" text-anchor="start">Per-aggregate version + schemaVersion</text>
+</g>
+<g data-node-id="payload" data-parent="envelope">
+<rect data-role="node-bounds" x="1176" y="584" width="352" height="112" rx="4" fill="#ffffff" stroke="#2d3142" stroke-width="1"/>
+<text x="1188" y="606" font-size="12" font-family="Geist,Arial,sans-serif" font-weight="600" fill="#2d3142" text-anchor="start">PAYLOAD / OBSERVABILITY</text>
+<text x="1188" y="620" font-size="11" font-family="Geist,Arial,sans-serif" font-weight="400" fill="#4f5d75" text-anchor="start">Allowlisted complete status snapshot</text>
+<text x="1188" y="634" font-size="11" font-family="Geist,Arial,sans-serif" font-weight="400" fill="#4f5d75" text-anchor="start">occurredAt / correlationId</text>
+<text x="1188" y="648" font-size="11" font-family="Geist,Arial,sans-serif" font-weight="400" fill="#4f5d75" text-anchor="start">No raw secrets, card data or full PII</text>
+<text x="1188" y="662" font-size="11" font-family="Geist,Arial,sans-serif" font-weight="400" fill="#4f5d75" text-anchor="start">New recovery snapshots get new IDs</text>
+</g>
+<text x="40" y="176" font-size="12" font-family="Geist,Arial,sans-serif" font-weight="400" fill="#4f5d75" text-anchor="start">At-least-once delivery with idempotent effects; no cross-store exactly-once guarantee.</text>
+<text x="40" y="48" font-size="8" font-family="Geist Mono,Courier New,monospace" font-weight="500" fill="#5a6580" text-anchor="start">E-COMMERCE / PROPOSED DELIVERY STATE VIEW</text>
+<text x="40" y="88" font-size="32" font-family="Instrument Serif,Georgia,serif" font-weight="400" fill="#2d3142" text-anchor="start">Publication lifecycle · delivery control</text>
+<text x="40" y="116" font-size="12" font-family="Geist,Arial,sans-serif" font-weight="400" fill="#4f5d75" text-anchor="start">Publication states are separate from order/payment states. Each state exposes its durable data and allowed effects.</text>
+<text x="40" y="1036" font-size="9" font-family="Geist Mono,Courier New,monospace" font-weight="400" fill="#5a6580" text-anchor="start">PROPOSED: mongodb-design.md; supporting-data-operations-research.md | No collection, outbox table or worker implemented</text>
+<line x1="40" y1="1052" x2="1544" y2="1052" stroke="#bfc0c0"/>
+<text x="40" y="1076" font-size="9" font-family="Geist,Arial,sans-serif" font-weight="400" fill="#4f5d75" text-anchor="start">Durable publication state</text>
+<text x="340.8" y="1076" font-size="9" font-family="Geist,Arial,sans-serif" font-weight="400" fill="#4f5d75" text-anchor="start">State data / effect</text>
+<text x="641.6" y="1076" font-size="9" font-family="Geist,Arial,sans-serif" font-weight="400" fill="#4f5d75" text-anchor="start">Delivery proof</text>
+<text x="942.4" y="1076" font-size="9" font-family="Geist,Arial,sans-serif" font-weight="400" fill="#4f5d75" text-anchor="start">Retry / exceptional transition</text>
+<text x="1243.2" y="1076" font-size="9" font-family="Geist,Arial,sans-serif" font-weight="400" fill="#4f5d75" text-anchor="start">Guarded destination effects tolerate replay</text>
+</svg></div>
+<p class="source-note">View: State Machine. A3 landscape, 1584 × 1120. Default light style.
+The matching PNG contains editable draw.io data. Supplied font fallbacks: Georgia, Arial and Courier New. Research, evidence and limitations: research.md and README.md.</p>
+</main></body></html>

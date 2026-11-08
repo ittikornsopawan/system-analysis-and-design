@@ -180,4 +180,12 @@ Signed webhooks ไม่ถูกบล็อกด้วย user/IP Redis quot
 
 หลักฐาน business transitions คือ [sales/02](../doc/api/sales/02-create-order/spec.md), [sales/05](../doc/api/sales/05-cancel-order/spec.md), [payment/01](../doc/api/payment/01-start-payment/spec.md), [payment/02](../doc/api/payment/02-stripe-webhook/spec.md), [payment/05](../doc/api/payment/05-refund-payment/spec.md), [shipping/01](../doc/api/shipping/01-create-shipping/spec.md), [shipping/02](../doc/api/shipping/02-update-shipping-status/spec.md) และ [shipping/06](../doc/api/shipping/06-confirm-delivery/spec.md) โดย campaign effects อ่านร่วมกับ [campaign design](../../docs/superpowers/specs/2026-11-06-campaign-design.md)
 
-การจัดภาพและ semantic model อยู่ใน [research.md](research.md)/[diagram_content.py](diagram_content.py) ส่วน cache/quota/config/outbox/retention เป็นข้อเสนอใน [Redis design](redis-design.md)/[MongoDB design](mongodb-design.md) ยังไม่ใช่ implementation ที่ทดสอบแล้ว ภาพไม่ได้ครอบคลุม partial refund, product-return workflow เต็มรูปแบบ, carrier integration หรือรายละเอียดการติดตั้ง automatic completion worker งานอธิบายนี้ไม่เปลี่ยน API/schema/code และไม่ได้รัน provider/load/concurrency tests
+การจัดภาพและ semantic model อยู่ใน [diagram-semantics.md](diagram-semantics.md)/[layered_lifecycle_content.py](layered_lifecycle_content.py) ส่วน cache/quota/config/outbox/retention เป็นข้อเสนอใน [Redis design](redis-design.md)/[MongoDB design](mongodb-design.md) ยังไม่ใช่ implementation ที่ทดสอบแล้ว ภาพไม่ได้ครอบคลุม partial refund, product-return workflow เต็มรูปแบบ, carrier integration หรือรายละเอียดการติดตั้ง automatic completion worker งานอธิบายนี้ไม่เปลี่ยน API/schema/code และไม่ได้รัน provider/load/concurrency tests
+
+## รูปแบบภาพที่ปรับตามความหมาย
+
+กล่องใหญ่หกกล่องคือ persisted order states ตาม SQL ส่วนกล่องเล็ก `ENTRY / ACTOR`, `EVENT / GUARD`, `SQL EFFECT`, `FULFILMENT EFFECT` และ `EFFECT / IDEMPOTENCY` เป็น **compartments อธิบายเงื่อนไข/ผล** ภายใน state ไม่ใช่ nested persisted states ใหม่ กล่อง `Data-service boundaries` เป็น annotation/control group ที่แยกจาก order states และไม่ใช่สถานะที่เจ็ด
+
+ลูกศรหลักย่อเป็น `PAID` (signed success และ guard ผ่าน), `SHIP` (สร้าง parcel แรก), `DONE` (ส่งครบภายใต้ receiver/system gate) เพื่อไม่ให้ label ชนขอบ state ส่วน `EXPIRE/CANCEL`, `REFUND`, `RETRY`, `NO LIVE PARCEL` คง event/guard ของทางเลือก การวางเส้นเหนือ/ใต้รางหลักแยก retry/recovery/terminal outcome ตามความหมาย ไม่ใช่การแบ่ง software layer
+
+Native draw.io ใช้ state parent และ guard/effect child จริง รวมเจ็ด parent containers (หก states +หนึ่ง control annotation) กับสิบห้า child compartments ตรวจทั้งโครงสร้างและรูปที่ render ก่อนส่ง รูปแบบ/เหตุผลร่วมอยู่ใน [diagram-semantics.md](diagram-semantics.md)

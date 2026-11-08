@@ -3871,7 +3871,6 @@ LEGACY_SEQUENCES = (
 # must still fail at least one of them: a file that passes both has to leave this list. Remove an entry in the same
 # change that adds the missing answers to the diagram.
 LEGACY_TOKEN_SEQUENCES = (
-    "authen-and-author/08-inquiry-user-profile",    # no Verify JWT / 401 step, no 408
     "authen-and-author/10-inquiry-user-address",    # no Verify JWT / 401 step, no 408
     "consent/02-upsert-consent",                    # no Verify JWT / 401 step, no 408
     "consent/03-inquiry-consent",                   # no Verify JWT / 401 step, no 408
@@ -6009,6 +6008,100 @@ def check_active_consent_flow() -> int:
 
 
 COMMANDS['active-consent-flow'] = check_active_consent_flow
+
+
+def check_profile_inquiry_flow() -> int:
+    """Check own-profile live credential projection, read consistency and complete nullable output."""
+    path=AUTHEN_SPECS['08'];md=read(path);wsd=read(str(Path(path).with_name('sequence.wsd')));errors=[]
+    for needle in ('status: in-review','approved_by: null','approved_at: null','2026-11-07-api-review-design.md',
+                   'Q20 is approved by the product owner','คืน null สำหรับค่าว่างเดิม (แนะนำ)',
+                   'Read user and information from the same repeatable-read snapshot','No id/userId/query filters or body are accepted',
+                   'all ten data keys every time','explicit JSON null, never an omitted key',
+                   'response normalization only','No information row is a normal state, not 404',
+                   'No user/credential lock','COMMIT the read-only transaction only after mapping succeeds',
+                   'Unexpected mapping/decryption failure','Scenario correspondence with sequence.wsd'):
+        if needle not in md:errors.append(f'profile-inquiry spec missing {needle!r}')
+    operations=spec_database_operations(md);expected=('QUERY - Get user','QUERY - Get information')
+    if tuple(h for _,h,_ in operations)!=expected:errors.append('inquiry needs exactly the joined user/credential query then own information query')
+    sql={h:re.sub(r'--[^\n]*','',s) for _,h,s in operations}
+    required={expected[0]:['JOIN authen.t_user_access_token at ON at.user_id = u.id',"WHERE u.id = '<sequence.userId>'","AND u.row_status = 'ACTIVE'","AND at.token = '<sequence.accessTokenHash>'","AND at.user_id = '<sequence.userId>'","AND at.row_status = 'ACTIVE'","AND at.expired_at > '<sequence.now>'"],
+              expected[1]:["WHERE ui.user_id = '<sequence.userId>'","AND ui.row_status <> 'DELETED'"]}
+    projections={expected[0]:['u.id as user_id','u.email_address','u.first_name','u.last_name','u.display_name','u.profile_picture_path'],expected[1]:['ui.phone_number','ui.address','ui.date_of_birth',"NULLIF(ui.gender, '') as gender"]}
+    for h,needles in required.items():
+        for needle in needles:
+            if needle not in sql.get(h,''):errors.append(f'{h} missing {needle}')
+        match=re.search(r'SELECT\s+(.*?)\s+FROM\s',sql.get(h,''),re.S)
+        if not match or normalize(match[1])!=normalize(',\n'.join(projections[h])):errors.append(f'{h} must project only its exact profile fields with Q20 NULLIF')
+    if 'NOW()' in '\n'.join(sql.values()) or SEQUENCE_LOCK.search('\n'.join(sql.values())) or any(not s.lstrip().startswith('SELECT') for s in sql.values()):errors.append('inquiry must be SELECT-only without locks and use freshly bound now')
+    actual,lifecycle=sequence_database_operations(wsd);errors+=lifecycle
+    if [(t.split('.')[-1],h,s) for t,h,s in operations]!=actual:errors.append('profile-inquiry spec/sequence SQL differs character-for-character or order')
+    for _,heading,_ in operations:
+        if f'app -> infra: {heading}' not in wsd:errors.append(f'{heading} needs Application request')
+        mapping=re.search(rf'infra -> (\w+): {re.escape(heading)}\n.*?\1 -> infra: Return ([^\n]+)\n.*?deactivate \1\n\s*infra -> app: Return ([^\n]+)',wsd,re.S)
+        if not mapping or mapping[2]!=mapping[3]:errors.append(f'{heading} database/Application result mapping differs')
+    for needle in ('Verify JWT signature/issuer/audience/expiry/UUID sub','userId = verified sub; accessTokenHash = SHA-256 exact JWT',
+                   'Capture fresh server UTC now immediately before joined read; recheck JWT exp','alt JWT still unexpired at fresh now',
+                   'data.userId = verified sub; data.emailAddress = decrypt stored email',
+                   'data.firstName/lastName = decrypt non-null stored values; data.displayName/profilePicturePath = stored values or null',
+                   'data.phoneNumber/address = decrypt non-null stored values; data.dateOfBirth = YYYY-MM-DD or null; data.gender = SQL normalized gender',
+                   'data.phoneNumber/address/dateOfBirth/gender = null; do not create a row',
+                   'Emit exactly ten profile keys including explicit nulls; exclude username/password/token/hash/salt/session/audit/roles'):
+        if needle not in wsd:errors.append(f'profile inquiry sequence missing {needle!r}')
+    traces,structure=login_sequence_paths(wsd);errors+=structure
+    from collections import Counter
+    outcomes=[];modes=Counter();unauthorized=[]
+    for trace in traces:
+        response=[e for e in trace if e.startswith('app -> api: HTTP ')]
+        if len(response)!=1:errors.append('profile inquiry trace needs one outcome');continue
+        code=int(response[0].split('HTTP ')[1].split()[0]);outcomes.append(code)
+        def ordered(*parts):
+            pos=[next((i for i,e in enumerate(trace) if part in e),-1) for part in parts]
+            return -1 not in pos and pos==sorted(set(pos))
+        queries=[e for e in trace if e.startswith('infra -> ')];begun=any(e.startswith('app -> infra: BEGIN') for e in trace)
+        if queries and not ordered('Verify JWT','userId = verified sub','BEGIN REPEATABLE READ READ ONLY','Capture fresh server UTC now',expected[0]):errors.append('profile read must follow verified identity, read-only snapshot and fresh time')
+        if any(expected[1] in e for e in trace) and not ordered(expected[0],expected[1]):errors.append('information query must follow eligible joined profile')
+        if any(': QUERY' not in e for e in queries):errors.append('profile inquiry must never write')
+        if code==200:
+            mode='missing' if any('data.phoneNumber/address/dateOfBirth/gender = null' in e for e in trace) else 'present';modes[mode]+=1
+            if len(queries)!=2 or not ordered(expected[0],expected[1],'data.userId = verified sub','Emit exactly ten','app -> infra: COMMIT','HTTP 200') or any('ROLLBACK' in e for e in trace):errors.append('success requires both consistent reads and complete mapping before commit/response')
+            if 'all ten data keys' not in response[0]:errors.append('profile success must return complete data')
+        elif begun:
+            if not ordered('BEGIN','ROLLBACK',f'HTTP {code}') or any(e=='app -> infra: COMMIT' for e in trace):errors.append('read failure must roll back before error without commit')
+            if code==401 and len(queries)>1:errors.append('invalid current credential must not read information')
+        elif code not in (400,401) or queries:errors.append('invalid input/JWT must execute no SQL')
+        if code==401:unauthorized.append(len(queries))
+    if Counter(outcomes)!=Counter({200:2,400:1,401:3,408:1,500:1}) or modes!=Counter({'present':1,'missing':1}) or sorted(unauthorized)!=[0,0,1]:errors.append(f'incomplete profile inquiry paths: {dict(Counter(outcomes))}; modes={dict(modes)}; 401 SQL={unauthorized}')
+    keys={'userId','emailAddress','firstName','lastName','displayName','profilePicturePath','phoneNumber','address','dateOfBirth','gender'}
+    data_table=md.split('### Data Object',1)[-1].split('### Example Response Parameters',1)[0]
+    required_keys={cells[2].strip() for line in data_table.splitlines() if line.startswith('|') and len(cells:=line.split('|'))>5 and cells[4].strip()=='MANDATORY'}
+    if required_keys!=keys:errors.append('response table must require all ten keys; nullable does not mean omitted')
+    for title,code in {'Success':200,'Success - No Information':200,'Success - Unset Gender':200,'Fail - Bad Request':400,'Fail - Unauthorized':401,'Fail - Request Timeout':408,'Fail - Internal Server Error':500}.items():
+        try:
+            obj=authen_json(md,title);status=obj['status']
+            if status['code']!=code or code==500 and 'bizCode' in status:errors.append(f'incorrect inquiry {title} envelope')
+            if code==200:
+                data=obj['data']
+                if set(data)!=keys or data['gender'] not in (None,'MALE','FEMALE','OTHER'):errors.append(f'{title} must have ten keys and normalized gender')
+                if title=='Success - No Information' and any(data[k] is not None for k in ('phoneNumber','address','dateOfBirth','gender')):errors.append('missing information example requires four null keys')
+                if title=='Success - Unset Gender' and data['gender'] is not None:errors.append('Q20 unset gender example must be null')
+        except (TypeError,KeyError,ValueError):errors.append(f'missing profile inquiry {title} example')
+    errors+=json_blocks_parse(md);errors+=table_lines_aligned(md)
+    if '--rendered-svg' in sys.argv:
+        import xml.etree.ElementTree as ET
+        try:
+            root=ET.parse(sys.argv[sys.argv.index('--rendered-svg')+1]).getroot()
+            expected_lines=Counter(' '.join(l.split()) for _,_,s in operations for l in s.splitlines() if l.strip())
+            visible=Counter(' '.join(''.join(e.itertext()).split()) for e in root.iter() if e.tag.endswith('}text'))
+            missing=expected_lines-visible
+            if missing:errors.append(f'rendered profile-inquiry SQL missing {sum(missing.values())} lines')
+            else:print(f'OK: rendered profile-inquiry SQL ({sum(expected_lines.values())}/{sum(expected_lines.values())} visible lines)')
+        except (IndexError,OSError,ET.ParseError) as exc:errors.append(f'cannot verify inquiry SVG: {exc}')
+    if errors:return fail('; '.join(errors))
+    print('OK: profile-inquiry-flow (8 terminal traces; exact SQL, current credential snapshot and Q20 nullable mapping)')
+    return 0
+
+
+COMMANDS['profile-inquiry-flow'] = check_profile_inquiry_flow
 
 
 def check_author_me_flow() -> int:

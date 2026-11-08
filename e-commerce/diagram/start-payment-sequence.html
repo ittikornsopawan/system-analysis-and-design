@@ -1,0 +1,140 @@
+<!DOCTYPE html>
+<html lang="en"><head><meta charset="UTF-8"><meta name="viewport" content="width=device-width,initial-scale=1.0">
+<title>Payment start: durable identity &amp; uncertainty</title><link href="https://fonts.googleapis.com/css2?family=Instrument+Serif:ital@0;1&amp;family=Geist:wght@400;500;600&amp;family=Geist+Mono:wght@400;500;600&amp;display=swap" rel="stylesheet">
+<style>
+* {box-sizing:border-box;} body {margin:0;padding:24px;background:#f5f5f5;color:#2d3142;font-family:'Geist',Arial,sans-serif;}
+main {width:100%;max-width:1584px;min-width:0;margin:0 auto;} h1 {font-family:'Instrument Serif',Georgia,serif;font-size:32px;font-weight:400;}
+.diagram-container {width:100%;overflow-x:auto;} svg {display:block;width:100%;min-width:1584px;}
+.source-note {font-size:12px;line-height:1.6;color:#4f5d75;} @media print {body {padding:0;} .diagram-container {overflow-x:visible;} svg {min-width:0;}}
+</style></head><body><main><h1>Payment start: durable identity &amp; uncertainty</h1><div class="diagram-container"><svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 1584 1120" role="img" aria-labelledby="start-payment-sequence-title start-payment-sequence-desc">
+<title id="start-payment-sequence-title">Payment start: durable identity &amp; uncertainty</title>
+<desc id="start-payment-sequence-desc">Payment start: durable identity &amp; uncertainty. Time ordered coordination with explicit proposal and transaction boundaries.</desc>
+<defs>
+<marker id="start-payment-sequence-arrow" markerWidth="8" markerHeight="6" refX="7" refY="3" orient="auto"><polygon points="0 0,8 3,0 6" fill="#4f5d75"/></marker>
+<marker id="start-payment-sequence-accent" markerWidth="8" markerHeight="6" refX="7" refY="3" orient="auto"><polygon points="0 0,8 3,0 6" fill="#bf4520"/></marker>
+<marker id="start-payment-sequence-open" markerWidth="8" markerHeight="6" refX="7" refY="3" orient="auto"><polyline points="0 0,8 3,0 6" fill="none" stroke="#4f5d75"/></marker>
+</defs>
+<rect width="1584" height="1120" fill="#f5f5f5"/>
+<text x="40" y="48" font-size="8" font-family="Geist Mono,Courier New,monospace" font-weight="500" fill="#5a6580" text-anchor="start">E-COMMERCE / PROPOSED TEMPORAL INTERACTION / NATIVE BOUNDARY GROUPS</text>
+<text x="40" y="88" font-size="32" font-family="Instrument Serif,Georgia,serif" font-weight="400" fill="#2d3142" text-anchor="start">Payment start: durable identity &amp; uncertainty</text>
+<text x="40" y="116" font-size="12" font-family="Geist,Arial,sans-serif" font-weight="400" fill="#4f5d75" text-anchor="start">Time flows down. Header nesting shows ownership; each lifeline represents the named interaction boundary.</text>
+<g data-node-id="alt"><rect data-role="node-bounds" x="136" y="540" width="1312" height="340" rx="4" fill="#f1f1f1" stroke="#bfc0c0"/></g>
+<rect x="136" y="540" width="40" height="16" rx="2" fill="#f5f5f5" stroke="#bfc0c0"/>
+<text x="156" y="552" font-size="8" font-family="Geist Mono,Courier New,monospace" font-weight="400" fill="#5a6580" text-anchor="middle">ALT</text>
+<text x="148" y="564" font-size="8" font-family="Geist Mono,Courier New,monospace" font-weight="400" fill="#5a6580" text-anchor="start">[known provider result + SQL link succeeds]</text>
+<path d="M 144 756 L 1440 756" fill="none" stroke="#bfc0c0" stroke-width="0.8" stroke-dasharray="4,4"/>
+<text x="148" y="780" font-size="8" font-family="Geist Mono,Courier New,monospace" font-weight="400" fill="#5a6580" text-anchor="start">[timeout, unknown result or failed SQL link]</text>
+<path d="M 160 336 L 160 944" fill="none" stroke="#bfc0c0" stroke-width="0.8" stroke-dasharray="4,4"/>
+<g data-node-id="boundary-customer"><rect data-role="node-bounds" x="40" y="160" width="240" height="176" rx="4" fill="#f0f0f1" stroke="#5a6580"/></g>
+<text x="160" y="180" font-size="8" font-family="Geist Mono,Courier New,monospace" font-weight="400" fill="#5a6580" text-anchor="middle">CUSTOMER / CALLER</text>
+<text x="160" y="200" font-size="12" font-family="Geist,Arial,sans-serif" font-weight="600" fill="#2d3142" text-anchor="middle">Customer</text>
+<g data-node-id="participant-customer"><rect data-role="node-bounds" x="52" y="212" width="216" height="112" rx="4" fill="#ffffff" stroke="#bfc0c0"/></g>
+<text x="160" y="232" font-size="8" font-family="Geist Mono,Courier New,monospace" font-weight="400" fill="#5a6580" text-anchor="middle">ORDER OWNER</text>
+<text x="160" y="260" font-size="11" font-family="Geist,Arial,sans-serif" font-weight="400" fill="#4f5d75" text-anchor="middle">External request / response</text>
+<text x="160" y="284" font-size="11" font-family="Geist,Arial,sans-serif" font-weight="400" fill="#4f5d75" text-anchor="middle">No direct data-store access</text>
+<path d="M 580 336 L 580 944" fill="none" stroke="#bfc0c0" stroke-width="0.8" stroke-dasharray="4,4"/>
+<g data-node-id="boundary-api"><rect data-role="node-bounds" x="460" y="160" width="240" height="176" rx="4" fill="#f1e7e4" stroke="#bf4520"/></g>
+<text x="580" y="180" font-size="8" font-family="Geist Mono,Courier New,monospace" font-weight="400" fill="#5a6580" text-anchor="middle">BACKEND REQUEST BOUNDARY</text>
+<text x="580" y="200" font-size="12" font-family="Geist,Arial,sans-serif" font-weight="600" fill="#2d3142" text-anchor="middle">Payment use case</text>
+<g data-node-id="application-api"><rect data-role="node-bounds" x="472" y="212" width="216" height="112" rx="4" fill="#f5f5f5" stroke="#5a6580"/></g>
+<text x="580" y="228" font-size="9" font-family="Geist,Arial,sans-serif" font-weight="600" fill="#2d3142" text-anchor="middle">Application coordination</text>
+<g data-node-id="role-api-0"><rect data-role="node-bounds" x="484" y="236" width="192" height="24" rx="4" fill="#ffffff" stroke="#bfc0c0"/></g>
+<text x="580" y="252" font-size="10" font-family="Geist,Arial,sans-serif" font-weight="400" fill="#4f5d75" text-anchor="middle">Command / Query</text>
+<g data-node-id="role-api-1"><rect data-role="node-bounds" x="484" y="264" width="192" height="24" rx="4" fill="#ffffff" stroke="#bfc0c0"/></g>
+<text x="580" y="280" font-size="10" font-family="Geist,Arial,sans-serif" font-weight="400" fill="#4f5d75" text-anchor="middle">Validator / policy guard</text>
+<g data-node-id="role-api-2"><rect data-role="node-bounds" x="484" y="292" width="192" height="24" rx="4" fill="#ffffff" stroke="#bfc0c0"/></g>
+<text x="580" y="308" font-size="10" font-family="Geist,Arial,sans-serif" font-weight="400" fill="#4f5d75" text-anchor="middle">Handler / transaction ports</text>
+<path d="M 1004 336 L 1004 944" fill="none" stroke="#bfc0c0" stroke-width="0.8" stroke-dasharray="4,4"/>
+<g data-node-id="boundary-sql"><rect data-role="node-bounds" x="884" y="160" width="240" height="176" rx="4" fill="#f0f0f1" stroke="#5a6580"/></g>
+<text x="1004" y="180" font-size="8" font-family="Geist Mono,Courier New,monospace" font-weight="400" fill="#5a6580" text-anchor="middle">AUTHORITATIVE DATA BOUNDARY</text>
+<text x="1004" y="200" font-size="12" font-family="Geist,Arial,sans-serif" font-weight="600" fill="#2d3142" text-anchor="middle">PostgreSQL</text>
+<g data-node-id="participant-sql"><rect data-role="node-bounds" x="896" y="212" width="216" height="112" rx="4" fill="#ffffff" stroke="#bfc0c0"/></g>
+<text x="1004" y="232" font-size="8" font-family="Geist Mono,Courier New,monospace" font-weight="400" fill="#5a6580" text-anchor="middle">ORDER + OPERATION INTENT</text>
+<text x="1004" y="260" font-size="11" font-family="Geist,Arial,sans-serif" font-weight="400" fill="#4f5d75" text-anchor="middle">Order guard / durable operation</text>
+<text x="1004" y="284" font-size="11" font-family="Geist,Arial,sans-serif" font-weight="400" fill="#4f5d75" text-anchor="middle">Stable provider identity</text>
+<path d="M 1424 336 L 1424 944" fill="none" stroke="#bfc0c0" stroke-width="0.8" stroke-dasharray="4,4"/>
+<g data-node-id="boundary-stripe"><rect data-role="node-bounds" x="1304" y="160" width="240" height="176" rx="4" fill="#f0f0f1" stroke="#5a6580"/></g>
+<text x="1424" y="180" font-size="8" font-family="Geist Mono,Courier New,monospace" font-weight="400" fill="#5a6580" text-anchor="middle">EXTERNAL PROVIDER</text>
+<text x="1424" y="200" font-size="12" font-family="Geist,Arial,sans-serif" font-weight="600" fill="#2d3142" text-anchor="middle">Stripe</text>
+<g data-node-id="participant-stripe"><rect data-role="node-bounds" x="1316" y="212" width="216" height="112" rx="4" fill="#ffffff" stroke="#bfc0c0"/></g>
+<text x="1424" y="232" font-size="8" font-family="Geist Mono,Courier New,monospace" font-weight="400" fill="#5a6580" text-anchor="middle">EXTERNAL PROVIDER</text>
+<text x="1424" y="260" font-size="11" font-family="Geist,Arial,sans-serif" font-weight="400" fill="#4f5d75" text-anchor="middle">Provider side effects</text>
+<text x="1424" y="284" font-size="11" font-family="Geist,Arial,sans-serif" font-weight="400" fill="#4f5d75" text-anchor="middle">Independent durable state</text>
+<rect x="1000" y="428" width="8" height="52" rx="0" fill="#e4e6e8" stroke="#4f5d75"/>
+<rect x="1420" y="516" width="8" height="84" rx="0" fill="#e4e6e8" stroke="#4f5d75"/>
+<rect x="1000" y="636" width="8" height="52" rx="0" fill="#e4e6e8" stroke="#4f5d75"/>
+<rect x="576" y="384" width="8" height="476" rx="0" fill="#e4e6e8" stroke="#4f5d75"/>
+<path d="M 164 384 L 576 384" fill="none" stroke="#4f5d75" stroke-width="1.2" marker-end="url(#start-payment-sequence-arrow)"/>
+<rect x="328" y="364" width="84" height="12" rx="2" fill="#f5f5f5" stroke="#f5f5f5"/>
+<text x="370" y="373" font-size="8" font-family="Geist Mono,Courier New,monospace" font-weight="400" fill="#5a6580" text-anchor="middle">START PAYMENT</text>
+<text x="40" y="387" font-size="9" font-family="Geist Mono,Courier New,monospace" font-weight="400" fill="#5a6580" text-anchor="start">01</text>
+<rect x="238" y="392" width="264" height="14" rx="2" fill="#f5f5f5" stroke="#f5f5f5"/>
+<text x="370" y="403" font-size="9" font-family="Geist,Arial,sans-serif" font-weight="400" fill="#4f5d75" text-anchor="middle">Stable caller command identity; validate ownership</text>
+<path d="M 584 428 L 1000 428" fill="none" stroke="#4f5d75" stroke-width="1.2" marker-end="url(#start-payment-sequence-arrow)"/>
+<rect x="748" y="408" width="88" height="12" rx="2" fill="#f5f5f5" stroke="#f5f5f5"/>
+<text x="792" y="417" font-size="8" font-family="Geist Mono,Courier New,monospace" font-weight="400" fill="#5a6580" text-anchor="middle">DURABLE INTENT</text>
+<text x="40" y="431" font-size="9" font-family="Geist Mono,Courier New,monospace" font-weight="400" fill="#5a6580" text-anchor="start">02</text>
+<rect x="660" y="436" width="264" height="14" rx="2" fill="#f5f5f5" stroke="#f5f5f5"/>
+<text x="792" y="447" font-size="9" font-family="Geist,Arial,sans-serif" font-weight="400" fill="#4f5d75" text-anchor="middle">Guard order, persist recoverable payment operation</text>
+<path d="M 1000 472 L 584 472" fill="none" stroke="#4f5d75" stroke-width="1.2" stroke-dasharray="4,4" marker-end="url(#start-payment-sequence-arrow)"/>
+<rect x="754" y="452" width="76" height="12" rx="2" fill="#f5f5f5" stroke="#f5f5f5"/>
+<text x="792" y="461" font-size="8" font-family="Geist Mono,Courier New,monospace" font-weight="400" fill="#5a6580" text-anchor="middle">STABLE OP ID</text>
+<text x="40" y="475" font-size="9" font-family="Geist Mono,Courier New,monospace" font-weight="400" fill="#5a6580" text-anchor="start">03</text>
+<rect x="670" y="480" width="244" height="14" rx="2" fill="#f5f5f5" stroke="#f5f5f5"/>
+<text x="792" y="491" font-size="9" font-family="Geist,Arial,sans-serif" font-weight="400" fill="#4f5d75" text-anchor="middle">Commit operation identity before provider call</text>
+<path d="M 584 516 L 1420 516" fill="none" stroke="#4f5d75" stroke-width="1.2" marker-end="url(#start-payment-sequence-arrow)"/>
+<rect x="748" y="496" width="88" height="12" rx="2" fill="#f5f5f5" stroke="#f5f5f5"/>
+<text x="792" y="505" font-size="8" font-family="Geist Mono,Courier New,monospace" font-weight="400" fill="#5a6580" text-anchor="middle">CREATE / REUSE</text>
+<text x="40" y="519" font-size="9" font-family="Geist Mono,Courier New,monospace" font-weight="400" fill="#5a6580" text-anchor="start">04</text>
+<rect x="670" y="524" width="244" height="14" rx="2" fill="#f5f5f5" stroke="#f5f5f5"/>
+<text x="792" y="535" font-size="9" font-family="Geist,Arial,sans-serif" font-weight="400" fill="#4f5d75" text-anchor="middle">Same operation ID + parameters as provider key</text>
+<path d="M 1420 592 L 584 592" fill="none" stroke="#4f5d75" stroke-width="1.2" stroke-dasharray="4,4" marker-end="url(#start-payment-sequence-arrow)"/>
+<rect x="754" y="572" width="76" height="12" rx="2" fill="#f5f5f5" stroke="#f5f5f5"/>
+<text x="792" y="581" font-size="8" font-family="Geist Mono,Courier New,monospace" font-weight="400" fill="#5a6580" text-anchor="middle">KNOWN RESULT</text>
+<text x="40" y="595" font-size="9" font-family="Geist Mono,Courier New,monospace" font-weight="400" fill="#5a6580" text-anchor="start">05</text>
+<rect x="700" y="600" width="184" height="14" rx="2" fill="#f5f5f5" stroke="#f5f5f5"/>
+<text x="792" y="611" font-size="9" font-family="Geist,Arial,sans-serif" font-weight="400" fill="#4f5d75" text-anchor="middle">Intent/status returned and checked</text>
+<path d="M 584 636 L 1000 636" fill="none" stroke="#4f5d75" stroke-width="1.2" marker-end="url(#start-payment-sequence-arrow)"/>
+<rect x="756" y="616" width="72" height="12" rx="2" fill="#f5f5f5" stroke="#f5f5f5"/>
+<text x="792" y="625" font-size="8" font-family="Geist Mono,Courier New,monospace" font-weight="400" fill="#5a6580" text-anchor="middle">LINK RESULT</text>
+<text x="40" y="639" font-size="9" font-family="Geist Mono,Courier New,monospace" font-weight="400" fill="#5a6580" text-anchor="start">06</text>
+<rect x="664" y="644" width="256" height="14" rx="2" fill="#f5f5f5" stroke="#f5f5f5"/>
+<text x="792" y="655" font-size="9" font-family="Geist,Arial,sans-serif" font-weight="400" fill="#4f5d75" text-anchor="middle">Guarded link; never mark order paid from browser</text>
+<path d="M 1000 680 L 584 680" fill="none" stroke="#4f5d75" stroke-width="1.2" stroke-dasharray="4,4" marker-end="url(#start-payment-sequence-arrow)"/>
+<rect x="748" y="660" width="88" height="12" rx="2" fill="#f5f5f5" stroke="#f5f5f5"/>
+<text x="792" y="669" font-size="8" font-family="Geist Mono,Courier New,monospace" font-weight="400" fill="#5a6580" text-anchor="middle">LINK COMMITTED</text>
+<text x="40" y="683" font-size="9" font-family="Geist Mono,Courier New,monospace" font-weight="400" fill="#5a6580" text-anchor="start">07</text>
+<rect x="704" y="688" width="176" height="14" rx="2" fill="#f5f5f5" stroke="#f5f5f5"/>
+<text x="792" y="699" font-size="9" font-family="Geist,Arial,sans-serif" font-weight="400" fill="#4f5d75" text-anchor="middle">Persist provider identity/result</text>
+<path d="M 576 724 L 164 724" fill="none" stroke="#bf4520" stroke-width="1.2" marker-end="url(#start-payment-sequence-accent)"/>
+<rect x="334" y="704" width="72" height="12" rx="2" fill="#f5f5f5" stroke="#f5f5f5"/>
+<text x="370" y="713" font-size="8" font-family="Geist Mono,Courier New,monospace" font-weight="400" fill="#5a6580" text-anchor="middle">NEXT ACTION</text>
+<text x="40" y="727" font-size="9" font-family="Geist Mono,Courier New,monospace" font-weight="400" fill="#5a6580" text-anchor="start">08</text>
+<rect x="234" y="732" width="272" height="14" rx="2" fill="#f5f5f5" stroke="#f5f5f5"/>
+<text x="370" y="743" font-size="9" font-family="Geist,Arial,sans-serif" font-weight="400" fill="#4f5d75" text-anchor="middle">Secret/action or known outcome; per future contract</text>
+<path d="M 584 808 L 1000 808" fill="none" stroke="#4f5d75" stroke-width="1.2" marker-end="url(#start-payment-sequence-arrow)"/>
+<rect x="760" y="788" width="64" height="12" rx="2" fill="#f5f5f5" stroke="#f5f5f5"/>
+<text x="792" y="797" font-size="8" font-family="Geist Mono,Courier New,monospace" font-weight="400" fill="#5a6580" text-anchor="middle">RECONCILE</text>
+<text x="40" y="811" font-size="9" font-family="Geist Mono,Courier New,monospace" font-weight="400" fill="#5a6580" text-anchor="start">09</text>
+<rect x="648" y="816" width="288" height="14" rx="2" fill="#f5f5f5" stroke="#f5f5f5"/>
+<text x="792" y="827" font-size="9" font-family="Geist,Arial,sans-serif" font-weight="400" fill="#4f5d75" text-anchor="middle">Timeout/lost reply/link failure -&gt; durable uncertainty</text>
+<path d="M 576 852 L 164 852" fill="none" stroke="#4f5d75" stroke-width="1.2" stroke-dasharray="4,4" marker-end="url(#start-payment-sequence-arrow)"/>
+<rect x="334" y="832" width="72" height="12" rx="2" fill="#f5f5f5" stroke="#f5f5f5"/>
+<text x="370" y="841" font-size="8" font-family="Geist Mono,Courier New,monospace" font-weight="400" fill="#5a6580" text-anchor="middle">UNCONFIRMED</text>
+<text x="40" y="855" font-size="9" font-family="Geist Mono,Courier New,monospace" font-weight="400" fill="#5a6580" text-anchor="start">10</text>
+<rect x="234" y="860" width="272" height="14" rx="2" fill="#f5f5f5" stroke="#f5f5f5"/>
+<text x="370" y="871" font-size="9" font-family="Geist,Arial,sans-serif" font-weight="400" fill="#4f5d75" text-anchor="middle">Safe retry identity; do not assume provider failure</text>
+<text x="40" y="964" font-size="10" font-family="Geist,Arial,sans-serif" font-weight="400" fill="#4f5d75" text-anchor="start">Header nesting shows ownership. Each lifeline is one interaction boundary; child boxes are structural context, not extra timings.</text>
+<text x="40" y="988" font-size="10" font-family="Geist,Arial,sans-serif" font-weight="400" fill="#4f5d75" text-anchor="start">PROPOSED recovery extension: the current spec can lose a new payment ID when its SQL transaction rolls back.</text>
+<text x="40" y="1008" font-size="10" font-family="Geist,Arial,sans-serif" font-weight="400" fill="#4f5d75" text-anchor="start">A provider side effect survives SQL rollback. Resume/retrieve with the same identity; API/schema changes need approval.</text>
+<text x="40" y="1036" font-size="9" font-family="Geist Mono,Courier New,monospace" font-weight="400" fill="#5a6580" text-anchor="start">Sources: linked spec.md + sequence.wsd, diagram-semantics.md and supporting research | Proposed coordination; exact SQL remains in API sequences.</text>
+<path d="M 40 1052 L 1544 1052" fill="none" stroke="#bfc0c0" stroke-width="0.8"/>
+<text x="40" y="1076" font-size="9" font-family="Geist,Arial,sans-serif" font-weight="400" fill="#4f5d75" text-anchor="start">Solid = synchronous call</text>
+<text x="336" y="1076" font-size="9" font-family="Geist,Arial,sans-serif" font-weight="400" fill="#4f5d75" text-anchor="start">Dashed filled = return</text>
+<text x="632" y="1076" font-size="9" font-family="Geist,Arial,sans-serif" font-weight="400" fill="#4f5d75" text-anchor="start">Dashed open = async hint</text>
+<text x="928" y="1076" font-size="9" font-family="Geist,Arial,sans-serif" font-weight="400" fill="#4f5d75" text-anchor="start">ALT = mutually exclusive</text>
+<text x="1224" y="1076" font-size="9" font-family="Geist,Arial,sans-serif" font-weight="400" fill="#4f5d75" text-anchor="start">Header boxes = ownership</text>
+</svg></div>
+<p class="source-note">View: Sequence. A3 landscape, 1584 × 1120. Default light style.
+The matching PNG contains editable draw.io data. Supplied font fallbacks: Georgia, Arial and Courier New. Research, evidence and limitations: research.md and README.md.</p>
+</main></body></html>

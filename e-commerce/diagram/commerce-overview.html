@@ -1,0 +1,152 @@
+<!DOCTYPE html>
+<html lang="en"><head><meta charset="UTF-8"><meta name="viewport" content="width=device-width,initial-scale=1.0">
+<title>Commerce capability ownership</title><link href="https://fonts.googleapis.com/css2?family=Instrument+Serif:ital@0;1&amp;family=Geist:wght@400;500;600&amp;family=Geist+Mono:wght@400;500;600&amp;display=swap" rel="stylesheet">
+<style>
+* {box-sizing:border-box;} body {margin:0;padding:24px;background:#f5f5f5;color:#2d3142;font-family:'Geist',Arial,sans-serif;}
+main {width:100%;max-width:1584px;min-width:0;margin:0 auto;} h1 {font-family:'Instrument Serif',Georgia,serif;font-size:32px;font-weight:400;}
+.diagram-container {width:100%;overflow-x:auto;} svg {display:block;width:100%;min-width:1584px;}
+.source-note {font-size:12px;line-height:1.6;color:#4f5d75;} @media print {body {padding:0;} .diagram-container {overflow-x:visible;} svg {min-width:0;}}
+</style></head><body><main><h1>Commerce capability ownership</h1><div class="diagram-container"><svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 1584 1120" role="img" aria-labelledby="commerce-overview-title commerce-overview-desc">
+<title id="commerce-overview-title">Commerce capability ownership</title>
+<desc id="commerce-overview-desc">Capability children belong to five business ownership boundaries; containment expresses responsibility, not a mandatory customer journey or separate deployed services.</desc>
+<defs>
+<marker id="commerce-overview-arrow" markerWidth="8" markerHeight="6" refX="7" refY="3" orient="auto"><polygon points="0 0,8 3,0 6" fill="#4f5d75"/></marker>
+<marker id="commerce-overview-accent" markerWidth="8" markerHeight="6" refX="7" refY="3" orient="auto"><polygon points="0 0,8 3,0 6" fill="#bf4520"/></marker>
+<marker id="commerce-overview-link" markerWidth="8" markerHeight="6" refX="7" refY="3" orient="auto"><polygon points="0 0,8 3,0 6" fill="#2e5aa8"/></marker>
+</defs>
+<rect width="1584" height="1120" fill="#f5f5f5"/>
+<g data-container-id="commerce" data-parent="root"><rect data-role="container-bounds" x="40" y="160" width="1504" height="828" rx="4" fill="#f0f0f1" stroke="#5a6580" stroke-width="1"/>
+<line x1="40" y1="196" x2="1544" y2="196" stroke="#bfc0c0" stroke-width="0.8"/>
+<text x="52" y="176" font-size="12" font-family="Geist,Arial,sans-serif" font-weight="600" fill="#5a6580" text-anchor="start">E-commerce responsibility map</text>
+<text x="52" y="189" font-size="8" font-family="Geist Mono,Courier New,monospace" font-weight="400" fill="#5a6580" text-anchor="start">BUSINESS OWNERSHIP; ONE BACKEND</text>
+</g>
+<g data-container-id="access-context" data-parent="commerce"><rect data-role="container-bounds" x="64" y="216" width="304" height="320" rx="4" fill="#f0f0f1" stroke="#5a6580" stroke-width="1"/>
+<line x1="64" y1="252" x2="368" y2="252" stroke="#bfc0c0" stroke-width="0.8"/>
+<text x="76" y="232" font-size="12" font-family="Geist,Arial,sans-serif" font-weight="600" fill="#5a6580" text-anchor="start">Access</text>
+<text x="76" y="245" font-size="8" font-family="Geist Mono,Courier New,monospace" font-weight="400" fill="#5a6580" text-anchor="start">IDENTITY &amp; AUTHORIZATION</text>
+</g>
+<g data-container-id="merch-context" data-parent="commerce"><rect data-role="container-bounds" x="416" y="216" width="480" height="320" rx="4" fill="#f0f0f1" stroke="#5a6580" stroke-width="1"/>
+<line x1="416" y1="252" x2="896" y2="252" stroke="#bfc0c0" stroke-width="0.8"/>
+<text x="428" y="232" font-size="12" font-family="Geist,Arial,sans-serif" font-weight="600" fill="#5a6580" text-anchor="start">Merchandise</text>
+<text x="428" y="245" font-size="8" font-family="Geist Mono,Courier New,monospace" font-weight="400" fill="#5a6580" text-anchor="start">SHOP / CATALOG / INVENTORY</text>
+</g>
+<g data-container-id="ops-context" data-parent="commerce"><rect data-role="container-bounds" x="944" y="216" width="560" height="320" rx="4" fill="#f0f0f1" stroke="#5a6580" stroke-width="1"/>
+<line x1="944" y1="252" x2="1504" y2="252" stroke="#bfc0c0" stroke-width="0.8"/>
+<text x="956" y="232" font-size="12" font-family="Geist,Arial,sans-serif" font-weight="600" fill="#5a6580" text-anchor="start">Platform operations</text>
+<text x="956" y="245" font-size="8" font-family="Geist Mono,Courier New,monospace" font-weight="400" fill="#5a6580" text-anchor="start">CROSS-CUTTING GOVERNANCE</text>
+</g>
+<g data-container-id="order-context" data-parent="commerce"><rect data-role="container-bounds" x="64" y="592" width="976" height="372" rx="4" fill="#f0f0f1" stroke="#5a6580" stroke-width="1"/>
+<line x1="64" y1="628" x2="1040" y2="628" stroke="#bfc0c0" stroke-width="0.8"/>
+<text x="76" y="608" font-size="12" font-family="Geist,Arial,sans-serif" font-weight="600" fill="#5a6580" text-anchor="start">Ordering &amp; fulfilment</text>
+<text x="76" y="621" font-size="8" font-family="Geist Mono,Courier New,monospace" font-weight="400" fill="#5a6580" text-anchor="start">CART / ORDER / PARCEL / REVIEW</text>
+</g>
+<g data-container-id="money-context" data-parent="commerce"><rect data-role="container-bounds" x="1104" y="592" width="400" height="372" rx="4" fill="#f0f0f1" stroke="#5a6580" stroke-width="1"/>
+<line x1="1104" y1="628" x2="1504" y2="628" stroke="#bfc0c0" stroke-width="0.8"/>
+<text x="1116" y="608" font-size="12" font-family="Geist,Arial,sans-serif" font-weight="600" fill="#5a6580" text-anchor="start">Payments</text>
+<text x="1116" y="621" font-size="8" font-family="Geist Mono,Courier New,monospace" font-weight="400" fill="#5a6580" text-anchor="start">PROVIDER EFFECTS + SQL GUARDS</text>
+</g>
+<g data-node-id="identity" data-parent="access-context">
+<rect data-role="node-bounds" x="80" y="272" width="272" height="104" rx="4" fill="#ffffff" stroke="#2d3142" stroke-width="1"/>
+<text x="92" y="294" font-size="12" font-family="Geist,Arial,sans-serif" font-weight="600" fill="#2d3142" text-anchor="start">Identity &amp; sessions</text>
+<text x="92" y="310" font-size="8" font-family="Geist Mono,Courier New,monospace" font-weight="400" fill="#5a6580" text-anchor="start">CODE SUBSET / SPEC</text>
+<text x="92" y="326" font-size="11" font-family="Geist,Arial,sans-serif" font-weight="400" fill="#4f5d75" text-anchor="start">Authen: five use cases</text>
+<text x="92" y="340" font-size="11" font-family="Geist,Arial,sans-serif" font-weight="400" fill="#4f5d75" text-anchor="start">SQL owns session authority</text>
+</g>
+<g data-node-id="permission" data-parent="access-context">
+<rect data-role="node-bounds" x="80" y="408" width="272" height="104" rx="4" fill="#ffffff" stroke="#2d3142" stroke-width="1"/>
+<text x="92" y="430" font-size="12" font-family="Geist,Arial,sans-serif" font-weight="600" fill="#2d3142" text-anchor="start">Live permission</text>
+<text x="92" y="446" font-size="8" font-family="Geist Mono,Courier New,monospace" font-weight="400" fill="#5a6580" text-anchor="start">SPEC</text>
+<text x="92" y="462" font-size="11" font-family="Geist,Arial,sans-serif" font-weight="400" fill="#4f5d75" text-anchor="start">Shop membership / admin role</text>
+<text x="92" y="476" font-size="11" font-family="Geist,Arial,sans-serif" font-weight="400" fill="#4f5d75" text-anchor="start">Flags never grant access</text>
+</g>
+<g data-node-id="catalog" data-parent="merch-context">
+<rect data-role="node-bounds" x="432" y="272" width="448" height="104" rx="4" fill="#ffffff" stroke="#2d3142" stroke-width="1"/>
+<text x="444" y="294" font-size="12" font-family="Geist,Arial,sans-serif" font-weight="600" fill="#2d3142" text-anchor="start">Catalog &amp; listings</text>
+<text x="444" y="310" font-size="8" font-family="Geist Mono,Courier New,monospace" font-weight="400" fill="#5a6580" text-anchor="start">SPEC</text>
+<text x="444" y="326" font-size="11" font-family="Geist,Arial,sans-serif" font-weight="400" fill="#4f5d75" text-anchor="start">Categories / brands / options</text>
+<text x="444" y="340" font-size="11" font-family="Geist,Arial,sans-serif" font-weight="400" fill="#4f5d75" text-anchor="start">Shop listing and live visibility</text>
+</g>
+<g data-node-id="inventory" data-parent="merch-context">
+<rect data-role="node-bounds" x="432" y="408" width="208" height="104" rx="4" fill="#ffffff" stroke="#2d3142" stroke-width="1"/>
+<text x="444" y="430" font-size="12" font-family="Geist,Arial,sans-serif" font-weight="600" fill="#2d3142" text-anchor="start">Inventory</text>
+<text x="444" y="446" font-size="8" font-family="Geist Mono,Courier New,monospace" font-weight="400" fill="#5a6580" text-anchor="start">SPEC</text>
+<text x="444" y="462" font-size="11" font-family="Geist,Arial,sans-serif" font-weight="400" fill="#4f5d75" text-anchor="start">SKU / original lots</text>
+<text x="444" y="476" font-size="11" font-family="Geist,Arial,sans-serif" font-weight="400" fill="#4f5d75" text-anchor="start">Live stock checks</text>
+</g>
+<g data-node-id="metadata" data-parent="merch-context">
+<rect data-role="node-bounds" x="664" y="408" width="216" height="104" rx="4" fill="#efeff0" stroke="#5a6580" stroke-width="1" stroke-dasharray="5,4"/>
+<text x="676" y="430" font-size="12" font-family="Geist,Arial,sans-serif" font-weight="600" fill="#2d3142" text-anchor="start">Public metadata</text>
+<text x="676" y="446" font-size="8" font-family="Geist Mono,Courier New,monospace" font-weight="400" fill="#5a6580" text-anchor="start">PROPOSED CACHE</text>
+<text x="676" y="462" font-size="11" font-family="Geist,Arial,sans-serif" font-weight="400" fill="#4f5d75" text-anchor="start">Public text only</text>
+<text x="676" y="476" font-size="11" font-family="Geist,Arial,sans-serif" font-weight="400" fill="#4f5d75" text-anchor="start">SQL eligibility stays live</text>
+</g>
+<g data-node-id="governance" data-parent="ops-context">
+<rect data-role="node-bounds" x="960" y="272" width="528" height="104" rx="4" fill="#ffffff" stroke="#2d3142" stroke-width="1"/>
+<text x="972" y="294" font-size="12" font-family="Geist,Arial,sans-serif" font-weight="600" fill="#2d3142" text-anchor="start">Platform governance</text>
+<text x="972" y="310" font-size="8" font-family="Geist Mono,Courier New,monospace" font-weight="400" fill="#5a6580" text-anchor="start">SPEC + PROPOSED</text>
+<text x="972" y="326" font-size="11" font-family="Geist,Arial,sans-serif" font-weight="400" fill="#4f5d75" text-anchor="start">Master data / roles / campaigns</text>
+<text x="972" y="340" font-size="11" font-family="Geist,Arial,sans-serif" font-weight="400" fill="#4f5d75" text-anchor="start">Versioned config + publication audit</text>
+</g>
+<g data-node-id="operations" data-parent="ops-context">
+<rect data-role="node-bounds" x="960" y="408" width="528" height="104" rx="4" fill="#efeff0" stroke="#5a6580" stroke-width="1" stroke-dasharray="5,4"/>
+<text x="972" y="430" font-size="12" font-family="Geist,Arial,sans-serif" font-weight="600" fill="#2d3142" text-anchor="start">Operating controls</text>
+<text x="972" y="446" font-size="8" font-family="Geist Mono,Courier New,monospace" font-weight="400" fill="#5a6580" text-anchor="start">PROPOSED</text>
+<text x="972" y="462" font-size="11" font-family="Geist,Arial,sans-serif" font-weight="400" fill="#4f5d75" text-anchor="start">Outbox / telemetry / recovery ownership</text>
+<text x="972" y="476" font-size="11" font-family="Geist,Arial,sans-serif" font-weight="400" fill="#4f5d75" text-anchor="start">Retention and targets need approval</text>
+</g>
+<g data-node-id="cart" data-parent="order-context">
+<rect data-role="node-bounds" x="80" y="648" width="264" height="104" rx="4" fill="#ffffff" stroke="#2d3142" stroke-width="1"/>
+<text x="92" y="670" font-size="12" font-family="Geist,Arial,sans-serif" font-weight="600" fill="#2d3142" text-anchor="start">Cart selection</text>
+<text x="92" y="686" font-size="8" font-family="Geist Mono,Courier New,monospace" font-weight="400" fill="#5a6580" text-anchor="start">SPEC</text>
+<text x="92" y="702" font-size="11" font-family="Geist,Arial,sans-serif" font-weight="400" fill="#4f5d75" text-anchor="start">Customer-owned lines + address</text>
+<text x="92" y="716" font-size="11" font-family="Geist,Arial,sans-serif" font-weight="400" fill="#4f5d75" text-anchor="start">Recheck availability at checkout</text>
+</g>
+<g data-node-id="checkout" data-parent="order-context">
+<rect data-role="node-bounds" x="376" y="648" width="328" height="104" rx="4" fill="#f1e7e4" stroke="#bf4520" stroke-width="1"/>
+<text x="388" y="670" font-size="12" font-family="Geist,Arial,sans-serif" font-weight="600" fill="#2d3142" text-anchor="start">Checkout &amp; campaigns</text>
+<text x="388" y="686" font-size="8" font-family="Geist Mono,Courier New,monospace" font-weight="400" fill="#5a6580" text-anchor="start">SPEC / SQL ATOMIC</text>
+<text x="388" y="702" font-size="11" font-family="Geist,Arial,sans-serif" font-weight="400" fill="#4f5d75" text-anchor="start">One order per selected shop</text>
+<text x="388" y="716" font-size="11" font-family="Geist,Arial,sans-serif" font-weight="400" fill="#4f5d75" text-anchor="start">Reserve lots + discount budget</text>
+</g>
+<g data-node-id="delivery" data-parent="order-context">
+<rect data-role="node-bounds" x="80" y="800" width="352" height="104" rx="4" fill="#ffffff" stroke="#2d3142" stroke-width="1"/>
+<text x="92" y="822" font-size="12" font-family="Geist,Arial,sans-serif" font-weight="600" fill="#2d3142" text-anchor="start">Shipping &amp; completion</text>
+<text x="92" y="838" font-size="8" font-family="Geist Mono,Courier New,monospace" font-weight="400" fill="#5a6580" text-anchor="start">SPEC</text>
+<text x="92" y="854" font-size="11" font-family="Geist,Arial,sans-serif" font-weight="400" fill="#4f5d75" text-anchor="start">Parcels / tracking entered by shop</text>
+<text x="92" y="868" font-size="11" font-family="Geist,Arial,sans-serif" font-weight="400" fill="#4f5d75" text-anchor="start">Quantity guards + 7-day completion</text>
+</g>
+<g data-node-id="history" data-parent="order-context">
+<rect data-role="node-bounds" x="464" y="800" width="560" height="104" rx="4" fill="#ffffff" stroke="#2d3142" stroke-width="1"/>
+<text x="476" y="822" font-size="12" font-family="Geist,Arial,sans-serif" font-weight="600" fill="#2d3142" text-anchor="start">Purchase history &amp; review</text>
+<text x="476" y="838" font-size="8" font-family="Geist Mono,Courier New,monospace" font-weight="400" fill="#5a6580" text-anchor="start">SPEC + PROPOSED COPY</text>
+<text x="476" y="854" font-size="11" font-family="Geist,Arial,sans-serif" font-weight="400" fill="#4f5d75" text-anchor="start">Completed purchase permits review</text>
+<text x="476" y="868" font-size="11" font-family="Geist,Arial,sans-serif" font-weight="400" fill="#4f5d75" text-anchor="start">SQL history; restricted derived status search</text>
+</g>
+<g data-node-id="payment" data-parent="money-context">
+<rect data-role="node-bounds" x="1120" y="648" width="368" height="104" rx="4" fill="#ffffff" stroke="#2d3142" stroke-width="1"/>
+<text x="1132" y="670" font-size="12" font-family="Geist,Arial,sans-serif" font-weight="600" fill="#2d3142" text-anchor="start">Payment &amp; signed events</text>
+<text x="1132" y="686" font-size="8" font-family="Geist Mono,Courier New,monospace" font-weight="400" fill="#5a6580" text-anchor="start">SPEC / STRIPE</text>
+<text x="1132" y="702" font-size="11" font-family="Geist,Arial,sans-serif" font-weight="400" fill="#4f5d75" text-anchor="start">Provider intent + verified webhook</text>
+<text x="1132" y="716" font-size="11" font-family="Geist,Arial,sans-serif" font-weight="400" fill="#4f5d75" text-anchor="start">SQL guards decide financial state</text>
+</g>
+<g data-node-id="refund" data-parent="money-context">
+<rect data-role="node-bounds" x="1120" y="800" width="368" height="104" rx="4" fill="#ffffff" stroke="#2d3142" stroke-width="1"/>
+<text x="1132" y="822" font-size="12" font-family="Geist,Arial,sans-serif" font-weight="600" fill="#2d3142" text-anchor="start">Refund &amp; reconciliation</text>
+<text x="1132" y="838" font-size="8" font-family="Geist Mono,Courier New,monospace" font-weight="400" fill="#5a6580" text-anchor="start">SPEC + PROPOSED RECOVERY</text>
+<text x="1132" y="854" font-size="11" font-family="Geist,Arial,sans-serif" font-weight="400" fill="#4f5d75" text-anchor="start">Stable provider operation identity</text>
+<text x="1132" y="868" font-size="11" font-family="Geist,Arial,sans-serif" font-weight="400" fill="#4f5d75" text-anchor="start">Full settled refund before restock</text>
+</g>
+<text x="40" y="1012" font-size="11" font-family="Geist,Arial,sans-serif" font-weight="400" fill="#4f5d75" text-anchor="start">Capability ownership only: no login-to-review chain, carrier integration, broker or independently deployed service is implied.</text>
+<text x="40" y="48" font-size="8" font-family="Geist Mono,Courier New,monospace" font-weight="500" fill="#5a6580" text-anchor="start">E-COMMERCE / LAYERED SUPPORTING DESIGN / IN REVIEW</text>
+<text x="40" y="88" font-size="32" font-family="Instrument Serif,Georgia,serif" font-weight="400" fill="#2d3142" text-anchor="start">Commerce capability ownership</text>
+<text x="40" y="116" font-size="12" font-family="Geist,Arial,sans-serif" font-weight="400" fill="#4f5d75" text-anchor="start">Specified business responsibilities; proposed data and operating controls remain in review.</text>
+<text x="40" y="1036" font-size="9" font-family="Geist Mono,Courier New,monospace" font-weight="400" fill="#5a6580" text-anchor="start">Commerce API specifications + MongoDB/Redis proposals + supporting operations research | No implementation change</text>
+<line x1="40" y1="1052" x2="1544" y2="1052" stroke="#bfc0c0"/>
+<text x="40" y="1076" font-size="9" font-family="Geist,Arial,sans-serif" font-weight="400" fill="#4f5d75" text-anchor="start">Capability child</text>
+<text x="416" y="1076" font-size="9" font-family="Geist,Arial,sans-serif" font-weight="400" fill="#4f5d75" text-anchor="start">Parent = responsibility boundary</text>
+<text x="792" y="1076" font-size="9" font-family="Geist,Arial,sans-serif" font-weight="400" fill="#4f5d75" text-anchor="start">Atomic checkout</text>
+<text x="1168" y="1076" font-size="9" font-family="Geist,Arial,sans-serif" font-weight="400" fill="#4f5d75" text-anchor="start">Proposed control</text>
+</svg></div>
+<p class="source-note">View: Nested. A3 landscape, 1584 × 1120. Default light style.
+The matching PNG contains editable draw.io data. Supplied font fallbacks: Georgia, Arial and Courier New. Research, evidence and limitations: research.md and README.md.</p>
+</main></body></html>

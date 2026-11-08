@@ -128,6 +128,51 @@ Status: Verified and ready for commit/push/PR; actual delivery state is derived 
 
 PR preparation verification (2026-11-07): delivery-check recognizes the direct owner authorization and all 23 paths remain in scope (21 diagram package files plus tasks/todo.md and tasks/lessons.md). Preflight reports no blockers. Refreshed origin/main revealed merged WP3b; the lifecycle/runtime note/research/explanation now include guarded seven-day completion instead of the superseded no-job rule. Native exports use scale 1.5 (2378 x 1682) and compressed compatible mxfile metadata; final PNG sizes are 1014302, 824217 and 829340 bytes, all below 1 MiB. Every final image was visually reviewed; packaged extraction equals source and native PNG reopening/re-export preserves exact IDAT data. Three HTML self-checks and all 12 authored Markdown frontmatters/local links pass. Geometry/evidence checks pass. Backend/API/database checks are outside this diagram-only change. Additional architecture-package views are unstarted and excluded from this delivery.
 
+## e-commerce: Supporting architecture and operational diagrams
+
+Status: Complete. Editing session closed after GitHub verified PR 48 merged and agent-workspace parked the clean previous branch. New branch `docs/jinny-architecture-details`; owner requested all previously identified gaps, in the same editable PNG plus detailed Markdown format. Scope remains `e-commerce/diagram`, `tasks/todo.md`, `tasks/lessons.md`; delivery none. No repository baseline command is declared for this diagram-only scope.
+
+Replanned 2026-11-08 after the owner's correction: revise all 15 views (the original three plus twelve supporting views). The initial supporting HTML/drawio drafts are superseded; no supporting PNG has been delivered. First research meanings, then model ownership/decomposition, then choose layout. Preserve current in-review policy and implementation boundaries.
+
+- [x] Record the correction/root cause and inspect all existing drafts without discarding unrelated work.
+- [x] Define a per-diagram semantics matrix backed by primary sources; distinguish structural, temporal, lifecycle, deployment, data and recovery viewpoints.
+- [x] Rebuild architecture with nested Presentation/Application/Domain/Infrastructure/Shared layers and explicit Command/Query, Validator, Handler and ports; rebuild repository as nested packages and system as guarded lifecycle regions.
+- [x] Rebuild supporting structural views with meaningful native parent/child boxes; revise sequence grouping/activation, collection field compartments and recovery lanes/gates using their own notation.
+- [x] Synchronize all explanations and the index, render all 15 PNGs, inspect nesting/content/readability, validate native parent-child relationships, geometry and round trips, then hand off only verified results.
+
+- [x] Verify and park PR 48, prepare the new managed assignment, read applicable rules/lessons and retain the owner's light/orange style.
+- [x] Record the complete plan and per-view purpose before drawing; use A3 landscape 1584 x 1120. The correction supersedes the initial flat nine-node target: use zoned faithful decomposition (up to 24 responsibility leaves) and no more than five sequence lifelines/twelve messages per image. Split start-payment from checkout to keep uncertainty/recovery readable.
+- [x] Research current local specifications and primary provider/data/operations sources; capture current-contract gaps separately from proposed recovery behavior.
+- [x] Build commerce overview, checkout, start-payment, webhook, refund, outbox-delivery and config-publication views.
+- [x] Build outbox lifecycle/contracts, MongoDB logical model, deployment/security, observability/SLO/capacity and backup/recovery views.
+- [x] Write a detailed Thai Markdown companion per image with rationale, trade-offs, sources, acceptance scenarios and approval boundaries; link them through the readiness plan/README.
+- [x] Render and visually inspect every final PNG; check geometry/text bounds, HTML, source parity, PNG metadata/editability and native round trips; keep final PNGs below 1 MiB.
+- [x] Reconcile source baseline, review the full package, record verification/limitations and release the editing-session lock. No backend/API/schema implementation or PR is included in this authorization.
+
+Verification (2026-11-08): All 15 views and companions are rebuilt using meaning-specific notation and native parent/child containment. Source/geometry, skill HTML checks, SVG export, 390px browser bounds, PNG CRC/extraction and native reopening/re-export checks pass. All PNGs are 2378 x 1682, below 1 MiB, visually reviewed, with exact source metadata and identical round-trip IDAT. Backend facts use manifest-pinned Component Repository d825518; no checkout migration or implementation was performed. Detailed evidence and unperformed runtime/load/restore tests are recorded in `e-commerce/diagram/verification.md`. No commit, push or PR is included.
+
+### Owner refinement — reusable business logic in `Domain` (2026-11-08)
+
+Resume the same assignment/branch; delivery remains none. Update only the architecture/repository views and their related documentation. Architecture remains logical layer decomposition, repository remains native package ownership; A3 landscape/light-orange style/faithful detail remain. Add one child per affected view, keeping 24 or fewer responsibility leaves. No backend files, tax formula, API or schema implementation is included.
+
+- [x] Inspect the owner's naming/path, pinned source and existing diagrams; reacquire the existing assignment's editing-session lock without replacing its dirty files.
+- [x] Add native `Domain` child for reusable business logic and `Authen/Domain/` path summary; preserve entity invariants, Application orchestration and all existing responsibilities.
+- [x] Update explanations, semantic contract, index/readiness/verification and correction lesson with ownership, examples, dependencies and source status.
+- [x] Generate/export both affected PNGs, review them, check HTML/bounds/editability/round trips, verify the other13 views remain unchanged, and release the session lock.
+
+Refinement verification: two PNGs visually reviewed; native parent/source/IR and pixel-identical draw.io round trips pass. All15 source checks, two HTML/SVG checks, 390px text bounds, 27 Markdown frontmatters, 276 local links and scope/diff checks pass. Exactly15 paths refined; the other13 views (52 artifact files) are unchanged. Backend tests are not applicable to this diagram-only refinement.
+
+### Deliver the completed 15-view package — direct owner grant
+
+Ittikorn's current instruction, "เปิด pr มา", authorizes commit, push and one PR for this completed diagram package, including the Domain refinement. This supersedes delivery none for the same assignment, scope and branch only. The direct grant is persisted in ignored assignment metadata after registry/identity/scope validation. No implementation/design-policy approval or merge authority is inferred.
+
+- [x] Load commit-and-pr formats/checklist, verify the same managed workspace and current origin/main registry, record the direct grant and acquire an editing-session lock.
+- [x] Verify the 15-view artifacts/Markdown, select all80 task paths, run delivery preflight and inspect the staged diff.
+- [ ] Commit once with the fixed format, verify merge compatibility, push the existing branch and open a PR against main.
+- [ ] Inspect the PR status once, release the editing-session lock and hand off the PR for owner review.
+
+PR preflight (2026-11-08): 80 paths (78 diagram files +2 task records), no deletions, managed delivery authorized, no blockers. All15 source/geometry checks and HTML checks pass; PNG dimensions/sizes/CRC/extraction/source XML and saved native round trips pass15/15. All27 Markdown frontmatters and276 local links pass. No backend/API/schema paths changed; runtime/provider/load/restore tests are outside this documentation-only delivery.
+
 ## repository-wide: Make agent instructions operational
 
 Status: Complete
@@ -654,6 +699,19 @@ Delivery correction: the first integration preflight compared against stale loca
 
 Follow-up: PR #53 was merged externally at head 5635a53 while its final integration correction was being pushed. The local correction is preserved. Main still lists the completed reset in LEGACY_TOKEN_SEQUENCES, which the checker rejects. Deliver a checker/task-only follow-up under this same bounded assignment; the API spec and sequence remain byte-identical to main. Do not overwrite external branch history.
 
+## e-commerce: Peter API review — own-user profile inquiry (API 12, 2026-11-08)
+
+Scope: authen-and-author/08-inquiry-user-profile with checker/task evidence. Owner Q13 requires current token/user checks; existing profile inquiry returns the caller's ten keys and non-DELETED information. Q15 permits immediate fresh main-based branch after PR #57, without waiting for merge. Q20 approved by Ittikorn on 2026-11-08: “คืน null สำหรับค่าว่างเดิม (แนะนำ)”. Normalize legacy empty gender to response null with NULLIF and preserve stored history; detailed endpoint revision remains in-review. No backend/schema implementation.
+
+- [x] Preserve profile-upsert PR #57/history, return to clean main and prepare an authorized fresh inquiry branch with all baselines.
+- [x] Read both profile contracts and actual nullable/lifecycle schema. Identify missing current credential checks, missing explicit outcomes, and multi-read consistency; ask Q20 and persist the explicit owner response.
+- [x] Update spec and generated-then-completed sequence together: verified caller, joined current token/user projection, consistent read-only snapshot, all ten keys/null mappings and eight terminal traces; owner Q20 projects legacy empty gender to null without rewriting history.
+- [x] Add exact SQL/semantic/path/render checks; 39/39 mutations caught after tightening the unique snapshot-rule needle (initially 38/39); synchronized credential/projection/Q20 faults, early information query, SQL whitespace and real renderer omission rejected. Exact PostgreSQL SELECTs passed own-user/current token, strict expiry, non-DELETED visibility, immutable Q20 normalization, READ ONLY rejection and two-connection snapshot consistency. PlantUML inspected with eight participants and 23/23 visible SQL lines; no backend/decryption-runtime claim.
+- [x] Run pre-integration checkers (49/49), audit (53 tables/0 findings), database suite (ALL PASSED), skeleton tests (12/12), and authorized preflight (four paths/no blockers).
+- [x] Preserve latest main, remove restored stale exemptions for #56/#57, pass all 51 integrated checker commands/audit/database tests and deliver inquiry PR #60. Preserve branch/history and continue from main under Q15.
+
+Integration finding: current main restored stale transaction/token-timeout exemptions for already-complete API #56 (reset request) and #57 (profile upsert). The full merged check catches this. Remove only those four stale checker entries, preserve their API artifacts byte-for-byte and keep every registered function; rerun all commands before push. This is checker reconciliation within the existing assignment scope, not another API revision.
+
 ## e-commerce: Peter API review — own-user address upsert (API 13, 2026-11-08)
 
 Scope: authen-and-author/09-upsert-user-address plus checker, shared confirmed-decision log and task evidence. WP4 U19/U23 and owner Q13 govern ownership/current credentials, quota and default invariant. Q21 explicitly rejects DELETED plus isDefault=true with 400. Q20 is recorded in the shared decision log from its already-delivered profile inquiry. No backend/schema implementation. Q15 permits independent PRs without a merge gate.
@@ -664,6 +722,9 @@ Scope: authen-and-author/09-upsert-user-address plus checker, shared confirmed-d
 - [x] Add exact SQL/path/semantic/render checks: 66/66 mutations caught, including old checker Delete exception; synchronized wrong guards, clear-after-insert and Q21-after-BEGIN ordering, original sequence, whitespace and real renderer omission rejected. Nine exact SQL definitions passed UTC PostgreSQL reference Application/default logic, quota and credential lock waits confirmed via pg_stat_activity, rollback/default promotion/soft-history/ownership fixtures. Diagram inspected with nine participants and 136/136 visible SQL lines including reused blocks; no backend/encryption-runtime claim.
 - [x] Run pre-integration checkers (51/51), audit (53 tables/0 findings), database suite (ALL PASSED), skeleton tests (12/12), and authorized preflight (five paths/no blockers).
 - [ ] Integrate latest main including inquiry #60 and architecture #61, rerun all combined checks, open one address API PR and continue from main.
+
+
+Integration finding: GitHub merge commit 87162eb for inquiry #60 re-added its completed API 08 token/timeout exemption (verified against its first parent b1c5c90). The full merged check rejects it. Remove only that stale checker entry; preserve the API 08 artifacts and every imported checker/function. This is the cause of the main baseline regression, not permission to weaken the legacy check or modify another endpoint.
 
 ## e-commerce: Peter API review — logout (API 8)
 
