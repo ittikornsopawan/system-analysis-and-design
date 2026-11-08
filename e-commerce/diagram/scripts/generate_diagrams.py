@@ -14,7 +14,7 @@ import xml.etree.ElementTree as ET
 import zlib
 
 from diagram_content import DIAGRAMS
-from diagram_paths import DIAGRAM_ROOT, artifact_path, resource_link
+from diagram_paths import DIAGRAM_ROOT, artifact_dir, resource_link
 
 
 OUT = DIAGRAM_ROOT
@@ -332,12 +332,13 @@ def xml_signature(e):
     return e.tag,tuple(sorted(e.attrib.items())),(e.text or '').strip(),tuple(xml_signature(c) for c in e)
 
 
-def finalise_png(d):
-    path=artifact_path(d['slug'],'.drawio.png');chunks=png_chunks(path.read_bytes());native=None
+def finalise_png(d, output_dir=None):
+    destination=Path(output_dir) if output_dir is not None else artifact_dir(d['slug'])
+    path=destination/f'{d["slug"]}.drawio.png';chunks=png_chunks(path.read_bytes());native=None
     for kind,payload in chunks:
         if kind==b'zTXt' and payload.startswith(b'mxGraphModel\0\0'):native=zlib.decompress(payload[len(b'mxGraphModel\0\0'):])
     assert native is not None,f'{path.name}: native editable model missing'
-    source=ET.parse(artifact_path(d['slug'],'.drawio')).getroot()
+    source=ET.parse(destination/f'{d["slug"]}.drawio').getroot()
     assert xml_signature(ET.fromstring(unquote(native.decode('ascii'))))==xml_signature(source),f'{path.name}: embedded model differs'
     before=b''.join(v for k,v in chunks if k==b'IDAT');result=bytearray(b'\x89PNG\r\n\x1a\n')
     for kind,payload in chunks:

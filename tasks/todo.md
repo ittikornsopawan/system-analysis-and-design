@@ -173,6 +173,31 @@ Ittikorn's current instruction, "เปิด pr มา", authorizes commit, pus
 
 PR preflight (2026-11-08): 80 paths (78 diagram files +2 task records), no deletions, managed delivery authorized, no blockers. All15 source/geometry checks and HTML checks pass; PNG dimensions/sizes/CRC/extraction/source XML and saved native round trips pass15/15. All27 Markdown frontmatters and276 local links pass. No backend/API/schema paths changed; runtime/provider/load/restore tests are outside this documentation-only delivery.
 
+## e-commerce: Database-grounded domain model diagrams
+
+Status: Complete on `docs/jinny-domain-model` after GitHub verified PR61 merged and agent-workspace parked the previous assignment. Scope: `e-commerce/diagram`, `tasks/todo.md`, `tasks/lessons.md`; delivery none. Existing diagram source checks passed as the prepare baseline; no repository-wide baseline is declared specifically for new diagram artifacts.
+
+Purpose: model business concepts and evidenced relationships from all53 SQL tables in11schemas, rather than software layers, deployment or a copy of the physical ER diagram. Use diagram-design, the owner's light/orange style, A3 landscape and faithful nested detail. Split into `domain-model` overview plus `domain-identity-model` (21 tables), `domain-merchandising-model` (19) and `domain-commerce-model` (13). Detail pages use conceptual ER notation, business names, selected fields and cardinalities; grouping expresses schema/responsibility only, not approved DDD aggregate/transaction boundaries. Omit universal audit fields and secondary relationship lines from images but retain full table/FK traceability in Markdown/inventory. No schema, canonical ER, API or backend implementation changes.
+
+- [x] Reconcile PR61, prepare a fresh scoped Jinny branch/lock, load applicable skills/rules/lessons and inspect the DB/schema inventory.
+- [x] Read every migration/schema explanation and meaningful constraint; generate a source inventory and research the conceptual notation using primary sources.
+- [x] Model the overview and three focused domain diagrams with native parent/child boxes, explicit selected associations and correct cardinality, separating evidence from inferred business ownership/rule candidates.
+- [x] Produce editable PNG/drawio/HTML and detailed Thai companions; map all53 tables and foreign keys and link the index.
+- [x] Verify source coverage, geometry/text/routes, HTML, Markdown, visual output and editable PNG/native round trips; record results and release the editing-session lock.
+
+Verification (2026-11-08): four conceptual domain diagrams and detailed companions cover53SQLtables in11schemas and75FKcolumns. Detail drawings select35entity associations; overview selects7cross-schema references. SQL/schemaaudit reports53tables audited,0findings. Source/model/geometry, packagedHTML/SVG,390pxbrowserbounds, exact editablePNG extraction/nativeXML and pixel-identicalnative round trips pass; PNGs2378x1682 and below1MiB. All7Markdown frontmatters,311local links,23-pathscope andwhitespace checks pass. Prior45image/source/HTML artifacts remain unchanged. Full evidence and limits are in e-commerce/diagram/domain/domain-model-verification.md. No SQL/API/backend implementation or PR is included.
+
+### Separate the Domain package and deliver its PR
+
+The owner's current instruction "แยก folder แล้วเปิด pr ให้หน่อย" authorizes reorganizing this existing package into `e-commerce/diagram/domain/`, updating references/generator paths, committing, pushing the existing task branch and opening one PR against main. This supersedes delivery none for the same task/scope only; it does not authorize merging or backend/schema changes. The grant is persisted after registry/identity validation.
+
+- [x] Verify the existing workspace/branch/assignment, record the direct delivery grant, reacquire the editing-session lock and snapshot the21Domain files before moving.
+- [x] Move the complete Domain package into its own folder, add a local index and update generators/links/commands without changing diagram pixels or database evidence.
+- [x] Recheck53-table/75-FK coverage, source/HTML/Markdown/PNG parity, old diagram preservation and delivery preflight; inspect the exact staged files.
+- [ ] Commit one reviewed package, verify merge compatibility, push the existing branch, open/attach the PR and inspect its status once. Release the session lock after delivery; actual state is derived from Git/GitHub.
+
+Delivery preparation:25files (22dedicatedDomain files, parentREADME, sharedPNGhelper andtaskrecord). Preflight hasno blockers; all4PNG/draw.io pairs andsourceinventory match pre-move SHA-256. All53tables/75FKs,4HTML/SVG checks,PNGIR/native roundtrips,8Markdown frontmatters,328local links andprior45artifact preservation pass. No backend/API/schema implementation; no excluded task files.
+
 ## repository-wide: Make agent instructions operational
 
 Status: Complete
@@ -708,9 +733,23 @@ Scope: authen-and-author/08-inquiry-user-profile with checker/task evidence. Own
 - [x] Update spec and generated-then-completed sequence together: verified caller, joined current token/user projection, consistent read-only snapshot, all ten keys/null mappings and eight terminal traces; owner Q20 projects legacy empty gender to null without rewriting history.
 - [x] Add exact SQL/semantic/path/render checks; 39/39 mutations caught after tightening the unique snapshot-rule needle (initially 38/39); synchronized credential/projection/Q20 faults, early information query, SQL whitespace and real renderer omission rejected. Exact PostgreSQL SELECTs passed own-user/current token, strict expiry, non-DELETED visibility, immutable Q20 normalization, READ ONLY rejection and two-connection snapshot consistency. PlantUML inspected with eight participants and 23/23 visible SQL lines; no backend/decryption-runtime claim.
 - [x] Run pre-integration checkers (49/49), audit (53 tables/0 findings), database suite (ALL PASSED), skeleton tests (12/12), and authorized preflight (four paths/no blockers).
-- [ ] Preserve latest main changes (including merged #56/#57 and cart #58), rerun the complete merged checker set, open one inquiry API PR and continue from main.
+- [x] Preserve latest main, remove restored stale exemptions for #56/#57, pass all 51 integrated checker commands/audit/database tests and deliver inquiry PR #60. Preserve branch/history and continue from main under Q15.
 
 Integration finding: current main restored stale transaction/token-timeout exemptions for already-complete API #56 (reset request) and #57 (profile upsert). The full merged check catches this. Remove only those four stale checker entries, preserve their API artifacts byte-for-byte and keep every registered function; rerun all commands before push. This is checker reconciliation within the existing assignment scope, not another API revision.
+
+## e-commerce: Peter API review — own-user address upsert (API 13, 2026-11-08)
+
+Scope: authen-and-author/09-upsert-user-address plus checker, shared confirmed-decision log and task evidence. WP4 U19/U23 and owner Q13 govern ownership/current credentials, quota and default invariant. Q21 explicitly rejects DELETED plus isDefault=true with 400. Q20 is recorded in the shared decision log from its already-delivered profile inquiry. No backend/schema implementation. Q15 permits independent PRs without a merge gate.
+
+- [x] Preserve inquiry PR #60/history and return to main. Its checker repair merged before successful fresh address branch preparation; no baseline failure was bypassed.
+- [x] Read spec/sequence, address schema/unique index, inquiry rules and existing checker. Ask Q21 about the contradictory Delete example/checker and persist the owner's explicit answer.
+- [x] Revise spec and generated-then-completed sequence together: full-body/Q21 validation, post-lock current credential, owned/non-DELETED target, serialized quota, nullable insert id, computed default and 14 atomic insert/update/delete/promotion traces.
+- [x] Add exact SQL/path/semantic/render checks: 66/66 mutations caught, including old checker Delete exception; synchronized wrong guards, clear-after-insert and Q21-after-BEGIN ordering, original sequence, whitespace and real renderer omission rejected. Nine exact SQL definitions passed UTC PostgreSQL reference Application/default logic, quota and credential lock waits confirmed via pg_stat_activity, rollback/default promotion/soft-history/ownership fixtures. Diagram inspected with nine participants and 136/136 visible SQL lines including reused blocks; no backend/encryption-runtime claim.
+- [x] Run pre-integration checkers (51/51), audit (53 tables/0 findings), database suite (ALL PASSED), skeleton tests (12/12), and authorized preflight (five paths/no blockers).
+- [ ] Integrate latest main including inquiry #60 and architecture #61, rerun all combined checks, open one address API PR and continue from main.
+
+
+Integration finding: GitHub merge commit 87162eb for inquiry #60 re-added its completed API 08 token/timeout exemption (verified against its first parent b1c5c90). The full merged check rejects it. Remove only that stale checker entry; preserve the API 08 artifacts and every imported checker/function. This is the cause of the main baseline regression, not permission to weaken the legacy check or modify another endpoint.
 
 ## e-commerce: Peter API review — logout (API 8)
 
@@ -869,6 +908,16 @@ Authority: direct request from Ittikorn in this chat to separate folders and ope
 - [x] Adapt generator output resolution and update all affected Markdown links, HTML navigation and reproduction commands.
 - [x] Verify all fifteen generated views, editable PNG/source parity, folder membership, Markdown links/frontmatter, HTML checks and preservation of reference diagram content.
 - [x] Update final verification and task records; run delivery preflight and inspect the staged diff.
-- [ ] Commit the scoped work, push codex/diagram-handoff and open a PR targeting main; report checks and remaining limitations.
+- [x] Commit the scoped work, push codex/diagram-handoff and open a PR targeting main; report checks and remaining limitations. PR #64 is open at cfd6f72.
 
 Delivery state in this checklist is the pre-send snapshot captured by the commit. Confirm the actual commit, branch push and PR outcome from Git/GitHub; do not infer an open or merged PR from a checkbox.
+
+## e-commerce: Resolve PR #64 conflicts with the Domain diagram package
+
+Authority: Ittikorn requested resolving branch conflicts in this chat, specifically the shared `e-commerce/diagram/generate_diagrams.py` renderer (renamed to `scripts/generate_diagrams.py` here). Integrate `origin/main` into `codex/diagram-handoff`; this does not authorize merging PR #64 into main. Main now contains PR #63's dedicated domain/ package. The worktree was clean before integration; Git reported one content conflict in the renamed renderer.
+
+- [x] Refresh main/PR state and identify the incoming Domain package and exact renderer conflict.
+- [x] Preserve output_dir support and new artifact routing in the shared PNG finalizer.
+- [x] Adapt Domain imports/HTML navigation to the scripts/ layout; preserve all incoming domain models and PNGs, and retain Domain entries in the guide.
+- [x] Verify the original fifteen diagrams plus four Domain diagrams, source/editable PNG parity, local links and Markdown frontmatter; resolve all index conflicts.
+- [ ] Run preflight, inspect the merge diff and record verification; commit the resolved merge and push to PR #64, then confirm its mergeability.

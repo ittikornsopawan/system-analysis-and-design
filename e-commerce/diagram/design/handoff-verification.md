@@ -66,3 +66,23 @@ Outbox ยัง PROPOSED / in-review ต้องออกแบบ SQL/worker/
 การเปลี่ยน folder paths กระทบลิงก์ที่เคยชี้ flat filenames จึงปรับ repository-local links และ reproduction commands พร้อมกัน ไม่มี API/schema/runtime behavior เปลี่ยน ค่า outbox/admin replay และ implementation approval ยังคงรอการออกแบบ/อนุมัติตามเดิม
 
 Delivery preflight: `python3 -B .agents/skills/commit-and-pr/scripts/preflight.py --base main` ผ่าน `no blockers found`; staged diff อยู่ใน diagram paths และ task records เท่านั้น ตรวจ `git diff --cached --check` ผ่าน ไม่มี SQL/schema/API checks ที่ต้องรันสำหรับ documentation-only scope นี้ สถานะ commit/push/PR ให้ตรวจจาก Git/GitHub หลังส่งมอบ
+
+## PR #64 conflict resolution — shared renderer and Domain package
+
+Integrated `origin/main` at `def2eb2` into the PR branch after PR #63 added `domain/` and an `output_dir` argument to the formerly flat `generate_diagrams.py`. Git found one rename/modify content conflict at the new `scripts/generate_diagrams.py` path. The resolved `finalise_png(d, output_dir=None)` honors explicit output directories and otherwise uses the shared artifact routing map. Domain's generator now imports from `scripts/`, the map includes its four slugs, and regenerated Domain HTML links to the dedicated Domain guide/model. The combined README retains all Domain navigation and documents domain/ in its folder tree.
+
+Before the consumer fix, the Domain checker reproduced `ModuleNotFoundError: No module named 'generate_layered_diagrams'`. After resolution, both families pass:
+
+```text
+python3 -B e-commerce/diagram/scripts/generate_layered_diagrams.py --check
+PASS semantic hierarchy package: source and native containment checks
+
+python3 -B e-commerce/diagram/domain/generate_domain_diagrams.py --check
+PASS domain source coverage: 53/53 tables; 75/75 FK columns; schema documentation comparison 0 findings
+```
+
+Both `--finalize-pngs` commands pass for all 19 PNGs, exercising routed defaults and explicit `output_dir`. All 38 PNG/draw.io files match their respective merge parent byte-for-byte. Domain content/notes/source inventory remain identical to main; only its import integration, README and HTML navigation change. Packaged HTML self-check passes 19/19; frontmatter and Markdown links pass for 36 files. No diagram models or business rules change in conflict resolution.
+
+The incoming API-review spec, checker and address-upsert spec/sequence changes from main are retained byte-for-byte from `MERGE_HEAD`; they are not changes introduced by this diagram PR. Preflight is scoped to diagram/task paths for that reason. This is a branch integration commit to resolve PR conflicts; PR #64 remains subject to owner review before merging into main.
+
+Final conflict-resolution checks: Chromium 390px passed 19/19 with working local navigation and no page/text overflow using offline fonts. `git diff --cached --check` passed; scoped preflight reported `no blockers found`. The PR diff against the integrated main parent contains only diagram/task paths, and the index has no unmerged entries.

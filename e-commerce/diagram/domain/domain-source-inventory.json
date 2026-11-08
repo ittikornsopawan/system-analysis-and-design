@@ -1,0 +1,4839 @@
+{
+  "table_count": 53,
+  "schema_count": 11,
+  "fk_count": 75,
+  "source_files": {
+    "e-commerce/db/migrations/up/00-common.schema.up.sql": "b2dff57b4ef3591948b575d655c8a19f50a01c59e584951f5f8bcfcd535047fa",
+    "e-commerce/db/migrations/up/01-authen.schema.up.sql": "344303272dd9617d5002e8ac29ea1c84db8c1a95fc91a8a8a044cf51e9fda2d0",
+    "e-commerce/db/migrations/up/02-author.schema.up.sql": "fe7fe486f9538436f967709816c45fda97ddf00b0886e9aec57f92c901dff1cd",
+    "e-commerce/db/migrations/up/03-product.schema.up.sql": "0777d40c258e16710b77d3a543f1ad81dbd3c06cba2983294251ffc2a14f758b",
+    "e-commerce/db/migrations/up/04-shop.schema.up.sql": "ff4b2f27dbb59c2cc614d0734226400397d46022a7a43cd57642461a078d2689",
+    "e-commerce/db/migrations/up/05-cart.schema.up.sql": "dc6151ed64b89e1d808bd4ff499e15a18d1309a98f6e20c65acb9214be34c656",
+    "e-commerce/db/migrations/up/06-sales.schema.up.sql": "32d7fd40168221632c0fbcac98f74bc605b4b84de13ba0290f18f1b05151e89e",
+    "e-commerce/db/migrations/up/07-payment.schema.up.sql": "81642fbe6ca1be44f41e025b1d81847c52ebd4f7c7b003f6fb73c41179113cdc",
+    "e-commerce/db/migrations/up/08-shipping.schema.up.sql": "ba9c8660a2699dcd47e3bd034254742303677a450928ce6f2ccc82034b994e81",
+    "e-commerce/db/migrations/up/09-campaign.schema.up.sql": "f84666f689e18fea88cd1046b3cbf5a3b03df373ff87de5a2baf86fe5e93996e",
+    "e-commerce/doc/schema/README.md": "6da4c71ebd368baf6a89c7f156002818fa9a4566420ebf7d16063d3dddf035b0",
+    "e-commerce/doc/schema/authen/l_user_login_attempt.md": "6a314f63ff177abfbfe21802092363480b1475279bd155f3978e924750b6dbaa",
+    "e-commerce/doc/schema/authen/l_user_referral.md": "b3ae5a0b2c2ed6a78360ddeaf0264395c7323ee901a53bae2b50cf872fd4bab9",
+    "e-commerce/doc/schema/authen/m_user.md": "e8965207f587fb488d2eb5c8d0b55a7ab11ea892a6a8ea28232689846a5159cb",
+    "e-commerce/doc/schema/authen/m_user_information.md": "4e6a7aac972df75c5521905343f4e6578d9f03281a38b7b784c57fb9477b9725",
+    "e-commerce/doc/schema/authen/m_user_password.md": "8d1caab6e5b53077a6a5fc31bcc0f7f49f5a2a80e3c8ce1585ded86b3c066ac7",
+    "e-commerce/doc/schema/authen/t_user_access_token.md": "dd43c9442e59c3250eaefa5bf71fd4382b61c611dcad2e2e5aa1911d326eb26c",
+    "e-commerce/doc/schema/authen/t_user_address.md": "03b1c4b816a5fb36158d57377e5ee50c42c396091bfa3b728f0ccd4328140126",
+    "e-commerce/doc/schema/authen/t_user_consent.md": "24420c15b35c05a2eaf8a2ea0002dce8b5102c57844ca71c596fffe1e800983b",
+    "e-commerce/doc/schema/authen/t_user_refresh_token.md": "f2ae8eaaf3d155d768138a3beeed64a33ecd2f778881bc3b6b0d7eea970184c4",
+    "e-commerce/doc/schema/authen/t_user_reset_password.md": "3b1a5f8053e9278829c054aa830acb951624b14a3d73fb2f329b72083d026ae5",
+    "e-commerce/doc/schema/author/m_permission.md": "b93c4876bf51c7aad75f805645cacb1315a01f3b25a5c9bee239aa016ad3a89b",
+    "e-commerce/doc/schema/author/m_role.md": "9d4a8e088d945cb4947e443aa5fba023c46dd7e459b916ffdae76f450594fe22",
+    "e-commerce/doc/schema/author/m_scope.md": "862f994ac63dd3889a582b727c5c203cc5a95b76c44d7d4cb91547c7b2c0935f",
+    "e-commerce/doc/schema/author/t_permission_scope.md": "d6510cd84bd814fff1d1b0c2289606dbd0ece2ddc6b550b1b782baafa462be3b",
+    "e-commerce/doc/schema/author/t_role_permission.md": "dc8da5cdac7caa86055bfc6479da867b5030631d1992b3270160a46928230d80",
+    "e-commerce/doc/schema/author/t_role_permission_scope.md": "7ba63bc09442f526367f3ab4e480d6243663f0d7fd53327df59eb552505d7449",
+    "e-commerce/doc/schema/author/t_user_permission.md": "e3ffb1932e043a0eb42ab1777449670ee64e9134ceec6f8473d0ec76538bcaab",
+    "e-commerce/doc/schema/author/t_user_role.md": "da52c7e01d0fb9234e39787af3b6720762b774a3b55b67ffb99fe806b4d4132a",
+    "e-commerce/doc/schema/campaign/m_campaign.md": "ff22dc787d87fa7616235a2b2ca8d353e65538de6d95818830ce36672cbd5d11",
+    "e-commerce/doc/schema/campaign/m_campaign_budget.md": "42ac12632d2ddd1e45b07c337c5fc498bf5636dd544dc6c2d0961327c000c273",
+    "e-commerce/doc/schema/campaign/m_campaign_budget_ledger.md": "07f5b895b1bb6f943df75bc7d8b0444ee8993c1a27e60fd4303613f72a8d548e",
+    "e-commerce/doc/schema/campaign/t_campaign_discount.md": "b3ffb2ab7617dedd104f0370f77a0bea9bb69dae20a6a38e2a54bfe7bec61aad",
+    "e-commerce/doc/schema/campaign/t_campaign_product.md": "00b2fb2e61b9ae5627ec231ac0a045acc720096bb457674b61531416f3941195",
+    "e-commerce/doc/schema/campaign/t_campaign_shop.md": "fba9cf4dc0bf421d8dfec92022cde363c30bd98911eb0c8c42b5212babfc16a1",
+    "e-commerce/doc/schema/cart/t_cart.md": "239f649b59d6e305d4e3bf394b89c6e57735f3362972897569c5826485e02682",
+    "e-commerce/doc/schema/consent/m_consent_type.md": "21b6e10b3bd7437e6e438f304ffe5504ac87840321bb4180c351f3256658d23a",
+    "e-commerce/doc/schema/consent/t_consent.md": "b0ca574d8a01f7e1a11e232d752c13b48176d5b651a5b92c017b3881a08981f1",
+    "e-commerce/doc/schema/payment/t_payment.md": "bfc61507884e971c12698e753bfa4161a51d7fc0ad610678e290d3100f12c5f0",
+    "e-commerce/doc/schema/product/m_product.md": "c6a1d13ca21350553376bb0720f4ebf6ffb38657ae4b4d73832c08e4556d837b",
+    "e-commerce/doc/schema/product/m_product_attribute.md": "72e8cbb9ea723f8d63d5de416260084d2e41a9849eefd57588ca607c43838995",
+    "e-commerce/doc/schema/product/m_product_brand.md": "d84839310fa3374a49d075a99677d00a07a8008b374a99615eeb82cbafdb3735",
+    "e-commerce/doc/schema/product/m_product_category.md": "b0898128561a8d370130dbd21314112afdd423ab48dab6e8e4f65a5c053890d8",
+    "e-commerce/doc/schema/product/m_product_category_attribute.md": "c934af40d850a0b21d6b6890a3e54375184ba5c24156aea8b5465660abc294b5",
+    "e-commerce/doc/schema/product/m_product_image.md": "0f2fbca80a364dd19ef1634375a592ef8ccf2cc4e528eab3540c5a29be4707ae",
+    "e-commerce/doc/schema/product/m_product_option.md": "bd14a92b4c8e88e5ac8fa6e040f4879f053aa00a701ccc2b46f355c12c35ef1b",
+    "e-commerce/doc/schema/product/m_product_option_value.md": "eb674190b1227d5df6e9eb72fd058e6e1bf429301a9ab9d88325857ce2ccea26",
+    "e-commerce/doc/schema/product/m_product_sku.md": "37eed5308adda6213e6c69c1bf6ad261b26e4b0cbb1252e5c7759373e5e50935",
+    "e-commerce/doc/schema/product/m_product_sku_option_value.md": "2069525042ac61054d709c2797d6a70c5b61e8cd417f78bfa479ed4d0fa6fcec",
+    "e-commerce/doc/schema/product/m_product_type.md": "dd965e1f200a02416c5c82c790e2e957cdbb3855fb2fd56b043fde5308e88c9d",
+    "e-commerce/doc/schema/public/t_key.md": "4c1560acad816d9f1e68c28fe8f86bfd3c0aaec4d8bf5a02453b21aa76f49edd",
+    "e-commerce/doc/schema/sales/t_order.md": "6d698b712e0352e46031d55a59f8b801d3d0bc59ef4915f702ffb2e2a8edacf6",
+    "e-commerce/doc/schema/sales/t_order_item.md": "d56791dfca9cfe3b7f708c4b4421556f116bf17fbbcb113a77c8d3d008e50987",
+    "e-commerce/doc/schema/shipping/t_shipping.md": "fcd208a22d19b3ecae453829a89bad1b2e0805a11fb71305475055d244ab4765",
+    "e-commerce/doc/schema/shipping/t_shipping_item.md": "41aa0b00c9eb8a60bb19e594a2a02a54912cb3448b34786625cf3ad78e3cb8f3",
+    "e-commerce/doc/schema/shipping/t_shipping_stop.md": "e13504127f30bdfd132e47d780cfc49374c468868de85cfa650c86af7ce02e9b",
+    "e-commerce/doc/schema/shop/m_shop.md": "cddb0687b52a8210d3da4aab07a1abd4288eee76d336ff573baae9f8b0df6570",
+    "e-commerce/doc/schema/shop/m_shop_image.md": "c24a16ed58911b2f59e47d4769ed0170c7203778d6e2db793936765dfd9fb627",
+    "e-commerce/doc/schema/shop/m_shop_type.md": "0f91a1310c73148c3a09e72e0d731ea18aead4fe2df62973a3f3f2dc9788b200",
+    "e-commerce/doc/schema/shop/t_shop_product.md": "9cfbae04bbe0ff2d4e72a9a823370f0214aa209b22c69bcc20bd75b47237223b",
+    "e-commerce/doc/schema/shop/t_shop_product_review.md": "2bc727a0de7549f174d28e5ab6f8c0377e7c886021627fc36ca153a43cf83638",
+    "e-commerce/doc/schema/shop/t_shop_product_sku.md": "1e7c4a92704063f0524753c2c67dcf5894de813805a1dedaad25707d93033cf1",
+    "e-commerce/doc/schema/shop/t_shop_product_sku_lot.md": "8f82285ff2253ff8c7c31618f06bc11be508fa1b2850effae4ff0a505fda346e",
+    "e-commerce/doc/schema/shop/t_shop_user.md": "0ac42af489208bedf1621b2ac606876a28856961ddf46c2f82c57817ea1614e9"
+  },
+  "tables": {
+    "public.t_key": {
+      "schema": "public",
+      "table": "t_key",
+      "cols": [
+        {
+          "name": "id",
+          "type": "UUID",
+          "length": "",
+          "nullable": false,
+          "ref": null
+        },
+        {
+          "name": "created_by",
+          "type": "VARCHAR",
+          "length": "64",
+          "nullable": false,
+          "ref": null
+        },
+        {
+          "name": "created_at",
+          "type": "TIMESTAMP",
+          "length": "",
+          "nullable": false,
+          "ref": null
+        },
+        {
+          "name": "updated_by",
+          "type": "VARCHAR",
+          "length": "64",
+          "nullable": true,
+          "ref": null
+        },
+        {
+          "name": "updated_at",
+          "type": "TIMESTAMP",
+          "length": "",
+          "nullable": true,
+          "ref": null
+        },
+        {
+          "name": "row_status",
+          "type": "VARCHAR",
+          "length": "32",
+          "nullable": false,
+          "ref": null
+        },
+        {
+          "name": "effective_at",
+          "type": "TIMESTAMP",
+          "length": "",
+          "nullable": false,
+          "ref": null
+        },
+        {
+          "name": "expired_at",
+          "type": "TIMESTAMP",
+          "length": "",
+          "nullable": true,
+          "ref": null
+        },
+        {
+          "name": "key_name",
+          "type": "VARCHAR",
+          "length": "128",
+          "nullable": false,
+          "ref": null
+        },
+        {
+          "name": "key_value",
+          "type": "BYTEA",
+          "length": "",
+          "nullable": false,
+          "ref": null
+        }
+      ],
+      "file": "00-common.schema.up.sql",
+      "sql": "CREATE TABLE IF NOT EXISTS public.t_key ( id UUID NOT NULL DEFAULT GEN_RANDOM_UUID () PRIMARY KEY, created_by VARCHAR(64) NOT NULL, created_at TIMESTAMP WITHOUT TIME ZONE NOT NULL DEFAULT NOW (), updated_by VARCHAR(64), updated_at TIMESTAMP WITHOUT TIME ZONE, row_status VARCHAR(32) NOT NULL DEFAULT 'ACTIVE' CHECK ( row_status IN ( 'ACTIVE', 'INACTIVE', 'DELETED', 'LOCKED', 'ARCHIVED', 'EXPIRED' ) ), effective_at TIMESTAMP WITHOUT TIME ZONE NOT NULL DEFAULT NOW (), expired_at TIMESTAMP WITHOUT TIME ZONE, key_name VARCHAR(128) NOT NULL UNIQUE, key_value BYTEA NOT NULL );",
+      "table_constraints": [],
+      "concept": "Key material",
+      "indexes": []
+    },
+    "consent.m_consent_type": {
+      "schema": "consent",
+      "table": "m_consent_type",
+      "cols": [
+        {
+          "name": "id",
+          "type": "UUID",
+          "length": "",
+          "nullable": false,
+          "ref": null
+        },
+        {
+          "name": "created_by",
+          "type": "VARCHAR",
+          "length": "64",
+          "nullable": false,
+          "ref": null
+        },
+        {
+          "name": "created_at",
+          "type": "TIMESTAMP",
+          "length": "",
+          "nullable": false,
+          "ref": null
+        },
+        {
+          "name": "updated_by",
+          "type": "VARCHAR",
+          "length": "64",
+          "nullable": true,
+          "ref": null
+        },
+        {
+          "name": "updated_at",
+          "type": "TIMESTAMP",
+          "length": "",
+          "nullable": true,
+          "ref": null
+        },
+        {
+          "name": "row_status",
+          "type": "VARCHAR",
+          "length": "32",
+          "nullable": false,
+          "ref": null
+        },
+        {
+          "name": "name",
+          "type": "VARCHAR",
+          "length": "128",
+          "nullable": false,
+          "ref": null
+        },
+        {
+          "name": "description",
+          "type": "TEXT",
+          "length": "",
+          "nullable": true,
+          "ref": null
+        },
+        {
+          "name": "is_required",
+          "type": "BOOLEAN",
+          "length": "",
+          "nullable": false,
+          "ref": null
+        }
+      ],
+      "file": "00-common.schema.up.sql",
+      "sql": "CREATE TABLE IF NOT EXISTS consent.m_consent_type ( id UUID NOT NULL DEFAULT GEN_RANDOM_UUID () PRIMARY KEY, created_by VARCHAR(64) NOT NULL, created_at TIMESTAMP WITHOUT TIME ZONE NOT NULL DEFAULT NOW (), updated_by VARCHAR(64), updated_at TIMESTAMP WITHOUT TIME ZONE, row_status VARCHAR(32) NOT NULL DEFAULT 'ACTIVE' CHECK ( row_status IN ( 'ACTIVE', 'INACTIVE', 'DELETED', 'LOCKED', 'ARCHIVED' ) ), name VARCHAR(128) NOT NULL, description TEXT, is_required BOOLEAN NOT NULL DEFAULT FALSE );",
+      "table_constraints": [],
+      "concept": "Consent type",
+      "indexes": [
+        "CREATE UNIQUE INDEX IF NOT EXISTS uq_m_consent_type_name ON consent.m_consent_type (name) WHERE row_status <> 'DELETED';"
+      ]
+    },
+    "consent.t_consent": {
+      "schema": "consent",
+      "table": "t_consent",
+      "cols": [
+        {
+          "name": "id",
+          "type": "UUID",
+          "length": "",
+          "nullable": false,
+          "ref": null
+        },
+        {
+          "name": "created_by",
+          "type": "VARCHAR",
+          "length": "64",
+          "nullable": false,
+          "ref": null
+        },
+        {
+          "name": "created_at",
+          "type": "TIMESTAMP",
+          "length": "",
+          "nullable": false,
+          "ref": null
+        },
+        {
+          "name": "updated_by",
+          "type": "VARCHAR",
+          "length": "64",
+          "nullable": true,
+          "ref": null
+        },
+        {
+          "name": "updated_at",
+          "type": "TIMESTAMP",
+          "length": "",
+          "nullable": true,
+          "ref": null
+        },
+        {
+          "name": "row_status",
+          "type": "VARCHAR",
+          "length": "32",
+          "nullable": false,
+          "ref": null
+        },
+        {
+          "name": "code",
+          "type": "VARCHAR",
+          "length": "64",
+          "nullable": false,
+          "ref": null
+        },
+        {
+          "name": "consent_type_id",
+          "type": "UUID",
+          "length": "",
+          "nullable": false,
+          "ref": [
+            "consent",
+            "m_consent_type"
+          ]
+        },
+        {
+          "name": "consent_version",
+          "type": "VARCHAR",
+          "length": "8",
+          "nullable": false,
+          "ref": null
+        },
+        {
+          "name": "consent_name",
+          "type": "VARCHAR",
+          "length": "128",
+          "nullable": false,
+          "ref": null
+        },
+        {
+          "name": "consent_description",
+          "type": "TEXT",
+          "length": "",
+          "nullable": true,
+          "ref": null
+        },
+        {
+          "name": "effective_at",
+          "type": "TIMESTAMP",
+          "length": "",
+          "nullable": false,
+          "ref": null
+        },
+        {
+          "name": "expired_at",
+          "type": "TIMESTAMP",
+          "length": "",
+          "nullable": true,
+          "ref": null
+        },
+        {
+          "name": "is_required",
+          "type": "BOOLEAN",
+          "length": "",
+          "nullable": false,
+          "ref": null
+        },
+        {
+          "name": "body",
+          "type": "JSONB",
+          "length": "",
+          "nullable": false,
+          "ref": null
+        }
+      ],
+      "file": "00-common.schema.up.sql",
+      "sql": "CREATE TABLE IF NOT EXISTS consent.t_consent ( id UUID NOT NULL DEFAULT GEN_RANDOM_UUID () PRIMARY KEY, created_by VARCHAR(64) NOT NULL, created_at TIMESTAMP WITHOUT TIME ZONE NOT NULL DEFAULT NOW (), updated_by VARCHAR(64), updated_at TIMESTAMP WITHOUT TIME ZONE, row_status VARCHAR(32) NOT NULL DEFAULT 'ACTIVE' CHECK ( row_status IN ( 'ACTIVE', 'INACTIVE', 'DELETED', 'LOCKED', 'ARCHIVED' ) ), code VARCHAR(64) NOT NULL UNIQUE, consent_type_id UUID NOT NULL REFERENCES consent.m_consent_type (id) ON DELETE RESTRICT, consent_version VARCHAR(8) NOT NULL DEFAULT '1.0.0', consent_name VARCHAR(128) NOT NULL, consent_description TEXT, effective_at TIMESTAMP WITHOUT TIME ZONE NOT NULL DEFAULT NOW (), expired_at TIMESTAMP WITHOUT TIME ZONE, is_required BOOLEAN NOT NULL DEFAULT FALSE, body JSONB NOT NULL );",
+      "table_constraints": [],
+      "concept": "Consent version",
+      "indexes": []
+    },
+    "authen.m_user": {
+      "schema": "authen",
+      "table": "m_user",
+      "cols": [
+        {
+          "name": "id",
+          "type": "UUID",
+          "length": "",
+          "nullable": false,
+          "ref": null
+        },
+        {
+          "name": "created_by",
+          "type": "VARCHAR",
+          "length": "64",
+          "nullable": false,
+          "ref": null
+        },
+        {
+          "name": "created_at",
+          "type": "TIMESTAMP",
+          "length": "",
+          "nullable": false,
+          "ref": null
+        },
+        {
+          "name": "updated_by",
+          "type": "VARCHAR",
+          "length": "64",
+          "nullable": true,
+          "ref": null
+        },
+        {
+          "name": "updated_at",
+          "type": "TIMESTAMP",
+          "length": "",
+          "nullable": true,
+          "ref": null
+        },
+        {
+          "name": "row_status",
+          "type": "VARCHAR",
+          "length": "32",
+          "nullable": false,
+          "ref": null
+        },
+        {
+          "name": "username",
+          "type": "BYTEA",
+          "length": "",
+          "nullable": false,
+          "ref": null
+        },
+        {
+          "name": "email_address",
+          "type": "BYTEA",
+          "length": "",
+          "nullable": false,
+          "ref": null
+        },
+        {
+          "name": "first_name",
+          "type": "BYTEA",
+          "length": "",
+          "nullable": true,
+          "ref": null
+        },
+        {
+          "name": "last_name",
+          "type": "BYTEA",
+          "length": "",
+          "nullable": true,
+          "ref": null
+        },
+        {
+          "name": "display_name",
+          "type": "VARCHAR",
+          "length": "128",
+          "nullable": true,
+          "ref": null
+        },
+        {
+          "name": "profile_picture_path",
+          "type": "TEXT",
+          "length": "",
+          "nullable": true,
+          "ref": null
+        }
+      ],
+      "file": "01-authen.schema.up.sql",
+      "sql": "CREATE TABLE IF NOT EXISTS authen.m_user ( id UUID NOT NULL DEFAULT GEN_RANDOM_UUID () PRIMARY KEY, created_by VARCHAR(64) NOT NULL, created_at TIMESTAMP WITHOUT TIME ZONE NOT NULL DEFAULT NOW (), updated_by VARCHAR(64), updated_at TIMESTAMP WITHOUT TIME ZONE, row_status VARCHAR(32) NOT NULL DEFAULT 'ACTIVE' CHECK ( row_status IN ( 'ACTIVE', 'INACTIVE', 'DELETED', 'LOCKED', 'ARCHIVED' ) ), username BYTEA NOT NULL UNIQUE, email_address BYTEA NOT NULL UNIQUE, first_name BYTEA, last_name BYTEA, display_name VARCHAR(128), profile_picture_path TEXT );",
+      "table_constraints": [],
+      "concept": "User",
+      "indexes": []
+    },
+    "authen.t_user_consent": {
+      "schema": "authen",
+      "table": "t_user_consent",
+      "cols": [
+        {
+          "name": "id",
+          "type": "UUID",
+          "length": "",
+          "nullable": false,
+          "ref": null
+        },
+        {
+          "name": "created_by",
+          "type": "VARCHAR",
+          "length": "64",
+          "nullable": false,
+          "ref": null
+        },
+        {
+          "name": "created_at",
+          "type": "TIMESTAMP",
+          "length": "",
+          "nullable": false,
+          "ref": null
+        },
+        {
+          "name": "updated_by",
+          "type": "VARCHAR",
+          "length": "64",
+          "nullable": true,
+          "ref": null
+        },
+        {
+          "name": "updated_at",
+          "type": "TIMESTAMP",
+          "length": "",
+          "nullable": true,
+          "ref": null
+        },
+        {
+          "name": "row_status",
+          "type": "VARCHAR",
+          "length": "32",
+          "nullable": false,
+          "ref": null
+        },
+        {
+          "name": "user_id",
+          "type": "UUID",
+          "length": "",
+          "nullable": false,
+          "ref": [
+            "authen",
+            "m_user"
+          ]
+        },
+        {
+          "name": "consent_id",
+          "type": "UUID",
+          "length": "",
+          "nullable": false,
+          "ref": [
+            "consent",
+            "t_consent"
+          ]
+        },
+        {
+          "name": "consent_version",
+          "type": "VARCHAR",
+          "length": "8",
+          "nullable": false,
+          "ref": null
+        },
+        {
+          "name": "result",
+          "type": "BOOLEAN",
+          "length": "",
+          "nullable": false,
+          "ref": null
+        },
+        {
+          "name": "is_read",
+          "type": "BOOLEAN",
+          "length": "",
+          "nullable": false,
+          "ref": null
+        },
+        {
+          "name": "read_at",
+          "type": "TIMESTAMP",
+          "length": "",
+          "nullable": true,
+          "ref": null
+        }
+      ],
+      "file": "01-authen.schema.up.sql",
+      "sql": "CREATE TABLE IF NOT EXISTS authen.t_user_consent ( id UUID NOT NULL DEFAULT GEN_RANDOM_UUID () PRIMARY KEY, created_by VARCHAR(64) NOT NULL, created_at TIMESTAMP WITHOUT TIME ZONE NOT NULL DEFAULT NOW (), updated_by VARCHAR(64), updated_at TIMESTAMP WITHOUT TIME ZONE, row_status VARCHAR(32) NOT NULL DEFAULT 'ACTIVE' CHECK ( row_status IN ( 'ACTIVE', 'INACTIVE', 'DELETED', 'LOCKED', 'ARCHIVED' ) ), user_id UUID NOT NULL REFERENCES authen.m_user (id) ON DELETE CASCADE, consent_id UUID NOT NULL REFERENCES consent.t_consent (id) ON DELETE CASCADE, consent_version VARCHAR(8) NOT NULL DEFAULT '1.0.0', result BOOLEAN NOT NULL DEFAULT FALSE, is_read BOOLEAN NOT NULL DEFAULT FALSE, read_at TIMESTAMP WITHOUT TIME ZONE );",
+      "table_constraints": [],
+      "concept": "Consent acknowledgement",
+      "indexes": []
+    },
+    "authen.m_user_password": {
+      "schema": "authen",
+      "table": "m_user_password",
+      "cols": [
+        {
+          "name": "id",
+          "type": "UUID",
+          "length": "",
+          "nullable": false,
+          "ref": null
+        },
+        {
+          "name": "created_by",
+          "type": "VARCHAR",
+          "length": "64",
+          "nullable": false,
+          "ref": null
+        },
+        {
+          "name": "created_at",
+          "type": "TIMESTAMP",
+          "length": "",
+          "nullable": false,
+          "ref": null
+        },
+        {
+          "name": "updated_by",
+          "type": "VARCHAR",
+          "length": "64",
+          "nullable": true,
+          "ref": null
+        },
+        {
+          "name": "updated_at",
+          "type": "TIMESTAMP",
+          "length": "",
+          "nullable": true,
+          "ref": null
+        },
+        {
+          "name": "row_status",
+          "type": "VARCHAR",
+          "length": "32",
+          "nullable": false,
+          "ref": null
+        },
+        {
+          "name": "row_type",
+          "type": "VARCHAR",
+          "length": "32",
+          "nullable": false,
+          "ref": null
+        },
+        {
+          "name": "user_id",
+          "type": "UUID",
+          "length": "",
+          "nullable": false,
+          "ref": [
+            "authen",
+            "m_user"
+          ]
+        },
+        {
+          "name": "password",
+          "type": "BYTEA",
+          "length": "",
+          "nullable": false,
+          "ref": null
+        },
+        {
+          "name": "password_salt",
+          "type": "BYTEA",
+          "length": "",
+          "nullable": false,
+          "ref": null
+        }
+      ],
+      "file": "01-authen.schema.up.sql",
+      "sql": "CREATE TABLE IF NOT EXISTS authen.m_user_password ( id UUID NOT NULL DEFAULT GEN_RANDOM_UUID () PRIMARY KEY, created_by VARCHAR(64) NOT NULL, created_at TIMESTAMP WITHOUT TIME ZONE NOT NULL DEFAULT NOW (), updated_by VARCHAR(64), updated_at TIMESTAMP WITHOUT TIME ZONE, row_status VARCHAR(32) NOT NULL DEFAULT 'ACTIVE' CHECK ( row_status IN ( 'ACTIVE', 'INACTIVE', 'DELETED', 'LOCKED', 'ARCHIVED' ) ), row_type VARCHAR(32) NOT NULL DEFAULT 'PASSWORD' CHECK (row_type IN ('PASSWORD', 'TEMPORARY_PASSWORD')), user_id UUID NOT NULL REFERENCES authen.m_user (id) ON DELETE CASCADE, password BYTEA NOT NULL, password_salt BYTEA NOT NULL );",
+      "table_constraints": [],
+      "concept": "Password credential",
+      "indexes": [
+        "CREATE UNIQUE INDEX IF NOT EXISTS uq_m_user_password_user_id_password ON authen.m_user_password (user_id) WHERE row_type = 'PASSWORD' AND row_status = 'ACTIVE';"
+      ]
+    },
+    "authen.t_user_reset_password": {
+      "schema": "authen",
+      "table": "t_user_reset_password",
+      "cols": [
+        {
+          "name": "id",
+          "type": "UUID",
+          "length": "",
+          "nullable": false,
+          "ref": null
+        },
+        {
+          "name": "created_by",
+          "type": "VARCHAR",
+          "length": "64",
+          "nullable": false,
+          "ref": null
+        },
+        {
+          "name": "created_at",
+          "type": "TIMESTAMP",
+          "length": "",
+          "nullable": false,
+          "ref": null
+        },
+        {
+          "name": "updated_by",
+          "type": "VARCHAR",
+          "length": "64",
+          "nullable": true,
+          "ref": null
+        },
+        {
+          "name": "updated_at",
+          "type": "TIMESTAMP",
+          "length": "",
+          "nullable": true,
+          "ref": null
+        },
+        {
+          "name": "row_status",
+          "type": "VARCHAR",
+          "length": "32",
+          "nullable": false,
+          "ref": null
+        },
+        {
+          "name": "user_id",
+          "type": "UUID",
+          "length": "",
+          "nullable": false,
+          "ref": [
+            "authen",
+            "m_user"
+          ]
+        },
+        {
+          "name": "reset_token",
+          "type": "BYTEA",
+          "length": "",
+          "nullable": false,
+          "ref": null
+        },
+        {
+          "name": "expired_at",
+          "type": "TIMESTAMP",
+          "length": "",
+          "nullable": false,
+          "ref": null
+        }
+      ],
+      "file": "01-authen.schema.up.sql",
+      "sql": "CREATE TABLE IF NOT EXISTS authen.t_user_reset_password ( id UUID NOT NULL DEFAULT GEN_RANDOM_UUID () PRIMARY KEY, created_by VARCHAR(64) NOT NULL, created_at TIMESTAMP WITHOUT TIME ZONE NOT NULL DEFAULT NOW (), updated_by VARCHAR(64), updated_at TIMESTAMP WITHOUT TIME ZONE, row_status VARCHAR(32) NOT NULL DEFAULT 'ACTIVE' CHECK ( row_status IN ( 'ACTIVE', 'INACTIVE', 'DELETED', 'LOCKED', 'ARCHIVED' ) ), user_id UUID NOT NULL REFERENCES authen.m_user (id) ON DELETE CASCADE, reset_token BYTEA NOT NULL UNIQUE, expired_at TIMESTAMP WITHOUT TIME ZONE NOT NULL );",
+      "table_constraints": [],
+      "concept": "Password reset request",
+      "indexes": [
+        "CREATE UNIQUE INDEX IF NOT EXISTS uq_t_user_reset_password_user_id_active ON authen.t_user_reset_password (user_id) WHERE row_status = 'ACTIVE';"
+      ]
+    },
+    "authen.l_user_referral": {
+      "schema": "authen",
+      "table": "l_user_referral",
+      "cols": [
+        {
+          "name": "id",
+          "type": "UUID",
+          "length": "",
+          "nullable": false,
+          "ref": null
+        },
+        {
+          "name": "created_by",
+          "type": "VARCHAR",
+          "length": "64",
+          "nullable": false,
+          "ref": null
+        },
+        {
+          "name": "created_at",
+          "type": "TIMESTAMP",
+          "length": "",
+          "nullable": false,
+          "ref": null
+        },
+        {
+          "name": "user_id",
+          "type": "UUID",
+          "length": "",
+          "nullable": false,
+          "ref": [
+            "authen",
+            "m_user"
+          ]
+        },
+        {
+          "name": "referrer_id",
+          "type": "UUID",
+          "length": "",
+          "nullable": true,
+          "ref": [
+            "authen",
+            "m_user"
+          ]
+        }
+      ],
+      "file": "01-authen.schema.up.sql",
+      "sql": "CREATE TABLE IF NOT EXISTS authen.l_user_referral ( id UUID NOT NULL DEFAULT GEN_RANDOM_UUID () PRIMARY KEY, created_by VARCHAR(64) NOT NULL, created_at TIMESTAMP WITHOUT TIME ZONE NOT NULL DEFAULT NOW (), user_id UUID NOT NULL REFERENCES authen.m_user (id) ON DELETE CASCADE, referrer_id UUID REFERENCES authen.m_user (id) ON DELETE SET NULL );",
+      "table_constraints": [],
+      "concept": "Referral event",
+      "indexes": []
+    },
+    "authen.m_user_information": {
+      "schema": "authen",
+      "table": "m_user_information",
+      "cols": [
+        {
+          "name": "id",
+          "type": "UUID",
+          "length": "",
+          "nullable": false,
+          "ref": null
+        },
+        {
+          "name": "created_by",
+          "type": "VARCHAR",
+          "length": "64",
+          "nullable": false,
+          "ref": null
+        },
+        {
+          "name": "created_at",
+          "type": "TIMESTAMP",
+          "length": "",
+          "nullable": false,
+          "ref": null
+        },
+        {
+          "name": "updated_by",
+          "type": "VARCHAR",
+          "length": "64",
+          "nullable": true,
+          "ref": null
+        },
+        {
+          "name": "updated_at",
+          "type": "TIMESTAMP",
+          "length": "",
+          "nullable": true,
+          "ref": null
+        },
+        {
+          "name": "row_status",
+          "type": "VARCHAR",
+          "length": "32",
+          "nullable": false,
+          "ref": null
+        },
+        {
+          "name": "user_id",
+          "type": "UUID",
+          "length": "",
+          "nullable": false,
+          "ref": [
+            "authen",
+            "m_user"
+          ]
+        },
+        {
+          "name": "phone_number",
+          "type": "BYTEA",
+          "length": "",
+          "nullable": true,
+          "ref": null
+        },
+        {
+          "name": "address",
+          "type": "BYTEA",
+          "length": "",
+          "nullable": true,
+          "ref": null
+        },
+        {
+          "name": "date_of_birth",
+          "type": "DATE",
+          "length": "",
+          "nullable": true,
+          "ref": null
+        },
+        {
+          "name": "gender",
+          "type": "VARCHAR",
+          "length": "16",
+          "nullable": true,
+          "ref": null
+        }
+      ],
+      "file": "01-authen.schema.up.sql",
+      "sql": "CREATE TABLE IF NOT EXISTS authen.m_user_information ( id UUID NOT NULL DEFAULT GEN_RANDOM_UUID () PRIMARY KEY, created_by VARCHAR(64) NOT NULL, created_at TIMESTAMP WITHOUT TIME ZONE NOT NULL DEFAULT NOW (), updated_by VARCHAR(64), updated_at TIMESTAMP WITHOUT TIME ZONE, row_status VARCHAR(32) NOT NULL DEFAULT 'ACTIVE' CHECK ( row_status IN ( 'ACTIVE', 'INACTIVE', 'DELETED', 'LOCKED', 'ARCHIVED' ) ), user_id UUID NOT NULL REFERENCES authen.m_user (id) ON DELETE CASCADE, phone_number BYTEA, address BYTEA, date_of_birth DATE, gender VARCHAR(16) CHECK (gender IN ('MALE', 'FEMALE', '', 'OTHER')) );",
+      "table_constraints": [],
+      "concept": "User profile",
+      "indexes": [
+        "CREATE UNIQUE INDEX IF NOT EXISTS uq_m_user_information_user_id ON authen.m_user_information (user_id) WHERE row_status <> 'DELETED';"
+      ]
+    },
+    "authen.t_user_address": {
+      "schema": "authen",
+      "table": "t_user_address",
+      "cols": [
+        {
+          "name": "id",
+          "type": "UUID",
+          "length": "",
+          "nullable": false,
+          "ref": null
+        },
+        {
+          "name": "created_by",
+          "type": "VARCHAR",
+          "length": "64",
+          "nullable": false,
+          "ref": null
+        },
+        {
+          "name": "created_at",
+          "type": "TIMESTAMP",
+          "length": "",
+          "nullable": false,
+          "ref": null
+        },
+        {
+          "name": "updated_by",
+          "type": "VARCHAR",
+          "length": "64",
+          "nullable": true,
+          "ref": null
+        },
+        {
+          "name": "updated_at",
+          "type": "TIMESTAMP",
+          "length": "",
+          "nullable": true,
+          "ref": null
+        },
+        {
+          "name": "row_status",
+          "type": "VARCHAR",
+          "length": "32",
+          "nullable": false,
+          "ref": null
+        },
+        {
+          "name": "user_id",
+          "type": "UUID",
+          "length": "",
+          "nullable": false,
+          "ref": [
+            "authen",
+            "m_user"
+          ]
+        },
+        {
+          "name": "title",
+          "type": "VARCHAR",
+          "length": "128",
+          "nullable": false,
+          "ref": null
+        },
+        {
+          "name": "is_default",
+          "type": "BOOLEAN",
+          "length": "",
+          "nullable": false,
+          "ref": null
+        },
+        {
+          "name": "address",
+          "type": "BYTEA",
+          "length": "",
+          "nullable": false,
+          "ref": null
+        },
+        {
+          "name": "city",
+          "type": "BYTEA",
+          "length": "",
+          "nullable": false,
+          "ref": null
+        },
+        {
+          "name": "state",
+          "type": "BYTEA",
+          "length": "",
+          "nullable": false,
+          "ref": null
+        },
+        {
+          "name": "postal_code",
+          "type": "BYTEA",
+          "length": "",
+          "nullable": false,
+          "ref": null
+        },
+        {
+          "name": "country",
+          "type": "BYTEA",
+          "length": "",
+          "nullable": false,
+          "ref": null
+        }
+      ],
+      "file": "01-authen.schema.up.sql",
+      "sql": "CREATE TABLE IF NOT EXISTS authen.t_user_address ( id UUID NOT NULL DEFAULT GEN_RANDOM_UUID () PRIMARY KEY, created_by VARCHAR(64) NOT NULL, created_at TIMESTAMP WITHOUT TIME ZONE NOT NULL DEFAULT NOW (), updated_by VARCHAR(64), updated_at TIMESTAMP WITHOUT TIME ZONE, row_status VARCHAR(32) NOT NULL DEFAULT 'ACTIVE' CHECK ( row_status IN ( 'ACTIVE', 'INACTIVE', 'DELETED', 'LOCKED', 'ARCHIVED' ) ), user_id UUID NOT NULL REFERENCES authen.m_user (id) ON DELETE CASCADE, title VARCHAR(128) NOT NULL, is_default BOOLEAN NOT NULL DEFAULT FALSE, address BYTEA NOT NULL, city BYTEA NOT NULL, state BYTEA NOT NULL, postal_code BYTEA NOT NULL, country BYTEA NOT NULL );",
+      "table_constraints": [],
+      "concept": "Delivery address",
+      "indexes": [
+        "CREATE UNIQUE INDEX IF NOT EXISTS uq_t_user_address_user_id_default ON authen.t_user_address (user_id) WHERE is_default AND row_status <> 'DELETED';"
+      ]
+    },
+    "authen.t_user_access_token": {
+      "schema": "authen",
+      "table": "t_user_access_token",
+      "cols": [
+        {
+          "name": "id",
+          "type": "UUID",
+          "length": "",
+          "nullable": false,
+          "ref": null
+        },
+        {
+          "name": "created_by",
+          "type": "VARCHAR",
+          "length": "64",
+          "nullable": false,
+          "ref": null
+        },
+        {
+          "name": "created_at",
+          "type": "TIMESTAMP",
+          "length": "",
+          "nullable": false,
+          "ref": null
+        },
+        {
+          "name": "updated_by",
+          "type": "VARCHAR",
+          "length": "64",
+          "nullable": true,
+          "ref": null
+        },
+        {
+          "name": "updated_at",
+          "type": "TIMESTAMP",
+          "length": "",
+          "nullable": true,
+          "ref": null
+        },
+        {
+          "name": "row_status",
+          "type": "VARCHAR",
+          "length": "32",
+          "nullable": false,
+          "ref": null
+        },
+        {
+          "name": "user_id",
+          "type": "UUID",
+          "length": "",
+          "nullable": false,
+          "ref": [
+            "authen",
+            "m_user"
+          ]
+        },
+        {
+          "name": "session_id",
+          "type": "UUID",
+          "length": "",
+          "nullable": false,
+          "ref": null
+        },
+        {
+          "name": "token",
+          "type": "BYTEA",
+          "length": "",
+          "nullable": false,
+          "ref": null
+        },
+        {
+          "name": "expired_at",
+          "type": "TIMESTAMP",
+          "length": "",
+          "nullable": false,
+          "ref": null
+        }
+      ],
+      "file": "01-authen.schema.up.sql",
+      "sql": "CREATE TABLE IF NOT EXISTS authen.t_user_access_token ( id UUID NOT NULL DEFAULT GEN_RANDOM_UUID () PRIMARY KEY, created_by VARCHAR(64) NOT NULL, created_at TIMESTAMP WITHOUT TIME ZONE NOT NULL DEFAULT NOW (), updated_by VARCHAR(64), updated_at TIMESTAMP WITHOUT TIME ZONE, row_status VARCHAR(32) NOT NULL DEFAULT 'ACTIVE' CHECK ( row_status IN ( 'ACTIVE', 'INACTIVE', 'DELETED', 'LOCKED', 'ARCHIVED' ) ), user_id UUID NOT NULL REFERENCES authen.m_user (id) ON DELETE CASCADE, session_id UUID NOT NULL, token BYTEA NOT NULL UNIQUE, expired_at TIMESTAMP WITHOUT TIME ZONE NOT NULL );",
+      "table_constraints": [],
+      "concept": "Access token",
+      "indexes": []
+    },
+    "authen.t_user_refresh_token": {
+      "schema": "authen",
+      "table": "t_user_refresh_token",
+      "cols": [
+        {
+          "name": "id",
+          "type": "UUID",
+          "length": "",
+          "nullable": false,
+          "ref": null
+        },
+        {
+          "name": "created_by",
+          "type": "VARCHAR",
+          "length": "64",
+          "nullable": false,
+          "ref": null
+        },
+        {
+          "name": "created_at",
+          "type": "TIMESTAMP",
+          "length": "",
+          "nullable": false,
+          "ref": null
+        },
+        {
+          "name": "updated_by",
+          "type": "VARCHAR",
+          "length": "64",
+          "nullable": true,
+          "ref": null
+        },
+        {
+          "name": "updated_at",
+          "type": "TIMESTAMP",
+          "length": "",
+          "nullable": true,
+          "ref": null
+        },
+        {
+          "name": "row_status",
+          "type": "VARCHAR",
+          "length": "32",
+          "nullable": false,
+          "ref": null
+        },
+        {
+          "name": "user_id",
+          "type": "UUID",
+          "length": "",
+          "nullable": false,
+          "ref": [
+            "authen",
+            "m_user"
+          ]
+        },
+        {
+          "name": "session_id",
+          "type": "UUID",
+          "length": "",
+          "nullable": false,
+          "ref": null
+        },
+        {
+          "name": "token",
+          "type": "BYTEA",
+          "length": "",
+          "nullable": false,
+          "ref": null
+        },
+        {
+          "name": "expired_at",
+          "type": "TIMESTAMP",
+          "length": "",
+          "nullable": false,
+          "ref": null
+        }
+      ],
+      "file": "01-authen.schema.up.sql",
+      "sql": "CREATE TABLE IF NOT EXISTS authen.t_user_refresh_token ( id UUID NOT NULL DEFAULT GEN_RANDOM_UUID () PRIMARY KEY, created_by VARCHAR(64) NOT NULL, created_at TIMESTAMP WITHOUT TIME ZONE NOT NULL DEFAULT NOW (), updated_by VARCHAR(64), updated_at TIMESTAMP WITHOUT TIME ZONE, row_status VARCHAR(32) NOT NULL DEFAULT 'ACTIVE' CHECK ( row_status IN ( 'ACTIVE', 'INACTIVE', 'DELETED', 'LOCKED', 'ARCHIVED' ) ), user_id UUID NOT NULL REFERENCES authen.m_user (id) ON DELETE CASCADE, session_id UUID NOT NULL, token BYTEA NOT NULL UNIQUE, expired_at TIMESTAMP WITHOUT TIME ZONE NOT NULL );",
+      "table_constraints": [],
+      "concept": "Refresh token",
+      "indexes": []
+    },
+    "authen.l_user_login_attempt": {
+      "schema": "authen",
+      "table": "l_user_login_attempt",
+      "cols": [
+        {
+          "name": "id",
+          "type": "UUID",
+          "length": "",
+          "nullable": false,
+          "ref": null
+        },
+        {
+          "name": "created_by",
+          "type": "VARCHAR",
+          "length": "64",
+          "nullable": false,
+          "ref": null
+        },
+        {
+          "name": "created_at",
+          "type": "TIMESTAMP",
+          "length": "",
+          "nullable": false,
+          "ref": null
+        },
+        {
+          "name": "identifier_hash",
+          "type": "BYTEA",
+          "length": "",
+          "nullable": false,
+          "ref": null
+        },
+        {
+          "name": "user_id",
+          "type": "UUID",
+          "length": "",
+          "nullable": true,
+          "ref": [
+            "authen",
+            "m_user"
+          ]
+        },
+        {
+          "name": "result",
+          "type": "VARCHAR",
+          "length": "16",
+          "nullable": false,
+          "ref": null
+        }
+      ],
+      "file": "01-authen.schema.up.sql",
+      "sql": "CREATE TABLE IF NOT EXISTS authen.l_user_login_attempt ( id UUID NOT NULL DEFAULT GEN_RANDOM_UUID () PRIMARY KEY, created_by VARCHAR(64) NOT NULL, created_at TIMESTAMP WITHOUT TIME ZONE NOT NULL DEFAULT NOW (), identifier_hash BYTEA NOT NULL, user_id UUID REFERENCES authen.m_user (id) ON DELETE CASCADE, result VARCHAR(16) NOT NULL CHECK (result IN ('SUCCESS', 'FAILED', 'REFUSED')) );",
+      "table_constraints": [],
+      "concept": "Login attempt",
+      "indexes": [
+        "CREATE INDEX IF NOT EXISTS ix_l_user_login_attempt_identifier_hash_created_at ON authen.l_user_login_attempt (identifier_hash, created_at);"
+      ]
+    },
+    "author.m_role": {
+      "schema": "author",
+      "table": "m_role",
+      "cols": [
+        {
+          "name": "id",
+          "type": "UUID",
+          "length": "",
+          "nullable": false,
+          "ref": null
+        },
+        {
+          "name": "created_by",
+          "type": "VARCHAR",
+          "length": "64",
+          "nullable": false,
+          "ref": null
+        },
+        {
+          "name": "created_at",
+          "type": "TIMESTAMP",
+          "length": "",
+          "nullable": false,
+          "ref": null
+        },
+        {
+          "name": "updated_by",
+          "type": "VARCHAR",
+          "length": "64",
+          "nullable": true,
+          "ref": null
+        },
+        {
+          "name": "updated_at",
+          "type": "TIMESTAMP",
+          "length": "",
+          "nullable": true,
+          "ref": null
+        },
+        {
+          "name": "row_status",
+          "type": "VARCHAR",
+          "length": "32",
+          "nullable": false,
+          "ref": null
+        },
+        {
+          "name": "name",
+          "type": "VARCHAR",
+          "length": "64",
+          "nullable": false,
+          "ref": null
+        },
+        {
+          "name": "description",
+          "type": "VARCHAR",
+          "length": "256",
+          "nullable": false,
+          "ref": null
+        }
+      ],
+      "file": "02-author.schema.up.sql",
+      "sql": "CREATE TABLE IF NOT EXISTS author.m_role ( id UUID NOT NULL DEFAULT GEN_RANDOM_UUID () PRIMARY KEY, created_by VARCHAR(64) NOT NULL, created_at TIMESTAMP WITHOUT TIME ZONE NOT NULL DEFAULT NOW (), updated_by VARCHAR(64), updated_at TIMESTAMP WITHOUT TIME ZONE, row_status VARCHAR(32) NOT NULL DEFAULT 'ACTIVE' CHECK ( row_status IN ( 'ACTIVE', 'INACTIVE', 'DELETED', 'LOCKED', 'ARCHIVED' ) ), name VARCHAR(64) NOT NULL, description VARCHAR(256) NOT NULL );",
+      "table_constraints": [],
+      "concept": "Role",
+      "indexes": [
+        "CREATE UNIQUE INDEX IF NOT EXISTS uq_m_role_name ON author.m_role (name) WHERE row_status <> 'DELETED';"
+      ]
+    },
+    "author.m_permission": {
+      "schema": "author",
+      "table": "m_permission",
+      "cols": [
+        {
+          "name": "id",
+          "type": "UUID",
+          "length": "",
+          "nullable": false,
+          "ref": null
+        },
+        {
+          "name": "created_by",
+          "type": "VARCHAR",
+          "length": "64",
+          "nullable": false,
+          "ref": null
+        },
+        {
+          "name": "created_at",
+          "type": "TIMESTAMP",
+          "length": "",
+          "nullable": false,
+          "ref": null
+        },
+        {
+          "name": "updated_by",
+          "type": "VARCHAR",
+          "length": "64",
+          "nullable": true,
+          "ref": null
+        },
+        {
+          "name": "updated_at",
+          "type": "TIMESTAMP",
+          "length": "",
+          "nullable": true,
+          "ref": null
+        },
+        {
+          "name": "row_status",
+          "type": "VARCHAR",
+          "length": "32",
+          "nullable": false,
+          "ref": null
+        },
+        {
+          "name": "name",
+          "type": "VARCHAR",
+          "length": "64",
+          "nullable": false,
+          "ref": null
+        },
+        {
+          "name": "description",
+          "type": "VARCHAR",
+          "length": "256",
+          "nullable": false,
+          "ref": null
+        }
+      ],
+      "file": "02-author.schema.up.sql",
+      "sql": "CREATE TABLE IF NOT EXISTS author.m_permission ( id UUID NOT NULL DEFAULT GEN_RANDOM_UUID () PRIMARY KEY, created_by VARCHAR(64) NOT NULL, created_at TIMESTAMP WITHOUT TIME ZONE NOT NULL DEFAULT NOW (), updated_by VARCHAR(64), updated_at TIMESTAMP WITHOUT TIME ZONE, row_status VARCHAR(32) NOT NULL DEFAULT 'ACTIVE' CHECK ( row_status IN ( 'ACTIVE', 'INACTIVE', 'DELETED', 'LOCKED', 'ARCHIVED' ) ), name VARCHAR(64) NOT NULL, description VARCHAR(256) NOT NULL );",
+      "table_constraints": [],
+      "concept": "Permission",
+      "indexes": [
+        "CREATE UNIQUE INDEX IF NOT EXISTS uq_m_permission_name ON author.m_permission (name) WHERE row_status <> 'DELETED';"
+      ]
+    },
+    "author.m_scope": {
+      "schema": "author",
+      "table": "m_scope",
+      "cols": [
+        {
+          "name": "id",
+          "type": "UUID",
+          "length": "",
+          "nullable": false,
+          "ref": null
+        },
+        {
+          "name": "created_by",
+          "type": "VARCHAR",
+          "length": "64",
+          "nullable": false,
+          "ref": null
+        },
+        {
+          "name": "created_at",
+          "type": "TIMESTAMP",
+          "length": "",
+          "nullable": false,
+          "ref": null
+        },
+        {
+          "name": "updated_by",
+          "type": "VARCHAR",
+          "length": "64",
+          "nullable": true,
+          "ref": null
+        },
+        {
+          "name": "updated_at",
+          "type": "TIMESTAMP",
+          "length": "",
+          "nullable": true,
+          "ref": null
+        },
+        {
+          "name": "row_status",
+          "type": "VARCHAR",
+          "length": "32",
+          "nullable": false,
+          "ref": null
+        },
+        {
+          "name": "scope",
+          "type": "VARCHAR",
+          "length": "64",
+          "nullable": false,
+          "ref": null
+        },
+        {
+          "name": "name",
+          "type": "VARCHAR",
+          "length": "64",
+          "nullable": false,
+          "ref": null
+        },
+        {
+          "name": "description",
+          "type": "VARCHAR",
+          "length": "256",
+          "nullable": false,
+          "ref": null
+        }
+      ],
+      "file": "02-author.schema.up.sql",
+      "sql": "CREATE TABLE IF NOT EXISTS author.m_scope ( id UUID NOT NULL DEFAULT GEN_RANDOM_UUID () PRIMARY KEY, created_by VARCHAR(64) NOT NULL, created_at TIMESTAMP WITHOUT TIME ZONE NOT NULL DEFAULT NOW (), updated_by VARCHAR(64), updated_at TIMESTAMP WITHOUT TIME ZONE, row_status VARCHAR(32) NOT NULL DEFAULT 'ACTIVE' CHECK ( row_status IN ( 'ACTIVE', 'INACTIVE', 'DELETED', 'LOCKED', 'ARCHIVED' ) ), scope VARCHAR(64) NOT NULL, name VARCHAR(64) NOT NULL, description VARCHAR(256) NOT NULL );",
+      "table_constraints": [],
+      "concept": "Scope",
+      "indexes": [
+        "CREATE UNIQUE INDEX IF NOT EXISTS uq_m_scope_scope ON author.m_scope (scope) WHERE row_status <> 'DELETED';"
+      ]
+    },
+    "author.t_permission_scope": {
+      "schema": "author",
+      "table": "t_permission_scope",
+      "cols": [
+        {
+          "name": "id",
+          "type": "UUID",
+          "length": "",
+          "nullable": false,
+          "ref": null
+        },
+        {
+          "name": "created_by",
+          "type": "VARCHAR",
+          "length": "64",
+          "nullable": false,
+          "ref": null
+        },
+        {
+          "name": "created_at",
+          "type": "TIMESTAMP",
+          "length": "",
+          "nullable": false,
+          "ref": null
+        },
+        {
+          "name": "updated_by",
+          "type": "VARCHAR",
+          "length": "64",
+          "nullable": true,
+          "ref": null
+        },
+        {
+          "name": "updated_at",
+          "type": "TIMESTAMP",
+          "length": "",
+          "nullable": true,
+          "ref": null
+        },
+        {
+          "name": "row_status",
+          "type": "VARCHAR",
+          "length": "32",
+          "nullable": false,
+          "ref": null
+        },
+        {
+          "name": "permission_id",
+          "type": "UUID",
+          "length": "",
+          "nullable": false,
+          "ref": [
+            "author",
+            "m_permission"
+          ]
+        },
+        {
+          "name": "scope_id",
+          "type": "UUID",
+          "length": "",
+          "nullable": false,
+          "ref": [
+            "author",
+            "m_scope"
+          ]
+        }
+      ],
+      "file": "02-author.schema.up.sql",
+      "sql": "CREATE TABLE IF NOT EXISTS author.t_permission_scope ( id UUID NOT NULL DEFAULT GEN_RANDOM_UUID () PRIMARY KEY, created_by VARCHAR(64) NOT NULL, created_at TIMESTAMP WITHOUT TIME ZONE NOT NULL DEFAULT NOW (), updated_by VARCHAR(64), updated_at TIMESTAMP WITHOUT TIME ZONE, row_status VARCHAR(32) NOT NULL DEFAULT 'ACTIVE' CHECK ( row_status IN ( 'ACTIVE', 'INACTIVE', 'DELETED', 'LOCKED', 'ARCHIVED' ) ), permission_id UUID NOT NULL REFERENCES author.m_permission (id) ON DELETE RESTRICT, scope_id UUID NOT NULL REFERENCES author.m_scope (id) ON DELETE RESTRICT );",
+      "table_constraints": [],
+      "concept": "Scoped permission",
+      "indexes": [
+        "CREATE UNIQUE INDEX IF NOT EXISTS uq_t_permission_scope_permission_id_scope_id ON author.t_permission_scope (permission_id, scope_id) WHERE row_status <> 'DELETED';"
+      ]
+    },
+    "author.t_role_permission": {
+      "schema": "author",
+      "table": "t_role_permission",
+      "cols": [
+        {
+          "name": "id",
+          "type": "UUID",
+          "length": "",
+          "nullable": false,
+          "ref": null
+        },
+        {
+          "name": "created_by",
+          "type": "VARCHAR",
+          "length": "64",
+          "nullable": false,
+          "ref": null
+        },
+        {
+          "name": "created_at",
+          "type": "TIMESTAMP",
+          "length": "",
+          "nullable": false,
+          "ref": null
+        },
+        {
+          "name": "updated_by",
+          "type": "VARCHAR",
+          "length": "64",
+          "nullable": true,
+          "ref": null
+        },
+        {
+          "name": "updated_at",
+          "type": "TIMESTAMP",
+          "length": "",
+          "nullable": true,
+          "ref": null
+        },
+        {
+          "name": "row_status",
+          "type": "VARCHAR",
+          "length": "32",
+          "nullable": false,
+          "ref": null
+        },
+        {
+          "name": "role_id",
+          "type": "UUID",
+          "length": "",
+          "nullable": false,
+          "ref": [
+            "author",
+            "m_role"
+          ]
+        },
+        {
+          "name": "permission_id",
+          "type": "UUID",
+          "length": "",
+          "nullable": false,
+          "ref": [
+            "author",
+            "m_permission"
+          ]
+        }
+      ],
+      "file": "02-author.schema.up.sql",
+      "sql": "CREATE TABLE IF NOT EXISTS author.t_role_permission ( id UUID NOT NULL DEFAULT GEN_RANDOM_UUID () PRIMARY KEY, created_by VARCHAR(64) NOT NULL, created_at TIMESTAMP WITHOUT TIME ZONE NOT NULL DEFAULT NOW (), updated_by VARCHAR(64), updated_at TIMESTAMP WITHOUT TIME ZONE, row_status VARCHAR(32) NOT NULL DEFAULT 'ACTIVE' CHECK ( row_status IN ( 'ACTIVE', 'INACTIVE', 'DELETED', 'LOCKED', 'ARCHIVED' ) ), role_id UUID NOT NULL REFERENCES author.m_role (id) ON DELETE RESTRICT, permission_id UUID NOT NULL REFERENCES author.m_permission (id) ON DELETE RESTRICT );",
+      "table_constraints": [],
+      "concept": "Role permission grant",
+      "indexes": [
+        "CREATE UNIQUE INDEX IF NOT EXISTS uq_t_role_permission_role_id_permission_id ON author.t_role_permission (role_id, permission_id) WHERE row_status <> 'DELETED';"
+      ]
+    },
+    "author.t_role_permission_scope": {
+      "schema": "author",
+      "table": "t_role_permission_scope",
+      "cols": [
+        {
+          "name": "id",
+          "type": "UUID",
+          "length": "",
+          "nullable": false,
+          "ref": null
+        },
+        {
+          "name": "created_by",
+          "type": "VARCHAR",
+          "length": "64",
+          "nullable": false,
+          "ref": null
+        },
+        {
+          "name": "created_at",
+          "type": "TIMESTAMP",
+          "length": "",
+          "nullable": false,
+          "ref": null
+        },
+        {
+          "name": "updated_by",
+          "type": "VARCHAR",
+          "length": "64",
+          "nullable": true,
+          "ref": null
+        },
+        {
+          "name": "updated_at",
+          "type": "TIMESTAMP",
+          "length": "",
+          "nullable": true,
+          "ref": null
+        },
+        {
+          "name": "row_status",
+          "type": "VARCHAR",
+          "length": "32",
+          "nullable": false,
+          "ref": null
+        },
+        {
+          "name": "role_permission_id",
+          "type": "UUID",
+          "length": "",
+          "nullable": false,
+          "ref": [
+            "author",
+            "t_role_permission"
+          ]
+        },
+        {
+          "name": "permission_scope_id",
+          "type": "UUID",
+          "length": "",
+          "nullable": false,
+          "ref": [
+            "author",
+            "t_permission_scope"
+          ]
+        }
+      ],
+      "file": "02-author.schema.up.sql",
+      "sql": "CREATE TABLE IF NOT EXISTS author.t_role_permission_scope ( id UUID NOT NULL DEFAULT GEN_RANDOM_UUID () PRIMARY KEY, created_by VARCHAR(64) NOT NULL, created_at TIMESTAMP WITHOUT TIME ZONE NOT NULL DEFAULT NOW (), updated_by VARCHAR(64), updated_at TIMESTAMP WITHOUT TIME ZONE, row_status VARCHAR(32) NOT NULL DEFAULT 'ACTIVE' CHECK ( row_status IN ( 'ACTIVE', 'INACTIVE', 'DELETED', 'LOCKED', 'ARCHIVED' ) ), role_permission_id UUID NOT NULL REFERENCES author.t_role_permission (id) ON DELETE CASCADE, permission_scope_id UUID NOT NULL REFERENCES author.t_permission_scope (id) ON DELETE RESTRICT );",
+      "table_constraints": [],
+      "concept": "Scoped role grant",
+      "indexes": [
+        "CREATE UNIQUE INDEX IF NOT EXISTS uq_t_role_permission_scope_role_permission_scope ON author.t_role_permission_scope (role_permission_id, permission_scope_id) WHERE row_status <> 'DELETED';"
+      ]
+    },
+    "author.t_user_role": {
+      "schema": "author",
+      "table": "t_user_role",
+      "cols": [
+        {
+          "name": "id",
+          "type": "UUID",
+          "length": "",
+          "nullable": false,
+          "ref": null
+        },
+        {
+          "name": "created_by",
+          "type": "VARCHAR",
+          "length": "64",
+          "nullable": false,
+          "ref": null
+        },
+        {
+          "name": "created_at",
+          "type": "TIMESTAMP",
+          "length": "",
+          "nullable": false,
+          "ref": null
+        },
+        {
+          "name": "updated_by",
+          "type": "VARCHAR",
+          "length": "64",
+          "nullable": true,
+          "ref": null
+        },
+        {
+          "name": "updated_at",
+          "type": "TIMESTAMP",
+          "length": "",
+          "nullable": true,
+          "ref": null
+        },
+        {
+          "name": "row_status",
+          "type": "VARCHAR",
+          "length": "32",
+          "nullable": false,
+          "ref": null
+        },
+        {
+          "name": "user_id",
+          "type": "UUID",
+          "length": "",
+          "nullable": false,
+          "ref": [
+            "authen",
+            "m_user"
+          ]
+        },
+        {
+          "name": "role_id",
+          "type": "UUID",
+          "length": "",
+          "nullable": false,
+          "ref": [
+            "author",
+            "m_role"
+          ]
+        }
+      ],
+      "file": "02-author.schema.up.sql",
+      "sql": "CREATE TABLE IF NOT EXISTS author.t_user_role ( id UUID NOT NULL DEFAULT GEN_RANDOM_UUID () PRIMARY KEY, created_by VARCHAR(64) NOT NULL, created_at TIMESTAMP WITHOUT TIME ZONE NOT NULL DEFAULT NOW (), updated_by VARCHAR(64), updated_at TIMESTAMP WITHOUT TIME ZONE, row_status VARCHAR(32) NOT NULL DEFAULT 'ACTIVE' CHECK ( row_status IN ( 'ACTIVE', 'INACTIVE', 'DELETED', 'LOCKED', 'ARCHIVED' ) ), user_id UUID NOT NULL REFERENCES authen.m_user (id) ON DELETE CASCADE, role_id UUID NOT NULL REFERENCES author.m_role (id) ON DELETE RESTRICT );",
+      "table_constraints": [],
+      "concept": "User role assignment",
+      "indexes": [
+        "CREATE UNIQUE INDEX IF NOT EXISTS uq_t_user_role_user_id_role_id ON author.t_user_role (user_id, role_id) WHERE row_status <> 'DELETED';"
+      ]
+    },
+    "author.t_user_permission": {
+      "schema": "author",
+      "table": "t_user_permission",
+      "cols": [
+        {
+          "name": "id",
+          "type": "UUID",
+          "length": "",
+          "nullable": false,
+          "ref": null
+        },
+        {
+          "name": "created_by",
+          "type": "VARCHAR",
+          "length": "64",
+          "nullable": false,
+          "ref": null
+        },
+        {
+          "name": "created_at",
+          "type": "TIMESTAMP",
+          "length": "",
+          "nullable": false,
+          "ref": null
+        },
+        {
+          "name": "updated_by",
+          "type": "VARCHAR",
+          "length": "64",
+          "nullable": true,
+          "ref": null
+        },
+        {
+          "name": "updated_at",
+          "type": "TIMESTAMP",
+          "length": "",
+          "nullable": true,
+          "ref": null
+        },
+        {
+          "name": "row_status",
+          "type": "VARCHAR",
+          "length": "32",
+          "nullable": false,
+          "ref": null
+        },
+        {
+          "name": "user_id",
+          "type": "UUID",
+          "length": "",
+          "nullable": false,
+          "ref": [
+            "authen",
+            "m_user"
+          ]
+        },
+        {
+          "name": "permission_id",
+          "type": "UUID",
+          "length": "",
+          "nullable": false,
+          "ref": [
+            "author",
+            "m_permission"
+          ]
+        },
+        {
+          "name": "permission_scope_id",
+          "type": "UUID",
+          "length": "",
+          "nullable": true,
+          "ref": [
+            "author",
+            "t_permission_scope"
+          ]
+        }
+      ],
+      "file": "02-author.schema.up.sql",
+      "sql": "CREATE TABLE IF NOT EXISTS author.t_user_permission ( id UUID NOT NULL DEFAULT GEN_RANDOM_UUID () PRIMARY KEY, created_by VARCHAR(64) NOT NULL, created_at TIMESTAMP WITHOUT TIME ZONE NOT NULL DEFAULT NOW (), updated_by VARCHAR(64), updated_at TIMESTAMP WITHOUT TIME ZONE, row_status VARCHAR(32) NOT NULL DEFAULT 'ACTIVE' CHECK ( row_status IN ( 'ACTIVE', 'INACTIVE', 'DELETED', 'LOCKED', 'ARCHIVED' ) ), user_id UUID NOT NULL REFERENCES authen.m_user (id) ON DELETE CASCADE, permission_id UUID NOT NULL REFERENCES author.m_permission (id) ON DELETE RESTRICT, permission_scope_id UUID REFERENCES author.t_permission_scope (id) ON DELETE RESTRICT );",
+      "table_constraints": [],
+      "concept": "Direct permission grant",
+      "indexes": [
+        "CREATE UNIQUE INDEX IF NOT EXISTS uq_t_user_permission_user_id_permission_id ON author.t_user_permission (user_id, permission_id) WHERE permission_scope_id IS NULL AND row_status <> 'DELETED';",
+        "CREATE UNIQUE INDEX IF NOT EXISTS uq_t_user_permission_user_id_permission_scope ON author.t_user_permission (user_id, permission_id, permission_scope_id) WHERE permission_scope_id IS NOT NULL AND row_status <> 'DELETED';"
+      ]
+    },
+    "product.m_product_type": {
+      "schema": "product",
+      "table": "m_product_type",
+      "cols": [
+        {
+          "name": "id",
+          "type": "UUID",
+          "length": "",
+          "nullable": false,
+          "ref": null
+        },
+        {
+          "name": "created_by",
+          "type": "VARCHAR",
+          "length": "64",
+          "nullable": false,
+          "ref": null
+        },
+        {
+          "name": "created_at",
+          "type": "TIMESTAMP",
+          "length": "",
+          "nullable": false,
+          "ref": null
+        },
+        {
+          "name": "updated_by",
+          "type": "VARCHAR",
+          "length": "64",
+          "nullable": true,
+          "ref": null
+        },
+        {
+          "name": "updated_at",
+          "type": "TIMESTAMP",
+          "length": "",
+          "nullable": true,
+          "ref": null
+        },
+        {
+          "name": "row_status",
+          "type": "VARCHAR",
+          "length": "32",
+          "nullable": false,
+          "ref": null
+        },
+        {
+          "name": "name",
+          "type": "VARCHAR",
+          "length": "128",
+          "nullable": false,
+          "ref": null
+        },
+        {
+          "name": "description",
+          "type": "VARCHAR",
+          "length": "256",
+          "nullable": false,
+          "ref": null
+        }
+      ],
+      "file": "03-product.schema.up.sql",
+      "sql": "CREATE TABLE IF NOT EXISTS product.m_product_type ( id UUID NOT NULL DEFAULT GEN_RANDOM_UUID () PRIMARY KEY, created_by VARCHAR(64) NOT NULL, created_at TIMESTAMP WITHOUT TIME ZONE NOT NULL DEFAULT NOW (), updated_by VARCHAR(64), updated_at TIMESTAMP WITHOUT TIME ZONE, row_status VARCHAR(32) NOT NULL DEFAULT 'ACTIVE' CHECK ( row_status IN ( 'ACTIVE', 'INACTIVE', 'DELETED', 'LOCKED', 'ARCHIVED' ) ), name VARCHAR(128) NOT NULL, description VARCHAR(256) NOT NULL );",
+      "table_constraints": [],
+      "concept": "Product type",
+      "indexes": [
+        "CREATE UNIQUE INDEX IF NOT EXISTS uq_m_product_type_name ON product.m_product_type (name) WHERE row_status <> 'DELETED';"
+      ]
+    },
+    "product.m_product_category": {
+      "schema": "product",
+      "table": "m_product_category",
+      "cols": [
+        {
+          "name": "id",
+          "type": "UUID",
+          "length": "",
+          "nullable": false,
+          "ref": null
+        },
+        {
+          "name": "created_by",
+          "type": "VARCHAR",
+          "length": "64",
+          "nullable": false,
+          "ref": null
+        },
+        {
+          "name": "created_at",
+          "type": "TIMESTAMP",
+          "length": "",
+          "nullable": false,
+          "ref": null
+        },
+        {
+          "name": "updated_by",
+          "type": "VARCHAR",
+          "length": "64",
+          "nullable": true,
+          "ref": null
+        },
+        {
+          "name": "updated_at",
+          "type": "TIMESTAMP",
+          "length": "",
+          "nullable": true,
+          "ref": null
+        },
+        {
+          "name": "row_status",
+          "type": "VARCHAR",
+          "length": "32",
+          "nullable": false,
+          "ref": null
+        },
+        {
+          "name": "parent_id",
+          "type": "UUID",
+          "length": "",
+          "nullable": true,
+          "ref": [
+            "product",
+            "m_product_category"
+          ]
+        },
+        {
+          "name": "name",
+          "type": "VARCHAR",
+          "length": "128",
+          "nullable": false,
+          "ref": null
+        },
+        {
+          "name": "description",
+          "type": "VARCHAR",
+          "length": "256",
+          "nullable": false,
+          "ref": null
+        },
+        {
+          "name": "slug",
+          "type": "VARCHAR",
+          "length": "128",
+          "nullable": false,
+          "ref": null
+        }
+      ],
+      "file": "03-product.schema.up.sql",
+      "sql": "CREATE TABLE IF NOT EXISTS product.m_product_category ( id UUID NOT NULL DEFAULT GEN_RANDOM_UUID () PRIMARY KEY, created_by VARCHAR(64) NOT NULL, created_at TIMESTAMP WITHOUT TIME ZONE NOT NULL DEFAULT NOW (), updated_by VARCHAR(64), updated_at TIMESTAMP WITHOUT TIME ZONE, row_status VARCHAR(32) NOT NULL DEFAULT 'ACTIVE' CHECK ( row_status IN ( 'ACTIVE', 'INACTIVE', 'DELETED', 'LOCKED', 'ARCHIVED' ) ), parent_id UUID REFERENCES product.m_product_category (id) ON DELETE CASCADE, name VARCHAR(128) NOT NULL UNIQUE, description VARCHAR(256) NOT NULL, slug VARCHAR(128) NOT NULL );",
+      "table_constraints": [],
+      "concept": "Category",
+      "indexes": []
+    },
+    "product.m_product_category_attribute": {
+      "schema": "product",
+      "table": "m_product_category_attribute",
+      "cols": [
+        {
+          "name": "id",
+          "type": "UUID",
+          "length": "",
+          "nullable": false,
+          "ref": null
+        },
+        {
+          "name": "created_by",
+          "type": "VARCHAR",
+          "length": "64",
+          "nullable": false,
+          "ref": null
+        },
+        {
+          "name": "created_at",
+          "type": "TIMESTAMP",
+          "length": "",
+          "nullable": false,
+          "ref": null
+        },
+        {
+          "name": "updated_by",
+          "type": "VARCHAR",
+          "length": "64",
+          "nullable": true,
+          "ref": null
+        },
+        {
+          "name": "updated_at",
+          "type": "TIMESTAMP",
+          "length": "",
+          "nullable": true,
+          "ref": null
+        },
+        {
+          "name": "row_status",
+          "type": "VARCHAR",
+          "length": "32",
+          "nullable": false,
+          "ref": null
+        },
+        {
+          "name": "category_id",
+          "type": "UUID",
+          "length": "",
+          "nullable": false,
+          "ref": [
+            "product",
+            "m_product_category"
+          ]
+        },
+        {
+          "name": "name",
+          "type": "VARCHAR",
+          "length": "128",
+          "nullable": false,
+          "ref": null
+        },
+        {
+          "name": "description",
+          "type": "VARCHAR",
+          "length": "256",
+          "nullable": false,
+          "ref": null
+        }
+      ],
+      "file": "03-product.schema.up.sql",
+      "sql": "CREATE TABLE IF NOT EXISTS product.m_product_category_attribute ( id UUID NOT NULL DEFAULT GEN_RANDOM_UUID () PRIMARY KEY, created_by VARCHAR(64) NOT NULL, created_at TIMESTAMP WITHOUT TIME ZONE NOT NULL DEFAULT NOW (), updated_by VARCHAR(64), updated_at TIMESTAMP WITHOUT TIME ZONE, row_status VARCHAR(32) NOT NULL DEFAULT 'ACTIVE' CHECK ( row_status IN ( 'ACTIVE', 'INACTIVE', 'DELETED', 'LOCKED', 'ARCHIVED' ) ), category_id UUID NOT NULL REFERENCES product.m_product_category (id) ON DELETE CASCADE, name VARCHAR(128) NOT NULL UNIQUE, description VARCHAR(256) NOT NULL );",
+      "table_constraints": [],
+      "concept": "Category attribute definition",
+      "indexes": []
+    },
+    "product.m_product_brand": {
+      "schema": "product",
+      "table": "m_product_brand",
+      "cols": [
+        {
+          "name": "id",
+          "type": "UUID",
+          "length": "",
+          "nullable": false,
+          "ref": null
+        },
+        {
+          "name": "created_by",
+          "type": "VARCHAR",
+          "length": "64",
+          "nullable": false,
+          "ref": null
+        },
+        {
+          "name": "created_at",
+          "type": "TIMESTAMP",
+          "length": "",
+          "nullable": false,
+          "ref": null
+        },
+        {
+          "name": "updated_by",
+          "type": "VARCHAR",
+          "length": "64",
+          "nullable": true,
+          "ref": null
+        },
+        {
+          "name": "updated_at",
+          "type": "TIMESTAMP",
+          "length": "",
+          "nullable": true,
+          "ref": null
+        },
+        {
+          "name": "row_status",
+          "type": "VARCHAR",
+          "length": "32",
+          "nullable": false,
+          "ref": null
+        },
+        {
+          "name": "name",
+          "type": "VARCHAR",
+          "length": "128",
+          "nullable": false,
+          "ref": null
+        },
+        {
+          "name": "description",
+          "type": "VARCHAR",
+          "length": "256",
+          "nullable": false,
+          "ref": null
+        }
+      ],
+      "file": "03-product.schema.up.sql",
+      "sql": "CREATE TABLE IF NOT EXISTS product.m_product_brand ( id UUID NOT NULL DEFAULT GEN_RANDOM_UUID () PRIMARY KEY, created_by VARCHAR(64) NOT NULL, created_at TIMESTAMP WITHOUT TIME ZONE NOT NULL DEFAULT NOW (), updated_by VARCHAR(64), updated_at TIMESTAMP WITHOUT TIME ZONE, row_status VARCHAR(32) NOT NULL DEFAULT 'ACTIVE' CHECK ( row_status IN ( 'ACTIVE', 'INACTIVE', 'DELETED', 'LOCKED', 'ARCHIVED' ) ), name VARCHAR(128) NOT NULL, description VARCHAR(256) NOT NULL );",
+      "table_constraints": [],
+      "concept": "Brand",
+      "indexes": [
+        "CREATE UNIQUE INDEX IF NOT EXISTS uq_m_product_brand_name ON product.m_product_brand (name) WHERE row_status <> 'DELETED';"
+      ]
+    },
+    "product.m_product": {
+      "schema": "product",
+      "table": "m_product",
+      "cols": [
+        {
+          "name": "id",
+          "type": "UUID",
+          "length": "",
+          "nullable": false,
+          "ref": null
+        },
+        {
+          "name": "created_by",
+          "type": "VARCHAR",
+          "length": "64",
+          "nullable": false,
+          "ref": null
+        },
+        {
+          "name": "created_at",
+          "type": "TIMESTAMP",
+          "length": "",
+          "nullable": false,
+          "ref": null
+        },
+        {
+          "name": "updated_by",
+          "type": "VARCHAR",
+          "length": "64",
+          "nullable": true,
+          "ref": null
+        },
+        {
+          "name": "updated_at",
+          "type": "TIMESTAMP",
+          "length": "",
+          "nullable": true,
+          "ref": null
+        },
+        {
+          "name": "row_status",
+          "type": "VARCHAR",
+          "length": "32",
+          "nullable": false,
+          "ref": null
+        },
+        {
+          "name": "type_id",
+          "type": "UUID",
+          "length": "",
+          "nullable": false,
+          "ref": [
+            "product",
+            "m_product_type"
+          ]
+        },
+        {
+          "name": "category_id",
+          "type": "UUID",
+          "length": "",
+          "nullable": false,
+          "ref": [
+            "product",
+            "m_product_category"
+          ]
+        },
+        {
+          "name": "brand_id",
+          "type": "UUID",
+          "length": "",
+          "nullable": false,
+          "ref": [
+            "product",
+            "m_product_brand"
+          ]
+        },
+        {
+          "name": "name",
+          "type": "VARCHAR",
+          "length": "128",
+          "nullable": false,
+          "ref": null
+        },
+        {
+          "name": "description",
+          "type": "VARCHAR",
+          "length": "256",
+          "nullable": false,
+          "ref": null
+        },
+        {
+          "name": "body",
+          "type": "TEXT",
+          "length": "",
+          "nullable": false,
+          "ref": null
+        },
+        {
+          "name": "slug",
+          "type": "VARCHAR",
+          "length": "128",
+          "nullable": false,
+          "ref": null
+        }
+      ],
+      "file": "03-product.schema.up.sql",
+      "sql": "CREATE TABLE IF NOT EXISTS product.m_product ( id UUID NOT NULL DEFAULT GEN_RANDOM_UUID () PRIMARY KEY, created_by VARCHAR(64) NOT NULL, created_at TIMESTAMP WITHOUT TIME ZONE NOT NULL DEFAULT NOW (), updated_by VARCHAR(64), updated_at TIMESTAMP WITHOUT TIME ZONE, row_status VARCHAR(32) NOT NULL DEFAULT 'ACTIVE' CHECK ( row_status IN ( 'ACTIVE', 'INACTIVE', 'DELETED', 'LOCKED', 'ARCHIVED' ) ), type_id UUID NOT NULL REFERENCES product.m_product_type (id) ON DELETE RESTRICT, category_id UUID NOT NULL REFERENCES product.m_product_category (id) ON DELETE CASCADE, brand_id UUID NOT NULL REFERENCES product.m_product_brand (id) ON DELETE RESTRICT, name VARCHAR(128) NOT NULL, description VARCHAR(256) NOT NULL, body TEXT NOT NULL, slug VARCHAR(128) NOT NULL );",
+      "table_constraints": [],
+      "concept": "Product",
+      "indexes": []
+    },
+    "product.m_product_attribute": {
+      "schema": "product",
+      "table": "m_product_attribute",
+      "cols": [
+        {
+          "name": "id",
+          "type": "UUID",
+          "length": "",
+          "nullable": false,
+          "ref": null
+        },
+        {
+          "name": "created_by",
+          "type": "VARCHAR",
+          "length": "64",
+          "nullable": false,
+          "ref": null
+        },
+        {
+          "name": "created_at",
+          "type": "TIMESTAMP",
+          "length": "",
+          "nullable": false,
+          "ref": null
+        },
+        {
+          "name": "updated_by",
+          "type": "VARCHAR",
+          "length": "64",
+          "nullable": true,
+          "ref": null
+        },
+        {
+          "name": "updated_at",
+          "type": "TIMESTAMP",
+          "length": "",
+          "nullable": true,
+          "ref": null
+        },
+        {
+          "name": "row_status",
+          "type": "VARCHAR",
+          "length": "32",
+          "nullable": false,
+          "ref": null
+        },
+        {
+          "name": "product_id",
+          "type": "UUID",
+          "length": "",
+          "nullable": false,
+          "ref": [
+            "product",
+            "m_product"
+          ]
+        },
+        {
+          "name": "attribute_id",
+          "type": "UUID",
+          "length": "",
+          "nullable": false,
+          "ref": [
+            "product",
+            "m_product_category_attribute"
+          ]
+        },
+        {
+          "name": "value",
+          "type": "VARCHAR",
+          "length": "256",
+          "nullable": false,
+          "ref": null
+        }
+      ],
+      "file": "03-product.schema.up.sql",
+      "sql": "CREATE TABLE IF NOT EXISTS product.m_product_attribute ( id UUID NOT NULL DEFAULT GEN_RANDOM_UUID () PRIMARY KEY, created_by VARCHAR(64) NOT NULL, created_at TIMESTAMP WITHOUT TIME ZONE NOT NULL DEFAULT NOW (), updated_by VARCHAR(64), updated_at TIMESTAMP WITHOUT TIME ZONE, row_status VARCHAR(32) NOT NULL DEFAULT 'ACTIVE' CHECK ( row_status IN ( 'ACTIVE', 'INACTIVE', 'DELETED', 'LOCKED', 'ARCHIVED' ) ), product_id UUID NOT NULL REFERENCES product.m_product (id) ON DELETE CASCADE, attribute_id UUID NOT NULL REFERENCES product.m_product_category_attribute (id) ON DELETE CASCADE, value VARCHAR(256) NOT NULL );",
+      "table_constraints": [],
+      "concept": "Product attribute value",
+      "indexes": []
+    },
+    "product.m_product_option": {
+      "schema": "product",
+      "table": "m_product_option",
+      "cols": [
+        {
+          "name": "id",
+          "type": "UUID",
+          "length": "",
+          "nullable": false,
+          "ref": null
+        },
+        {
+          "name": "created_by",
+          "type": "VARCHAR",
+          "length": "64",
+          "nullable": false,
+          "ref": null
+        },
+        {
+          "name": "created_at",
+          "type": "TIMESTAMP",
+          "length": "",
+          "nullable": false,
+          "ref": null
+        },
+        {
+          "name": "updated_by",
+          "type": "VARCHAR",
+          "length": "64",
+          "nullable": true,
+          "ref": null
+        },
+        {
+          "name": "updated_at",
+          "type": "TIMESTAMP",
+          "length": "",
+          "nullable": true,
+          "ref": null
+        },
+        {
+          "name": "row_status",
+          "type": "VARCHAR",
+          "length": "32",
+          "nullable": false,
+          "ref": null
+        },
+        {
+          "name": "product_id",
+          "type": "UUID",
+          "length": "",
+          "nullable": false,
+          "ref": [
+            "product",
+            "m_product"
+          ]
+        },
+        {
+          "name": "name",
+          "type": "VARCHAR",
+          "length": "128",
+          "nullable": false,
+          "ref": null
+        },
+        {
+          "name": "level_no",
+          "type": "SMALLINT",
+          "length": "",
+          "nullable": false,
+          "ref": null
+        }
+      ],
+      "file": "03-product.schema.up.sql",
+      "sql": "CREATE TABLE IF NOT EXISTS product.m_product_option ( id UUID NOT NULL DEFAULT GEN_RANDOM_UUID () PRIMARY KEY, created_by VARCHAR(64) NOT NULL, created_at TIMESTAMP WITHOUT TIME ZONE NOT NULL DEFAULT NOW (), updated_by VARCHAR(64), updated_at TIMESTAMP WITHOUT TIME ZONE, row_status VARCHAR(32) NOT NULL DEFAULT 'ACTIVE' CHECK ( row_status IN ( 'ACTIVE', 'INACTIVE', 'DELETED', 'LOCKED', 'ARCHIVED' ) ), product_id UUID NOT NULL REFERENCES product.m_product (id) ON DELETE CASCADE, name VARCHAR(128) NOT NULL, level_no SMALLINT NOT NULL CHECK (level_no >= 1) );",
+      "table_constraints": [],
+      "concept": "Option level",
+      "indexes": [
+        "CREATE UNIQUE INDEX IF NOT EXISTS uq_m_product_option_product_id_level_no ON product.m_product_option (product_id, level_no) WHERE row_status <> 'DELETED';",
+        "CREATE UNIQUE INDEX IF NOT EXISTS uq_m_product_option_product_id_name ON product.m_product_option (product_id, name) WHERE row_status <> 'DELETED';"
+      ]
+    },
+    "product.m_product_option_value": {
+      "schema": "product",
+      "table": "m_product_option_value",
+      "cols": [
+        {
+          "name": "id",
+          "type": "UUID",
+          "length": "",
+          "nullable": false,
+          "ref": null
+        },
+        {
+          "name": "created_by",
+          "type": "VARCHAR",
+          "length": "64",
+          "nullable": false,
+          "ref": null
+        },
+        {
+          "name": "created_at",
+          "type": "TIMESTAMP",
+          "length": "",
+          "nullable": false,
+          "ref": null
+        },
+        {
+          "name": "updated_by",
+          "type": "VARCHAR",
+          "length": "64",
+          "nullable": true,
+          "ref": null
+        },
+        {
+          "name": "updated_at",
+          "type": "TIMESTAMP",
+          "length": "",
+          "nullable": true,
+          "ref": null
+        },
+        {
+          "name": "row_status",
+          "type": "VARCHAR",
+          "length": "32",
+          "nullable": false,
+          "ref": null
+        },
+        {
+          "name": "option_id",
+          "type": "UUID",
+          "length": "",
+          "nullable": false,
+          "ref": [
+            "product",
+            "m_product_option"
+          ]
+        },
+        {
+          "name": "value",
+          "type": "VARCHAR",
+          "length": "128",
+          "nullable": false,
+          "ref": null
+        },
+        {
+          "name": "sort_order",
+          "type": "INT",
+          "length": "",
+          "nullable": false,
+          "ref": null
+        }
+      ],
+      "file": "03-product.schema.up.sql",
+      "sql": "CREATE TABLE IF NOT EXISTS product.m_product_option_value ( id UUID NOT NULL DEFAULT GEN_RANDOM_UUID () PRIMARY KEY, created_by VARCHAR(64) NOT NULL, created_at TIMESTAMP WITHOUT TIME ZONE NOT NULL DEFAULT NOW (), updated_by VARCHAR(64), updated_at TIMESTAMP WITHOUT TIME ZONE, row_status VARCHAR(32) NOT NULL DEFAULT 'ACTIVE' CHECK ( row_status IN ( 'ACTIVE', 'INACTIVE', 'DELETED', 'LOCKED', 'ARCHIVED' ) ), option_id UUID NOT NULL REFERENCES product.m_product_option (id) ON DELETE CASCADE, value VARCHAR(128) NOT NULL, sort_order INT NOT NULL DEFAULT 0 );",
+      "table_constraints": [],
+      "concept": "Option value",
+      "indexes": [
+        "CREATE UNIQUE INDEX IF NOT EXISTS uq_m_product_option_value_option_id_value ON product.m_product_option_value (option_id, value) WHERE row_status <> 'DELETED';"
+      ]
+    },
+    "product.m_product_image": {
+      "schema": "product",
+      "table": "m_product_image",
+      "cols": [
+        {
+          "name": "id",
+          "type": "UUID",
+          "length": "",
+          "nullable": false,
+          "ref": null
+        },
+        {
+          "name": "created_by",
+          "type": "VARCHAR",
+          "length": "64",
+          "nullable": false,
+          "ref": null
+        },
+        {
+          "name": "created_at",
+          "type": "TIMESTAMP",
+          "length": "",
+          "nullable": false,
+          "ref": null
+        },
+        {
+          "name": "updated_by",
+          "type": "VARCHAR",
+          "length": "64",
+          "nullable": true,
+          "ref": null
+        },
+        {
+          "name": "updated_at",
+          "type": "TIMESTAMP",
+          "length": "",
+          "nullable": true,
+          "ref": null
+        },
+        {
+          "name": "row_status",
+          "type": "VARCHAR",
+          "length": "32",
+          "nullable": false,
+          "ref": null
+        },
+        {
+          "name": "product_id",
+          "type": "UUID",
+          "length": "",
+          "nullable": false,
+          "ref": [
+            "product",
+            "m_product"
+          ]
+        },
+        {
+          "name": "image_path",
+          "type": "TEXT",
+          "length": "",
+          "nullable": false,
+          "ref": null
+        },
+        {
+          "name": "option_value_id",
+          "type": "UUID",
+          "length": "",
+          "nullable": true,
+          "ref": [
+            "product",
+            "m_product_option_value"
+          ]
+        }
+      ],
+      "file": "03-product.schema.up.sql",
+      "sql": "CREATE TABLE IF NOT EXISTS product.m_product_image ( id UUID NOT NULL DEFAULT GEN_RANDOM_UUID () PRIMARY KEY, created_by VARCHAR(64) NOT NULL, created_at TIMESTAMP WITHOUT TIME ZONE NOT NULL DEFAULT NOW (), updated_by VARCHAR(64), updated_at TIMESTAMP WITHOUT TIME ZONE, row_status VARCHAR(32) NOT NULL DEFAULT 'ACTIVE' CHECK ( row_status IN ( 'ACTIVE', 'INACTIVE', 'DELETED', 'LOCKED', 'ARCHIVED' ) ), product_id UUID NOT NULL REFERENCES product.m_product (id) ON DELETE CASCADE, image_path TEXT NOT NULL, option_value_id UUID REFERENCES product.m_product_option_value (id) ON DELETE CASCADE );",
+      "table_constraints": [],
+      "concept": "Product image",
+      "indexes": []
+    },
+    "product.m_product_sku": {
+      "schema": "product",
+      "table": "m_product_sku",
+      "cols": [
+        {
+          "name": "id",
+          "type": "UUID",
+          "length": "",
+          "nullable": false,
+          "ref": null
+        },
+        {
+          "name": "created_by",
+          "type": "VARCHAR",
+          "length": "64",
+          "nullable": false,
+          "ref": null
+        },
+        {
+          "name": "created_at",
+          "type": "TIMESTAMP",
+          "length": "",
+          "nullable": false,
+          "ref": null
+        },
+        {
+          "name": "updated_by",
+          "type": "VARCHAR",
+          "length": "64",
+          "nullable": true,
+          "ref": null
+        },
+        {
+          "name": "updated_at",
+          "type": "TIMESTAMP",
+          "length": "",
+          "nullable": true,
+          "ref": null
+        },
+        {
+          "name": "row_status",
+          "type": "VARCHAR",
+          "length": "32",
+          "nullable": false,
+          "ref": null
+        },
+        {
+          "name": "product_id",
+          "type": "UUID",
+          "length": "",
+          "nullable": false,
+          "ref": [
+            "product",
+            "m_product"
+          ]
+        },
+        {
+          "name": "name",
+          "type": "VARCHAR",
+          "length": "128",
+          "nullable": false,
+          "ref": null
+        },
+        {
+          "name": "description",
+          "type": "VARCHAR",
+          "length": "256",
+          "nullable": false,
+          "ref": null
+        },
+        {
+          "name": "combination_key",
+          "type": "TEXT",
+          "length": "",
+          "nullable": false,
+          "ref": null
+        }
+      ],
+      "file": "03-product.schema.up.sql",
+      "sql": "CREATE TABLE IF NOT EXISTS product.m_product_sku ( id UUID NOT NULL DEFAULT GEN_RANDOM_UUID () PRIMARY KEY, created_by VARCHAR(64) NOT NULL, created_at TIMESTAMP WITHOUT TIME ZONE NOT NULL DEFAULT NOW (), updated_by VARCHAR(64), updated_at TIMESTAMP WITHOUT TIME ZONE, row_status VARCHAR(32) NOT NULL DEFAULT 'ACTIVE' CHECK ( row_status IN ( 'ACTIVE', 'INACTIVE', 'DELETED', 'LOCKED', 'ARCHIVED' ) ), product_id UUID NOT NULL REFERENCES product.m_product (id) ON DELETE CASCADE, name VARCHAR(128) NOT NULL, description VARCHAR(256) NOT NULL, combination_key TEXT NOT NULL DEFAULT '' );",
+      "table_constraints": [],
+      "concept": "Product SKU",
+      "indexes": [
+        "CREATE UNIQUE INDEX IF NOT EXISTS uq_m_product_sku_product_id_combination_key ON product.m_product_sku (product_id, combination_key) WHERE row_status <> 'DELETED';"
+      ]
+    },
+    "product.m_product_sku_option_value": {
+      "schema": "product",
+      "table": "m_product_sku_option_value",
+      "cols": [
+        {
+          "name": "id",
+          "type": "UUID",
+          "length": "",
+          "nullable": false,
+          "ref": null
+        },
+        {
+          "name": "created_by",
+          "type": "VARCHAR",
+          "length": "64",
+          "nullable": false,
+          "ref": null
+        },
+        {
+          "name": "created_at",
+          "type": "TIMESTAMP",
+          "length": "",
+          "nullable": false,
+          "ref": null
+        },
+        {
+          "name": "updated_by",
+          "type": "VARCHAR",
+          "length": "64",
+          "nullable": true,
+          "ref": null
+        },
+        {
+          "name": "updated_at",
+          "type": "TIMESTAMP",
+          "length": "",
+          "nullable": true,
+          "ref": null
+        },
+        {
+          "name": "row_status",
+          "type": "VARCHAR",
+          "length": "32",
+          "nullable": false,
+          "ref": null
+        },
+        {
+          "name": "sku_id",
+          "type": "UUID",
+          "length": "",
+          "nullable": false,
+          "ref": [
+            "product",
+            "m_product_sku"
+          ]
+        },
+        {
+          "name": "option_value_id",
+          "type": "UUID",
+          "length": "",
+          "nullable": false,
+          "ref": [
+            "product",
+            "m_product_option_value"
+          ]
+        }
+      ],
+      "file": "03-product.schema.up.sql",
+      "sql": "CREATE TABLE IF NOT EXISTS product.m_product_sku_option_value ( id UUID NOT NULL DEFAULT GEN_RANDOM_UUID () PRIMARY KEY, created_by VARCHAR(64) NOT NULL, created_at TIMESTAMP WITHOUT TIME ZONE NOT NULL DEFAULT NOW (), updated_by VARCHAR(64), updated_at TIMESTAMP WITHOUT TIME ZONE, row_status VARCHAR(32) NOT NULL DEFAULT 'ACTIVE' CHECK ( row_status IN ( 'ACTIVE', 'INACTIVE', 'DELETED', 'LOCKED', 'ARCHIVED' ) ), sku_id UUID NOT NULL REFERENCES product.m_product_sku (id) ON DELETE CASCADE, option_value_id UUID NOT NULL REFERENCES product.m_product_option_value (id) ON DELETE CASCADE, UNIQUE (sku_id, option_value_id) );",
+      "table_constraints": [
+        "UNIQUE (sku_id, option_value_id)"
+      ],
+      "concept": "SKU option selection",
+      "indexes": []
+    },
+    "shop.m_shop_type": {
+      "schema": "shop",
+      "table": "m_shop_type",
+      "cols": [
+        {
+          "name": "id",
+          "type": "UUID",
+          "length": "",
+          "nullable": false,
+          "ref": null
+        },
+        {
+          "name": "created_by",
+          "type": "VARCHAR",
+          "length": "64",
+          "nullable": false,
+          "ref": null
+        },
+        {
+          "name": "created_at",
+          "type": "TIMESTAMP",
+          "length": "",
+          "nullable": false,
+          "ref": null
+        },
+        {
+          "name": "updated_by",
+          "type": "VARCHAR",
+          "length": "64",
+          "nullable": true,
+          "ref": null
+        },
+        {
+          "name": "updated_at",
+          "type": "TIMESTAMP",
+          "length": "",
+          "nullable": true,
+          "ref": null
+        },
+        {
+          "name": "row_status",
+          "type": "VARCHAR",
+          "length": "32",
+          "nullable": false,
+          "ref": null
+        },
+        {
+          "name": "name",
+          "type": "VARCHAR",
+          "length": "128",
+          "nullable": false,
+          "ref": null
+        },
+        {
+          "name": "description",
+          "type": "VARCHAR",
+          "length": "256",
+          "nullable": false,
+          "ref": null
+        }
+      ],
+      "file": "04-shop.schema.up.sql",
+      "sql": "CREATE TABLE IF NOT EXISTS shop.m_shop_type ( id UUID NOT NULL DEFAULT GEN_RANDOM_UUID () PRIMARY KEY, created_by VARCHAR(64) NOT NULL, created_at TIMESTAMP WITHOUT TIME ZONE NOT NULL DEFAULT NOW (), updated_by VARCHAR(64), updated_at TIMESTAMP WITHOUT TIME ZONE, row_status VARCHAR(32) NOT NULL DEFAULT 'ACTIVE' CHECK ( row_status IN ( 'ACTIVE', 'INACTIVE', 'DELETED', 'LOCKED', 'ARCHIVED' ) ), name VARCHAR(128) NOT NULL, description VARCHAR(256) NOT NULL );",
+      "table_constraints": [],
+      "concept": "Shop type",
+      "indexes": [
+        "CREATE UNIQUE INDEX IF NOT EXISTS uq_m_shop_type_name ON shop.m_shop_type (name) WHERE row_status <> 'DELETED';"
+      ]
+    },
+    "shop.m_shop": {
+      "schema": "shop",
+      "table": "m_shop",
+      "cols": [
+        {
+          "name": "id",
+          "type": "UUID",
+          "length": "",
+          "nullable": false,
+          "ref": null
+        },
+        {
+          "name": "created_by",
+          "type": "VARCHAR",
+          "length": "64",
+          "nullable": false,
+          "ref": null
+        },
+        {
+          "name": "created_at",
+          "type": "TIMESTAMP",
+          "length": "",
+          "nullable": false,
+          "ref": null
+        },
+        {
+          "name": "updated_by",
+          "type": "VARCHAR",
+          "length": "64",
+          "nullable": true,
+          "ref": null
+        },
+        {
+          "name": "updated_at",
+          "type": "TIMESTAMP",
+          "length": "",
+          "nullable": true,
+          "ref": null
+        },
+        {
+          "name": "row_status",
+          "type": "VARCHAR",
+          "length": "32",
+          "nullable": false,
+          "ref": null
+        },
+        {
+          "name": "type_id",
+          "type": "UUID",
+          "length": "",
+          "nullable": false,
+          "ref": [
+            "shop",
+            "m_shop_type"
+          ]
+        },
+        {
+          "name": "name",
+          "type": "VARCHAR",
+          "length": "128",
+          "nullable": false,
+          "ref": null
+        },
+        {
+          "name": "description",
+          "type": "VARCHAR",
+          "length": "256",
+          "nullable": false,
+          "ref": null
+        },
+        {
+          "name": "platform_margin_rate",
+          "type": "NUMERIC",
+          "length": "8,2",
+          "nullable": false,
+          "ref": null
+        },
+        {
+          "name": "shop_margin_rate",
+          "type": "NUMERIC",
+          "length": "8,2",
+          "nullable": false,
+          "ref": null
+        }
+      ],
+      "file": "04-shop.schema.up.sql",
+      "sql": "CREATE TABLE IF NOT EXISTS shop.m_shop ( id UUID NOT NULL DEFAULT GEN_RANDOM_UUID () PRIMARY KEY, created_by VARCHAR(64) NOT NULL, created_at TIMESTAMP WITHOUT TIME ZONE NOT NULL DEFAULT NOW (), updated_by VARCHAR(64), updated_at TIMESTAMP WITHOUT TIME ZONE, row_status VARCHAR(32) NOT NULL DEFAULT 'ACTIVE' CHECK ( row_status IN ( 'ACTIVE', 'INACTIVE', 'DELETED', 'LOCKED', 'ARCHIVED' ) ), type_id UUID NOT NULL REFERENCES shop.m_shop_type (id) ON DELETE RESTRICT, name VARCHAR(128) NOT NULL, description VARCHAR(256) NOT NULL, platform_margin_rate NUMERIC(8, 2) NOT NULL DEFAULT 0.00 CHECK ( platform_margin_rate >= 0.00 AND platform_margin_rate <= 100.00 ), shop_margin_rate NUMERIC(8, 2) NOT NULL DEFAULT 0.00 CHECK ( shop_margin_rate >= 0.00 AND shop_margin_rate <= 100.00 ), CONSTRAINT ck_m_shop_margin_rate_total CHECK (platform_margin_rate + shop_margin_rate <= 100.00) );",
+      "table_constraints": [
+        "CONSTRAINT ck_m_shop_margin_rate_total CHECK (platform_margin_rate + shop_margin_rate <= 100.00)"
+      ],
+      "concept": "Shop",
+      "indexes": [
+        "CREATE UNIQUE INDEX IF NOT EXISTS uq_m_shop_name ON shop.m_shop (name) WHERE row_status <> 'DELETED';"
+      ]
+    },
+    "shop.t_shop_user": {
+      "schema": "shop",
+      "table": "t_shop_user",
+      "cols": [
+        {
+          "name": "id",
+          "type": "UUID",
+          "length": "",
+          "nullable": false,
+          "ref": null
+        },
+        {
+          "name": "created_by",
+          "type": "VARCHAR",
+          "length": "64",
+          "nullable": false,
+          "ref": null
+        },
+        {
+          "name": "created_at",
+          "type": "TIMESTAMP",
+          "length": "",
+          "nullable": false,
+          "ref": null
+        },
+        {
+          "name": "updated_by",
+          "type": "VARCHAR",
+          "length": "64",
+          "nullable": true,
+          "ref": null
+        },
+        {
+          "name": "updated_at",
+          "type": "TIMESTAMP",
+          "length": "",
+          "nullable": true,
+          "ref": null
+        },
+        {
+          "name": "row_status",
+          "type": "VARCHAR",
+          "length": "32",
+          "nullable": false,
+          "ref": null
+        },
+        {
+          "name": "shop_id",
+          "type": "UUID",
+          "length": "",
+          "nullable": false,
+          "ref": [
+            "shop",
+            "m_shop"
+          ]
+        },
+        {
+          "name": "user_id",
+          "type": "UUID",
+          "length": "",
+          "nullable": false,
+          "ref": [
+            "authen",
+            "m_user"
+          ]
+        },
+        {
+          "name": "role",
+          "type": "VARCHAR",
+          "length": "32",
+          "nullable": false,
+          "ref": null
+        }
+      ],
+      "file": "04-shop.schema.up.sql",
+      "sql": "CREATE TABLE IF NOT EXISTS shop.t_shop_user ( id UUID NOT NULL DEFAULT GEN_RANDOM_UUID () PRIMARY KEY, created_by VARCHAR(64) NOT NULL, created_at TIMESTAMP WITHOUT TIME ZONE NOT NULL DEFAULT NOW (), updated_by VARCHAR(64), updated_at TIMESTAMP WITHOUT TIME ZONE, row_status VARCHAR(32) NOT NULL DEFAULT 'ACTIVE' CHECK ( row_status IN ( 'ACTIVE', 'INACTIVE', 'DELETED', 'LOCKED', 'ARCHIVED' ) ), shop_id UUID NOT NULL REFERENCES shop.m_shop (id) ON DELETE CASCADE, user_id UUID NOT NULL REFERENCES authen.m_user (id) ON DELETE CASCADE, role VARCHAR(32) NOT NULL DEFAULT 'STAFF' CHECK (role IN ('ADMIN', 'STAFF')) );",
+      "table_constraints": [],
+      "concept": "Shop membership",
+      "indexes": [
+        "CREATE UNIQUE INDEX IF NOT EXISTS uq_t_shop_user_shop_id_user_id ON shop.t_shop_user (shop_id, user_id) WHERE row_status <> 'DELETED';"
+      ]
+    },
+    "shop.m_shop_image": {
+      "schema": "shop",
+      "table": "m_shop_image",
+      "cols": [
+        {
+          "name": "id",
+          "type": "UUID",
+          "length": "",
+          "nullable": false,
+          "ref": null
+        },
+        {
+          "name": "created_by",
+          "type": "VARCHAR",
+          "length": "64",
+          "nullable": false,
+          "ref": null
+        },
+        {
+          "name": "created_at",
+          "type": "TIMESTAMP",
+          "length": "",
+          "nullable": false,
+          "ref": null
+        },
+        {
+          "name": "updated_by",
+          "type": "VARCHAR",
+          "length": "64",
+          "nullable": true,
+          "ref": null
+        },
+        {
+          "name": "updated_at",
+          "type": "TIMESTAMP",
+          "length": "",
+          "nullable": true,
+          "ref": null
+        },
+        {
+          "name": "row_status",
+          "type": "VARCHAR",
+          "length": "32",
+          "nullable": false,
+          "ref": null
+        },
+        {
+          "name": "shop_id",
+          "type": "UUID",
+          "length": "",
+          "nullable": false,
+          "ref": [
+            "shop",
+            "m_shop"
+          ]
+        },
+        {
+          "name": "type",
+          "type": "VARCHAR",
+          "length": "32",
+          "nullable": false,
+          "ref": null
+        },
+        {
+          "name": "seq",
+          "type": "INT",
+          "length": "",
+          "nullable": false,
+          "ref": null
+        },
+        {
+          "name": "image_path",
+          "type": "TEXT",
+          "length": "",
+          "nullable": false,
+          "ref": null
+        }
+      ],
+      "file": "04-shop.schema.up.sql",
+      "sql": "CREATE TABLE IF NOT EXISTS shop.m_shop_image ( id UUID NOT NULL DEFAULT GEN_RANDOM_UUID () PRIMARY KEY, created_by VARCHAR(64) NOT NULL, created_at TIMESTAMP WITHOUT TIME ZONE NOT NULL DEFAULT NOW (), updated_by VARCHAR(64), updated_at TIMESTAMP WITHOUT TIME ZONE, row_status VARCHAR(32) NOT NULL DEFAULT 'ACTIVE' CHECK ( row_status IN ( 'ACTIVE', 'INACTIVE', 'DELETED', 'LOCKED', 'ARCHIVED' ) ), shop_id UUID NOT NULL REFERENCES shop.m_shop (id) ON DELETE CASCADE, type VARCHAR(32) NOT NULL DEFAULT 'LOGO' CHECK (type IN ('LOGO', 'BANNER', 'WALLPAPER')), seq INT NOT NULL DEFAULT 0, image_path TEXT NOT NULL );",
+      "table_constraints": [],
+      "concept": "Shop image",
+      "indexes": [
+        "CREATE UNIQUE INDEX IF NOT EXISTS uq_m_shop_image_shop_id_logo ON shop.m_shop_image (shop_id) WHERE type = 'LOGO' AND row_status <> 'DELETED';",
+        "CREATE UNIQUE INDEX IF NOT EXISTS uq_m_shop_image_shop_id_wallpaper ON shop.m_shop_image (shop_id) WHERE type = 'WALLPAPER' AND row_status <> 'DELETED';"
+      ]
+    },
+    "shop.t_shop_product": {
+      "schema": "shop",
+      "table": "t_shop_product",
+      "cols": [
+        {
+          "name": "id",
+          "type": "UUID",
+          "length": "",
+          "nullable": false,
+          "ref": null
+        },
+        {
+          "name": "created_by",
+          "type": "VARCHAR",
+          "length": "64",
+          "nullable": false,
+          "ref": null
+        },
+        {
+          "name": "created_at",
+          "type": "TIMESTAMP",
+          "length": "",
+          "nullable": false,
+          "ref": null
+        },
+        {
+          "name": "updated_by",
+          "type": "VARCHAR",
+          "length": "64",
+          "nullable": true,
+          "ref": null
+        },
+        {
+          "name": "updated_at",
+          "type": "TIMESTAMP",
+          "length": "",
+          "nullable": true,
+          "ref": null
+        },
+        {
+          "name": "row_status",
+          "type": "VARCHAR",
+          "length": "32",
+          "nullable": false,
+          "ref": null
+        },
+        {
+          "name": "shop_id",
+          "type": "UUID",
+          "length": "",
+          "nullable": false,
+          "ref": [
+            "shop",
+            "m_shop"
+          ]
+        },
+        {
+          "name": "product_id",
+          "type": "UUID",
+          "length": "",
+          "nullable": false,
+          "ref": [
+            "product",
+            "m_product"
+          ]
+        }
+      ],
+      "file": "04-shop.schema.up.sql",
+      "sql": "CREATE TABLE IF NOT EXISTS shop.t_shop_product ( id UUID NOT NULL DEFAULT GEN_RANDOM_UUID () PRIMARY KEY, created_by VARCHAR(64) NOT NULL, created_at TIMESTAMP WITHOUT TIME ZONE NOT NULL DEFAULT NOW (), updated_by VARCHAR(64), updated_at TIMESTAMP WITHOUT TIME ZONE, row_status VARCHAR(32) NOT NULL DEFAULT 'ACTIVE' CHECK ( row_status IN ( 'ACTIVE', 'INACTIVE', 'DELETED', 'LOCKED', 'ARCHIVED' ) ), shop_id UUID NOT NULL REFERENCES shop.m_shop (id) ON DELETE CASCADE, product_id UUID NOT NULL REFERENCES product.m_product (id) ON DELETE CASCADE );",
+      "table_constraints": [],
+      "concept": "Shop listing",
+      "indexes": [
+        "CREATE UNIQUE INDEX IF NOT EXISTS uq_t_shop_product_shop_id_product_id ON shop.t_shop_product (shop_id, product_id) WHERE row_status <> 'DELETED';"
+      ]
+    },
+    "shop.t_shop_product_sku": {
+      "schema": "shop",
+      "table": "t_shop_product_sku",
+      "cols": [
+        {
+          "name": "id",
+          "type": "UUID",
+          "length": "",
+          "nullable": false,
+          "ref": null
+        },
+        {
+          "name": "created_by",
+          "type": "VARCHAR",
+          "length": "64",
+          "nullable": false,
+          "ref": null
+        },
+        {
+          "name": "created_at",
+          "type": "TIMESTAMP",
+          "length": "",
+          "nullable": false,
+          "ref": null
+        },
+        {
+          "name": "updated_by",
+          "type": "VARCHAR",
+          "length": "64",
+          "nullable": true,
+          "ref": null
+        },
+        {
+          "name": "updated_at",
+          "type": "TIMESTAMP",
+          "length": "",
+          "nullable": true,
+          "ref": null
+        },
+        {
+          "name": "row_status",
+          "type": "VARCHAR",
+          "length": "32",
+          "nullable": false,
+          "ref": null
+        },
+        {
+          "name": "shop_product_id",
+          "type": "UUID",
+          "length": "",
+          "nullable": false,
+          "ref": [
+            "shop",
+            "t_shop_product"
+          ]
+        },
+        {
+          "name": "sku_id",
+          "type": "UUID",
+          "length": "",
+          "nullable": false,
+          "ref": [
+            "product",
+            "m_product_sku"
+          ]
+        },
+        {
+          "name": "code",
+          "type": "VARCHAR",
+          "length": "64",
+          "nullable": false,
+          "ref": null
+        },
+        {
+          "name": "name",
+          "type": "VARCHAR",
+          "length": "128",
+          "nullable": false,
+          "ref": null
+        },
+        {
+          "name": "description",
+          "type": "VARCHAR",
+          "length": "256",
+          "nullable": false,
+          "ref": null
+        }
+      ],
+      "file": "04-shop.schema.up.sql",
+      "sql": "CREATE TABLE IF NOT EXISTS shop.t_shop_product_sku ( id UUID NOT NULL DEFAULT GEN_RANDOM_UUID () PRIMARY KEY, created_by VARCHAR(64) NOT NULL, created_at TIMESTAMP WITHOUT TIME ZONE NOT NULL DEFAULT NOW (), updated_by VARCHAR(64), updated_at TIMESTAMP WITHOUT TIME ZONE, row_status VARCHAR(32) NOT NULL DEFAULT 'ACTIVE' CHECK ( row_status IN ( 'ACTIVE', 'INACTIVE', 'DELETED', 'LOCKED', 'ARCHIVED' ) ), shop_product_id UUID NOT NULL REFERENCES shop.t_shop_product (id) ON DELETE CASCADE, sku_id UUID NOT NULL REFERENCES product.m_product_sku (id) ON DELETE CASCADE, code VARCHAR(64) NOT NULL, name VARCHAR(128) NOT NULL, description VARCHAR(256) NOT NULL, UNIQUE (shop_product_id, sku_id) );",
+      "table_constraints": [
+        "UNIQUE (shop_product_id, sku_id)"
+      ],
+      "concept": "Shop SKU",
+      "indexes": []
+    },
+    "shop.t_shop_product_sku_lot": {
+      "schema": "shop",
+      "table": "t_shop_product_sku_lot",
+      "cols": [
+        {
+          "name": "id",
+          "type": "UUID",
+          "length": "",
+          "nullable": false,
+          "ref": null
+        },
+        {
+          "name": "created_by",
+          "type": "VARCHAR",
+          "length": "64",
+          "nullable": false,
+          "ref": null
+        },
+        {
+          "name": "created_at",
+          "type": "TIMESTAMP",
+          "length": "",
+          "nullable": false,
+          "ref": null
+        },
+        {
+          "name": "updated_by",
+          "type": "VARCHAR",
+          "length": "64",
+          "nullable": true,
+          "ref": null
+        },
+        {
+          "name": "updated_at",
+          "type": "TIMESTAMP",
+          "length": "",
+          "nullable": true,
+          "ref": null
+        },
+        {
+          "name": "row_status",
+          "type": "VARCHAR",
+          "length": "32",
+          "nullable": false,
+          "ref": null
+        },
+        {
+          "name": "shop_product_sku_id",
+          "type": "UUID",
+          "length": "",
+          "nullable": false,
+          "ref": [
+            "shop",
+            "t_shop_product_sku"
+          ]
+        },
+        {
+          "name": "lot_no",
+          "type": "VARCHAR",
+          "length": "64",
+          "nullable": false,
+          "ref": null
+        },
+        {
+          "name": "cost_price",
+          "type": "NUMERIC",
+          "length": "16,2",
+          "nullable": false,
+          "ref": null
+        },
+        {
+          "name": "selling_price",
+          "type": "NUMERIC",
+          "length": "16,2",
+          "nullable": false,
+          "ref": null
+        },
+        {
+          "name": "gross_margin",
+          "type": "NUMERIC",
+          "length": "16,2",
+          "nullable": true,
+          "ref": null
+        },
+        {
+          "name": "share_margin",
+          "type": "NUMERIC",
+          "length": "16,2",
+          "nullable": true,
+          "ref": null
+        },
+        {
+          "name": "platform_margin",
+          "type": "NUMERIC",
+          "length": "16,2",
+          "nullable": true,
+          "ref": null
+        },
+        {
+          "name": "quantity",
+          "type": "INT",
+          "length": "",
+          "nullable": false,
+          "ref": null
+        },
+        {
+          "name": "is_on_sale",
+          "type": "BOOLEAN",
+          "length": "",
+          "nullable": false,
+          "ref": null
+        }
+      ],
+      "file": "04-shop.schema.up.sql",
+      "sql": "CREATE TABLE IF NOT EXISTS shop.t_shop_product_sku_lot ( id UUID NOT NULL DEFAULT GEN_RANDOM_UUID () PRIMARY KEY, created_by VARCHAR(64) NOT NULL, created_at TIMESTAMP WITHOUT TIME ZONE NOT NULL DEFAULT NOW (), updated_by VARCHAR(64), updated_at TIMESTAMP WITHOUT TIME ZONE, row_status VARCHAR(32) NOT NULL DEFAULT 'ACTIVE' CHECK ( row_status IN ( 'ACTIVE', 'INACTIVE', 'DELETED', 'LOCKED', 'ARCHIVED' ) ), shop_product_sku_id UUID NOT NULL REFERENCES shop.t_shop_product_sku (id) ON DELETE CASCADE, lot_no VARCHAR(64) NOT NULL, cost_price NUMERIC(16, 2) NOT NULL CHECK (cost_price >= 0), selling_price NUMERIC(16, 2) NOT NULL CHECK (selling_price >= 0), gross_margin NUMERIC(16, 2), share_margin NUMERIC(16, 2), platform_margin NUMERIC(16, 2), quantity INT NOT NULL DEFAULT 0 CHECK (quantity >= 0), is_on_sale BOOLEAN NOT NULL DEFAULT FALSE, CONSTRAINT ck_t_shop_product_sku_lot_price_not_below_cost CHECK (selling_price >= cost_price) );",
+      "table_constraints": [
+        "CONSTRAINT ck_t_shop_product_sku_lot_price_not_below_cost CHECK (selling_price >= cost_price)"
+      ],
+      "concept": "Stock lot",
+      "indexes": [
+        "CREATE UNIQUE INDEX IF NOT EXISTS uq_t_shop_product_sku_lot_shop_product_sku_id_lot_no ON shop.t_shop_product_sku_lot (shop_product_sku_id, lot_no) WHERE row_status <> 'DELETED';",
+        "CREATE UNIQUE INDEX IF NOT EXISTS uq_t_shop_product_sku_lot_on_sale ON shop.t_shop_product_sku_lot (shop_product_sku_id) WHERE is_on_sale AND row_status = 'ACTIVE';"
+      ]
+    },
+    "shop.t_shop_product_review": {
+      "schema": "shop",
+      "table": "t_shop_product_review",
+      "cols": [
+        {
+          "name": "id",
+          "type": "UUID",
+          "length": "",
+          "nullable": false,
+          "ref": null
+        },
+        {
+          "name": "created_by",
+          "type": "VARCHAR",
+          "length": "64",
+          "nullable": false,
+          "ref": null
+        },
+        {
+          "name": "created_at",
+          "type": "TIMESTAMP",
+          "length": "",
+          "nullable": false,
+          "ref": null
+        },
+        {
+          "name": "updated_by",
+          "type": "VARCHAR",
+          "length": "64",
+          "nullable": true,
+          "ref": null
+        },
+        {
+          "name": "updated_at",
+          "type": "TIMESTAMP",
+          "length": "",
+          "nullable": true,
+          "ref": null
+        },
+        {
+          "name": "row_status",
+          "type": "VARCHAR",
+          "length": "32",
+          "nullable": false,
+          "ref": null
+        },
+        {
+          "name": "shop_product_id",
+          "type": "UUID",
+          "length": "",
+          "nullable": false,
+          "ref": [
+            "shop",
+            "t_shop_product"
+          ]
+        },
+        {
+          "name": "user_id",
+          "type": "UUID",
+          "length": "",
+          "nullable": false,
+          "ref": [
+            "authen",
+            "m_user"
+          ]
+        },
+        {
+          "name": "rating",
+          "type": "INT",
+          "length": "",
+          "nullable": false,
+          "ref": null
+        },
+        {
+          "name": "comment",
+          "type": "TEXT",
+          "length": "",
+          "nullable": true,
+          "ref": null
+        }
+      ],
+      "file": "04-shop.schema.up.sql",
+      "sql": "CREATE TABLE IF NOT EXISTS shop.t_shop_product_review ( id UUID NOT NULL DEFAULT GEN_RANDOM_UUID () PRIMARY KEY, created_by VARCHAR(64) NOT NULL, created_at TIMESTAMP WITHOUT TIME ZONE NOT NULL DEFAULT NOW (), updated_by VARCHAR(64), updated_at TIMESTAMP WITHOUT TIME ZONE, row_status VARCHAR(32) NOT NULL DEFAULT 'ACTIVE' CHECK ( row_status IN ( 'ACTIVE', 'INACTIVE', 'DELETED', 'LOCKED', 'ARCHIVED' ) ), shop_product_id UUID NOT NULL REFERENCES shop.t_shop_product (id) ON DELETE CASCADE, user_id UUID NOT NULL REFERENCES authen.m_user (id) ON DELETE CASCADE, rating INT NOT NULL CHECK ( rating >= 1 AND rating <= 5 ), comment TEXT );",
+      "table_constraints": [],
+      "concept": "Product review",
+      "indexes": [
+        "CREATE UNIQUE INDEX IF NOT EXISTS uq_t_shop_product_review_shop_product_id_user_id ON shop.t_shop_product_review (shop_product_id, user_id) WHERE row_status <> 'DELETED';"
+      ]
+    },
+    "cart.t_cart": {
+      "schema": "cart",
+      "table": "t_cart",
+      "cols": [
+        {
+          "name": "id",
+          "type": "UUID",
+          "length": "",
+          "nullable": false,
+          "ref": null
+        },
+        {
+          "name": "created_by",
+          "type": "VARCHAR",
+          "length": "64",
+          "nullable": false,
+          "ref": null
+        },
+        {
+          "name": "created_at",
+          "type": "TIMESTAMP",
+          "length": "",
+          "nullable": false,
+          "ref": null
+        },
+        {
+          "name": "updated_by",
+          "type": "VARCHAR",
+          "length": "64",
+          "nullable": true,
+          "ref": null
+        },
+        {
+          "name": "updated_at",
+          "type": "TIMESTAMP",
+          "length": "",
+          "nullable": true,
+          "ref": null
+        },
+        {
+          "name": "row_status",
+          "type": "VARCHAR",
+          "length": "32",
+          "nullable": false,
+          "ref": null
+        },
+        {
+          "name": "user_id",
+          "type": "UUID",
+          "length": "",
+          "nullable": false,
+          "ref": [
+            "authen",
+            "m_user"
+          ]
+        },
+        {
+          "name": "shop_id",
+          "type": "UUID",
+          "length": "",
+          "nullable": false,
+          "ref": [
+            "shop",
+            "m_shop"
+          ]
+        },
+        {
+          "name": "product_id",
+          "type": "UUID",
+          "length": "",
+          "nullable": false,
+          "ref": [
+            "product",
+            "m_product"
+          ]
+        },
+        {
+          "name": "sku_id",
+          "type": "UUID",
+          "length": "",
+          "nullable": false,
+          "ref": [
+            "product",
+            "m_product_sku"
+          ]
+        },
+        {
+          "name": "quantity",
+          "type": "INT",
+          "length": "",
+          "nullable": false,
+          "ref": null
+        }
+      ],
+      "file": "05-cart.schema.up.sql",
+      "sql": "CREATE TABLE IF NOT EXISTS cart.t_cart ( id UUID NOT NULL DEFAULT GEN_RANDOM_UUID () PRIMARY KEY, created_by VARCHAR(64) NOT NULL, created_at TIMESTAMP WITHOUT TIME ZONE NOT NULL DEFAULT NOW (), updated_by VARCHAR(64), updated_at TIMESTAMP WITHOUT TIME ZONE, row_status VARCHAR(32) NOT NULL DEFAULT 'ACTIVE' CHECK ( row_status IN ( 'ACTIVE', 'INACTIVE', 'DELETED', 'LOCKED', 'ARCHIVED' ) ), user_id UUID NOT NULL REFERENCES authen.m_user (id) ON DELETE CASCADE, shop_id UUID NOT NULL REFERENCES shop.m_shop (id) ON DELETE CASCADE, product_id UUID NOT NULL REFERENCES product.m_product (id) ON DELETE CASCADE, sku_id UUID NOT NULL REFERENCES product.m_product_sku (id) ON DELETE CASCADE, quantity INT NOT NULL DEFAULT 1 CHECK (quantity > 0) );",
+      "table_constraints": [],
+      "concept": "Cart line",
+      "indexes": [
+        "CREATE UNIQUE INDEX IF NOT EXISTS uq_t_cart_user_id_shop_id_product_id_sku_id ON cart.t_cart (user_id, shop_id, product_id, sku_id) WHERE row_status <> 'DELETED';"
+      ]
+    },
+    "sales.t_order": {
+      "schema": "sales",
+      "table": "t_order",
+      "cols": [
+        {
+          "name": "id",
+          "type": "UUID",
+          "length": "",
+          "nullable": false,
+          "ref": null
+        },
+        {
+          "name": "created_by",
+          "type": "VARCHAR",
+          "length": "64",
+          "nullable": false,
+          "ref": null
+        },
+        {
+          "name": "created_at",
+          "type": "TIMESTAMP",
+          "length": "",
+          "nullable": false,
+          "ref": null
+        },
+        {
+          "name": "updated_by",
+          "type": "VARCHAR",
+          "length": "64",
+          "nullable": true,
+          "ref": null
+        },
+        {
+          "name": "updated_at",
+          "type": "TIMESTAMP",
+          "length": "",
+          "nullable": true,
+          "ref": null
+        },
+        {
+          "name": "row_status",
+          "type": "VARCHAR",
+          "length": "32",
+          "nullable": false,
+          "ref": null
+        },
+        {
+          "name": "user_id",
+          "type": "UUID",
+          "length": "",
+          "nullable": false,
+          "ref": [
+            "authen",
+            "m_user"
+          ]
+        },
+        {
+          "name": "shop_id",
+          "type": "UUID",
+          "length": "",
+          "nullable": false,
+          "ref": [
+            "shop",
+            "m_shop"
+          ]
+        },
+        {
+          "name": "address_id",
+          "type": "UUID",
+          "length": "",
+          "nullable": false,
+          "ref": [
+            "authen",
+            "t_user_address"
+          ]
+        },
+        {
+          "name": "ship_title",
+          "type": "VARCHAR",
+          "length": "128",
+          "nullable": false,
+          "ref": null
+        },
+        {
+          "name": "ship_address",
+          "type": "BYTEA",
+          "length": "",
+          "nullable": false,
+          "ref": null
+        },
+        {
+          "name": "ship_city",
+          "type": "BYTEA",
+          "length": "",
+          "nullable": false,
+          "ref": null
+        },
+        {
+          "name": "ship_state",
+          "type": "BYTEA",
+          "length": "",
+          "nullable": false,
+          "ref": null
+        },
+        {
+          "name": "ship_postal_code",
+          "type": "BYTEA",
+          "length": "",
+          "nullable": false,
+          "ref": null
+        },
+        {
+          "name": "ship_country",
+          "type": "BYTEA",
+          "length": "",
+          "nullable": false,
+          "ref": null
+        },
+        {
+          "name": "code",
+          "type": "VARCHAR",
+          "length": "64",
+          "nullable": false,
+          "ref": null
+        },
+        {
+          "name": "total_price",
+          "type": "NUMERIC",
+          "length": "16,2",
+          "nullable": false,
+          "ref": null
+        },
+        {
+          "name": "total_discount",
+          "type": "NUMERIC",
+          "length": "16,2",
+          "nullable": false,
+          "ref": null
+        },
+        {
+          "name": "total_tax",
+          "type": "NUMERIC",
+          "length": "16,2",
+          "nullable": false,
+          "ref": null
+        },
+        {
+          "name": "total_shipping",
+          "type": "NUMERIC",
+          "length": "16,2",
+          "nullable": false,
+          "ref": null
+        },
+        {
+          "name": "total_amount",
+          "type": "NUMERIC",
+          "length": "16,2",
+          "nullable": false,
+          "ref": null
+        },
+        {
+          "name": "expires_at",
+          "type": "TIMESTAMP",
+          "length": "",
+          "nullable": false,
+          "ref": null
+        },
+        {
+          "name": "status",
+          "type": "VARCHAR",
+          "length": "32",
+          "nullable": false,
+          "ref": null
+        }
+      ],
+      "file": "06-sales.schema.up.sql",
+      "sql": "CREATE TABLE IF NOT EXISTS sales.t_order ( id UUID NOT NULL DEFAULT GEN_RANDOM_UUID () PRIMARY KEY, created_by VARCHAR(64) NOT NULL, created_at TIMESTAMP WITHOUT TIME ZONE NOT NULL DEFAULT NOW (), updated_by VARCHAR(64), updated_at TIMESTAMP WITHOUT TIME ZONE, row_status VARCHAR(32) NOT NULL DEFAULT 'ACTIVE' CHECK ( row_status IN ( 'ACTIVE', 'INACTIVE', 'DELETED', 'LOCKED', 'ARCHIVED' ) ), user_id UUID NOT NULL REFERENCES authen.m_user (id) ON DELETE CASCADE, shop_id UUID NOT NULL REFERENCES shop.m_shop (id) ON DELETE CASCADE, address_id UUID NOT NULL REFERENCES authen.t_user_address (id) ON DELETE RESTRICT, ship_title VARCHAR(128) NOT NULL, ship_address BYTEA NOT NULL, ship_city BYTEA NOT NULL, ship_state BYTEA NOT NULL, ship_postal_code BYTEA NOT NULL, ship_country BYTEA NOT NULL, code VARCHAR(64) NOT NULL UNIQUE, total_price NUMERIC(16, 2) NOT NULL CHECK (total_price >= 0), total_discount NUMERIC(16, 2) NOT NULL CHECK (total_discount >= 0), total_tax NUMERIC(16, 2) NOT NULL CHECK (total_tax >= 0), total_shipping NUMERIC(16, 2) NOT NULL CHECK (total_shipping >= 0), total_amount NUMERIC(16, 2) NOT NULL CHECK (total_amount >= 0), expires_at TIMESTAMP WITHOUT TIME ZONE NOT NULL, status VARCHAR(32) NOT NULL DEFAULT 'PENDING' CHECK ( status IN ( 'PENDING', 'PROCESSING', 'WAIT_PAYMENT', 'PAYMENT_CONFIRMED', 'REFUNDED', 'COMPLETED', 'CANCELLED' ) ), CONSTRAINT ck_t_order_total_amount_sum CHECK (total_amount = total_price - total_discount + total_tax + total_shipping) );",
+      "table_constraints": [
+        "CONSTRAINT ck_t_order_total_amount_sum CHECK (total_amount = total_price - total_discount + total_tax + total_shipping)"
+      ],
+      "concept": "Order",
+      "indexes": []
+    },
+    "sales.t_order_item": {
+      "schema": "sales",
+      "table": "t_order_item",
+      "cols": [
+        {
+          "name": "id",
+          "type": "UUID",
+          "length": "",
+          "nullable": false,
+          "ref": null
+        },
+        {
+          "name": "created_by",
+          "type": "VARCHAR",
+          "length": "64",
+          "nullable": false,
+          "ref": null
+        },
+        {
+          "name": "created_at",
+          "type": "TIMESTAMP",
+          "length": "",
+          "nullable": false,
+          "ref": null
+        },
+        {
+          "name": "updated_by",
+          "type": "VARCHAR",
+          "length": "64",
+          "nullable": true,
+          "ref": null
+        },
+        {
+          "name": "updated_at",
+          "type": "TIMESTAMP",
+          "length": "",
+          "nullable": true,
+          "ref": null
+        },
+        {
+          "name": "row_status",
+          "type": "VARCHAR",
+          "length": "32",
+          "nullable": false,
+          "ref": null
+        },
+        {
+          "name": "order_id",
+          "type": "UUID",
+          "length": "",
+          "nullable": false,
+          "ref": [
+            "sales",
+            "t_order"
+          ]
+        },
+        {
+          "name": "shop_id",
+          "type": "UUID",
+          "length": "",
+          "nullable": false,
+          "ref": [
+            "shop",
+            "m_shop"
+          ]
+        },
+        {
+          "name": "product_id",
+          "type": "UUID",
+          "length": "",
+          "nullable": false,
+          "ref": [
+            "product",
+            "m_product"
+          ]
+        },
+        {
+          "name": "sku_id",
+          "type": "UUID",
+          "length": "",
+          "nullable": false,
+          "ref": [
+            "product",
+            "m_product_sku"
+          ]
+        },
+        {
+          "name": "quantity",
+          "type": "INT",
+          "length": "",
+          "nullable": false,
+          "ref": null
+        },
+        {
+          "name": "price",
+          "type": "NUMERIC",
+          "length": "16,2",
+          "nullable": false,
+          "ref": null
+        },
+        {
+          "name": "discount",
+          "type": "NUMERIC",
+          "length": "16,2",
+          "nullable": false,
+          "ref": null
+        },
+        {
+          "name": "total_price",
+          "type": "NUMERIC",
+          "length": "16,2",
+          "nullable": false,
+          "ref": null
+        },
+        {
+          "name": "gross_profit",
+          "type": "NUMERIC",
+          "length": "16,2",
+          "nullable": false,
+          "ref": null
+        },
+        {
+          "name": "shop_profit",
+          "type": "NUMERIC",
+          "length": "16,2",
+          "nullable": true,
+          "ref": null
+        },
+        {
+          "name": "platform_profit",
+          "type": "NUMERIC",
+          "length": "16,2",
+          "nullable": true,
+          "ref": null
+        },
+        {
+          "name": "lot_id",
+          "type": "UUID",
+          "length": "",
+          "nullable": false,
+          "ref": [
+            "shop",
+            "t_shop_product_sku_lot"
+          ]
+        }
+      ],
+      "file": "06-sales.schema.up.sql",
+      "sql": "CREATE TABLE IF NOT EXISTS sales.t_order_item ( id UUID NOT NULL DEFAULT GEN_RANDOM_UUID () PRIMARY KEY, created_by VARCHAR(64) NOT NULL, created_at TIMESTAMP WITHOUT TIME ZONE NOT NULL DEFAULT NOW (), updated_by VARCHAR(64), updated_at TIMESTAMP WITHOUT TIME ZONE, row_status VARCHAR(32) NOT NULL DEFAULT 'ACTIVE' CHECK ( row_status IN ( 'ACTIVE', 'INACTIVE', 'DELETED', 'LOCKED', 'ARCHIVED' ) ), order_id UUID NOT NULL REFERENCES sales.t_order (id) ON DELETE CASCADE, shop_id UUID NOT NULL REFERENCES shop.m_shop (id) ON DELETE CASCADE, product_id UUID NOT NULL REFERENCES product.m_product (id) ON DELETE CASCADE, sku_id UUID NOT NULL REFERENCES product.m_product_sku (id) ON DELETE CASCADE, quantity INT NOT NULL DEFAULT 1 CHECK (quantity > 0), price NUMERIC(16, 2) NOT NULL CHECK (price >= 0), discount NUMERIC(16, 2) NOT NULL CHECK (discount >= 0), total_price NUMERIC(16, 2) NOT NULL CHECK ( total_price >= 0 AND total_price = price * quantity ), gross_profit NUMERIC(16, 2) NOT NULL CHECK (gross_profit >= 0), shop_profit NUMERIC(16, 2), platform_profit NUMERIC(16, 2), lot_id UUID NOT NULL REFERENCES shop.t_shop_product_sku_lot (id) ON DELETE RESTRICT, UNIQUE (order_id, product_id, sku_id) );",
+      "table_constraints": [
+        "UNIQUE (order_id, product_id, sku_id)"
+      ],
+      "concept": "Order line",
+      "indexes": []
+    },
+    "payment.t_payment": {
+      "schema": "payment",
+      "table": "t_payment",
+      "cols": [
+        {
+          "name": "id",
+          "type": "UUID",
+          "length": "",
+          "nullable": false,
+          "ref": null
+        },
+        {
+          "name": "created_by",
+          "type": "VARCHAR",
+          "length": "64",
+          "nullable": false,
+          "ref": null
+        },
+        {
+          "name": "created_at",
+          "type": "TIMESTAMP",
+          "length": "",
+          "nullable": false,
+          "ref": null
+        },
+        {
+          "name": "updated_by",
+          "type": "VARCHAR",
+          "length": "64",
+          "nullable": true,
+          "ref": null
+        },
+        {
+          "name": "updated_at",
+          "type": "TIMESTAMP",
+          "length": "",
+          "nullable": true,
+          "ref": null
+        },
+        {
+          "name": "row_status",
+          "type": "VARCHAR",
+          "length": "32",
+          "nullable": false,
+          "ref": null
+        },
+        {
+          "name": "order_id",
+          "type": "UUID",
+          "length": "",
+          "nullable": false,
+          "ref": [
+            "sales",
+            "t_order"
+          ]
+        },
+        {
+          "name": "provider",
+          "type": "VARCHAR",
+          "length": "32",
+          "nullable": false,
+          "ref": null
+        },
+        {
+          "name": "provider_payment_id",
+          "type": "VARCHAR",
+          "length": "64",
+          "nullable": false,
+          "ref": null
+        },
+        {
+          "name": "amount",
+          "type": "NUMERIC",
+          "length": "16,2",
+          "nullable": false,
+          "ref": null
+        },
+        {
+          "name": "currency",
+          "type": "VARCHAR",
+          "length": "3",
+          "nullable": false,
+          "ref": null
+        },
+        {
+          "name": "shipping_method",
+          "type": "VARCHAR",
+          "length": "32",
+          "nullable": false,
+          "ref": null
+        },
+        {
+          "name": "shipping_fee",
+          "type": "NUMERIC",
+          "length": "16,2",
+          "nullable": false,
+          "ref": null
+        },
+        {
+          "name": "status",
+          "type": "VARCHAR",
+          "length": "32",
+          "nullable": false,
+          "ref": null
+        },
+        {
+          "name": "payment_method",
+          "type": "VARCHAR",
+          "length": "32",
+          "nullable": false,
+          "ref": null
+        },
+        {
+          "name": "payment_name",
+          "type": "VARCHAR",
+          "length": "64",
+          "nullable": true,
+          "ref": null
+        },
+        {
+          "name": "transaction_code",
+          "type": "VARCHAR",
+          "length": "64",
+          "nullable": true,
+          "ref": null
+        },
+        {
+          "name": "transaction_at",
+          "type": "TIMESTAMP",
+          "length": "",
+          "nullable": true,
+          "ref": null
+        },
+        {
+          "name": "failure_code",
+          "type": "VARCHAR",
+          "length": "64",
+          "nullable": true,
+          "ref": null
+        },
+        {
+          "name": "failure_message",
+          "type": "VARCHAR",
+          "length": "256",
+          "nullable": true,
+          "ref": null
+        },
+        {
+          "name": "provider_refund_id",
+          "type": "VARCHAR",
+          "length": "64",
+          "nullable": true,
+          "ref": null
+        },
+        {
+          "name": "refunded_at",
+          "type": "TIMESTAMP",
+          "length": "",
+          "nullable": true,
+          "ref": null
+        },
+        {
+          "name": "refund_reason",
+          "type": "VARCHAR",
+          "length": "256",
+          "nullable": true,
+          "ref": null
+        }
+      ],
+      "file": "07-payment.schema.up.sql",
+      "sql": "CREATE TABLE IF NOT EXISTS payment.t_payment ( id UUID NOT NULL DEFAULT GEN_RANDOM_UUID () PRIMARY KEY, created_by VARCHAR(64) NOT NULL, created_at TIMESTAMP WITHOUT TIME ZONE NOT NULL DEFAULT NOW (), updated_by VARCHAR(64), updated_at TIMESTAMP WITHOUT TIME ZONE, row_status VARCHAR(32) NOT NULL DEFAULT 'ACTIVE' CHECK ( row_status IN ( 'ACTIVE', 'INACTIVE', 'DELETED', 'LOCKED', 'ARCHIVED' ) ), order_id UUID NOT NULL REFERENCES sales.t_order (id) ON DELETE RESTRICT, provider VARCHAR(32) NOT NULL DEFAULT 'STRIPE' CHECK (provider IN ('STRIPE')), provider_payment_id VARCHAR(64) NOT NULL UNIQUE, amount NUMERIC(16, 2) NOT NULL CHECK (amount >= 0), currency VARCHAR(3) NOT NULL DEFAULT 'THB' CHECK (currency ~ '^[A-Z]{3}$'), shipping_method VARCHAR(32) NOT NULL CHECK ( shipping_method IN ('STANDARD', 'EXPRESS', 'SAME_DAY') ), shipping_fee NUMERIC(16, 2) NOT NULL DEFAULT 0.00 CHECK (shipping_fee >= 0), status VARCHAR(32) NOT NULL DEFAULT 'PENDING' CHECK ( status IN ( 'PENDING', 'PROCESSING', 'COMPLETED', 'FAILED', 'CANCELLED', 'REFUNDED' ) ), payment_method VARCHAR(32) NOT NULL CHECK ( payment_method IN ( 'CREDIT_CARD', 'PAYPAL', 'BANK_TRANSFER', 'CASH_ON_DELIVERY', 'THAI_QR' ) ), payment_name VARCHAR(64), transaction_code VARCHAR(64) UNIQUE, transaction_at TIMESTAMP WITHOUT TIME ZONE, failure_code VARCHAR(64), failure_message VARCHAR(256), provider_refund_id VARCHAR(64) UNIQUE, refunded_at TIMESTAMP WITHOUT TIME ZONE, refund_reason VARCHAR(256), CONSTRAINT ck_t_payment_paid_has_transaction_at CHECK ( status NOT IN ('COMPLETED', 'REFUNDED') OR transaction_at IS NOT NULL ), CONSTRAINT ck_t_payment_refund_details CHECK ( (status = 'REFUNDED') = (refunded_at IS NOT NULL) AND (refunded_at IS NULL) = (provider_refund_id IS NULL) ), CONSTRAINT ck_t_payment_failure_only_when_failed CHECK ( (failure_code IS NULL AND failure_message IS NULL) OR status = 'FAILED' ) );",
+      "table_constraints": [
+        "CONSTRAINT ck_t_payment_paid_has_transaction_at CHECK (\n            status NOT IN ('COMPLETED', 'REFUNDED')\n            OR transaction_at IS NOT NULL\n        )",
+        "CONSTRAINT ck_t_payment_refund_details CHECK (\n            (status = 'REFUNDED') = (refunded_at IS NOT NULL)\n            AND (refunded_at IS NULL) = (provider_refund_id IS NULL)\n        )",
+        "CONSTRAINT ck_t_payment_failure_only_when_failed CHECK (\n            (failure_code IS NULL AND failure_message IS NULL)\n            OR status = 'FAILED'\n        )"
+      ],
+      "concept": "Payment attempt",
+      "indexes": [
+        "CREATE UNIQUE INDEX IF NOT EXISTS uq_t_payment_order_id_live ON payment.t_payment (order_id) WHERE status IN ('PENDING', 'PROCESSING', 'COMPLETED') AND row_status = 'ACTIVE';"
+      ]
+    },
+    "shipping.t_shipping": {
+      "schema": "shipping",
+      "table": "t_shipping",
+      "cols": [
+        {
+          "name": "id",
+          "type": "UUID",
+          "length": "",
+          "nullable": false,
+          "ref": null
+        },
+        {
+          "name": "created_by",
+          "type": "VARCHAR",
+          "length": "64",
+          "nullable": false,
+          "ref": null
+        },
+        {
+          "name": "created_at",
+          "type": "TIMESTAMP",
+          "length": "",
+          "nullable": false,
+          "ref": null
+        },
+        {
+          "name": "updated_by",
+          "type": "VARCHAR",
+          "length": "64",
+          "nullable": true,
+          "ref": null
+        },
+        {
+          "name": "updated_at",
+          "type": "TIMESTAMP",
+          "length": "",
+          "nullable": true,
+          "ref": null
+        },
+        {
+          "name": "row_status",
+          "type": "VARCHAR",
+          "length": "32",
+          "nullable": false,
+          "ref": null
+        },
+        {
+          "name": "order_id",
+          "type": "UUID",
+          "length": "",
+          "nullable": false,
+          "ref": [
+            "sales",
+            "t_order"
+          ]
+        },
+        {
+          "name": "shipping_method",
+          "type": "VARCHAR",
+          "length": "32",
+          "nullable": false,
+          "ref": null
+        },
+        {
+          "name": "status",
+          "type": "VARCHAR",
+          "length": "32",
+          "nullable": false,
+          "ref": null
+        },
+        {
+          "name": "carrier_name",
+          "type": "VARCHAR",
+          "length": "64",
+          "nullable": true,
+          "ref": null
+        },
+        {
+          "name": "tracking_number",
+          "type": "VARCHAR",
+          "length": "64",
+          "nullable": true,
+          "ref": null
+        },
+        {
+          "name": "shipped_at",
+          "type": "TIMESTAMP",
+          "length": "",
+          "nullable": true,
+          "ref": null
+        },
+        {
+          "name": "delivered_at",
+          "type": "TIMESTAMP",
+          "length": "",
+          "nullable": true,
+          "ref": null
+        }
+      ],
+      "file": "08-shipping.schema.up.sql",
+      "sql": "CREATE TABLE IF NOT EXISTS shipping.t_shipping ( id UUID NOT NULL DEFAULT GEN_RANDOM_UUID () PRIMARY KEY, created_by VARCHAR(64) NOT NULL, created_at TIMESTAMP WITHOUT TIME ZONE NOT NULL DEFAULT NOW (), updated_by VARCHAR(64), updated_at TIMESTAMP WITHOUT TIME ZONE, row_status VARCHAR(32) NOT NULL DEFAULT 'ACTIVE' CHECK ( row_status IN ( 'ACTIVE', 'INACTIVE', 'DELETED', 'LOCKED', 'ARCHIVED' ) ), order_id UUID NOT NULL REFERENCES sales.t_order (id) ON DELETE RESTRICT, shipping_method VARCHAR(32) NOT NULL CHECK ( shipping_method IN ('STANDARD', 'EXPRESS', 'SAME_DAY') ), status VARCHAR(32) NOT NULL DEFAULT 'PENDING' CHECK ( status IN ( 'PENDING', 'SHIPPED', 'DELIVERED', 'CANCELLED', 'RETURNED' ) ), carrier_name VARCHAR(64), tracking_number VARCHAR(64), shipped_at TIMESTAMP WITHOUT TIME ZONE, delivered_at TIMESTAMP WITHOUT TIME ZONE, CONSTRAINT ck_t_shipping_shipped_has_tracking CHECK ( status NOT IN ('SHIPPED', 'DELIVERED', 'RETURNED') OR ( carrier_name IS NOT NULL AND tracking_number IS NOT NULL AND shipped_at IS NOT NULL ) ), CONSTRAINT ck_t_shipping_delivered_at CHECK ( (status = 'DELIVERED') = (delivered_at IS NOT NULL) ) );",
+      "table_constraints": [
+        "CONSTRAINT ck_t_shipping_shipped_has_tracking CHECK (\n            status NOT IN ('SHIPPED', 'DELIVERED', 'RETURNED')\n            OR (\n                carrier_name IS NOT NULL\n                AND tracking_number IS NOT NULL\n                AND shipped_at IS NOT NULL\n            )\n        )",
+        "CONSTRAINT ck_t_shipping_delivered_at CHECK (\n            (status = 'DELIVERED') = (delivered_at IS NOT NULL)\n        )"
+      ],
+      "concept": "Shipment",
+      "indexes": [
+        "CREATE UNIQUE INDEX IF NOT EXISTS uq_t_shipping_carrier_name_tracking_number ON shipping.t_shipping (carrier_name, tracking_number) WHERE tracking_number IS NOT NULL AND row_status <> 'DELETED';",
+        "CREATE INDEX IF NOT EXISTS ix_t_shipping_shipped_at ON shipping.t_shipping (shipped_at) WHERE status = 'SHIPPED' AND row_status <> 'DELETED';"
+      ]
+    },
+    "shipping.t_shipping_item": {
+      "schema": "shipping",
+      "table": "t_shipping_item",
+      "cols": [
+        {
+          "name": "id",
+          "type": "UUID",
+          "length": "",
+          "nullable": false,
+          "ref": null
+        },
+        {
+          "name": "created_by",
+          "type": "VARCHAR",
+          "length": "64",
+          "nullable": false,
+          "ref": null
+        },
+        {
+          "name": "created_at",
+          "type": "TIMESTAMP",
+          "length": "",
+          "nullable": false,
+          "ref": null
+        },
+        {
+          "name": "updated_by",
+          "type": "VARCHAR",
+          "length": "64",
+          "nullable": true,
+          "ref": null
+        },
+        {
+          "name": "updated_at",
+          "type": "TIMESTAMP",
+          "length": "",
+          "nullable": true,
+          "ref": null
+        },
+        {
+          "name": "row_status",
+          "type": "VARCHAR",
+          "length": "32",
+          "nullable": false,
+          "ref": null
+        },
+        {
+          "name": "shipping_id",
+          "type": "UUID",
+          "length": "",
+          "nullable": false,
+          "ref": [
+            "shipping",
+            "t_shipping"
+          ]
+        },
+        {
+          "name": "order_item_id",
+          "type": "UUID",
+          "length": "",
+          "nullable": false,
+          "ref": [
+            "sales",
+            "t_order_item"
+          ]
+        },
+        {
+          "name": "quantity",
+          "type": "INT",
+          "length": "",
+          "nullable": false,
+          "ref": null
+        }
+      ],
+      "file": "08-shipping.schema.up.sql",
+      "sql": "CREATE TABLE IF NOT EXISTS shipping.t_shipping_item ( id UUID NOT NULL DEFAULT GEN_RANDOM_UUID () PRIMARY KEY, created_by VARCHAR(64) NOT NULL, created_at TIMESTAMP WITHOUT TIME ZONE NOT NULL DEFAULT NOW (), updated_by VARCHAR(64), updated_at TIMESTAMP WITHOUT TIME ZONE, row_status VARCHAR(32) NOT NULL DEFAULT 'ACTIVE' CHECK ( row_status IN ( 'ACTIVE', 'INACTIVE', 'DELETED', 'LOCKED', 'ARCHIVED' ) ), shipping_id UUID NOT NULL REFERENCES shipping.t_shipping (id) ON DELETE CASCADE, order_item_id UUID NOT NULL REFERENCES sales.t_order_item (id) ON DELETE RESTRICT, quantity INT NOT NULL DEFAULT 1 CHECK (quantity > 0) );",
+      "table_constraints": [],
+      "concept": "Shipment allocation",
+      "indexes": [
+        "CREATE UNIQUE INDEX IF NOT EXISTS uq_t_shipping_item_shipping_id_order_item_id ON shipping.t_shipping_item (shipping_id, order_item_id) WHERE row_status <> 'DELETED';"
+      ]
+    },
+    "shipping.t_shipping_stop": {
+      "schema": "shipping",
+      "table": "t_shipping_stop",
+      "cols": [
+        {
+          "name": "id",
+          "type": "UUID",
+          "length": "",
+          "nullable": false,
+          "ref": null
+        },
+        {
+          "name": "created_by",
+          "type": "VARCHAR",
+          "length": "64",
+          "nullable": false,
+          "ref": null
+        },
+        {
+          "name": "created_at",
+          "type": "TIMESTAMP",
+          "length": "",
+          "nullable": false,
+          "ref": null
+        },
+        {
+          "name": "updated_by",
+          "type": "VARCHAR",
+          "length": "64",
+          "nullable": true,
+          "ref": null
+        },
+        {
+          "name": "updated_at",
+          "type": "TIMESTAMP",
+          "length": "",
+          "nullable": true,
+          "ref": null
+        },
+        {
+          "name": "row_status",
+          "type": "VARCHAR",
+          "length": "32",
+          "nullable": false,
+          "ref": null
+        },
+        {
+          "name": "shipping_id",
+          "type": "UUID",
+          "length": "",
+          "nullable": false,
+          "ref": [
+            "shipping",
+            "t_shipping"
+          ]
+        },
+        {
+          "name": "stop_number",
+          "type": "INT",
+          "length": "",
+          "nullable": false,
+          "ref": null
+        },
+        {
+          "name": "stop_type",
+          "type": "VARCHAR",
+          "length": "32",
+          "nullable": false,
+          "ref": null
+        },
+        {
+          "name": "location_name",
+          "type": "VARCHAR",
+          "length": "128",
+          "nullable": false,
+          "ref": null
+        },
+        {
+          "name": "estimated_arrival",
+          "type": "TIMESTAMP",
+          "length": "",
+          "nullable": true,
+          "ref": null
+        },
+        {
+          "name": "arrived_at",
+          "type": "TIMESTAMP",
+          "length": "",
+          "nullable": true,
+          "ref": null
+        }
+      ],
+      "file": "08-shipping.schema.up.sql",
+      "sql": "CREATE TABLE IF NOT EXISTS shipping.t_shipping_stop ( id UUID NOT NULL DEFAULT GEN_RANDOM_UUID () PRIMARY KEY, created_by VARCHAR(64) NOT NULL, created_at TIMESTAMP WITHOUT TIME ZONE NOT NULL DEFAULT NOW (), updated_by VARCHAR(64), updated_at TIMESTAMP WITHOUT TIME ZONE, row_status VARCHAR(32) NOT NULL DEFAULT 'ACTIVE' CHECK ( row_status IN ( 'ACTIVE', 'INACTIVE', 'DELETED', 'LOCKED', 'ARCHIVED' ) ), shipping_id UUID NOT NULL REFERENCES shipping.t_shipping (id) ON DELETE CASCADE, stop_number INT NOT NULL CHECK (stop_number > 0), stop_type VARCHAR(32) NOT NULL CHECK ( stop_type IN ('PICKUP', 'TRANSIT', 'DROPOFF') ), location_name VARCHAR(128) NOT NULL, estimated_arrival TIMESTAMP WITHOUT TIME ZONE, arrived_at TIMESTAMP WITHOUT TIME ZONE );",
+      "table_constraints": [],
+      "concept": "Shipment stop",
+      "indexes": [
+        "CREATE UNIQUE INDEX IF NOT EXISTS uq_t_shipping_stop_shipping_id_stop_number ON shipping.t_shipping_stop (shipping_id, stop_number) WHERE row_status <> 'DELETED';"
+      ]
+    },
+    "campaign.m_campaign": {
+      "schema": "campaign",
+      "table": "m_campaign",
+      "cols": [
+        {
+          "name": "id",
+          "type": "UUID",
+          "length": "",
+          "nullable": false,
+          "ref": null
+        },
+        {
+          "name": "created_by",
+          "type": "VARCHAR",
+          "length": "64",
+          "nullable": false,
+          "ref": null
+        },
+        {
+          "name": "created_at",
+          "type": "TIMESTAMP",
+          "length": "",
+          "nullable": false,
+          "ref": null
+        },
+        {
+          "name": "updated_by",
+          "type": "VARCHAR",
+          "length": "64",
+          "nullable": true,
+          "ref": null
+        },
+        {
+          "name": "updated_at",
+          "type": "TIMESTAMP",
+          "length": "",
+          "nullable": true,
+          "ref": null
+        },
+        {
+          "name": "row_status",
+          "type": "VARCHAR",
+          "length": "32",
+          "nullable": false,
+          "ref": null
+        },
+        {
+          "name": "name",
+          "type": "VARCHAR",
+          "length": "128",
+          "nullable": false,
+          "ref": null
+        },
+        {
+          "name": "description",
+          "type": "TEXT",
+          "length": "",
+          "nullable": true,
+          "ref": null
+        },
+        {
+          "name": "start_at",
+          "type": "TIMESTAMP",
+          "length": "",
+          "nullable": false,
+          "ref": null
+        },
+        {
+          "name": "end_at",
+          "type": "TIMESTAMP",
+          "length": "",
+          "nullable": false,
+          "ref": null
+        }
+      ],
+      "file": "09-campaign.schema.up.sql",
+      "sql": "CREATE TABLE IF NOT EXISTS campaign.m_campaign ( id UUID NOT NULL DEFAULT GEN_RANDOM_UUID () PRIMARY KEY, created_by VARCHAR(64) NOT NULL, created_at TIMESTAMP WITHOUT TIME ZONE NOT NULL DEFAULT NOW (), updated_by VARCHAR(64), updated_at TIMESTAMP WITHOUT TIME ZONE, row_status VARCHAR(32) NOT NULL DEFAULT 'ACTIVE' CHECK ( row_status IN ( 'ACTIVE', 'INACTIVE', 'DELETED', 'LOCKED', 'ARCHIVED' ) ), name VARCHAR(128) NOT NULL, description TEXT, start_at TIMESTAMP WITHOUT TIME ZONE NOT NULL, end_at TIMESTAMP WITHOUT TIME ZONE NOT NULL, CONSTRAINT ck_m_campaign_period CHECK (end_at > start_at) );",
+      "table_constraints": [
+        "CONSTRAINT ck_m_campaign_period CHECK (end_at > start_at)"
+      ],
+      "concept": "Campaign",
+      "indexes": [
+        "CREATE UNIQUE INDEX IF NOT EXISTS uq_m_campaign_name ON campaign.m_campaign (name) WHERE row_status <> 'DELETED';"
+      ]
+    },
+    "campaign.m_campaign_budget": {
+      "schema": "campaign",
+      "table": "m_campaign_budget",
+      "cols": [
+        {
+          "name": "id",
+          "type": "UUID",
+          "length": "",
+          "nullable": false,
+          "ref": null
+        },
+        {
+          "name": "created_by",
+          "type": "VARCHAR",
+          "length": "64",
+          "nullable": false,
+          "ref": null
+        },
+        {
+          "name": "created_at",
+          "type": "TIMESTAMP",
+          "length": "",
+          "nullable": false,
+          "ref": null
+        },
+        {
+          "name": "updated_by",
+          "type": "VARCHAR",
+          "length": "64",
+          "nullable": true,
+          "ref": null
+        },
+        {
+          "name": "updated_at",
+          "type": "TIMESTAMP",
+          "length": "",
+          "nullable": true,
+          "ref": null
+        },
+        {
+          "name": "row_status",
+          "type": "VARCHAR",
+          "length": "32",
+          "nullable": false,
+          "ref": null
+        },
+        {
+          "name": "campaign_id",
+          "type": "UUID",
+          "length": "",
+          "nullable": false,
+          "ref": [
+            "campaign",
+            "m_campaign"
+          ]
+        },
+        {
+          "name": "budget",
+          "type": "NUMERIC",
+          "length": "16,2",
+          "nullable": false,
+          "ref": null
+        },
+        {
+          "name": "remaining",
+          "type": "NUMERIC",
+          "length": "16,2",
+          "nullable": false,
+          "ref": null
+        }
+      ],
+      "file": "09-campaign.schema.up.sql",
+      "sql": "CREATE TABLE IF NOT EXISTS campaign.m_campaign_budget ( id UUID NOT NULL DEFAULT GEN_RANDOM_UUID () PRIMARY KEY, created_by VARCHAR(64) NOT NULL, created_at TIMESTAMP WITHOUT TIME ZONE NOT NULL DEFAULT NOW (), updated_by VARCHAR(64), updated_at TIMESTAMP WITHOUT TIME ZONE, row_status VARCHAR(32) NOT NULL DEFAULT 'ACTIVE' CHECK ( row_status IN ( 'ACTIVE', 'INACTIVE', 'DELETED', 'LOCKED', 'ARCHIVED' ) ), campaign_id UUID NOT NULL REFERENCES campaign.m_campaign (id) ON DELETE CASCADE, budget NUMERIC(16, 2) NOT NULL CHECK (budget >= 0), remaining NUMERIC(16, 2) NOT NULL CHECK (remaining >= 0), CONSTRAINT ck_m_campaign_budget_remaining_within_budget CHECK (remaining <= budget) );",
+      "table_constraints": [
+        "CONSTRAINT ck_m_campaign_budget_remaining_within_budget CHECK (remaining <= budget)"
+      ],
+      "concept": "Campaign budget",
+      "indexes": [
+        "CREATE UNIQUE INDEX IF NOT EXISTS uq_m_campaign_budget_campaign_id ON campaign.m_campaign_budget (campaign_id) WHERE row_status <> 'DELETED';"
+      ]
+    },
+    "campaign.m_campaign_budget_ledger": {
+      "schema": "campaign",
+      "table": "m_campaign_budget_ledger",
+      "cols": [
+        {
+          "name": "id",
+          "type": "UUID",
+          "length": "",
+          "nullable": false,
+          "ref": null
+        },
+        {
+          "name": "created_by",
+          "type": "VARCHAR",
+          "length": "64",
+          "nullable": false,
+          "ref": null
+        },
+        {
+          "name": "created_at",
+          "type": "TIMESTAMP",
+          "length": "",
+          "nullable": false,
+          "ref": null
+        },
+        {
+          "name": "updated_by",
+          "type": "VARCHAR",
+          "length": "64",
+          "nullable": true,
+          "ref": null
+        },
+        {
+          "name": "updated_at",
+          "type": "TIMESTAMP",
+          "length": "",
+          "nullable": true,
+          "ref": null
+        },
+        {
+          "name": "row_status",
+          "type": "VARCHAR",
+          "length": "32",
+          "nullable": false,
+          "ref": null
+        },
+        {
+          "name": "campaign_budget_id",
+          "type": "UUID",
+          "length": "",
+          "nullable": false,
+          "ref": [
+            "campaign",
+            "m_campaign_budget"
+          ]
+        },
+        {
+          "name": "campaign_id",
+          "type": "UUID",
+          "length": "",
+          "nullable": false,
+          "ref": [
+            "campaign",
+            "m_campaign"
+          ]
+        },
+        {
+          "name": "order_id",
+          "type": "UUID",
+          "length": "",
+          "nullable": false,
+          "ref": [
+            "sales",
+            "t_order"
+          ]
+        },
+        {
+          "name": "entry_type",
+          "type": "VARCHAR",
+          "length": "16",
+          "nullable": false,
+          "ref": null
+        },
+        {
+          "name": "reference",
+          "type": "JSONB",
+          "length": "",
+          "nullable": false,
+          "ref": null
+        },
+        {
+          "name": "usage",
+          "type": "NUMERIC",
+          "length": "16,2",
+          "nullable": false,
+          "ref": null
+        },
+        {
+          "name": "remaining",
+          "type": "NUMERIC",
+          "length": "16,2",
+          "nullable": false,
+          "ref": null
+        }
+      ],
+      "file": "09-campaign.schema.up.sql",
+      "sql": "CREATE TABLE IF NOT EXISTS campaign.m_campaign_budget_ledger ( id UUID NOT NULL DEFAULT GEN_RANDOM_UUID () PRIMARY KEY, created_by VARCHAR(64) NOT NULL, created_at TIMESTAMP WITHOUT TIME ZONE NOT NULL DEFAULT NOW (), updated_by VARCHAR(64), updated_at TIMESTAMP WITHOUT TIME ZONE, row_status VARCHAR(32) NOT NULL DEFAULT 'ACTIVE' CHECK ( row_status IN ( 'ACTIVE', 'INACTIVE', 'DELETED', 'LOCKED', 'ARCHIVED' ) ), campaign_budget_id UUID NOT NULL REFERENCES campaign.m_campaign_budget (id) ON DELETE CASCADE, campaign_id UUID NOT NULL REFERENCES campaign.m_campaign (id) ON DELETE CASCADE, order_id UUID NOT NULL REFERENCES sales.t_order (id) ON DELETE RESTRICT, entry_type VARCHAR(16) NOT NULL CHECK (entry_type IN ('RESERVE', 'RELEASE')), reference JSONB NOT NULL, usage NUMERIC(16, 2) NOT NULL CHECK (usage >= 0), remaining NUMERIC(16, 2) NOT NULL CHECK (remaining >= 0), UNIQUE (campaign_budget_id, order_id, entry_type) );",
+      "table_constraints": [
+        "UNIQUE (campaign_budget_id, order_id, entry_type)"
+      ],
+      "concept": "Budget movement",
+      "indexes": []
+    },
+    "campaign.t_campaign_product": {
+      "schema": "campaign",
+      "table": "t_campaign_product",
+      "cols": [
+        {
+          "name": "id",
+          "type": "UUID",
+          "length": "",
+          "nullable": false,
+          "ref": null
+        },
+        {
+          "name": "created_by",
+          "type": "VARCHAR",
+          "length": "64",
+          "nullable": false,
+          "ref": null
+        },
+        {
+          "name": "created_at",
+          "type": "TIMESTAMP",
+          "length": "",
+          "nullable": false,
+          "ref": null
+        },
+        {
+          "name": "updated_by",
+          "type": "VARCHAR",
+          "length": "64",
+          "nullable": true,
+          "ref": null
+        },
+        {
+          "name": "updated_at",
+          "type": "TIMESTAMP",
+          "length": "",
+          "nullable": true,
+          "ref": null
+        },
+        {
+          "name": "row_status",
+          "type": "VARCHAR",
+          "length": "32",
+          "nullable": false,
+          "ref": null
+        },
+        {
+          "name": "campaign_id",
+          "type": "UUID",
+          "length": "",
+          "nullable": false,
+          "ref": [
+            "campaign",
+            "m_campaign"
+          ]
+        },
+        {
+          "name": "product_category_id",
+          "type": "UUID",
+          "length": "",
+          "nullable": true,
+          "ref": [
+            "product",
+            "m_product_category"
+          ]
+        },
+        {
+          "name": "product_id",
+          "type": "UUID",
+          "length": "",
+          "nullable": true,
+          "ref": [
+            "product",
+            "m_product"
+          ]
+        }
+      ],
+      "file": "09-campaign.schema.up.sql",
+      "sql": "CREATE TABLE IF NOT EXISTS campaign.t_campaign_product ( id UUID NOT NULL DEFAULT GEN_RANDOM_UUID () PRIMARY KEY, created_by VARCHAR(64) NOT NULL, created_at TIMESTAMP WITHOUT TIME ZONE NOT NULL DEFAULT NOW (), updated_by VARCHAR(64), updated_at TIMESTAMP WITHOUT TIME ZONE, row_status VARCHAR(32) NOT NULL DEFAULT 'ACTIVE' CHECK ( row_status IN ( 'ACTIVE', 'INACTIVE', 'DELETED', 'LOCKED', 'ARCHIVED' ) ), campaign_id UUID NOT NULL REFERENCES campaign.m_campaign (id) ON DELETE CASCADE, product_category_id UUID REFERENCES product.m_product_category (id) ON DELETE CASCADE, product_id UUID REFERENCES product.m_product (id) ON DELETE CASCADE, CONSTRAINT ck_t_campaign_product_target CHECK ( (product_category_id IS NULL) <> (product_id IS NULL) ) );",
+      "table_constraints": [
+        "CONSTRAINT ck_t_campaign_product_target CHECK (\n            (product_category_id IS NULL) <> (product_id IS NULL)\n        )"
+      ],
+      "concept": "Product/category target",
+      "indexes": [
+        "CREATE UNIQUE INDEX IF NOT EXISTS uq_t_campaign_product_campaign_id_product_id ON campaign.t_campaign_product (campaign_id, product_id) WHERE product_id IS NOT NULL AND row_status <> 'DELETED';",
+        "CREATE UNIQUE INDEX IF NOT EXISTS uq_t_campaign_product_campaign_id_product_category_id ON campaign.t_campaign_product (campaign_id, product_category_id) WHERE product_category_id IS NOT NULL AND row_status <> 'DELETED';"
+      ]
+    },
+    "campaign.t_campaign_shop": {
+      "schema": "campaign",
+      "table": "t_campaign_shop",
+      "cols": [
+        {
+          "name": "id",
+          "type": "UUID",
+          "length": "",
+          "nullable": false,
+          "ref": null
+        },
+        {
+          "name": "created_by",
+          "type": "VARCHAR",
+          "length": "64",
+          "nullable": false,
+          "ref": null
+        },
+        {
+          "name": "created_at",
+          "type": "TIMESTAMP",
+          "length": "",
+          "nullable": false,
+          "ref": null
+        },
+        {
+          "name": "updated_by",
+          "type": "VARCHAR",
+          "length": "64",
+          "nullable": true,
+          "ref": null
+        },
+        {
+          "name": "updated_at",
+          "type": "TIMESTAMP",
+          "length": "",
+          "nullable": true,
+          "ref": null
+        },
+        {
+          "name": "row_status",
+          "type": "VARCHAR",
+          "length": "32",
+          "nullable": false,
+          "ref": null
+        },
+        {
+          "name": "campaign_id",
+          "type": "UUID",
+          "length": "",
+          "nullable": false,
+          "ref": [
+            "campaign",
+            "m_campaign"
+          ]
+        },
+        {
+          "name": "shop_id",
+          "type": "UUID",
+          "length": "",
+          "nullable": false,
+          "ref": [
+            "shop",
+            "m_shop"
+          ]
+        }
+      ],
+      "file": "09-campaign.schema.up.sql",
+      "sql": "CREATE TABLE IF NOT EXISTS campaign.t_campaign_shop ( id UUID NOT NULL DEFAULT GEN_RANDOM_UUID () PRIMARY KEY, created_by VARCHAR(64) NOT NULL, created_at TIMESTAMP WITHOUT TIME ZONE NOT NULL DEFAULT NOW (), updated_by VARCHAR(64), updated_at TIMESTAMP WITHOUT TIME ZONE, row_status VARCHAR(32) NOT NULL DEFAULT 'ACTIVE' CHECK ( row_status IN ( 'ACTIVE', 'INACTIVE', 'DELETED', 'LOCKED', 'ARCHIVED' ) ), campaign_id UUID NOT NULL REFERENCES campaign.m_campaign (id) ON DELETE CASCADE, shop_id UUID NOT NULL REFERENCES shop.m_shop (id) ON DELETE CASCADE );",
+      "table_constraints": [],
+      "concept": "Shop eligibility",
+      "indexes": [
+        "CREATE UNIQUE INDEX IF NOT EXISTS uq_t_campaign_shop_campaign_id_shop_id ON campaign.t_campaign_shop (campaign_id, shop_id) WHERE row_status <> 'DELETED';"
+      ]
+    },
+    "campaign.t_campaign_discount": {
+      "schema": "campaign",
+      "table": "t_campaign_discount",
+      "cols": [
+        {
+          "name": "id",
+          "type": "UUID",
+          "length": "",
+          "nullable": false,
+          "ref": null
+        },
+        {
+          "name": "created_by",
+          "type": "VARCHAR",
+          "length": "64",
+          "nullable": false,
+          "ref": null
+        },
+        {
+          "name": "created_at",
+          "type": "TIMESTAMP",
+          "length": "",
+          "nullable": false,
+          "ref": null
+        },
+        {
+          "name": "updated_by",
+          "type": "VARCHAR",
+          "length": "64",
+          "nullable": true,
+          "ref": null
+        },
+        {
+          "name": "updated_at",
+          "type": "TIMESTAMP",
+          "length": "",
+          "nullable": true,
+          "ref": null
+        },
+        {
+          "name": "row_status",
+          "type": "VARCHAR",
+          "length": "32",
+          "nullable": false,
+          "ref": null
+        },
+        {
+          "name": "campaign_id",
+          "type": "UUID",
+          "length": "",
+          "nullable": false,
+          "ref": [
+            "campaign",
+            "m_campaign"
+          ]
+        },
+        {
+          "name": "discount_type",
+          "type": "VARCHAR",
+          "length": "32",
+          "nullable": false,
+          "ref": null
+        },
+        {
+          "name": "discount_value",
+          "type": "NUMERIC",
+          "length": "16,2",
+          "nullable": false,
+          "ref": null
+        }
+      ],
+      "file": "09-campaign.schema.up.sql",
+      "sql": "CREATE TABLE IF NOT EXISTS campaign.t_campaign_discount ( id UUID NOT NULL DEFAULT GEN_RANDOM_UUID () PRIMARY KEY, created_by VARCHAR(64) NOT NULL, created_at TIMESTAMP WITHOUT TIME ZONE NOT NULL DEFAULT NOW (), updated_by VARCHAR(64), updated_at TIMESTAMP WITHOUT TIME ZONE, row_status VARCHAR(32) NOT NULL DEFAULT 'ACTIVE' CHECK ( row_status IN ( 'ACTIVE', 'INACTIVE', 'DELETED', 'LOCKED', 'ARCHIVED' ) ), campaign_id UUID NOT NULL REFERENCES campaign.m_campaign (id) ON DELETE CASCADE, discount_type VARCHAR(32) NOT NULL CHECK (discount_type IN ('PERCENTAGE', 'FIXED_AMOUNT')), discount_value NUMERIC(16, 2) NOT NULL CHECK (discount_value > 0), CONSTRAINT ck_t_campaign_discount_percentage CHECK ( discount_type <> 'PERCENTAGE' OR discount_value <= 100 ) );",
+      "table_constraints": [
+        "CONSTRAINT ck_t_campaign_discount_percentage CHECK (\n            discount_type <> 'PERCENTAGE'\n            OR discount_value <= 100\n        )"
+      ],
+      "concept": "Discount rule",
+      "indexes": [
+        "CREATE UNIQUE INDEX IF NOT EXISTS uq_t_campaign_discount_campaign_id ON campaign.t_campaign_discount (campaign_id) WHERE row_status <> 'DELETED';"
+      ]
+    }
+  },
+  "source_commit": "7007015ba770973daab0460f850b01bb789a4989"
+}

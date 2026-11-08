@@ -18,7 +18,11 @@ ARTIFACT_FOLDERS = {
     "deployment-security": "reference/operations",
     "observability-design": "reference/operations",
     "recovery-design": "reference/operations",
-    "repository-architecture": "reference/repository"
+    "repository-architecture": "reference/repository",
+    "domain-model": "domain",
+    "domain-identity-model": "domain",
+    "domain-merchandising-model": "domain",
+    "domain-commerce-model": "domain"
 }
 
 

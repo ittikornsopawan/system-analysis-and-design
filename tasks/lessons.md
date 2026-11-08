@@ -19,6 +19,13 @@ description: Repository-wide and project-specific lessons captured from user cor
 
 ## Repository-wide
 
+### 2026-11-08 — Reconcile renderer consumers during a rename/modify conflict
+
+- **Correction**: The owner reported PR #64's conflict at the original `e-commerce/diagram/generate_diagrams.py` path after main added the Domain diagram package.
+- **Root cause**: The PR relocated shared helpers to `scripts/` while main added `output_dir` support and a Domain generator importing helpers from their former location. Choosing either side of the conflict alone would lose behavior or break imports.
+- **Corrected behavior**: Combine explicit output directories with routed defaults, update incoming consumers and navigation, and run both generator families. Preserve existing models/PNGs and verify their hashes against each parent; resolving conflict markers alone is insufficient.
+
+
 ### 2026-11-08 — Check a replacement agent's workspace before offering it
 
 - **Correction**: After Logan was found unregistered, the owner chose Jinny, but Jinny's managed workspace was already locked by another active task. The owner then directed this task to use a separate workspace.
