@@ -2,7 +2,7 @@
 from pathlib import Path
 import os
 
-DIAGRAM_ROOT = Path(__file__).resolve().parents[1]
+DIAGRAM_ROOT = Path(__file__).resolve().parents[2] / "diagram"
 ARTIFACT_FOLDERS = {
     "architecture-design": "main",
     "event-outbox-design": "main",

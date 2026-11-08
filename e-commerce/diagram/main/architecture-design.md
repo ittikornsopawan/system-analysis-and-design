@@ -158,7 +158,7 @@ Cache เป็นข้อมูลสร้างใหม่ได้ จึ�
 
 ## 8. แหล่งหลักฐานและเอกสารที่ต้องอ่านร่วมกัน
 
-- [README ของชุดภาพ](../README.md), [semantic source](../scripts/layered_core_content.py) และ [research ของรูปแบบภาพ](../design/research.md) ใช้ตรวจเนื้อหา/การจัดมุมมอง
+- [README ของชุดภาพ](../README.md), [semantic source](../../scripts/diagrams/layered_core_content.py) และ [research ของรูปแบบภาพ](../design/research.md) ใช้ตรวจเนื้อหา/การจัดมุมมอง
 - [Backend project structure](https://github.com/ittikornsopawan/e-commerce-backend/blob/d8255183cba54d0c2b218607456b895a70df32f0/project-structure.md), [Program.cs](https://github.com/ittikornsopawan/e-commerce-backend/blob/d8255183cba54d0c2b218607456b895a70df32f0/src/Ecommerce.Api/Program.cs) และ [Infrastructure DI](https://github.com/ittikornsopawan/e-commerce-backend/blob/d8255183cba54d0c2b218607456b895a70df32f0/src/Ecommerce.Infrastructure/DependencyInjection.cs) ใช้ยืนยันส่วนที่มีโค้ด
 - [Redis design](../design/redis-design.md), [Redis research](../design/redis-research.md) และ [Redis review](../design/redis-review.md) ใช้พิจารณานโยบายและข้อจำกัดของข้อเสนอ
 - [MongoDB design](../design/mongodb-design.md) และ [MongoDB research](../design/mongodb-research.md) ใช้ตรวจ config ownership, event projections และ cross-store delivery

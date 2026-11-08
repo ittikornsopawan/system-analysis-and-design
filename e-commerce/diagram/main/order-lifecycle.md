@@ -152,7 +152,7 @@ Publication states เช่น `READY`, `CLAIMED`, `DELIVERED` ไม่ใช�
 
 หลักฐาน business transitions คือ [sales/02](../../doc/api/sales/02-create-order/spec.md), [sales/05](../../doc/api/sales/05-cancel-order/spec.md), [payment/01](../../doc/api/payment/01-start-payment/spec.md), [payment/02](../../doc/api/payment/02-stripe-webhook/spec.md), [payment/05](../../doc/api/payment/05-refund-payment/spec.md), [shipping/01](../../doc/api/shipping/01-create-shipping/spec.md), [shipping/02](../../doc/api/shipping/02-update-shipping-status/spec.md) และ [shipping/06](../../doc/api/shipping/06-confirm-delivery/spec.md) โดย campaign effects อ่านร่วมกับ [campaign design](../../../docs/superpowers/specs/2026-11-06-campaign-design.md)
 
-การจัดภาพและ semantic model อยู่ใน [diagram-semantics.md](../design/diagram-semantics.md)/[layered_lifecycle_content.py](../scripts/layered_lifecycle_content.py) ส่วน proposed delivery controls อยู่ในเอกสารแยกตามหัวข้อ 7 ยังไม่ใช่ implementation ที่ทดสอบแล้ว ภาพไม่ได้ครอบคลุม partial refund, product-return workflow เต็มรูปแบบ, carrier integration หรือรายละเอียดการติดตั้ง automatic completion worker งานอธิบายนี้ไม่เปลี่ยน API/schema/code และไม่ได้รัน provider/load/concurrency tests
+การจัดภาพและ semantic model อยู่ใน [diagram-semantics.md](../design/diagram-semantics.md)/[layered_lifecycle_content.py](../../scripts/diagrams/layered_lifecycle_content.py) ส่วน proposed delivery controls อยู่ในเอกสารแยกตามหัวข้อ 7 ยังไม่ใช่ implementation ที่ทดสอบแล้ว ภาพไม่ได้ครอบคลุม partial refund, product-return workflow เต็มรูปแบบ, carrier integration หรือรายละเอียดการติดตั้ง automatic completion worker งานอธิบายนี้ไม่เปลี่ยน API/schema/code และไม่ได้รัน provider/load/concurrency tests
 
 ## รูปแบบภาพที่ปรับตามความหมาย
 
