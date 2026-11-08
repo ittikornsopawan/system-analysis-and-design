@@ -615,6 +615,17 @@ Verification: see the PR. No spec, diagram or other checker is changed.
 Lesson for the team: a merge that keeps a file parseable can still drop the end of a function; after resolving a conflict in `check_docs.py`, run `python3 -c "import ast"` on it and run every sub-command, not only the one that was edited.
 
 
+## e-commerce: Peter API review — own-user profile upsert (API 11, 2026-11-08)
+
+Scope: authen-and-author/07-upsert-user-profile with its checker/task evidence. Owner Q13 preserves immediate credential/user revocation; WP4 U18/U23 governs own-user partial profile writes. Q15 permits moving to a fresh main-based branch after open PR delivery without waiting for merge. No backend/schema/publication implementation. Consent Q18/Q19 remain pending.
+
+- [x] Preserve reset-password PR #56 and assignment history, return to main and prepare a fresh authorized profile-upsert branch with all baselines.
+- [x] Read both profile endpoints, current credential rules, user/information schema and partial unique index. Reproduce the old diagram running INSERT and UPDATE in sequence and omitting current stored-token checks.
+- [x] Revise spec and generated-then-completed sequence together: verified own user, post-lock credential check, per-field presence masks/null clearing, separate information insert/update and 17 complete terminal traces.
+- [x] Add exact SQL/path/semantic/render checks; 64/64 mutations caught; synchronized semantic faults, pre-lock credential read, original sequential INSERT/UPDATE and real renderer omission rejected. Six exact PostgreSQL statements passed typed presence/null/date/bytea, ownership, preserved lifecycle/audit, rollback and concurrent first/disjoint writes plus revocation/expiry wait fixtures. PlantUML inspected with nine participants and 58/58 visible SQL lines; no backend/encryption-runtime certification.
+- [x] Run all current checker commands (49/49), SQL audit (53 tables/0 findings), database suite (ALL PASSED), skeleton tests (12/12) and authorized preflight (four paths/no blockers).
+- [ ] Open one profile-upsert API PR, preserve branch/history and continue from main.
+
 ## Peter — API 9: create-new-password paired contract review (2026-11-07)
 
 Scope: authen-and-author/04-create-new-password; owner Q13 credential revocation and existing reset rules. One API per PR; continue from main without waiting for merge under Q15. No backend/schema implementation. Q18–Q19 remain pending for consent inquiry.

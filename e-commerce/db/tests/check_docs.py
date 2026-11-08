@@ -3852,7 +3852,6 @@ REQUIRED_GROUPS = ("authen-and-author", "consent")
 LEGACY_SEQUENCES = (
     # authen-and-author: waiting for a retrofit to the login standard
     "authen-and-author/03-reset-password",
-    "authen-and-author/07-upsert-user-profile",
     "authen-and-author/09-upsert-user-address",
     # consent: waiting for a retrofit to the login standard
     "consent/02-upsert-consent",
@@ -3865,7 +3864,6 @@ LEGACY_SEQUENCES = (
 # change that adds the missing answers to the diagram.
 LEGACY_TOKEN_SEQUENCES = (
     "authen-and-author/03-reset-password",          # no 408
-    "authen-and-author/07-upsert-user-profile",     # no Verify JWT / 401 step, no 408
     "authen-and-author/08-inquiry-user-profile",    # no Verify JWT / 401 step, no 408
     "authen-and-author/09-upsert-user-address",     # no Verify JWT / 401 step, no 408
     "authen-and-author/10-inquiry-user-address",    # no Verify JWT / 401 step, no 408
@@ -6197,6 +6195,107 @@ def check_logout_flow() -> int:
 
 
 COMMANDS['logout-flow'] = check_logout_flow
+def check_profile_upsert_flow() -> int:
+    """Check own-user credential gating, presence/null semantics and mutually exclusive writes."""
+    path=AUTHEN_SPECS['07'];md=read(path);wsd=read(str(Path(path).with_name('sequence.wsd')));errors=[]
+    for needle in ('status: in-review','approved_by: null','approved_at: null','2026-11-07-api-review-design.md',
+                   'A body {} is valid','JSON key presence, never truthiness','explicit null clears them',
+                   'Skip the m_user UPDATE entirely','Skip information lookup/INSERT/UPDATE',
+                   'fresh server UTC now','expiry during lock wait','one transaction','COMMIT must succeed before 200',
+                   'Preserve existing non-DELETED row_status','DELETED information is historical',
+                   'on or before today\'s UTC date','Scenario correspondence with sequence.wsd'):
+        if needle not in md:errors.append(f'profile-upsert spec missing {needle!r}')
+    operations=spec_database_operations(md)
+    expected=('QUERY - Lock the user','QUERY - Check the current access token','UPDATE - Update user','QUERY - Check existing information','INSERT - Create information','UPDATE - Update information')
+    if tuple(h for _,h,_ in operations)!=expected:errors.append('profile SQL needs user lock, current token, optional user write and distinct information branches')
+    sql={h:re.sub(r'--[^\n]*','',s) for _,h,s in operations}
+    required={expected[0]:["u.id = '<sequence.userId>'","u.row_status = 'ACTIVE'",'FOR UPDATE'],
+              expected[1]:["at.token = '<sequence.accessTokenHash>'","at.user_id = '<sequence.userId>'","at.row_status = 'ACTIVE'","at.expired_at > '<sequence.now>'"],
+              expected[2]:["WHERE id = '<sequence.userId>'","AND row_status = 'ACTIVE'",'RETURNING id as user_id'],
+              expected[3]:['ui.id as information_id',"ui.user_id = '<sequence.userId>'","ui.row_status <> 'DELETED'"],
+              expected[4]:['INSERT INTO authen.m_user_information',"'<sequence.userId>'",'RETURNING id as information_id'],
+              expected[5]:["WHERE id = '<sequence.informationId>'","AND user_id = '<sequence.userId>'","AND row_status <> 'DELETED'",'RETURNING id as information_id']}
+    fields=(('first_name','hasFirstName','firstNameBytes'),('last_name','hasLastName','lastNameBytes'),('display_name','hasDisplayName','displayName'),('profile_picture_path','hasProfilePicturePath','profilePicturePath'),('phone_number','hasPhoneNumber','phoneNumberBytes'),('address','hasAddress','addressBytes'),('date_of_birth','hasDateOfBirth','dateOfBirth'),('gender','hasGender','gender'))
+    for index,(column,flag,value) in enumerate(fields):required[expected[2] if index<4 else expected[5]].append(f"{column} = CASE WHEN '<sequence.{flag}>' THEN '<sequence.{value}>' ELSE {column} END")
+    for h in (expected[2],expected[5]):required[h]+=["updated_by = '<sequence.userId>'","updated_at = '<sequence.now>'"]
+    for h,needles in required.items():
+        for needle in needles:
+            if needle not in sql.get(h,''):errors.append(f'{h} missing {needle}')
+    if 'NOW()' in '\n'.join(sql.values()) or re.search(r'\bCOALESCE\s*\(', '\n'.join(sql.values()),re.I):errors.append('profile needs post-lock bound now and CASE presence masks, not non-null fallback')
+    for h in (expected[2],expected[4],expected[5]):
+        if re.search(r'\b(?:username|email_address|password|row_status)\s*=',sql.get(h,'')) and h!=expected[2]:errors.append('information writes must preserve lifecycle and fixed fields')
+    if re.search(r'\b(?:username|email_address|password)\s*=',sql.get(expected[2],'')):errors.append('profile may not update fixed account fields')
+    if any(t not in ('authen.m_user','authen.t_user_access_token','authen.m_user_information') for t,_,_ in operations):errors.append('profile must not alter credentials/grants or other domains')
+    actual,lifecycle=sequence_database_operations(wsd);errors+=lifecycle
+    if [(t.split('.')[-1],h,s) for t,h,s in operations]!=actual:errors.append('profile-upsert spec/sequence SQL differs character-for-character or order')
+    errors+=sequence_login_standard_errors(wsd)
+    for _,heading,_ in operations:
+        if f'app -> infra: {heading}' not in wsd:errors.append(f'{heading} needs Application request')
+        mapping=re.search(rf'infra -> (\w+): {re.escape(heading)}\n.*?\1 -> infra: Return ([^\n]+)\n.*?deactivate \1\n\s*infra -> app: Return ([^\n]+)',wsd,re.S)
+        if not mapping or mapping[2]!=mapping[3]:errors.append(f'{heading} database/Application result mapping differs')
+    for needle in ('Verify JWT signature/issuer/audience/expiry/UUID sub','userId = verified sub; accessTokenHash = SHA-256 exact JWT',
+                   'Derive eight hasField flags from JSON key presence; userFieldsPresent/informationFieldsPresent from their groups',
+                   'Encrypt supplied non-null sensitive values as register; explicit null = SQL NULL; omit preserves; typed text/date/boolean parameters',
+                   'Capture fresh server UTC now after user lock; recheck JWT exp',
+                   'alt userFieldsPresent','else No user fields supplied','alt informationFieldsPresent','else No information fields supplied',
+                   'alt Exactly one user_id returned','alt Exactly one inserted information_id','alt Exactly one updated information_id',
+                   'Bind omitted information columns to SQL NULL on first insert','informationId = returned information_id; preserve row_status',
+                   'data.userId = verified sub; response contains no other profile/secret fields'):
+        if needle not in wsd:errors.append(f'profile sequence missing {needle!r}')
+    traces,structure=login_sequence_paths(wsd);errors+=structure
+    from collections import Counter
+    outcomes=[];modes=Counter();unauthorized=[]
+    for trace in traces:
+        response=[e for e in trace if e.startswith('app -> api: HTTP ')]
+        if len(response)!=1:errors.append('profile trace needs exactly one outcome; aborted write must terminate common success');continue
+        code=int(response[0].split('HTTP ')[1].split()[0]);outcomes.append(code)
+        def ordered(*parts):
+            pos=[next((i for i,e in enumerate(trace) if part in e),-1) for part in parts]
+            return -1 not in pos and pos==sorted(set(pos))
+        queries=[e for e in trace if e.startswith('infra -> ')]
+        writes=[e for e in queries if ': UPDATE' in e or ': INSERT' in e]
+        begun=any(e.startswith('app -> infra: BEGIN') for e in trace)
+        if queries and not ordered('Verify JWT','userId = verified sub','Derive eight hasField flags','BEGIN READ COMMITTED',expected[0]):errors.append('profile SQL must follow verified identity and user-first transaction')
+        if any(expected[1] in e for e in trace) and not ordered(expected[0],'Capture fresh server UTC now',expected[1]):errors.append('current credential lookup must use fresh post-lock time')
+        if writes and not ordered(expected[0],'Capture fresh server UTC now',expected[1],next(h for h in expected if any(h in e for e in writes))):errors.append('all profile writes need locked user and fresh current credential')
+        if code==200:
+            user_write=any(expected[2] in e for e in writes);insert=any(expected[4] in e for e in writes);update=any(expected[5] in e for e in writes)
+            modes[(user_write,'insert' if insert else 'update' if update else 'none')]+=1
+            if insert and update:errors.append('information INSERT/UPDATE are mutually exclusive')
+            if (insert or update) and not ordered(expected[1],expected[3],expected[4] if insert else expected[5]):errors.append('information write needs current-user lookup before its branch')
+            if not ordered(expected[1],'app -> infra: COMMIT','data.userId = verified sub','HTTP 200') or any('ROLLBACK' in e for e in trace) or 'data.userId only' not in response[0]:errors.append('success needs commit before returning verified caller id only')
+        elif begun:
+            if not ordered('BEGIN','ROLLBACK',f'HTTP {code}') or any(e=='app -> infra: COMMIT' for e in trace):errors.append('profile failure must roll back before response and never reach success commit')
+            if code==401 and writes:errors.append('inactive/revoked credential must not change profile')
+        elif code not in (400,401) or queries:errors.append('invalid input/JWT must execute no SQL')
+        if code==401:unauthorized.append(len(queries))
+    expected_modes=Counter({(u,k):1 for u in (False,True) for k in ('none','insert','update')})
+    if Counter(outcomes)!=Counter({200:6,400:1,401:3,408:1,500:6}) or modes!=expected_modes or sorted(unauthorized)!=[0,1,2]:errors.append(f'incomplete profile paths: {dict(Counter(outcomes))}; modes={dict(modes)}; 401 SQL={unauthorized}')
+    for title,code in {'Success':200,'Fail - Bad Request':400,'Fail - Bad Request Fixed Field':400,'Fail - Unauthorized':401,'Fail - Request Timeout':408,'Fail - Internal Server Error':500}.items():
+        try:
+            obj=authen_json(md,title);status=obj['status']
+            if status['code']!=code or code==500 and 'bizCode' in status:errors.append(f'incorrect profile {title} envelope')
+            if title=='Success' and set(obj.get('data',{}))!={'userId'}:errors.append('profile success returns caller userId only')
+        except (TypeError,KeyError,ValueError):errors.append(f'missing profile {title} example')
+    errors+=json_blocks_parse(md);errors+=table_lines_aligned(md)
+    if '--rendered-svg' in sys.argv:
+        import xml.etree.ElementTree as ET
+        try:
+            root=ET.parse(sys.argv[sys.argv.index('--rendered-svg')+1]).getroot()
+            expected_lines=Counter(' '.join(l.split()) for _,_,s in operations for l in s.splitlines() if l.strip())
+            visible=Counter(' '.join(''.join(e.itertext()).split()) for e in root.iter() if e.tag.endswith('}text'))
+            missing=expected_lines-visible
+            if missing:errors.append(f'rendered profile SQL missing {sum(missing.values())} lines')
+            else:print(f'OK: rendered profile SQL ({sum(expected_lines.values())}/{sum(expected_lines.values())} visible lines)')
+        except (IndexError,OSError,ET.ParseError) as exc:errors.append(f'cannot verify profile SVG: {exc}')
+    if errors:return fail('; '.join(errors))
+    print('OK: profile-upsert-flow (17 terminal traces; exact SQL, fresh current credential and presence-aware atomic writes)')
+    return 0
+
+
+COMMANDS['profile-upsert-flow'] = check_profile_upsert_flow
+
+
 def check_create_password_flow() -> int:
     """Check reset single-use serialization, password replacement and all-session revocation."""
     path=AUTHEN_SPECS['04'];md=read(path);wsd=read(str(Path(path).with_name('sequence.wsd')));errors=[]

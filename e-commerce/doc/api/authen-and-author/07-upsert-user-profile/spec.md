@@ -1,3 +1,11 @@
+---
+name: Own User Profile Upsert API Specification
+description: Defines user-first current credential verification, own-user partial profile writes, explicit presence/null mapping, separate information insert/update and atomic outcomes for POST v1/user/profile/upsert.
+status: in-review
+approved_by: null
+approved_at: null
+---
+
 # [POST]: v1/user/profile/upsert
 
 | Title       | Description                                                                                                                                                                                                                               |
@@ -46,13 +54,34 @@
 
 ### User Profile Rules
 
-- The profile is the data of the caller: `userId` comes from the access token and is never read from the request. A user cannot read or change another user's profile. There is no batch and no delete (there is no API that deletes an account).
-- Sensitive fields (`firstName`, `lastName`, `phoneNumber`, `address`) are sent as plain text over TLS and encrypted by the system before they are stored, with the same deterministic encryption as `01-register`. `displayName` stays plain text because shop member lists, order lists and product reviews read it.
-- `username`, `emailAddress` and `password` cannot be changed here. Sending any of them is 400 (E10001). Changing them, and changing the password while logged in, is not part of this version.
-- A field that is not specified keeps its current value. `null` clears a field. Insert is only the first write of the `authen.m_user_information` row when it does not exist (a user has one row, partial unique index `uq_m_user_information_user_id`), the answer is 200 in both cases.
-- Validation (400, E10001): `displayName` at most 128 characters, `firstName` and `lastName` at most 100, `phoneNumber` 8 to 15 digits with an optional leading +, `dateOfBirth` a real date that is not in the future, `gender` one of MALE, FEMALE, OTHER.
-- Lock order: lock the `authen.m_user` row of the caller first (`FOR UPDATE`), then write the `authen.m_user` and `authen.m_user_information` rows in one transaction.
-- Execution order: validate the request (400) -> lock the user row -> update the user -> update or create the information row -> answer 200. There is no 403, 404 or 409.
+- Governing behavior: WP4 U18/U23 and [owner-confirmed review](../../../../../docs/superpowers/specs/2026-11-07-api-review-design.md), Q13 current credential revocation and Q15 delivery, approved by the product owner. This endpoint revision remains in-review; no backend/schema implementation is included.
+- The profile is the data of the caller: userId comes only from verified JWT sub and is never read from the request. No role/administrator permission is required to edit one's own profile. Reject request userId/id, unknown body keys and fixed fields username/emailAddress/password, even when null, with 400 E10001. Username, Email Address and Password cannot be changed here. There is no batch and no delete (there is no API that deletes an account).
+- Validate mandatory UTC timestamp, JSON object shape and every supplied non-null field before SQL. firstName/lastName are strings of at most 100 characters; displayName at most 128; profilePicturePath/address strings; phoneNumber matches ^\+?[0-9]{8,15}$; dateOfBirth is a real YYYY-MM-DD date on or before today's UTC date; gender is MALE/FEMALE/OTHER. Null is allowed for all eight optional fields. Do not infer non-empty constraints for optional names/address/path; invalid types are 400. A body {} is valid and returns the same 200 with no profile/audit writes after authentication.
+- Sensitive fields (firstName, lastName, phoneNumber, address) are plain text over TLS and encrypted server-side using the same representation as register. displayName stays plain text because shop members/reviews use it. profilePicturePath is stored as supplied, and dateOfBirth/gender remain typed values. Never log plaintext sensitive input, token or encryption material. All SQL placeholders are typed bound UUID/byte/text/date/boolean/UTC timestamp parameters, never interpolated input.
+- Preserve omitted fields; explicit null clears them. Derive hasFirstName/hasLastName/hasDisplayName/hasProfilePicturePath/hasPhoneNumber/hasAddress/hasDateOfBirth/hasGender from JSON key presence, never truthiness or non-null value. These flags are server-only parameters, not client fields. For supplied non-null sensitive fields derive encrypted bytes; null stays SQL NULL. On a new information row, omitted nullable fields bind SQL NULL; on an existing row, CASE uses presence flags so omission preserves the old value and null clears it. Do not use COALESCE to implement this distinction.
+- Compute userFieldsPresent from the four m_user field-presence flags and informationFieldsPresent from the four m_user_information flags. Skip the m_user UPDATE entirely when userFieldsPresent is false. Skip information lookup/INSERT/UPDATE when informationFieldsPresent is false; do not create an empty information row merely because a name changed. A supplied information field, including explicit null, is an intentional information write and may create its first row. A no-op or skipped table must not change its audit timestamps.
+- Verify Bearer JWT signature/issuer/audience/expiry/UUID sub before BEGIN; missing/invalid JWT gets generic 401 E10002 `Invalid or expired access token.`. Derive userId from verified sub and accessTokenHash as SHA-256 of the exact JWT. Lock order: BEGIN READ COMMITTED -> lock ACTIVE authen.m_user FOR UPDATE -> capture fresh server UTC now and recheck JWT expiry -> query the ACTIVE stored access token by hash/userId/expiry > now -> only then profile writes. Missing/inactive user or revoked/expired/mismatched credential, including expiry during lock wait, gets the same 401 after ROLLBACK with no writes.
+- The common user lock serializes logout/reset/current-user profile writers. Never authorize a waiter from a pre-lock credential snapshot or transaction-start NOW(). Permission-assignment changes do not replace these current credential checks; this is a self operation under Q13, with no live role lookup or grant change.
+- Update only supplied m_user fields with WHERE id = userId AND row_status = ACTIVE RETURNING user_id. Unexpected zero rows after the locked authorization check is an internal consistency failure (500 with rollback). Do not touch username/email/password or other users. Every write's created_by/updated_by is the verified userId, and updated_at is the fresh post-lock now.
+- Insert is only the first write of the authen.m_user_information row when no non-DELETED row exists; otherwise update that single non-DELETED row. The partial unique index uq_m_user_information_user_id enforces one current row per user. Preserve existing non-DELETED row_status (including INACTIVE/LOCKED/ARCHIVED), as the existing upsert/inquiry contracts do; never reactivate it implicitly. DELETED information is historical: do not update it; a new row may be inserted. Guard existing UPDATE by informationId, userId and row_status <> DELETED, RETURNING information_id; unexpected zero rows is 500 with rollback. INSERT also returns information_id and must create exactly one row. The user lock serializes first writers, so this endpoint adds no 409 outcome.
+- All supplied user/information changes are one transaction. COMMIT must succeed before 200 S10000 `Upsert User Profile Success` with data.userId only, both for first information insert and later update/no-op. On pre-commit timeout ROLLBACK then 408 E90001; on other unexpected failure/constraint error ROLLBACK then generic 500 without bizCode. Never commit one table while the other failed. No 403, 404 or 409 is added; no tokens/passwords/roles/consents are changed.
+- Execution order: validate input -> verify JWT -> derive identity/hash/presence flags/typed encrypted values -> BEGIN -> user lock -> fresh now/current token check -> optional m_user UPDATE -> optional information lookup -> exactly one of INSERT or UPDATE -> COMMIT -> data.userId. Every SQL result returns to Application before branching; no success suffix may run after an aborted guarded write.
+
+#### Scenario correspondence with sequence.wsd
+
+| Scenario                                | Sequence behavior                                          | HTTP             | Durable effects                    |
+| --------------------------------------- | ---------------------------------------------------------- | ---------------- | ---------------------------------- |
+| Invalid input/fixed or unknown field    | No SQL or BEGIN                                            | 400 E10001       | None                               |
+| Invalid JWT                             | No SQL or BEGIN                                            | 401 E10002       | None                               |
+| Missing/inactive user                   | Locked lookup fails; ROLLBACK                              | 401 E10002       | None                               |
+| Credential revoked/expired during wait  | Fresh stored-token/JWT check fails; ROLLBACK               | 401 E10002       | None                               |
+| Only user fields supplied               | Update own user; skip information SQL                      | 200 S10000       | Supplied user fields only          |
+| Only information fields supplied        | Skip user UPDATE; insert missing row or update current row | 200 S10000       | Supplied information fields only   |
+| Both groups supplied                    | User update plus exactly one information write             | 200 S10000       | Both groups atomically             |
+| Empty object                            | Authenticate, skip all profile writes, COMMIT              | 200 S10000       | None, including audit timestamps   |
+| Explicit null vs omission               | Presence flags clear null; absent flags preserve values    | 200 S10000       | Only intentionally supplied fields |
+| Unexpected zero guarded update/insert   | Abort interaction; ROLLBACK before success suffix          | 500              | None                               |
+| Timeout / unexpected pre-commit failure | ROLLBACK both groups                                       | 408 E90001 / 500 | None                               |
 
 #### Example Body Parameters
 
@@ -169,7 +198,7 @@ curl --location --request POST 'https://www.domain.com/api-dev/v1/user/profile/u
         "code": 400,
         "message": "Bad Request",
         "bizCode": "E10001",
-        "bizMessage": "Date of birth must be a date in the past (YYYY-MM-DD).",
+        "bizMessage": "Date of birth must be a real date on or before today's UTC date (YYYY-MM-DD).",
         "requestId": "req-400a1b2c-3d4e-5f6a-7b8c-9d0e1f2a3b4c",
         "timestamp": "2026-11-06T09:40:40.123Z",
         "status": "ERROR"
@@ -225,9 +254,26 @@ curl --location --request POST 'https://www.domain.com/api-dev/v1/user/profile/u
 }
 ```
 
+#### Fail - Internal Server Error
+
+```JSON
+{
+    "status": {
+        "code": 500,
+        "message": "Internal Server Error",
+        "bizMessage": "An unexpected error occurred.",
+        "requestId": "req-profile-review",
+        "timestamp": "2026-11-08T00:00:00.123Z",
+        "status": "ERROR"
+    }
+}
+```
+
 ---
 
 ## Database Relations
+
+SQL blocks are listed in orchestration/branch order. now is captured after the common user lock. The token query precedes every profile write. Presence flags are server-derived; optional table operations are skipped when their field group is absent. INSERT and UPDATE information are mutually exclusive.
 
 ### Table: [authen.m_user](../../../schema/authen/m_user.md)
 
@@ -242,18 +288,35 @@ AND u.row_status = 'ACTIVE'
 FOR UPDATE -- every authen API locks the user row first
 ```
 
+### Table: [authen.t_user_access_token](../../../schema/authen/t_user_access_token.md)
+
+#### QUERY - Check the current access token
+
+```SQL
+SELECT
+    at.id as access_token_id
+FROM authen.t_user_access_token at
+WHERE at.token = '<sequence.accessTokenHash>'
+AND at.user_id = '<sequence.userId>'
+AND at.row_status = 'ACTIVE'
+AND at.expired_at > '<sequence.now>'
+```
+
+### Table: [authen.m_user](../../../schema/authen/m_user.md)
+
 #### UPDATE - Update user
 
 ```SQL
 UPDATE authen.m_user
 SET
     updated_by = '<sequence.userId>',
-    updated_at = NOW() AT TIME ZONE 'UTC',
-    first_name = '<sequence.firstNameBytes>', -- only when firstName is specified (null clears it)
-    last_name = '<sequence.lastNameBytes>', -- only when lastName is specified (null clears it)
-    display_name = '<sequence.displayName>', -- only when displayName is specified (null clears it)
-    profile_picture_path = '<sequence.profilePicturePath>' -- only when profilePicturePath is specified (null clears it)
+    updated_at = '<sequence.now>',
+    first_name = CASE WHEN '<sequence.hasFirstName>' THEN '<sequence.firstNameBytes>' ELSE first_name END, -- only when firstName is specified (null clears it)
+    last_name = CASE WHEN '<sequence.hasLastName>' THEN '<sequence.lastNameBytes>' ELSE last_name END, -- only when lastName is specified (null clears it)
+    display_name = CASE WHEN '<sequence.hasDisplayName>' THEN '<sequence.displayName>' ELSE display_name END, -- only when displayName is specified (null clears it)
+    profile_picture_path = CASE WHEN '<sequence.hasProfilePicturePath>' THEN '<sequence.profilePicturePath>' ELSE profile_picture_path END -- only when profilePicturePath is specified (null clears it)
 WHERE id = '<sequence.userId>'
+AND row_status = 'ACTIVE'
 RETURNING id as user_id
 ```
 
@@ -268,6 +331,8 @@ FROM authen.m_user_information ui
 WHERE ui.user_id = '<sequence.userId>'
 AND ui.row_status <> 'DELETED'
 ```
+
+### Table: [authen.m_user_information](../../../schema/authen/m_user_information.md)
 
 #### INSERT - Create information
 
@@ -288,7 +353,10 @@ VALUES (
     '<sequence.dateOfBirth>',
     '<sequence.gender>'
 )
+RETURNING id as information_id
 ```
+
+### Table: [authen.m_user_information](../../../schema/authen/m_user_information.md)
 
 #### UPDATE - Update information
 
@@ -296,10 +364,13 @@ VALUES (
 UPDATE authen.m_user_information
 SET
     updated_by = '<sequence.userId>',
-    updated_at = NOW() AT TIME ZONE 'UTC',
-    phone_number = '<sequence.phoneNumberBytes>', -- only when phoneNumber is specified (null clears it)
-    address = '<sequence.addressBytes>', -- only when address is specified (null clears it)
-    date_of_birth = '<sequence.dateOfBirth>', -- only when dateOfBirth is specified (null clears it)
-    gender = '<sequence.gender>' -- only when gender is specified (null clears it)
+    updated_at = '<sequence.now>',
+    phone_number = CASE WHEN '<sequence.hasPhoneNumber>' THEN '<sequence.phoneNumberBytes>' ELSE phone_number END, -- only when phoneNumber is specified (null clears it)
+    address = CASE WHEN '<sequence.hasAddress>' THEN '<sequence.addressBytes>' ELSE address END, -- only when address is specified (null clears it)
+    date_of_birth = CASE WHEN '<sequence.hasDateOfBirth>' THEN '<sequence.dateOfBirth>' ELSE date_of_birth END, -- only when dateOfBirth is specified (null clears it)
+    gender = CASE WHEN '<sequence.hasGender>' THEN '<sequence.gender>' ELSE gender END -- only when gender is specified (null clears it)
 WHERE id = '<sequence.informationId>'
+AND user_id = '<sequence.userId>'
+AND row_status <> 'DELETED'
+RETURNING id as information_id
 ```
