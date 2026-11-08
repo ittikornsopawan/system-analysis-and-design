@@ -1,0 +1,311 @@
+<?xml version='1.0' encoding='utf-8'?>
+<mxfile host="app.diagrams.net" agent="Jinny" version="32.6.10" type="device">
+  <diagram id="domain-commerce-model" name="Cart, orders, money &amp; fulfilment concepts">
+    <mxGraphModel dx="1584" dy="1120" grid="1" gridSize="4" page="1" pageScale="1" pageWidth="1584" pageHeight="1120" background="#f5f5f5">
+      <root>
+        <mxCell id="0" />
+        <mxCell id="1" parent="0" />
+        <mxCell id="cart" value="&lt;div style=&quot;text-align:left;font-family:Geist,Arial,sans-serif;font-size:12px;font-weight:600;line-height:14px;&quot;&gt;Customer selection&lt;/div&gt;&lt;div style=&quot;text-align:left;font-family:Geist Mono,Courier New,monospace;font-size:8px;font-weight:400;line-height:12px;color:#5a6580;&quot;&gt;cart · 1 table; no cart header&lt;/div&gt;" style="swimlane;html=1;startSize=36;horizontal=1;container=1;collapsible=0;recursiveResize=0;rounded=1;absoluteArcSize=1;arcSize=8;align=left;verticalAlign=top;spacingLeft=12;spacingTop=3;fillColor=#f5f5f5;swimlaneFillColor=#f5f5f5;strokeColor=#5a6580;fontColor=#5a6580;" parent="1" vertex="1">
+          <mxGeometry as="geometry" x="40" y="160" width="480" height="208" />
+        </mxCell>
+        <mxCell id="sales" value="&lt;div style=&quot;text-align:left;font-family:Geist,Arial,sans-serif;font-size:12px;font-weight:600;line-height:14px;&quot;&gt;Order &amp;amp; snapshots&lt;/div&gt;&lt;div style=&quot;text-align:left;font-family:Geist Mono,Courier New,monospace;font-size:8px;font-weight:400;line-height:12px;color:#5a6580;&quot;&gt;sales · 2 tables&lt;/div&gt;" style="swimlane;html=1;startSize=36;horizontal=1;container=1;collapsible=0;recursiveResize=0;rounded=1;absoluteArcSize=1;arcSize=8;align=left;verticalAlign=top;spacingLeft=12;spacingTop=3;fillColor=#f5f5f5;swimlaneFillColor=#f5f5f5;strokeColor=#5a6580;fontColor=#5a6580;" parent="1" vertex="1">
+          <mxGeometry as="geometry" x="40" y="416" width="480" height="572" />
+        </mxCell>
+        <mxCell id="payment" value="&lt;div style=&quot;text-align:left;font-family:Geist,Arial,sans-serif;font-size:12px;font-weight:600;line-height:14px;&quot;&gt;Financial attempts&lt;/div&gt;&lt;div style=&quot;text-align:left;font-family:Geist Mono,Courier New,monospace;font-size:8px;font-weight:400;line-height:12px;color:#5a6580;&quot;&gt;payment · 1 table&lt;/div&gt;" style="swimlane;html=1;startSize=36;horizontal=1;container=1;collapsible=0;recursiveResize=0;rounded=1;absoluteArcSize=1;arcSize=8;align=left;verticalAlign=top;spacingLeft=12;spacingTop=3;fillColor=#f5f5f5;swimlaneFillColor=#f5f5f5;strokeColor=#5a6580;fontColor=#5a6580;" parent="1" vertex="1">
+          <mxGeometry as="geometry" x="560" y="160" width="464" height="208" />
+        </mxCell>
+        <mxCell id="shipping" value="&lt;div style=&quot;text-align:left;font-family:Geist,Arial,sans-serif;font-size:12px;font-weight:600;line-height:14px;&quot;&gt;Parcel fulfilment&lt;/div&gt;&lt;div style=&quot;text-align:left;font-family:Geist Mono,Courier New,monospace;font-size:8px;font-weight:400;line-height:12px;color:#5a6580;&quot;&gt;shipping · 3 tables&lt;/div&gt;" style="swimlane;html=1;startSize=36;horizontal=1;container=1;collapsible=0;recursiveResize=0;rounded=1;absoluteArcSize=1;arcSize=8;align=left;verticalAlign=top;spacingLeft=12;spacingTop=3;fillColor=#f5f5f5;swimlaneFillColor=#f5f5f5;strokeColor=#5a6580;fontColor=#5a6580;" parent="1" vertex="1">
+          <mxGeometry as="geometry" x="560" y="416" width="464" height="572" />
+        </mxCell>
+        <mxCell id="campaign" value="&lt;div style=&quot;text-align:left;font-family:Geist,Arial,sans-serif;font-size:12px;font-weight:600;line-height:14px;&quot;&gt;Promotion &amp;amp; budget accounting&lt;/div&gt;&lt;div style=&quot;text-align:left;font-family:Geist Mono,Courier New,monospace;font-size:8px;font-weight:400;line-height:12px;color:#5a6580;&quot;&gt;campaign · 6 tables&lt;/div&gt;" style="swimlane;html=1;startSize=36;horizontal=1;container=1;collapsible=0;recursiveResize=0;rounded=1;absoluteArcSize=1;arcSize=8;align=left;verticalAlign=top;spacingLeft=12;spacingTop=3;fillColor=#f5f5f5;swimlaneFillColor=#f5f5f5;strokeColor=#5a6580;fontColor=#5a6580;" parent="1" vertex="1">
+          <mxGeometry as="geometry" x="1064" y="160" width="480" height="828" />
+        </mxCell>
+        <mxCell id="edge-0" value="" style="edgeStyle=none;rounded=1;arcSize=8;html=0;endArrow=none;endFill=1;strokeColor=#4f5d75;strokeWidth=1.2;exitX=0.5;exitY=1;exitDx=0;exitDy=0;entryX=0.5;entryY=0;entryDx=0;entryDy=0;" parent="1" edge="1" source="sales.t_order" target="sales.t_order_item">
+          <mxGeometry as="geometry" relative="1">
+            <mxPoint as="sourcePoint" x="280" y="616" />
+            <mxPoint as="targetPoint" x="280" y="720" />
+          </mxGeometry>
+        </mxCell>
+        <mxCell id="edge-1" value="" style="edgeStyle=none;rounded=1;arcSize=8;html=0;endArrow=none;endFill=1;strokeColor=#4f5d75;strokeWidth=1.2;exitX=1;exitY=0.277778;exitDx=0;exitDy=0;entryX=0;entryY=0.5;entryDx=0;entryDy=0;" parent="1" edge="1" source="sales.t_order" target="payment.t_payment">
+          <mxGeometry as="geometry" relative="1">
+            <mxPoint as="sourcePoint" x="496" y="512" />
+            <mxPoint as="targetPoint" x="584" y="280" />
+            <Array as="points">
+              <mxPoint x="536" y="512" />
+              <mxPoint x="536" y="280" />
+            </Array>
+          </mxGeometry>
+        </mxCell>
+        <mxCell id="edge-2" value="" style="edgeStyle=none;rounded=1;arcSize=8;html=0;endArrow=none;endFill=1;strokeColor=#4f5d75;strokeWidth=1.2;exitX=1;exitY=0.555556;exitDx=0;exitDy=0;entryX=0;entryY=0.714286;entryDx=0;entryDy=0;" parent="1" edge="1" source="sales.t_order" target="shipping.t_shipping">
+          <mxGeometry as="geometry" relative="1">
+            <mxPoint as="sourcePoint" x="496" y="552" />
+            <mxPoint as="targetPoint" x="584" y="552" />
+          </mxGeometry>
+        </mxCell>
+        <mxCell id="edge-3" value="" style="edgeStyle=none;rounded=1;arcSize=8;html=0;endArrow=none;endFill=1;strokeColor=#4f5d75;strokeWidth=1.2;exitX=1;exitY=0.111111;exitDx=0;exitDy=0;entryX=0;entryY=0.714286;entryDx=0;entryDy=0;" parent="1" edge="1" source="sales.t_order_item" target="shipping.t_shipping_item">
+          <mxGeometry as="geometry" relative="1">
+            <mxPoint as="sourcePoint" x="496" y="736" />
+            <mxPoint as="targetPoint" x="584" y="736" />
+          </mxGeometry>
+        </mxCell>
+        <mxCell id="edge-4" value="" style="edgeStyle=none;rounded=1;arcSize=8;html=0;endArrow=none;endFill=1;strokeColor=#4f5d75;strokeWidth=1.2;exitX=0.230769;exitY=1;exitDx=0;exitDy=0;entryX=0.5;entryY=0;entryDx=0;entryDy=0;" parent="1" edge="1" source="shipping.t_shipping" target="shipping.t_shipping_item">
+          <mxGeometry as="geometry" relative="1">
+            <mxPoint as="sourcePoint" x="680" y="584" />
+            <mxPoint as="targetPoint" x="680" y="656" />
+          </mxGeometry>
+        </mxCell>
+        <mxCell id="edge-5" value="" style="edgeStyle=none;rounded=1;arcSize=8;html=0;endArrow=none;endFill=1;strokeColor=#4f5d75;strokeWidth=1.2;exitX=0.769231;exitY=1;exitDx=0;exitDy=0;entryX=0.5;entryY=0;entryDx=0;entryDy=0;" parent="1" edge="1" source="shipping.t_shipping" target="shipping.t_shipping_stop">
+          <mxGeometry as="geometry" relative="1">
+            <mxPoint as="sourcePoint" x="904" y="584" />
+            <mxPoint as="targetPoint" x="904" y="656" />
+          </mxGeometry>
+        </mxCell>
+        <mxCell id="edge-6" value="" style="edgeStyle=none;rounded=1;arcSize=8;html=0;endArrow=none;endFill=1;strokeColor=#4f5d75;strokeWidth=1.2;exitX=1;exitY=0.5;exitDx=0;exitDy=0;entryX=0;entryY=0.5;entryDx=0;entryDy=0;" parent="1" edge="1" source="campaign.m_campaign" target="campaign.m_campaign_budget">
+          <mxGeometry as="geometry" relative="1">
+            <mxPoint as="sourcePoint" x="1280" y="272" />
+            <mxPoint as="targetPoint" x="1320" y="272" />
+          </mxGeometry>
+        </mxCell>
+        <mxCell id="edge-7" value="" style="edgeStyle=none;rounded=1;arcSize=8;html=0;endArrow=none;endFill=1;strokeColor=#4f5d75;strokeWidth=1.2;exitX=0.541667;exitY=1;exitDx=0;exitDy=0;entryX=0.541667;entryY=0;entryDx=0;entryDy=0;" parent="1" edge="1" source="campaign.m_campaign" target="campaign.t_campaign_discount">
+          <mxGeometry as="geometry" relative="1">
+            <mxPoint as="sourcePoint" x="1192" y="328" />
+            <mxPoint as="targetPoint" x="1192" y="416" />
+          </mxGeometry>
+        </mxCell>
+        <mxCell id="edge-8" value="" style="edgeStyle=none;rounded=1;arcSize=8;html=0;endArrow=none;endFill=1;strokeColor=#4f5d75;strokeWidth=1.2;exitX=0.5;exitY=1;exitDx=0;exitDy=0;entryX=0.5;entryY=0;entryDx=0;entryDy=0;" parent="1" edge="1" source="campaign.m_campaign_budget" target="campaign.m_campaign_budget_ledger">
+          <mxGeometry as="geometry" relative="1">
+            <mxPoint as="sourcePoint" x="1424" y="328" />
+            <mxPoint as="targetPoint" x="1424" y="416" />
+          </mxGeometry>
+        </mxCell>
+        <mxCell id="edge-9" value="" style="edgeStyle=none;rounded=1;arcSize=8;html=0;endArrow=none;endFill=1;strokeColor=#4f5d75;strokeWidth=1.2;exitX=0;exitY=0.571429;exitDx=0;exitDy=0;entryX=0;entryY=0.5;entryDx=0;entryDy=0;" parent="1" edge="1" source="campaign.m_campaign" target="campaign.t_campaign_product">
+          <mxGeometry as="geometry" relative="1">
+            <mxPoint as="sourcePoint" x="1088" y="280" />
+            <mxPoint as="targetPoint" x="1088" y="672" />
+            <Array as="points">
+              <mxPoint x="1052" y="280" />
+              <mxPoint x="1052" y="672" />
+            </Array>
+          </mxGeometry>
+        </mxCell>
+        <mxCell id="edge-10" value="" style="edgeStyle=none;rounded=1;arcSize=8;html=0;endArrow=none;endFill=1;strokeColor=#4f5d75;strokeWidth=1.2;exitX=1;exitY=0.785714;exitDx=0;exitDy=0;entryX=0;entryY=0.5;entryDx=0;entryDy=0;" parent="1" edge="1" source="campaign.m_campaign" target="campaign.t_campaign_shop">
+          <mxGeometry as="geometry" relative="1">
+            <mxPoint as="sourcePoint" x="1280" y="304" />
+            <mxPoint as="targetPoint" x="1320" y="672" />
+            <Array as="points">
+              <mxPoint x="1308" y="304" />
+              <mxPoint x="1308" y="672" />
+            </Array>
+          </mxGeometry>
+        </mxCell>
+        <mxCell id="cart.t_cart" value="&lt;div style=&quot;position:relative;box-sizing:border-box;width:432px;height:128px;text-align:left;&quot;&gt;&lt;div style=&quot;position:absolute;left:12px;top:8px;font-size:12px;font-family:Geist,Arial,sans-serif;font-weight:600;line-height:18px;white-space:nowrap;&quot;&gt;Cart line&lt;/div&gt;&lt;div style=&quot;position:absolute;left:12px;top:29px;font-size:8px;font-family:Geist Mono,Courier New,monospace;line-height:12px;white-space:nowrap;color:#5a6580;&quot;&gt;cart.t_cart&lt;/div&gt;&lt;div style=&quot;position:absolute;left:12px;top:43px;font-size:9px;font-family:Geist Mono,Courier New,monospace;line-height:14px;color:#4f5d75;white-space:nowrap;&quot;&gt;# id / user_id / shop_id&lt;/div&gt;&lt;div style=&quot;position:absolute;left:12px;top:57px;font-size:9px;font-family:Geist Mono,Courier New,monospace;line-height:14px;color:#4f5d75;white-space:nowrap;&quot;&gt;product_id / sku_id&lt;/div&gt;&lt;div style=&quot;position:absolute;left:12px;top:71px;font-size:9px;font-family:Geist Mono,Courier New,monospace;line-height:14px;color:#4f5d75;white-space:nowrap;&quot;&gt;quantity &amp;gt; 0&lt;/div&gt;&lt;/div&gt;" style="rounded=1;absoluteArcSize=1;arcSize=8;html=1;whiteSpace=wrap;align=left;verticalAlign=top;spacing=0;overflow=hidden;fillColor=#ffffff;strokeColor=#2d3142;fontSize=12;fontFamily=Geist,Arial,sans-serif;" parent="cart" vertex="1">
+          <mxGeometry as="geometry" x="24" y="56" width="432" height="128" />
+        </mxCell>
+        <mxCell id="sales.t_order" value="&lt;div style=&quot;position:relative;box-sizing:border-box;width:432px;height:144px;text-align:left;&quot;&gt;&lt;div style=&quot;position:absolute;left:12px;top:8px;font-size:12px;font-family:Geist,Arial,sans-serif;font-weight:600;line-height:18px;white-space:nowrap;&quot;&gt;Order&lt;/div&gt;&lt;div style=&quot;position:absolute;left:12px;top:29px;font-size:8px;font-family:Geist Mono,Courier New,monospace;line-height:12px;white-space:nowrap;color:#5a6580;&quot;&gt;sales.t_order&lt;/div&gt;&lt;div style=&quot;position:absolute;left:12px;top:43px;font-size:9px;font-family:Geist Mono,Courier New,monospace;line-height:14px;color:#4f5d75;white-space:nowrap;&quot;&gt;# id / user_id / shop_id&lt;/div&gt;&lt;div style=&quot;position:absolute;left:12px;top:57px;font-size:9px;font-family:Geist Mono,Courier New,monospace;line-height:14px;color:#4f5d75;white-space:nowrap;&quot;&gt;address_id + ship_* snapshot&lt;/div&gt;&lt;div style=&quot;position:absolute;left:12px;top:71px;font-size:9px;font-family:Geist Mono,Courier New,monospace;line-height:14px;color:#4f5d75;white-space:nowrap;&quot;&gt;total_price / total_discount / total_tax&lt;/div&gt;&lt;div style=&quot;position:absolute;left:12px;top:85px;font-size:9px;font-family:Geist Mono,Courier New,monospace;line-height:14px;color:#4f5d75;white-space:nowrap;&quot;&gt;total_shipping / total_amount&lt;/div&gt;&lt;div style=&quot;position:absolute;left:12px;top:99px;font-size:9px;font-family:Geist Mono,Courier New,monospace;line-height:14px;color:#4f5d75;white-space:nowrap;&quot;&gt;status / expires_at&lt;/div&gt;&lt;/div&gt;" style="rounded=1;absoluteArcSize=1;arcSize=8;html=1;whiteSpace=wrap;align=left;verticalAlign=top;spacing=0;overflow=hidden;fillColor=#f1e7e4;strokeColor=#bf4520;fontSize=12;fontFamily=Geist,Arial,sans-serif;" parent="sales" vertex="1">
+          <mxGeometry as="geometry" x="24" y="56" width="432" height="144" />
+        </mxCell>
+        <mxCell id="sales.t_order_item" value="&lt;div style=&quot;position:relative;box-sizing:border-box;width:432px;height:144px;text-align:left;&quot;&gt;&lt;div style=&quot;position:absolute;left:12px;top:8px;font-size:12px;font-family:Geist,Arial,sans-serif;font-weight:600;line-height:18px;white-space:nowrap;&quot;&gt;Order line&lt;/div&gt;&lt;div style=&quot;position:absolute;left:12px;top:29px;font-size:8px;font-family:Geist Mono,Courier New,monospace;line-height:12px;white-space:nowrap;color:#5a6580;&quot;&gt;sales.t_order_item&lt;/div&gt;&lt;div style=&quot;position:absolute;left:12px;top:43px;font-size:9px;font-family:Geist Mono,Courier New,monospace;line-height:14px;color:#4f5d75;white-space:nowrap;&quot;&gt;# id / order_id&lt;/div&gt;&lt;div style=&quot;position:absolute;left:12px;top:57px;font-size:9px;font-family:Geist Mono,Courier New,monospace;line-height:14px;color:#4f5d75;white-space:nowrap;&quot;&gt;shop_id / product_id / sku_id&lt;/div&gt;&lt;div style=&quot;position:absolute;left:12px;top:71px;font-size:9px;font-family:Geist Mono,Courier New,monospace;line-height:14px;color:#4f5d75;white-space:nowrap;&quot;&gt;lot_id / quantity&lt;/div&gt;&lt;div style=&quot;position:absolute;left:12px;top:85px;font-size:9px;font-family:Geist Mono,Courier New,monospace;line-height:14px;color:#4f5d75;white-space:nowrap;&quot;&gt;price / discount / total_price&lt;/div&gt;&lt;div style=&quot;position:absolute;left:12px;top:99px;font-size:9px;font-family:Geist Mono,Courier New,monospace;line-height:14px;color:#4f5d75;white-space:nowrap;&quot;&gt;gross_profit / profit shares&lt;/div&gt;&lt;/div&gt;" style="rounded=1;absoluteArcSize=1;arcSize=8;html=1;whiteSpace=wrap;align=left;verticalAlign=top;spacing=0;overflow=hidden;fillColor=#ffffff;strokeColor=#2d3142;fontSize=12;fontFamily=Geist,Arial,sans-serif;" parent="sales" vertex="1">
+          <mxGeometry as="geometry" x="24" y="304" width="432" height="144" />
+        </mxCell>
+        <mxCell id="payment.t_payment" value="&lt;div style=&quot;position:relative;box-sizing:border-box;width:416px;height:128px;text-align:left;&quot;&gt;&lt;div style=&quot;position:absolute;left:12px;top:8px;font-size:12px;font-family:Geist,Arial,sans-serif;font-weight:600;line-height:18px;white-space:nowrap;&quot;&gt;Payment attempt&lt;/div&gt;&lt;div style=&quot;position:absolute;left:12px;top:29px;font-size:8px;font-family:Geist Mono,Courier New,monospace;line-height:12px;white-space:nowrap;color:#5a6580;&quot;&gt;payment.t_payment&lt;/div&gt;&lt;div style=&quot;position:absolute;left:12px;top:43px;font-size:9px;font-family:Geist Mono,Courier New,monospace;line-height:14px;color:#4f5d75;white-space:nowrap;&quot;&gt;# id / order_id&lt;/div&gt;&lt;div style=&quot;position:absolute;left:12px;top:57px;font-size:9px;font-family:Geist Mono,Courier New,monospace;line-height:14px;color:#4f5d75;white-space:nowrap;&quot;&gt;provider_payment_id / status&lt;/div&gt;&lt;div style=&quot;position:absolute;left:12px;top:71px;font-size:9px;font-family:Geist Mono,Courier New,monospace;line-height:14px;color:#4f5d75;white-space:nowrap;&quot;&gt;amount / currency / refund IDs&lt;/div&gt;&lt;/div&gt;" style="rounded=1;absoluteArcSize=1;arcSize=8;html=1;whiteSpace=wrap;align=left;verticalAlign=top;spacing=0;overflow=hidden;fillColor=#ffffff;strokeColor=#2d3142;fontSize=12;fontFamily=Geist,Arial,sans-serif;" parent="payment" vertex="1">
+          <mxGeometry as="geometry" x="24" y="56" width="416" height="128" />
+        </mxCell>
+        <mxCell id="shipping.t_shipping" value="&lt;div style=&quot;position:relative;box-sizing:border-box;width:416px;height:112px;text-align:left;&quot;&gt;&lt;div style=&quot;position:absolute;left:12px;top:8px;font-size:12px;font-family:Geist,Arial,sans-serif;font-weight:600;line-height:18px;white-space:nowrap;&quot;&gt;Shipment&lt;/div&gt;&lt;div style=&quot;position:absolute;left:12px;top:29px;font-size:8px;font-family:Geist Mono,Courier New,monospace;line-height:12px;white-space:nowrap;color:#5a6580;&quot;&gt;shipping.t_shipping&lt;/div&gt;&lt;div style=&quot;position:absolute;left:12px;top:43px;font-size:9px;font-family:Geist Mono,Courier New,monospace;line-height:14px;color:#4f5d75;white-space:nowrap;&quot;&gt;# id / order_id&lt;/div&gt;&lt;div style=&quot;position:absolute;left:12px;top:57px;font-size:9px;font-family:Geist Mono,Courier New,monospace;line-height:14px;color:#4f5d75;white-space:nowrap;&quot;&gt;status / carrier / tracking&lt;/div&gt;&lt;div style=&quot;position:absolute;left:12px;top:71px;font-size:9px;font-family:Geist Mono,Courier New,monospace;line-height:14px;color:#4f5d75;white-space:nowrap;&quot;&gt;shipped_at / delivered_at&lt;/div&gt;&lt;/div&gt;" style="rounded=1;absoluteArcSize=1;arcSize=8;html=1;whiteSpace=wrap;align=left;verticalAlign=top;spacing=0;overflow=hidden;fillColor=#ffffff;strokeColor=#2d3142;fontSize=12;fontFamily=Geist,Arial,sans-serif;" parent="shipping" vertex="1">
+          <mxGeometry as="geometry" x="24" y="56" width="416" height="112" />
+        </mxCell>
+        <mxCell id="shipping.t_shipping_item" value="&lt;div style=&quot;position:relative;box-sizing:border-box;width:192px;height:112px;text-align:left;&quot;&gt;&lt;div style=&quot;position:absolute;left:12px;top:8px;font-size:12px;font-family:Geist,Arial,sans-serif;font-weight:600;line-height:18px;white-space:nowrap;&quot;&gt;Shipment allocation&lt;/div&gt;&lt;div style=&quot;position:absolute;left:12px;top:29px;font-size:8px;font-family:Geist Mono,Courier New,monospace;line-height:12px;white-space:nowrap;color:#5a6580;&quot;&gt;shipping.t_shipping_item&lt;/div&gt;&lt;div style=&quot;position:absolute;left:12px;top:43px;font-size:9px;font-family:Geist Mono,Courier New,monospace;line-height:14px;color:#4f5d75;white-space:nowrap;&quot;&gt;# id / shipping_id&lt;/div&gt;&lt;div style=&quot;position:absolute;left:12px;top:57px;font-size:9px;font-family:Geist Mono,Courier New,monospace;line-height:14px;color:#4f5d75;white-space:nowrap;&quot;&gt;order_item_id&lt;/div&gt;&lt;div style=&quot;position:absolute;left:12px;top:71px;font-size:9px;font-family:Geist Mono,Courier New,monospace;line-height:14px;color:#4f5d75;white-space:nowrap;&quot;&gt;quantity &amp;gt; 0&lt;/div&gt;&lt;/div&gt;" style="rounded=1;absoluteArcSize=1;arcSize=8;html=1;whiteSpace=wrap;align=left;verticalAlign=top;spacing=0;overflow=hidden;fillColor=#ffffff;strokeColor=#2d3142;fontSize=12;fontFamily=Geist,Arial,sans-serif;" parent="shipping" vertex="1">
+          <mxGeometry as="geometry" x="24" y="240" width="192" height="112" />
+        </mxCell>
+        <mxCell id="shipping.t_shipping_stop" value="&lt;div style=&quot;position:relative;box-sizing:border-box;width:192px;height:112px;text-align:left;&quot;&gt;&lt;div style=&quot;position:absolute;left:12px;top:8px;font-size:12px;font-family:Geist,Arial,sans-serif;font-weight:600;line-height:18px;white-space:nowrap;&quot;&gt;Shipment stop&lt;/div&gt;&lt;div style=&quot;position:absolute;left:12px;top:29px;font-size:8px;font-family:Geist Mono,Courier New,monospace;line-height:12px;white-space:nowrap;color:#5a6580;&quot;&gt;shipping.t_shipping_stop&lt;/div&gt;&lt;div style=&quot;position:absolute;left:12px;top:43px;font-size:9px;font-family:Geist Mono,Courier New,monospace;line-height:14px;color:#4f5d75;white-space:nowrap;&quot;&gt;# id / shipping_id&lt;/div&gt;&lt;div style=&quot;position:absolute;left:12px;top:57px;font-size:9px;font-family:Geist Mono,Courier New,monospace;line-height:14px;color:#4f5d75;white-space:nowrap;&quot;&gt;stop_number / stop_type&lt;/div&gt;&lt;div style=&quot;position:absolute;left:12px;top:71px;font-size:9px;font-family:Geist Mono,Courier New,monospace;line-height:14px;color:#4f5d75;white-space:nowrap;&quot;&gt;location_name&lt;/div&gt;&lt;/div&gt;" style="rounded=1;absoluteArcSize=1;arcSize=8;html=1;whiteSpace=wrap;align=left;verticalAlign=top;spacing=0;overflow=hidden;fillColor=#ffffff;strokeColor=#2d3142;fontSize=12;fontFamily=Geist,Arial,sans-serif;" parent="shipping" vertex="1">
+          <mxGeometry as="geometry" x="248" y="240" width="192" height="112" />
+        </mxCell>
+        <mxCell id="campaign.m_campaign" value="&lt;div style=&quot;position:relative;box-sizing:border-box;width:192px;height:112px;text-align:left;&quot;&gt;&lt;div style=&quot;position:absolute;left:12px;top:8px;font-size:12px;font-family:Geist,Arial,sans-serif;font-weight:600;line-height:18px;white-space:nowrap;&quot;&gt;Campaign&lt;/div&gt;&lt;div style=&quot;position:absolute;left:12px;top:29px;font-size:8px;font-family:Geist Mono,Courier New,monospace;line-height:12px;white-space:nowrap;color:#5a6580;&quot;&gt;campaign.m_campaign&lt;/div&gt;&lt;div style=&quot;position:absolute;left:12px;top:43px;font-size:9px;font-family:Geist Mono,Courier New,monospace;line-height:14px;color:#4f5d75;white-space:nowrap;&quot;&gt;# id / name&lt;/div&gt;&lt;div style=&quot;position:absolute;left:12px;top:57px;font-size:9px;font-family:Geist Mono,Courier New,monospace;line-height:14px;color:#4f5d75;white-space:nowrap;&quot;&gt;start_at / end_at&lt;/div&gt;&lt;/div&gt;" style="rounded=1;absoluteArcSize=1;arcSize=8;html=1;whiteSpace=wrap;align=left;verticalAlign=top;spacing=0;overflow=hidden;fillColor=#ffffff;strokeColor=#2d3142;fontSize=12;fontFamily=Geist,Arial,sans-serif;" parent="campaign" vertex="1">
+          <mxGeometry as="geometry" x="24" y="56" width="192" height="112" />
+        </mxCell>
+        <mxCell id="campaign.m_campaign_budget" value="&lt;div style=&quot;position:relative;box-sizing:border-box;width:208px;height:112px;text-align:left;&quot;&gt;&lt;div style=&quot;position:absolute;left:12px;top:8px;font-size:12px;font-family:Geist,Arial,sans-serif;font-weight:600;line-height:18px;white-space:nowrap;&quot;&gt;Campaign budget&lt;/div&gt;&lt;div style=&quot;position:absolute;left:12px;top:29px;font-size:8px;font-family:Geist Mono,Courier New,monospace;line-height:12px;white-space:nowrap;color:#5a6580;&quot;&gt;campaign.m_campaign_budget&lt;/div&gt;&lt;div style=&quot;position:absolute;left:12px;top:43px;font-size:9px;font-family:Geist Mono,Courier New,monospace;line-height:14px;color:#4f5d75;white-space:nowrap;&quot;&gt;# id / campaign_id&lt;/div&gt;&lt;div style=&quot;position:absolute;left:12px;top:57px;font-size:9px;font-family:Geist Mono,Courier New,monospace;line-height:14px;color:#4f5d75;white-space:nowrap;&quot;&gt;budget / remaining&lt;/div&gt;&lt;/div&gt;" style="rounded=1;absoluteArcSize=1;arcSize=8;html=1;whiteSpace=wrap;align=left;verticalAlign=top;spacing=0;overflow=hidden;fillColor=#ffffff;strokeColor=#2d3142;fontSize=12;fontFamily=Geist,Arial,sans-serif;" parent="campaign" vertex="1">
+          <mxGeometry as="geometry" x="256" y="56" width="208" height="112" />
+        </mxCell>
+        <mxCell id="campaign.t_campaign_discount" value="&lt;div style=&quot;position:relative;box-sizing:border-box;width:192px;height:112px;text-align:left;&quot;&gt;&lt;div style=&quot;position:absolute;left:12px;top:8px;font-size:12px;font-family:Geist,Arial,sans-serif;font-weight:600;line-height:18px;white-space:nowrap;&quot;&gt;Discount rule&lt;/div&gt;&lt;div style=&quot;position:absolute;left:12px;top:29px;font-size:8px;font-family:Geist Mono,Courier New,monospace;line-height:12px;white-space:nowrap;color:#5a6580;&quot;&gt;campaign.t_campaign_discount&lt;/div&gt;&lt;div style=&quot;position:absolute;left:12px;top:43px;font-size:9px;font-family:Geist Mono,Courier New,monospace;line-height:14px;color:#4f5d75;white-space:nowrap;&quot;&gt;# id / campaign_id&lt;/div&gt;&lt;div style=&quot;position:absolute;left:12px;top:57px;font-size:9px;font-family:Geist Mono,Courier New,monospace;line-height:14px;color:#4f5d75;white-space:nowrap;&quot;&gt;discount_type / discount_value&lt;/div&gt;&lt;/div&gt;" style="rounded=1;absoluteArcSize=1;arcSize=8;html=1;whiteSpace=wrap;align=left;verticalAlign=top;spacing=0;overflow=hidden;fillColor=#ffffff;strokeColor=#2d3142;fontSize=12;fontFamily=Geist,Arial,sans-serif;" parent="campaign" vertex="1">
+          <mxGeometry as="geometry" x="24" y="256" width="192" height="112" />
+        </mxCell>
+        <mxCell id="campaign.m_campaign_budget_ledger" value="&lt;div style=&quot;position:relative;box-sizing:border-box;width:208px;height:112px;text-align:left;&quot;&gt;&lt;div style=&quot;position:absolute;left:12px;top:8px;font-size:12px;font-family:Geist,Arial,sans-serif;font-weight:600;line-height:18px;white-space:nowrap;&quot;&gt;Budget movement&lt;/div&gt;&lt;div style=&quot;position:absolute;left:12px;top:29px;font-size:8px;font-family:Geist Mono,Courier New,monospace;line-height:12px;white-space:nowrap;color:#5a6580;&quot;&gt;campaign.m_campaign_budget_ledger&lt;/div&gt;&lt;div style=&quot;position:absolute;left:12px;top:43px;font-size:9px;font-family:Geist Mono,Courier New,monospace;line-height:14px;color:#4f5d75;white-space:nowrap;&quot;&gt;# id / campaign_budget_id&lt;/div&gt;&lt;div style=&quot;position:absolute;left:12px;top:57px;font-size:9px;font-family:Geist Mono,Courier New,monospace;line-height:14px;color:#4f5d75;white-space:nowrap;&quot;&gt;campaign_id / order_id&lt;/div&gt;&lt;div style=&quot;position:absolute;left:12px;top:71px;font-size:9px;font-family:Geist Mono,Courier New,monospace;line-height:14px;color:#4f5d75;white-space:nowrap;&quot;&gt;entry_type / usage / remaining&lt;/div&gt;&lt;/div&gt;" style="rounded=1;absoluteArcSize=1;arcSize=8;html=1;whiteSpace=wrap;align=left;verticalAlign=top;spacing=0;overflow=hidden;fillColor=#ffffff;strokeColor=#2d3142;fontSize=12;fontFamily=Geist,Arial,sans-serif;" parent="campaign" vertex="1">
+          <mxGeometry as="geometry" x="256" y="256" width="208" height="112" />
+        </mxCell>
+        <mxCell id="campaign.t_campaign_product" value="&lt;div style=&quot;position:relative;box-sizing:border-box;width:192px;height:112px;text-align:left;&quot;&gt;&lt;div style=&quot;position:absolute;left:12px;top:8px;font-size:12px;font-family:Geist,Arial,sans-serif;font-weight:600;line-height:18px;white-space:nowrap;&quot;&gt;Product/category target&lt;/div&gt;&lt;div style=&quot;position:absolute;left:12px;top:29px;font-size:8px;font-family:Geist Mono,Courier New,monospace;line-height:12px;white-space:nowrap;color:#5a6580;&quot;&gt;campaign.t_campaign_product&lt;/div&gt;&lt;div style=&quot;position:absolute;left:12px;top:43px;font-size:9px;font-family:Geist Mono,Courier New,monospace;line-height:14px;color:#4f5d75;white-space:nowrap;&quot;&gt;# id / campaign_id&lt;/div&gt;&lt;div style=&quot;position:absolute;left:12px;top:57px;font-size:9px;font-family:Geist Mono,Courier New,monospace;line-height:14px;color:#4f5d75;white-space:nowrap;&quot;&gt;product_id?&lt;/div&gt;&lt;div style=&quot;position:absolute;left:12px;top:71px;font-size:9px;font-family:Geist Mono,Courier New,monospace;line-height:14px;color:#4f5d75;white-space:nowrap;&quot;&gt;product_category_id? (XOR)&lt;/div&gt;&lt;/div&gt;" style="rounded=1;absoluteArcSize=1;arcSize=8;html=1;whiteSpace=wrap;align=left;verticalAlign=top;spacing=0;overflow=hidden;fillColor=#ffffff;strokeColor=#2d3142;fontSize=12;fontFamily=Geist,Arial,sans-serif;" parent="campaign" vertex="1">
+          <mxGeometry as="geometry" x="24" y="456" width="192" height="112" />
+        </mxCell>
+        <mxCell id="campaign.t_campaign_shop" value="&lt;div style=&quot;position:relative;box-sizing:border-box;width:208px;height:112px;text-align:left;&quot;&gt;&lt;div style=&quot;position:absolute;left:12px;top:8px;font-size:12px;font-family:Geist,Arial,sans-serif;font-weight:600;line-height:18px;white-space:nowrap;&quot;&gt;Shop eligibility&lt;/div&gt;&lt;div style=&quot;position:absolute;left:12px;top:29px;font-size:8px;font-family:Geist Mono,Courier New,monospace;line-height:12px;white-space:nowrap;color:#5a6580;&quot;&gt;campaign.t_campaign_shop&lt;/div&gt;&lt;div style=&quot;position:absolute;left:12px;top:43px;font-size:9px;font-family:Geist Mono,Courier New,monospace;line-height:14px;color:#4f5d75;white-space:nowrap;&quot;&gt;# id / campaign_id&lt;/div&gt;&lt;div style=&quot;position:absolute;left:12px;top:57px;font-size:9px;font-family:Geist Mono,Courier New,monospace;line-height:14px;color:#4f5d75;white-space:nowrap;&quot;&gt;shop_id&lt;/div&gt;&lt;/div&gt;" style="rounded=1;absoluteArcSize=1;arcSize=8;html=1;whiteSpace=wrap;align=left;verticalAlign=top;spacing=0;overflow=hidden;fillColor=#ffffff;strokeColor=#2d3142;fontSize=12;fontFamily=Geist,Arial,sans-serif;" parent="campaign" vertex="1">
+          <mxGeometry as="geometry" x="256" y="456" width="208" height="112" />
+        </mxCell>
+        <mxCell id="note-0" value="Order total = price - discount + tax + shipping." style="text;html=0;spacing=0;align=left;verticalAlign=middle;fontSize=10;fontFamily=Geist,Arial,sans-serif;fontColor=#4f5d75;" parent="1" vertex="1">
+          <mxGeometry as="geometry" x="64" y="903" width="320" height="16" />
+        </mxCell>
+        <mxCell id="note-1" value="Item total_price = price x quantity (before discount)." style="text;html=0;spacing=0;align=left;verticalAlign=middle;fontSize=10;fontFamily=Geist,Arial,sans-serif;fontColor=#4f5d75;" parent="1" vertex="1">
+          <mxGeometry as="geometry" x="64" y="927" width="359" height="16" />
+        </mxCell>
+        <mxCell id="note-2" value="Payment history is 0..* per order." style="text;html=0;spacing=0;align=left;verticalAlign=middle;fontSize=10;fontFamily=Geist,Arial,sans-serif;fontColor=#4f5d75;" parent="1" vertex="1">
+          <mxGeometry as="geometry" x="584" y="815" width="229" height="16" />
+        </mxCell>
+        <mxCell id="note-3" value="Only a live filtered subset is limited to one." style="text;html=0;spacing=0;align=left;verticalAlign=middle;fontSize=10;fontFamily=Geist,Arial,sans-serif;fontColor=#4f5d75;" parent="1" vertex="1">
+          <mxGeometry as="geometry" x="584" y="839" width="307" height="16" />
+        </mxCell>
+        <mxCell id="note-4" value="Shipment allocation supports split quantities;" style="text;html=0;spacing=0;align=left;verticalAlign=middle;fontSize=10;fontFamily=Geist,Arial,sans-serif;fontColor=#4f5d75;" parent="1" vertex="1">
+          <mxGeometry as="geometry" x="584" y="887" width="307" height="16" />
+        </mxCell>
+        <mxCell id="note-5" value="the FK does not enforce shipment quantity sums." style="text;html=0;spacing=0;align=left;verticalAlign=middle;fontSize=10;fontFamily=Geist,Arial,sans-serif;fontColor=#4f5d75;" parent="1" vertex="1">
+          <mxGeometry as="geometry" x="584" y="911" width="313.5" height="16" />
+        </mxCell>
+        <mxCell id="note-6" value="Budget movement: RESERVE / RELEASE." style="text;html=0;spacing=0;align=left;verticalAlign=middle;fontSize=10;fontFamily=Geist,Arial,sans-serif;fontColor=#4f5d75;" parent="1" vertex="1">
+          <mxGeometry as="geometry" x="1088" y="803" width="235.5" height="16" />
+        </mxCell>
+        <mxCell id="note-7" value="One entry per budget + order + type." style="text;html=0;spacing=0;align=left;verticalAlign=middle;fontSize=10;fontFamily=Geist,Arial,sans-serif;fontColor=#4f5d75;" parent="1" vertex="1">
+          <mxGeometry as="geometry" x="1088" y="827" width="242" height="16" />
+        </mxCell>
+        <mxCell id="note-8" value="Eligibility chooses product XOR category." style="text;html=0;spacing=0;align=left;verticalAlign=middle;fontSize=10;fontFamily=Geist,Arial,sans-serif;fontColor=#4f5d75;" parent="1" vertex="1">
+          <mxGeometry as="geometry" x="1088" y="875" width="274.5" height="16" />
+        </mxCell>
+        <mxCell id="note-9" value="Tax formula and rounding are not in DDL." style="text;html=0;spacing=0;align=left;verticalAlign=middle;fontSize=10;fontFamily=Geist,Arial,sans-serif;fontColor=#4f5d75;" parent="1" vertex="1">
+          <mxGeometry as="geometry" x="1088" y="899" width="268" height="16" />
+        </mxCell>
+        <mxCell id="note-10" value="13 tables. Selected 11 / 27 FK associations. Cart -&gt; order is a use-case conversion, not a persisted FK relation." style="text;html=0;spacing=0;align=left;verticalAlign=middle;fontSize=11;fontFamily=Geist,Arial,sans-serif;fontColor=#4f5d75;" parent="1" vertex="1">
+          <mxGeometry as="geometry" x="40" y="1000" width="815.95" height="17" />
+        </mxCell>
+        <mxCell id="page-eyebrow" value="E-COMMERCE / DATABASE-GROUNDED CONCEPTUAL DOMAIN MODEL" style="text;html=0;spacing=0;align=left;verticalAlign=middle;fontSize=8;fontFamily=Geist Mono,Courier New,monospace;fontColor=#5a6580;" parent="1" vertex="1">
+          <mxGeometry as="geometry" x="40" y="38" width="1504" height="16" />
+        </mxCell>
+        <mxCell id="page-title" value="Cart, orders, money &amp; fulfilment concepts" style="text;html=0;spacing=0;align=left;verticalAlign=middle;fontSize=32;fontFamily=Instrument Serif,Georgia,serif;fontColor=#2d3142;" parent="1" vertex="1">
+          <mxGeometry as="geometry" x="40" y="54" width="1504" height="40" />
+        </mxCell>
+        <mxCell id="page-subtitle" value="Named entities inside schema groups. Selected associations show all-row cardinality, not request order or aggregate ownership." style="text;html=0;spacing=0;align=left;verticalAlign=middle;fontSize=12;fontFamily=Geist,Arial,sans-serif;fontColor=#4f5d75;" parent="1" vertex="1">
+          <mxGeometry as="geometry" x="40" y="102" width="1504" height="20" />
+        </mxCell>
+        <mxCell id="page-source" value="Source: db/migrations/up + doc/schema | 53 tables / 11 schemas / 75 FK columns | Full references in companion Markdown" style="text;html=0;spacing=0;align=left;verticalAlign=middle;fontSize=9;fontFamily=Geist Mono,Courier New,monospace;fontColor=#5a6580;" parent="1" vertex="1">
+          <mxGeometry as="geometry" x="40" y="1025" width="1504" height="17" />
+        </mxCell>
+        <mxCell id="legend-line" value="" style="shape=line;strokeColor=#bfc0c0;" parent="1" vertex="1">
+          <mxGeometry as="geometry" x="40" y="1052" width="1504" height="1" />
+        </mxCell>
+        <mxCell id="legend-0" value="Entity / association entity" style="text;html=0;spacing=0;align=left;verticalAlign=middle;fontSize=9;fontFamily=Geist,Arial,sans-serif;fontColor=#4f5d75;" parent="1" vertex="1">
+          <mxGeometry as="geometry" x="40" y="1063" width="292.8" height="20" />
+        </mxCell>
+        <mxCell id="legend-1" value="Line = selected FK association" style="text;html=0;spacing=0;align=left;verticalAlign=middle;fontSize=9;fontFamily=Geist,Arial,sans-serif;fontColor=#4f5d75;" parent="1" vertex="1">
+          <mxGeometry as="geometry" x="340.8" y="1063" width="292.8" height="20" />
+        </mxCell>
+        <mxCell id="legend-2" value="1 or 0..1 at parent end" style="text;html=0;spacing=0;align=left;verticalAlign=middle;fontSize=9;fontFamily=Geist,Arial,sans-serif;fontColor=#4f5d75;" parent="1" vertex="1">
+          <mxGeometry as="geometry" x="641.6" y="1063" width="292.8" height="20" />
+        </mxCell>
+        <mxCell id="legend-3" value="0..* = historical children" style="text;html=0;spacing=0;align=left;verticalAlign=middle;fontSize=9;fontFamily=Geist,Arial,sans-serif;fontColor=#4f5d75;" parent="1" vertex="1">
+          <mxGeometry as="geometry" x="942.4" y="1063" width="292.8" height="20" />
+        </mxCell>
+        <mxCell id="legend-4" value="Editorial focus; not aggregate root" style="text;html=0;spacing=0;align=left;verticalAlign=middle;fontSize=9;fontFamily=Geist,Arial,sans-serif;fontColor=#4f5d75;" parent="1" vertex="1">
+          <mxGeometry as="geometry" x="1243.2" y="1063" width="292.8" height="20" />
+        </mxCell>
+        <mxCell id="divider-cart.t_cart" value="" style="shape=line;strokeColor=#bfc0c0;strokeWidth=0.6;" parent="cart.t_cart" vertex="1">
+          <mxGeometry as="geometry" x="8" y="44" width="416" height="0" />
+        </mxCell>
+        <mxCell id="divider-sales.t_order" value="" style="shape=line;strokeColor=#bfc0c0;strokeWidth=0.6;" parent="sales.t_order" vertex="1">
+          <mxGeometry as="geometry" x="8" y="44" width="416" height="0" />
+        </mxCell>
+        <mxCell id="divider-sales.t_order_item" value="" style="shape=line;strokeColor=#bfc0c0;strokeWidth=0.6;" parent="sales.t_order_item" vertex="1">
+          <mxGeometry as="geometry" x="8" y="44" width="416" height="0" />
+        </mxCell>
+        <mxCell id="divider-payment.t_payment" value="" style="shape=line;strokeColor=#bfc0c0;strokeWidth=0.6;" parent="payment.t_payment" vertex="1">
+          <mxGeometry as="geometry" x="8" y="44" width="400" height="0" />
+        </mxCell>
+        <mxCell id="divider-shipping.t_shipping" value="" style="shape=line;strokeColor=#bfc0c0;strokeWidth=0.6;" parent="shipping.t_shipping" vertex="1">
+          <mxGeometry as="geometry" x="8" y="44" width="400" height="0" />
+        </mxCell>
+        <mxCell id="divider-shipping.t_shipping_item" value="" style="shape=line;strokeColor=#bfc0c0;strokeWidth=0.6;" parent="shipping.t_shipping_item" vertex="1">
+          <mxGeometry as="geometry" x="8" y="44" width="176" height="0" />
+        </mxCell>
+        <mxCell id="divider-shipping.t_shipping_stop" value="" style="shape=line;strokeColor=#bfc0c0;strokeWidth=0.6;" parent="shipping.t_shipping_stop" vertex="1">
+          <mxGeometry as="geometry" x="8" y="44" width="176" height="0" />
+        </mxCell>
+        <mxCell id="divider-campaign.m_campaign" value="" style="shape=line;strokeColor=#bfc0c0;strokeWidth=0.6;" parent="campaign.m_campaign" vertex="1">
+          <mxGeometry as="geometry" x="8" y="44" width="176" height="0" />
+        </mxCell>
+        <mxCell id="divider-campaign.m_campaign_budget" value="" style="shape=line;strokeColor=#bfc0c0;strokeWidth=0.6;" parent="campaign.m_campaign_budget" vertex="1">
+          <mxGeometry as="geometry" x="8" y="44" width="192" height="0" />
+        </mxCell>
+        <mxCell id="divider-campaign.t_campaign_discount" value="" style="shape=line;strokeColor=#bfc0c0;strokeWidth=0.6;" parent="campaign.t_campaign_discount" vertex="1">
+          <mxGeometry as="geometry" x="8" y="44" width="176" height="0" />
+        </mxCell>
+        <mxCell id="divider-campaign.m_campaign_budget_ledger" value="" style="shape=line;strokeColor=#bfc0c0;strokeWidth=0.6;" parent="campaign.m_campaign_budget_ledger" vertex="1">
+          <mxGeometry as="geometry" x="8" y="44" width="192" height="0" />
+        </mxCell>
+        <mxCell id="divider-campaign.t_campaign_product" value="" style="shape=line;strokeColor=#bfc0c0;strokeWidth=0.6;" parent="campaign.t_campaign_product" vertex="1">
+          <mxGeometry as="geometry" x="8" y="44" width="176" height="0" />
+        </mxCell>
+        <mxCell id="divider-campaign.t_campaign_shop" value="" style="shape=line;strokeColor=#bfc0c0;strokeWidth=0.6;" parent="campaign.t_campaign_shop" vertex="1">
+          <mxGeometry as="geometry" x="8" y="44" width="192" height="0" />
+        </mxCell>
+        <mxCell id="card-0-source" value="1" style="text;html=0;align=center;verticalAlign=middle;spacing=0;fontSize=8;fontFamily=Geist Mono,Courier New,monospace;fontColor=#4f5d75;fillColor=#f5f5f5;strokeColor=none;" parent="sales" vertex="1">
+          <mxGeometry as="geometry" x="216" y="206" width="16" height="12" />
+        </mxCell>
+        <mxCell id="card-0-target" value="0..*" style="text;html=0;align=center;verticalAlign=middle;spacing=0;fontSize=8;fontFamily=Geist Mono,Courier New,monospace;fontColor=#4f5d75;fillColor=#f5f5f5;strokeColor=none;" parent="sales" vertex="1">
+          <mxGeometry as="geometry" x="204" y="286" width="28" height="12" />
+        </mxCell>
+        <mxCell id="card-1-source" value="1" style="text;html=0;align=center;verticalAlign=middle;spacing=0;fontSize=8;fontFamily=Geist Mono,Courier New,monospace;fontColor=#4f5d75;fillColor=#f5f5f5;strokeColor=none;" parent="1" vertex="1">
+          <mxGeometry as="geometry" x="500" y="492" width="16" height="12" />
+        </mxCell>
+        <mxCell id="card-1-target" value="0..*" style="text;html=0;align=center;verticalAlign=middle;spacing=0;fontSize=8;fontFamily=Geist Mono,Courier New,monospace;fontColor=#4f5d75;fillColor=#f5f5f5;strokeColor=none;" parent="1" vertex="1">
+          <mxGeometry as="geometry" x="554" y="260" width="28" height="12" />
+        </mxCell>
+        <mxCell id="card-2-source" value="1" style="text;html=0;align=center;verticalAlign=middle;spacing=0;fontSize=8;fontFamily=Geist Mono,Courier New,monospace;fontColor=#4f5d75;fillColor=#f5f5f5;strokeColor=none;" parent="1" vertex="1">
+          <mxGeometry as="geometry" x="500" y="532" width="16" height="12" />
+        </mxCell>
+        <mxCell id="card-2-target" value="0..*" style="text;html=0;align=center;verticalAlign=middle;spacing=0;fontSize=8;fontFamily=Geist Mono,Courier New,monospace;fontColor=#4f5d75;fillColor=#f5f5f5;strokeColor=none;" parent="1" vertex="1">
+          <mxGeometry as="geometry" x="554" y="532" width="28" height="12" />
+        </mxCell>
+        <mxCell id="card-3-source" value="1" style="text;html=0;align=center;verticalAlign=middle;spacing=0;fontSize=8;fontFamily=Geist Mono,Courier New,monospace;fontColor=#4f5d75;fillColor=#f5f5f5;strokeColor=none;" parent="1" vertex="1">
+          <mxGeometry as="geometry" x="500" y="716" width="16" height="12" />
+        </mxCell>
+        <mxCell id="card-3-target" value="0..*" style="text;html=0;align=center;verticalAlign=middle;spacing=0;fontSize=8;fontFamily=Geist Mono,Courier New,monospace;fontColor=#4f5d75;fillColor=#f5f5f5;strokeColor=none;" parent="1" vertex="1">
+          <mxGeometry as="geometry" x="554" y="716" width="28" height="12" />
+        </mxCell>
+        <mxCell id="card-4-source" value="1" style="text;html=0;align=center;verticalAlign=middle;spacing=0;fontSize=8;fontFamily=Geist Mono,Courier New,monospace;fontColor=#4f5d75;fillColor=#f5f5f5;strokeColor=none;" parent="shipping" vertex="1">
+          <mxGeometry as="geometry" x="96" y="174" width="16" height="12" />
+        </mxCell>
+        <mxCell id="card-4-target" value="0..*" style="text;html=0;align=center;verticalAlign=middle;spacing=0;fontSize=8;fontFamily=Geist Mono,Courier New,monospace;fontColor=#4f5d75;fillColor=#f5f5f5;strokeColor=none;" parent="shipping" vertex="1">
+          <mxGeometry as="geometry" x="84" y="222" width="28" height="12" />
+        </mxCell>
+        <mxCell id="card-5-source" value="1" style="text;html=0;align=center;verticalAlign=middle;spacing=0;fontSize=8;fontFamily=Geist Mono,Courier New,monospace;fontColor=#4f5d75;fillColor=#f5f5f5;strokeColor=none;" parent="shipping" vertex="1">
+          <mxGeometry as="geometry" x="320" y="174" width="16" height="12" />
+        </mxCell>
+        <mxCell id="card-5-target" value="0..*" style="text;html=0;align=center;verticalAlign=middle;spacing=0;fontSize=8;fontFamily=Geist Mono,Courier New,monospace;fontColor=#4f5d75;fillColor=#f5f5f5;strokeColor=none;" parent="shipping" vertex="1">
+          <mxGeometry as="geometry" x="308" y="222" width="28" height="12" />
+        </mxCell>
+        <mxCell id="card-6-source" value="1" style="text;html=0;align=center;verticalAlign=middle;spacing=0;fontSize=8;fontFamily=Geist Mono,Courier New,monospace;fontColor=#4f5d75;fillColor=#f5f5f5;strokeColor=none;" parent="campaign" vertex="1">
+          <mxGeometry as="geometry" x="220" y="92" width="16" height="12" />
+        </mxCell>
+        <mxCell id="card-6-target" value="0..*" style="text;html=0;align=center;verticalAlign=middle;spacing=0;fontSize=8;fontFamily=Geist Mono,Courier New,monospace;fontColor=#4f5d75;fillColor=#f5f5f5;strokeColor=none;" parent="campaign" vertex="1">
+          <mxGeometry as="geometry" x="226" y="120" width="28" height="12" />
+        </mxCell>
+        <mxCell id="card-7-source" value="1" style="text;html=0;align=center;verticalAlign=middle;spacing=0;fontSize=8;fontFamily=Geist Mono,Courier New,monospace;fontColor=#4f5d75;fillColor=#f5f5f5;strokeColor=none;" parent="campaign" vertex="1">
+          <mxGeometry as="geometry" x="104" y="174" width="16" height="12" />
+        </mxCell>
+        <mxCell id="card-7-target" value="0..*" style="text;html=0;align=center;verticalAlign=middle;spacing=0;fontSize=8;fontFamily=Geist Mono,Courier New,monospace;fontColor=#4f5d75;fillColor=#f5f5f5;strokeColor=none;" parent="campaign" vertex="1">
+          <mxGeometry as="geometry" x="92" y="238" width="28" height="12" />
+        </mxCell>
+        <mxCell id="card-8-source" value="1" style="text;html=0;align=center;verticalAlign=middle;spacing=0;fontSize=8;fontFamily=Geist Mono,Courier New,monospace;fontColor=#4f5d75;fillColor=#f5f5f5;strokeColor=none;" parent="campaign" vertex="1">
+          <mxGeometry as="geometry" x="336" y="174" width="16" height="12" />
+        </mxCell>
+        <mxCell id="card-8-target" value="0..*" style="text;html=0;align=center;verticalAlign=middle;spacing=0;fontSize=8;fontFamily=Geist Mono,Courier New,monospace;fontColor=#4f5d75;fillColor=#f5f5f5;strokeColor=none;" parent="campaign" vertex="1">
+          <mxGeometry as="geometry" x="324" y="238" width="28" height="12" />
+        </mxCell>
+        <mxCell id="card-9-source" value="1" style="text;html=0;align=center;verticalAlign=middle;spacing=0;fontSize=8;fontFamily=Geist Mono,Courier New,monospace;fontColor=#4f5d75;fillColor=#f5f5f5;strokeColor=none;" parent="campaign" vertex="1">
+          <mxGeometry as="geometry" x="4" y="100" width="16" height="12" />
+        </mxCell>
+        <mxCell id="card-9-target" value="0..*" style="text;html=0;align=center;verticalAlign=middle;spacing=0;fontSize=8;fontFamily=Geist Mono,Courier New,monospace;fontColor=#4f5d75;fillColor=#f5f5f5;strokeColor=none;" parent="campaign" vertex="1">
+          <mxGeometry as="geometry" x="-6" y="492" width="28" height="12" />
+        </mxCell>
+        <mxCell id="card-10-source" value="1" style="text;html=0;align=center;verticalAlign=middle;spacing=0;fontSize=8;fontFamily=Geist Mono,Courier New,monospace;fontColor=#4f5d75;fillColor=#f5f5f5;strokeColor=none;" parent="campaign" vertex="1">
+          <mxGeometry as="geometry" x="220" y="152" width="16" height="12" />
+        </mxCell>
+        <mxCell id="card-10-target" value="0..*" style="text;html=0;align=center;verticalAlign=middle;spacing=0;fontSize=8;fontFamily=Geist Mono,Courier New,monospace;fontColor=#4f5d75;fillColor=#f5f5f5;strokeColor=none;" parent="campaign" vertex="1">
+          <mxGeometry as="geometry" x="208" y="442" width="28" height="12" />
+        </mxCell>
+      </root>
+    </mxGraphModel>
+  </diagram>
+</mxfile>

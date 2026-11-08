@@ -1,0 +1,137 @@
+<!DOCTYPE html>
+<html lang="en"><head><meta charset="UTF-8"><meta name="viewport" content="width=device-width,initial-scale=1.0">
+<title>E-commerce domain map from the database</title><link href="https://fonts.googleapis.com/css2?family=Instrument+Serif:ital@0;1&amp;family=Geist:wght@400;500;600&amp;family=Geist+Mono:wght@400;500;600&amp;display=swap" rel="stylesheet">
+<style>
+* {box-sizing:border-box;} body {margin:0;padding:24px;background:#f5f5f5;color:#2d3142;font-family:'Geist',Arial,sans-serif;}
+main {width:100%;max-width:1584px;min-width:0;margin:0 auto;} h1 {font-family:'Instrument Serif',Georgia,serif;font-size:32px;font-weight:400;}
+.diagram-container {width:100%;overflow-x:auto;} svg {display:block;width:100%;min-width:1584px;}
+.source-note {font-size:12px;line-height:1.6;color:#4f5d75;} @media print {body {padding:0;} .diagram-container {overflow-x:visible;} svg {min-width:0;}}
+</style></head><body><main><h1>E-commerce domain map from the database</h1><div class="diagram-container"><svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 1584 1120" role="img" aria-labelledby="domain-model-title domain-model-desc">
+<title id="domain-model-title">E-commerce domain map from the database</title>
+<desc id="domain-model-desc">E-commerce domain map from the database with business concepts, selected attributes and database-evidenced relationships grouped by SQL schema.</desc>
+<defs>
+<marker id="domain-model-arrow" markerWidth="8" markerHeight="6" refX="7" refY="3" orient="auto"><polygon points="0 0,8 3,0 6" fill="#4f5d75"/></marker>
+<marker id="domain-model-accent" markerWidth="8" markerHeight="6" refX="7" refY="3" orient="auto"><polygon points="0 0,8 3,0 6" fill="#bf4520"/></marker>
+<marker id="domain-model-link" markerWidth="8" markerHeight="6" refX="7" refY="3" orient="auto"><polygon points="0 0,8 3,0 6" fill="#2e5aa8"/></marker>
+</defs>
+<rect width="1584" height="1120" fill="#f5f5f5"/>
+<g data-container-id="access" data-parent="root"><rect data-role="container-bounds" x="40" y="160" width="456" height="828" rx="4" fill="#f5f5f5" stroke="#5a6580" stroke-width="1"/>
+<line x1="40" y1="196" x2="496" y2="196" stroke="#bfc0c0" stroke-width="0.8"/>
+<text x="52" y="176" font-size="12" font-family="Geist,Arial,sans-serif" font-weight="600" fill="#5a6580" text-anchor="start">Identity &amp; governance</text>
+<text x="52" y="189" font-size="8" font-family="Geist Mono,Courier New,monospace" font-weight="400" fill="#5a6580" text-anchor="start">21 TABLES · 4 SCHEMAS</text>
+</g>
+<g data-container-id="merch" data-parent="root"><rect data-role="container-bounds" x="536" y="160" width="464" height="828" rx="4" fill="#f5f5f5" stroke="#5a6580" stroke-width="1"/>
+<line x1="536" y1="196" x2="1000" y2="196" stroke="#bfc0c0" stroke-width="0.8"/>
+<text x="548" y="176" font-size="12" font-family="Geist,Arial,sans-serif" font-weight="600" fill="#5a6580" text-anchor="start">Merchandising</text>
+<text x="548" y="189" font-size="8" font-family="Geist Mono,Courier New,monospace" font-weight="400" fill="#5a6580" text-anchor="start">19 TABLES · 2 SCHEMAS</text>
+</g>
+<g data-container-id="trade" data-parent="root"><rect data-role="container-bounds" x="1040" y="160" width="504" height="828" rx="4" fill="#f5f5f5" stroke="#5a6580" stroke-width="1"/>
+<line x1="1040" y1="196" x2="1544" y2="196" stroke="#bfc0c0" stroke-width="0.8"/>
+<text x="1052" y="176" font-size="12" font-family="Geist,Arial,sans-serif" font-weight="600" fill="#5a6580" text-anchor="start">Commerce</text>
+<text x="1052" y="189" font-size="8" font-family="Geist Mono,Courier New,monospace" font-weight="400" fill="#5a6580" text-anchor="start">13 TABLES · 5 SCHEMAS</text>
+</g>
+<path d="M 268 344 L 268 392" fill="none" stroke="#4f5d75" stroke-width="1.2"/>
+<path d="M 64 632 L 58 632 Q 52 632 52 626 L 52 286 Q 52 280 58 280 L 64 280" fill="none" stroke="#4f5d75" stroke-width="1.2"/>
+<path d="M 768 392 L 768 472" fill="none" stroke="#4f5d75" stroke-width="1.2"/>
+<path d="M 976 552 L 1004 552 Q 1012 552 1012 544 L 1012 456 Q 1012 448 1020 448 L 1064 448" fill="none" stroke="#4f5d75" stroke-width="1.2"/>
+<path d="M 1296 472 L 1296 512" fill="none" stroke="#4f5d75" stroke-width="1.2"/>
+<path d="M 1520 440 L 1532 440 Q 1540 440 1540 448 L 1540 696 Q 1540 704 1532 704 L 1520 704" fill="none" stroke="#4f5d75" stroke-width="1.2"/>
+<path d="M 1520 400 L 1548 400 Q 1556 400 1556 408 L 1556 848 Q 1556 856 1548 856 L 1520 856" fill="none" stroke="#4f5d75" stroke-width="1.2"/>
+<g data-node-id="identity" data-parent="access">
+<rect data-role="node-bounds" x="64" y="216" width="408" height="128" rx="4" fill="#ffffff" stroke="#2d3142" stroke-width="1"/>
+<text x="76" y="238" font-size="12" font-family="Geist,Arial,sans-serif" font-weight="600" fill="#2d3142" text-anchor="start">Identity</text>
+<text x="76" y="254" font-size="8" font-family="Geist Mono,Courier New,monospace" font-weight="400" fill="#5a6580" text-anchor="start">authen · 10 tables</text>
+<text x="76" y="270" font-size="11" font-family="Geist,Arial,sans-serif" font-weight="400" fill="#4f5d75" text-anchor="start">User / credential / reset request</text>
+<text x="76" y="284" font-size="11" font-family="Geist,Arial,sans-serif" font-weight="400" fill="#4f5d75" text-anchor="start">Profile / addresses / tokens / account evidence</text>
+</g>
+<g data-node-id="authorization" data-parent="access">
+<rect data-role="node-bounds" x="64" y="392" width="408" height="128" rx="4" fill="#ffffff" stroke="#2d3142" stroke-width="1"/>
+<text x="76" y="414" font-size="12" font-family="Geist,Arial,sans-serif" font-weight="600" fill="#2d3142" text-anchor="start">Authorization</text>
+<text x="76" y="430" font-size="8" font-family="Geist Mono,Courier New,monospace" font-weight="400" fill="#5a6580" text-anchor="start">author · 8 tables</text>
+<text x="76" y="446" font-size="11" font-family="Geist,Arial,sans-serif" font-weight="400" fill="#4f5d75" text-anchor="start">Roles / permissions / scopes</text>
+<text x="76" y="460" font-size="11" font-family="Geist,Arial,sans-serif" font-weight="400" fill="#4f5d75" text-anchor="start">Role and direct scoped grants</text>
+</g>
+<g data-node-id="consent" data-parent="access">
+<rect data-role="node-bounds" x="64" y="568" width="408" height="128" rx="4" fill="#ffffff" stroke="#2d3142" stroke-width="1"/>
+<text x="76" y="590" font-size="12" font-family="Geist,Arial,sans-serif" font-weight="600" fill="#2d3142" text-anchor="start">Consent</text>
+<text x="76" y="606" font-size="8" font-family="Geist Mono,Courier New,monospace" font-weight="400" fill="#5a6580" text-anchor="start">consent · 2 tables</text>
+<text x="76" y="622" font-size="11" font-family="Geist,Arial,sans-serif" font-weight="400" fill="#4f5d75" text-anchor="start">Consent type + published version</text>
+<text x="76" y="636" font-size="11" font-family="Geist,Arial,sans-serif" font-weight="400" fill="#4f5d75" text-anchor="start">User acknowledgement stays in authen</text>
+</g>
+<g data-node-id="keys" data-parent="access">
+<rect data-role="node-bounds" x="64" y="744" width="408" height="128" rx="4" fill="#ffffff" stroke="#2d3142" stroke-width="1"/>
+<text x="76" y="766" font-size="12" font-family="Geist,Arial,sans-serif" font-weight="600" fill="#2d3142" text-anchor="start">Key material</text>
+<text x="76" y="782" font-size="8" font-family="Geist Mono,Courier New,monospace" font-weight="400" fill="#5a6580" text-anchor="start">public · 1 technical-support table</text>
+<text x="76" y="798" font-size="11" font-family="Geist,Arial,sans-serif" font-weight="400" fill="#4f5d75" text-anchor="start">Key name + binary material + effective period</text>
+<text x="76" y="812" font-size="11" font-family="Geist,Arial,sans-serif" font-weight="400" fill="#4f5d75" text-anchor="start">Not a business aggregate</text>
+</g>
+<g data-node-id="catalog" data-parent="merch">
+<rect data-role="node-bounds" x="560" y="216" width="416" height="176" rx="4" fill="#ffffff" stroke="#2d3142" stroke-width="1"/>
+<text x="572" y="238" font-size="12" font-family="Geist,Arial,sans-serif" font-weight="600" fill="#2d3142" text-anchor="start">Product catalog</text>
+<text x="572" y="254" font-size="8" font-family="Geist Mono,Courier New,monospace" font-weight="400" fill="#5a6580" text-anchor="start">product · 11 tables</text>
+<text x="572" y="270" font-size="11" font-family="Geist,Arial,sans-serif" font-weight="400" fill="#4f5d75" text-anchor="start">Type / category / brand / product</text>
+<text x="572" y="284" font-size="11" font-family="Geist,Arial,sans-serif" font-weight="400" fill="#4f5d75" text-anchor="start">Attributes / options / values / SKU selections</text>
+<text x="572" y="298" font-size="11" font-family="Geist,Arial,sans-serif" font-weight="400" fill="#4f5d75" text-anchor="start">Shared product definition; no shop stock</text>
+</g>
+<g data-node-id="offers" data-parent="merch">
+<rect data-role="node-bounds" x="560" y="472" width="416" height="176" rx="4" fill="#ffffff" stroke="#2d3142" stroke-width="1"/>
+<text x="572" y="494" font-size="12" font-family="Geist,Arial,sans-serif" font-weight="600" fill="#2d3142" text-anchor="start">Merchant offers &amp; inventory</text>
+<text x="572" y="510" font-size="8" font-family="Geist Mono,Courier New,monospace" font-weight="400" fill="#5a6580" text-anchor="start">shop · 8 tables</text>
+<text x="572" y="526" font-size="11" font-family="Geist,Arial,sans-serif" font-weight="400" fill="#4f5d75" text-anchor="start">Shop / membership / images / listing</text>
+<text x="572" y="540" font-size="11" font-family="Geist,Arial,sans-serif" font-weight="400" fill="#4f5d75" text-anchor="start">Shop SKU / stock lot / review</text>
+<text x="572" y="554" font-size="11" font-family="Geist,Arial,sans-serif" font-weight="400" fill="#4f5d75" text-anchor="start">Lot owns selling price, cost and quantity</text>
+</g>
+<g data-node-id="cart" data-parent="trade">
+<rect data-role="node-bounds" x="1064" y="216" width="456" height="104" rx="4" fill="#ffffff" stroke="#2d3142" stroke-width="1"/>
+<text x="1076" y="238" font-size="12" font-family="Geist,Arial,sans-serif" font-weight="600" fill="#2d3142" text-anchor="start">Cart selection</text>
+<text x="1076" y="254" font-size="8" font-family="Geist Mono,Courier New,monospace" font-weight="400" fill="#5a6580" text-anchor="start">cart · 1 table</text>
+<text x="1076" y="270" font-size="11" font-family="Geist,Arial,sans-serif" font-weight="400" fill="#4f5d75" text-anchor="start">Cart line per customer + shop + product + SKU</text>
+</g>
+<g data-node-id="orders" data-parent="trade">
+<rect data-role="node-bounds" x="1064" y="360" width="456" height="112" rx="4" fill="#f1e7e4" stroke="#bf4520" stroke-width="1"/>
+<text x="1076" y="382" font-size="12" font-family="Geist,Arial,sans-serif" font-weight="600" fill="#2d3142" text-anchor="start">Order &amp; snapshot</text>
+<text x="1076" y="398" font-size="8" font-family="Geist Mono,Courier New,monospace" font-weight="400" fill="#5a6580" text-anchor="start">sales · 2 tables</text>
+<text x="1076" y="414" font-size="11" font-family="Geist,Arial,sans-serif" font-weight="400" fill="#4f5d75" text-anchor="start">Order + order line; address and price snapshots</text>
+<text x="1076" y="428" font-size="11" font-family="Geist,Arial,sans-serif" font-weight="400" fill="#4f5d75" text-anchor="start">Lot reference + order totals + expiry</text>
+</g>
+<g data-node-id="payments" data-parent="trade">
+<rect data-role="node-bounds" x="1064" y="512" width="456" height="104" rx="4" fill="#ffffff" stroke="#2d3142" stroke-width="1"/>
+<text x="1076" y="534" font-size="12" font-family="Geist,Arial,sans-serif" font-weight="600" fill="#2d3142" text-anchor="start">Payment attempts</text>
+<text x="1076" y="550" font-size="8" font-family="Geist Mono,Courier New,monospace" font-weight="400" fill="#5a6580" text-anchor="start">payment · 1 table</text>
+<text x="1076" y="566" font-size="11" font-family="Geist,Arial,sans-serif" font-weight="400" fill="#4f5d75" text-anchor="start">Provider identity / amount / status / refund data</text>
+</g>
+<g data-node-id="shipping" data-parent="trade">
+<rect data-role="node-bounds" x="1064" y="656" width="456" height="104" rx="4" fill="#ffffff" stroke="#2d3142" stroke-width="1"/>
+<text x="1076" y="678" font-size="12" font-family="Geist,Arial,sans-serif" font-weight="600" fill="#2d3142" text-anchor="start">Parcel fulfilment</text>
+<text x="1076" y="694" font-size="8" font-family="Geist Mono,Courier New,monospace" font-weight="400" fill="#5a6580" text-anchor="start">shipping · 3 tables</text>
+<text x="1076" y="710" font-size="11" font-family="Geist,Arial,sans-serif" font-weight="400" fill="#4f5d75" text-anchor="start">Shipment / allocation / stop; split quantities</text>
+</g>
+<g data-node-id="campaign" data-parent="trade">
+<rect data-role="node-bounds" x="1064" y="800" width="456" height="112" rx="4" fill="#ffffff" stroke="#2d3142" stroke-width="1"/>
+<text x="1076" y="822" font-size="12" font-family="Geist,Arial,sans-serif" font-weight="600" fill="#2d3142" text-anchor="start">Campaign &amp; budget</text>
+<text x="1076" y="838" font-size="8" font-family="Geist Mono,Courier New,monospace" font-weight="400" fill="#5a6580" text-anchor="start">campaign · 6 tables</text>
+<text x="1076" y="854" font-size="11" font-family="Geist,Arial,sans-serif" font-weight="400" fill="#4f5d75" text-anchor="start">Eligibility / discount / budget / movement ledger</text>
+<text x="1076" y="868" font-size="11" font-family="Geist,Arial,sans-serif" font-weight="400" fill="#4f5d75" text-anchor="start">Budget movement links promotion and order</text>
+</g>
+<text x="560" y="730" font-size="11" font-family="Geist,Arial,sans-serif" font-weight="400" fill="#4f5d75" text-anchor="start">Read the three detail sheets for all 53 entities.</text>
+<text x="560" y="762" font-size="10" font-family="Geist,Arial,sans-serif" font-weight="400" fill="#4f5d75" text-anchor="start">Names are business interpretations of SQL evidence.</text>
+<text x="560" y="786" font-size="10" font-family="Geist,Arial,sans-serif" font-weight="400" fill="#4f5d75" text-anchor="start">Schema grouping is not a proven DDD context,</text>
+<text x="560" y="810" font-size="10" font-family="Geist,Arial,sans-serif" font-weight="400" fill="#4f5d75" text-anchor="start">aggregate, microservice or transaction boundary.</text>
+<text x="560" y="858" font-size="10" font-family="Geist,Arial,sans-serif" font-weight="400" fill="#4f5d75" text-anchor="start">No Domain service methods are invented from FKs.</text>
+<text x="560" y="882" font-size="10" font-family="Geist,Arial,sans-serif" font-weight="400" fill="#4f5d75" text-anchor="start">Rule candidates and missing guards are explained</text>
+<text x="560" y="906" font-size="10" font-family="Geist,Arial,sans-serif" font-weight="400" fill="#4f5d75" text-anchor="start">in the companion, with source constraints.</text>
+<text x="40" y="1012" font-size="11" font-family="Geist,Arial,sans-serif" font-weight="400" fill="#4f5d75" text-anchor="start">Coverage: 53 / 53 tables and 75 / 75 FK columns in detail-page traceability. This overview is a navigation map.</text>
+<text x="40" y="48" font-size="8" font-family="Geist Mono,Courier New,monospace" font-weight="500" fill="#5a6580" text-anchor="start">E-COMMERCE / DATABASE-GROUNDED CONCEPTUAL DOMAIN MODEL</text>
+<text x="40" y="88" font-size="32" font-family="Instrument Serif,Georgia,serif" font-weight="400" fill="#2d3142" text-anchor="start">E-commerce domain map from the database</text>
+<text x="40" y="116" font-size="12" font-family="Geist,Arial,sans-serif" font-weight="400" fill="#4f5d75" text-anchor="start">Business concept families and selected cross-schema references; all 53 tables are expanded in the three conceptual ER detail sheets.</text>
+<text x="40" y="1036" font-size="9" font-family="Geist Mono,Courier New,monospace" font-weight="400" fill="#5a6580" text-anchor="start">Source: db/migrations/up + doc/schema | 53 tables / 11 schemas / 75 FK columns | Full references in companion Markdown</text>
+<line x1="40" y1="1052" x2="1544" y2="1052" stroke="#bfc0c0"/>
+<text x="40" y="1076" font-size="9" font-family="Geist,Arial,sans-serif" font-weight="400" fill="#4f5d75" text-anchor="start">Business concept family</text>
+<text x="340.8" y="1076" font-size="9" font-family="Geist,Arial,sans-serif" font-weight="400" fill="#4f5d75" text-anchor="start">Line = selected cross-schema FK</text>
+<text x="641.6" y="1076" font-size="9" font-family="Geist,Arial,sans-serif" font-weight="400" fill="#4f5d75" text-anchor="start">Order focus; no aggregate claim</text>
+<text x="942.4" y="1076" font-size="9" font-family="Geist,Arial,sans-serif" font-weight="400" fill="#4f5d75" text-anchor="start">Groups = reading boundaries</text>
+<text x="1243.2" y="1076" font-size="9" font-family="Geist,Arial,sans-serif" font-weight="400" fill="#4f5d75" text-anchor="start">Technical support kept separate</text>
+</svg></div>
+<p class="source-note">View: Nested. A3 landscape, 1584 × 1120. Default light style.
+The matching PNG contains editable draw.io data. Supplied font fallbacks: Georgia, Arial and Courier New. Domain source, evidence and limitations: domain-model.md and README.md.</p>
+</main></body></html>
