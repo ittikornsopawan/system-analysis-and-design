@@ -5,6 +5,18 @@ description: Repository-wide and project-specific lessons captured from user cor
 
 # Lessons
 
+### 2026-11-08 — Show real decomposition and choose semantics before layout
+
+- **Correction**: The owner rejected the detail and layer grouping across the whole diagram set. Application must expose Command/Query, Validator and Handler as smaller boxes inside its layer; different diagram meanings must be researched before rendering.
+- **Root cause**: The shared flat-card renderer and short node budget shaped the models before their analytical viewpoints and ownership hierarchy were settled. Long bullet lists substituted for actual subcomponents; several operational checkpoints were also presented using the same state/card grammar.
+- **Corrected behavior**: Define the question, notation, ownership/decomposition levels and edge semantics for every diagram first. Use true native parent/child containment for structural views, time/activation/fragments for sequence, state/guard/effect for lifecycle, physical host/artifact placement for deployment, entity/field/cardinality for document models, and lanes/actions/gates for recovery. Do not force application layers into unrelated business or data views. Visually compare the complete set and verify the requested sublayers are actual editable child boxes rather than descriptive rows.
+
+### 2026-11-08 — Preserve the owner's `Domain` business-logic convention
+
+- **Correction**: The Domain layer also needs a child named `Domain` for reusable business logic, with the owner-specified example path `src/Ecommerce.Domain/Authen/Domain/`.
+- **Root cause**: Decomposition stopped at entities, value objects and repository contracts, omitting reusable domain operations and the project's chosen naming.
+- **Corrected behavior**: Show `Domain` explicitly under the Domain layer and the feature's physical path in the repository view. Explain reusable rules separately from handler orchestration and entity invariants. Treat tax calculation as a generic example owned by the relevant business feature, not an implemented Authen capability; distinguish owner-directed design from the pinned source baseline.
+
 ## Repository-wide
 
 ### 2026-11-06 — Keep agent reviews within the requested adaptation scope

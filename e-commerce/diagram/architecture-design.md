@@ -9,6 +9,8 @@ description: คำอธิบายภาพ architecture-design อย่า�
 
 ## 1. ขอบเขตและสถานะของภาพ
 
+CODE baseline อ้างถึง Component Repository [e-commerce-backend](https://github.com/ittikornsopawan/e-commerce-backend/blob/d8255183cba54d0c2b218607456b895a70df32f0/code.md) ที่ pin `d8255183cba54d0c2b218607456b895a70df32f0` ตาม [REPOS.md](https://github.com/ittikornsopawan/system-analysis-and-design/blob/90c589a/e-commerce/REPOS.md) ตำแหน่ง checkout คือ `e-commerce/repository/e-commerce-backend/` มี Git history/remote ของตนเองและถูก ignore โดย Showcase ภาพอธิบาย legacy Authen ที่รักษาไว้ ไม่ได้ปิด known gaps กับ API specifications ใหม่
+
 ภาพรวม runtime ของ backend หนึ่งแอปพลิเคชัน ประกอบกับความสามารถ commerce ที่ระบุในเอกสาร และส่วน Redis/MongoDB ที่ผู้ใช้ขอเพิ่ม ไม่ใช่แผน deployment หรือคำยืนยันว่าทุกความสามารถทำงานจริงแล้ว
 
 | ป้ายในภาพ | ความหมาย | หลักฐานและขอบเขต |
@@ -19,108 +21,94 @@ description: คำอธิบายภาพ architecture-design อย่า�
 
 ผู้ใช้เลือก MongoDB สำหรับ feature flags/config ทั่วไป รวม cache/rate-limit policy ตลอดจน audit/integration events และสำเนาธุรกรรมสำหรับค้นย้อนหลัง PostgreSQL ยังเป็นข้อมูลหลักของธุรกรรม การเลือกบทบาทนี้ไม่ใช่การอนุมัติค่าทางปฏิบัติทั้งหมด เช่น quota, TTL, retention หรือระยะเวลายอมใช้ config เก่า
 
-## 2. วิธีอ่านขอบเขต สี และเส้น
+## 2. วิธีอ่าน logical containment และ runtime calls
 
-กรอบ `BACKEND / PRIMARY DATA BOUNDARY` จัดกลุ่ม backend และ PostgreSQL ส่วนกรอบ `ONE BACKEND APPLICATION / IN-PROCESS CORE AND ADAPTERS` ชี้ว่า API, use cases, Domain และ Infrastructure อยู่ในแอปพลิเคชันเดียว การวาง MongoDB/Redis นอกกรอบนี้แยกบทบาท data services ไม่ได้กำหนดว่าต้องอยู่คนละเครือข่ายหรือผู้ดูแล
+กรอบ `One ASP.NET Core backend` มี native child containers สำหรับ Presentation, Application, Domain, Infrastructure และ Shared แต่ละชั้นมีกล่องหน้าที่จริงภายใน ไม่ได้ยุบ HTTP/CQRS ทั้งหมดไว้ใน host card เดียว กล่องแต่ละใบเป็น editable component; ย้าย parent แล้วลูกยังคงอยู่ภายใต้ขอบเขตเดิม
 
-สีส้มเน้น API host ซึ่งเป็นจุดประสานการทำงาน กรอบเส้นประใช้กับส่วน specified/proposed และระบบภายนอก ต้องอ่านป้ายสถานะร่วมด้วย เพราะเส้นประเพียงอย่างเดียวไม่ได้แปลว่า asynchronous ทุกเส้น เส้นสีน้ำเงินเป็นเส้นทาง Stripe ที่ระบุในข้อกำหนด
+ภาพนี้ใช้ Architecture ที่เน้น layer decomposition บนพื้นที่ 1584 × 1120 และมี 23 กล่องรายละเอียด แบ่งเป็น core responsibilities, client และ data/external services รายละเอียดระดับ faithful ทำให้เห็น Command/Query, Validator และ Handler จริงภายใน Application ส่วน [Repository Architecture](repository-architecture.md) ตอบคำถามตำแหน่ง source paths และ project references ด้วย containment ตามไฟล์
 
-ภาพมี 9 องค์ประกอบและ 11 ความสัมพันธ์ รวม HTTP/CQRS ไว้ในกล่อง host เดียวเพื่อให้เห็นภาพรวม โดยรายละเอียด 5 production projects อยู่ในภาพ repository การแยก logical layers ไม่จำเป็นต้องแยก deployment units; เอกสาร Microsoft อธิบายความแตกต่างนี้ไว้ใน [Common web application architectures](https://learn.microsoft.com/en-us/dotnet/architecture/modern-web-apps-azure/common-web-application-architectures)
+การซ้อนเป็น logical ownership ไม่ใช่ลำดับที่ทุก request ต้องผ่านทุกกล่อง ชั้น Shared อยู่ข้าง core เพื่อให้เห็นว่าทั้ง dispatcher และ Result/Error ใช้ร่วมกัน การเรียง Infrastructure ไว้ล่างไม่ได้หมายความว่า Domain reference Infrastructure; compile references ทั้งหมดอยู่ในภาพ repository
 
-## 3. องค์ประกอบทั้งเก้า
+เส้นทึบห้าเส้นเลือกเฉพาะ runtime collaboration ที่ช่วยอ่านภาพ: client → controller, controller สร้าง input, dispatcher → validator, dispatcher → handler หลัง validation และ persistence → PostgreSQL Input records ไม่เรียก validator หรือ handler เอง; dispatcher เป็นผู้เลือกและเรียก implementations ลูกศรย่อรายละเอียดระหว่างทางไว้ในกล่อง ไม่ใช่ครบทุก call graph ไม่มีลูกศรแสดง compile dependency และไม่มีลูกศร `IMPLEMENTS` ปะปนกับ calls
 
-### 3.1 Client touchpoints
+## 3. การแยกหน้าที่ภายใน backend
 
-ลูกค้าใช้ดูสินค้า จัดการตะกร้า สั่งซื้อ ชำระเงิน และยืนยันรับสินค้า สมาชิกของร้านจัดการ stock/price/parcels ส่วนผู้ดูแลแพลตฟอร์มจัดการ master data, roles และ campaigns กล่องนี้แสดงบทบาทผู้ใช้ ไม่ได้หมายถึงมี frontend ทั้งสามตัวอยู่ใน repository
+### 3.1 Presentation — HTTP และ composition
 
-เหตุผลที่แยก client ออกจาก backend คือสิทธิ์และความถูกต้องต้องตรวจฝั่งเซิร์ฟเวอร์ แม้หน้าจอซ่อนปุ่มไว้ ผู้เรียกยังส่งคำขอโดยตรงได้ ข้อมูลบัตรถูกส่งผ่าน Stripe.js ตามการออกแบบ payment ไม่ผ่าน commerce API
+กล่อง Controllers แสดง `AuthenController` ที่รับ HTTP แล้วสร้าง command/query; Contracts & HTTP results แสดง `AuthenRequests` และ `ResultExtensions` ซึ่งแปลง `Result` เป็น status/ProblemDetails; Composition & security แสดง `Program.cs` ที่เรียก `AddCqrs`, `AddInfrastructure` และตั้ง JWT authentication/authorization
 
-### 3.2 API host · HTTP, CQRS & use cases
+แยกทั้งสามกล่องเพราะ request contract, HTTP mapping และ dependency wiring เป็นคนละหน้าที่ แม้อยู่ project เดียวกัน `Program.cs` เป็น composition root ไม่ใช่ handler หรือที่เก็บกฎ order และ source นี้ยังมี Authen endpoints ห้า use cases เท่านั้น ดู [Program.cs](https://github.com/ittikornsopawan/e-commerce-backend/blob/d8255183cba54d0c2b218607456b895a70df32f0/src/Ecommerce.Api/Program.cs) และ [AuthenController.cs](https://github.com/ittikornsopawan/e-commerce-backend/blob/d8255183cba54d0c2b218607456b895a70df32f0/src/Ecommerce.Api/Controllers/AuthenController.cs)
 
-เส้นทางที่มีโค้ดคือ `AuthenController → IDispatcher → validator → handler → Result/ProblemDetails` ส่วน `/me` ใช้ JWT Bearer และ `Program.cs` ประกอบ dependency injection ข้อมูลยืนยันได้จาก [Program.cs](../repository/src/Ecommerce.Api/Program.cs), [AuthenController.cs](../repository/src/Ecommerce.Api/Controllers/AuthenController.cs) และ [Dispatcher.cs](../repository/src/Ecommerce.Shared/Cqrs/Dispatcher.cs)
+### 3.2 Application — Command/Query, Validator, Handler, Mapping และ ports
 
-Controller แปลง HTTP เป็น command/query, validator ตรวจรูปแบบและกฎอินพุต, handler ประสาน use case แล้วส่งผลกลับ เหตุผลที่แบ่งหน้าที่เช่นนี้คือกฎธุรกิจไม่ผูกกับ HTTP และทดสอบ handler โดยไม่ต้องเปิดเว็บเซิร์ฟเวอร์ได้ CQRS ในที่นี้แยก command/query ไม่ได้บังคับให้มี broker หรือฐานข้อมูลคนละชุด
-
-ส่วนที่เสนอเพิ่มคือ quota checks ก่อนเข้า handler, public metadata cache ผ่าน interface ฝั่งใน และ config snapshots/event-projection ports กล่อง host ไม่ได้ประกาศว่า middleware หรือ commerce handlers เหล่านี้มีอยู่แล้ว
-
-### 3.3 Domain model & interfaces
-
-Domain ปัจจุบันมี `User`, `PasswordResetToken`, value objects เช่น `Username`, `EmailAddress`, `PlainPassword` และ repository interfaces กฎของ entity/value object อยู่ใกล้ข้อมูลที่ต้องคุ้มครอง อ้างอิง [project-structure.md](../repository/project-structure.md)
-
-เหตุผลที่ไม่ให้ Domain รู้จัก HTTP, SQL หรือ Redis/MongoDB SDK คือกฎธุรกิจไม่ควรเปลี่ยนเพราะย้ายเทคโนโลยีจัดเก็บ อย่างไรก็ตาม interface ไม่ได้ทำให้การเปลี่ยนฐานข้อมูลเป็นงานฟรี ความหมายเรื่อง transaction, ordering และ consistency ยังต้องออกแบบให้ตรง use case
-
-### 3.4 Infrastructure adapters
-
-ชั้นนี้แปลง interface เป็นเทคโนโลยีจริง ได้แก่ Dapper/Npgsql, scoped `DbSession`, password hashing, JWT และ field encryption ส่วน email ปัจจุบันเป็น `LoggingEmailSender` สำหรับพัฒนา ไม่ใช่บริการส่งอีเมล production หลักฐานอยู่ใน [DependencyInjection.cs](../repository/src/Ecommerce.Infrastructure/DependencyInjection.cs)
-
-Redis/MongoDB adapters เป็นข้อเสนอให้เพิ่มในชั้นนี้ ส่วน Stripe ยังเป็น integration ตาม specification เหตุผลคือความรู้เรื่อง connection, serialization, retry และ SDK ควรอยู่ที่ขอบระบบ ขณะที่ Application กำหนดว่าต้องการผลลัพธ์อะไร
-
-### 3.5 PostgreSQL business authority
-
-PostgreSQL เป็นข้อมูลหลักของ stock/lot, ราคาที่ checkout, order/payment/refund, campaign budget ตลอดจน account/session/permission ใช้ transaction, constraints, locks และเงื่อนไขสถานะใน SQL เพื่อป้องกันข้อมูลขัดแย้ง ดู [สร้างคำสั่งซื้อ](../doc/api/sales/02-create-order/spec.md), [Stripe webhook](../doc/api/payment/02-stripe-webhook/spec.md) และ [ยกเลิกคำสั่งซื้อ](../doc/api/sales/05-cancel-order/spec.md)
-
-เหตุผลที่ยังคง authority นี้คือการขายสินค้าคงเหลือและการคืนเงินต้องตัดสินจากข้อมูลที่ประสานกันได้ในขอบเขตธุรกรรมหลัก Cache ที่เก่าหรือ transaction copy ที่ส่งช้าไม่เหมาะใช้ตัดสินเรื่องเงิน
-
-`transactional outbox intent` ยังเป็นข้อเสนอ: บันทึกการเปลี่ยนข้อมูลธุรกิจและความตั้งใจส่ง event ใน PostgreSQL transaction เดียวกัน จากนั้นส่งต่อภายหลัง เหตุผลคือหลีกเลี่ยงช่องว่างที่ธุรกรรมสำเร็จแล้ว process ตายก่อนเขียน MongoDB
-
-### 3.6 MongoDB config & event documents
-
-MongoDB มีสองบทบาทที่มีความเป็นเจ้าของต่างกัน:
-
-| ข้อมูล | บทบาท MongoDB | เหตุผล |
+| กล่องในภาพ | ส่วนที่ตรวจพบจริง | เหตุผลที่แยก |
 | --- | --- | --- |
-| Feature flags และ config ที่ไม่ใช่ secrets | ข้อมูลหลักของ config ที่ผ่าน validation/versioning | แยกการเผยแพร่และตรวจย้อนหลัง config ออกจากธุรกรรม order |
-| Cache/rate-limit policies | แหล่ง published policy; แอปอ่านเป็น local snapshot | ไม่ต้อง query MongoDB ทุก request และไม่พึ่ง Redis เพื่ออ่าน policy ของ Redis เอง |
-| Audit/integration events | หลักฐานกิจกรรมและการส่งข้อมูลตามขอบเขตที่เลือก | ค้นตาม event/source/correlation ได้โดยไม่ใช้เป็น financial ledger |
-| Transaction copies | Derived projections ที่อาจตามหลัง PostgreSQL | รองรับ operational search โดยไม่เปลี่ยน authority ของ order/payment |
+| Command / Query | `RegisterCommand`, `LoginCommand`, `RequestPasswordResetCommand`, `ResetPasswordCommand`, `GetCurrentUserQuery` | Input records ระบุเจตนา use case โดยไม่ผูก HTTP |
+| Validator | Validators ของสี่ commands; query `/me` ไม่มี validator ใน source | ตรวจรูปแบบผ่าน Domain value objects ก่อนทำงานที่มีผลข้างเคียง |
+| Handler | Handlers ทั้งห้า use cases | ประสานกฎ model, repository/security ports และ transaction ตาม use case |
+| Mapping & responses | `AuthenMappings` และ response records | ไม่ส่ง Domain entity ออกผ่าน public response โดยตรง |
+| Application ports | `IUnitOfWork`, `IPasswordHasher`, `ITokenService`, `IEmailSender` | ชั้นในระบุความสามารถที่ต้องการ ขณะ Infrastructure จัด implementation |
 
-เสนอ collections ได้แก่ `runtime_config_current`, `runtime_config_revisions`, `application_audit_events`, `integration_events` และ `transaction_status_projections` ชื่อเหล่านี้เป็น design candidates ยังไม่มี collection provisioning หรือ migration ในงานนี้
+[Dispatcher.cs](https://github.com/ittikornsopawan/e-commerce-backend/blob/d8255183cba54d0c2b218607456b895a70df32f0/src/Ecommerce.Shared/Cqrs/Dispatcher.cs) รวม errors จาก validators ที่ลงทะเบียน เมื่อมี error จะคืน failure โดยไม่เรียก handler เมื่อไม่มี error จึง resolve handler แล้วเรียก `HandleAsync` ลูกศร dispatcher → handler ในภาพต้องอ่านร่วมกับ guard นี้ ไม่ใช่คำกล่าวว่าทุก input ผ่าน validation สำเร็จ
 
-การ publish config ต้องตรวจสิทธิ์จริงจาก PostgreSQL, validate รูปแบบ/ช่วงค่า และตรวจ revision เพื่อไม่เขียนทับงานพร้อมกัน อาจใช้ MongoDB-local transaction รวม current/revision/audit ตามข้อเสนอ แต่ไม่ได้ครอบคลุม PostgreSQL; [MongoDB Transactions](https://www.mongodb.com/docs/manual/core/transactions/) อธิบาย transaction ภายใน MongoDB การเลือก outbox สำหรับข้ามสองระบบเป็นข้อสรุปของแบบนี้ ไม่ใช่คุณสมบัติที่ MongoDB ทำให้อัตโนมัติ
+กล่องหน้าที่เป็นการรวมหลาย use cases เพื่อการอ่าน ไม่ใช่โฟลเดอร์กลางที่สร้างใหม่ โค้ดจัดตาม `Features/Authen/<UseCase>/` CQRS ใน source นี้ไม่ตั้ง broker, event sourcing หรือฐานข้อมูล query แยกโดยอัตโนมัติ
 
-Transaction projections ใช้ stable event ID ป้องกันซ้ำ และ source version ป้องกัน event เก่าทับ snapshot ใหม่ เริ่มจาก status/references และจำกัดผู้อ่านเป็น operational/admin ไม่คัดลอกบัตร รหัสผ่าน token หรือ payload ส่วนตัวทั้งหมด ไม่มี automatic TTL จนกว่าจะอนุมัติ retention/capacity แยกตาม collection ดูรายละเอียดใน [MongoDB design](mongodb-design.md)
+Cache/rate/config snapshot และ event/projection contracts เป็น **PROPOSED** ภายในกล่อง ports เท่านั้น ชื่อและ outage/consistency contract ต้องผ่าน review ก่อน implement ไม่ import Redis/MongoDB types เข้าชั้น Domain เพียงเพราะเพิ่ม data services
 
-### 3.7 Stripe payment provider
+### 3.3 Domain — entities, value objects, contracts และ reusable business logic
 
-Client ยืนยันการชำระผ่าน Stripe.js, backend สร้าง/ใช้ PaymentIntent และเรียก refund ส่วน signed raw-body webhook เป็นหลักฐานให้ backend ประมวลผล payment event ตาม guard ใน SQL การกลับมาหน้า success ของ browser ไม่ทำให้ order paid
+สามกล่องที่เป็น CODE บอกว่า `User`/`PasswordResetToken` ดูแลสถานะและพฤติกรรม, `Username`/`EmailAddress`/`PlainPassword` ดูแลค่าที่ valid และ normalized, ส่วน `IUserRepository`/`IPasswordRepository`/`ITokenRepository` ระบุการเข้าถึงข้อมูลที่ use cases ต้องใช้โดยไม่รู้ SQL
 
-เหตุผลคือ browser ถูกปิด เปลี่ยนหน้า หรือส่งข้อมูลปลอมได้ ส่วน provider events อาจซ้ำ/มาช้า จึงต้องตรวจ signature และใช้ idempotency/เงื่อนไขสถานะร่วมกัน Stripe integration ในภาพเป็นข้อกำหนด ยังไม่ใช่ adapter ที่ยืนยันการทำงานจริงใน codebase นี้
+กล่องที่สี่ `Domain` เพิ่มตาม owner convention สำหรับ business logic ที่ใช้ซ้ำ และแสดง `PROPOSED · OWNER REQUEST` แยกจาก CODE อ่านเหตุผลและขอบเขตการเรียกใช้ในหัวข้อ Domain ย่อยด้านล่าง
 
-### 3.8 Redis public read cache
+การแยกนี้ช่วยทดสอบกฎชั้นในโดยไม่เปิด HTTP/connection แต่ interface ไม่ได้ยกเลิกความจำเป็นของ transaction, constraint และ concurrency guards โค้ด Authen ที่มีอยู่ไม่ใช่หลักฐานว่า commerce rules และ SQL account/session ทุกข้อ implement ครบแล้ว ดู [project-structure.md](https://github.com/ittikornsopawan/e-commerce-backend/blob/d8255183cba54d0c2b218607456b895a70df32f0/project-structure.md)
 
-เสนอ cache เฉพาะ public metadata เช่นชื่อ/คำอธิบาย/labels และ image references ที่อนุญาต ไม่ cache response ทั้งก้อน ราคาปัจจุบัน stock การมองเห็นสินค้า สิทธิ์ cart/order/profile/token ยังคงตรวจจาก PostgreSQL
+### 3.4 Infrastructure — persistence, security, email/payment และ proposed data adapters
 
-ใช้ cache-aside: ตรวจ cache, miss แล้วอ่านข้อมูลหลักและเติม cache, เปลี่ยนข้อมูลหลักสำเร็จก่อน invalidate แนวคิดพื้นฐานมีใน [Microsoft Cache-Aside](https://learn.microsoft.com/en-us/azure/architecture/patterns/cache-aside) ส่วนการจำกัด public projection และ generation guards เป็นการออกแบบเฉพาะของโครงการนี้
+Persistence รวม Dapper/Npgsql, scoped `DbSession`, repository implementations และ `UnitOfWork`; Security รวม PBKDF2, JWT/token operations และ `FieldProtector` กล่อง Email/payment ระบุสถานะแยกกัน: `LoggingEmailSender` มี **CODE** และเป็น development stub ส่วน Stripe intent/refund เป็น **SPEC** ยังไม่มี adapter ที่ implement ใน backend นี้
 
-TTL ที่เสนอคือ product descriptors สุ่ม 48–60 วินาที และ taxonomy labels 240–300 วินาที เพื่อลดการหมดอายุพร้อมกัน ใช้ random generation แยกข้อมูลแต่ละรุ่นและตรวจ generation ก่อน read/fill เพื่อไม่ให้ reader เก่าเติมข้อมูลทับรุ่นใหม่ เริ่มนับอายุจากเวลาเริ่มอ่าน source ไม่ใช่ตอนเขียน cache เสร็จ
+Data adapters เป็นกล่อง **PROPOSED** ต่างหากสำหรับ Redis cache/rate และ MongoDB config/projections ไม่ทำให้เข้าใจว่า SDKs หรือ files เหล่านี้มีอยู่แล้ว [DependencyInjection.cs](https://github.com/ittikornsopawan/e-commerce-backend/blob/d8255183cba54d0c2b218607456b895a70df32f0/src/Ecommerce.Infrastructure/DependencyInjection.cs) ยืนยันบริการที่ลงทะเบียนจริง ส่วนการเพิ่ม adapter ต้องรักษา lifetime/configuration/error semantics ของแต่ละ role
 
-ข้อแลกเปลี่ยนคือยังต้อง query SQL สำหรับ live eligibility และ dynamic values จึงไม่ได้ลด SQL ทุกครั้ง ประโยชน์จริงต้องวัด การรับรองความสดมีเงื่อนไข clock/failover ตาม proposal; ป้าย `Hard TTL` ในภาพไม่ใช่คำรับประกัน elapsed time ระหว่างนาฬิกาผิดปกติ เมื่อ cache ใช้ไม่ได้ให้อ่าน SQL พร้อมควบคุม refill concurrency
+### 3.5 Shared — dispatch และ expected results
 
-### 3.9 Redis distributed rate store
+Shared มีสองกล่อง: CQRS dispatcher/messaging/assembly scanning และ `Result`/`Error` Dispatcher เป็น reusable coordination primitive ที่ Application ใช้งาน แต่ validator/handler implementations ยังอยู่ใน Application ความล้มเหลวที่คาดหมายเป็นค่า failure ไม่ใช้ exception เป็น flow control หลัก ภาพจึงไม่ย้าย use-case code ทั้งหมดมาอยู่ Shared
 
-เสนอ shared token buckets สำหรับ API หลาย instances โดยหนึ่ง atomic Lua operation คำนวณ refill/admit/deduct/idle TTL ผ่าน Redis server time ตัวตนมาจาก trusted client IP หรือ validated user แล้วแปลงเป็น HMAC ไม่ใช้ email/IP ดิบใน key
+## Domain ย่อย — business logic ที่ใช้ซ้ำ
 
-ปฏิเสธเพราะ quota หมดเป็น `429` พร้อม `Retry-After` แต่ store timeout/OOM เป็นความขัดข้อง ไม่ใช่หลักฐานว่า quota หมด จึงเสนอ sensitive routes ตอบ `503` ขณะที่ read routes ใช้ local degraded limits ซึ่ง **ไม่รักษา quota รวมทั้ง fleet** รายการ quota/burst ตัวเลขทั้งหมดอยู่ใน [Redis design](redis-design.md) และยังไม่ใช่ production capacity ที่ทดสอบแล้ว
+ตามคำชี้แจงของเจ้าของงานวันที่ 2026-11-08 เพิ่มกล่องชื่อ **`Domain`** ภายใน **Domain Layer** เป็น sibling ของ Entities, Value objects และ Repository contracts กล่องนี้หมายถึงความรับผิดชอบที่มักเรียก domain service แต่ใช้ชื่อ `Domain` ตาม convention ของโครงการ ไม่ได้เพิ่ม process, network service หรือ `.csproj` ใหม่
 
-Signed webhooks และ internal expiry ไม่ผ่าน user quota ชุดนี้ แต่ยังต้องมี signature/SQL guards และการคุ้มครอง body/concurrency ที่เหมาะสม การแยกนี้ป้องกัน Redis outage ขวางการรับรู้ผลชำระเงิน โดย host readiness ต้องไม่ผูกกับ Redis ทั้งระบบ
+ใช้สำหรับกฎ/การดำเนินการทางธุรกิจที่หลาย use cases เรียกใช้ หรือไม่เหมาะจะผูกเป็นพฤติกรรมของ entity เดียว เช่นการคำนวณภาษีจากยอดเงินและ policy ที่ส่งเข้ามา ตัวอย่างนี้อธิบายชนิดของงานเท่านั้น ไม่กำหนดสูตร อัตรา หรือกฎการปัดเศษ และไม่อ้างว่ามี tax implementation ใน Authen แล้ว
 
-## 4. ความสัมพันธ์ทั้งสิบเอ็ดในภาพ
+| ส่วน | หน้าที่และเหตุผล |
+| --- | --- |
+| Application Handler | โหลดข้อมูล/สิทธิ์ ประสานลำดับ use case เรียก `Domain` แล้วบันทึกผ่าน transaction ports ลดการคัดลอกสูตรระหว่าง handlers |
+| Domain ย่อย | รับ business values และ policy ที่จำเป็น คำนวณ/ใช้กฎ และคืนผลที่นำไปใช้ซ้ำได้ ไม่รับ HTTP DTO, SDK client หรือควบคุม SQL commit |
+| Entity / Value object | รักษา invariant ของตัวเอง เช่นค่าที่ถูกต้องและ transition ที่อนุญาต ไม่ย้ายกฎเหล่านี้ออกทั้งหมดเพียงเพราะมี `Domain` ย่อย |
+| Infrastructure | ติดต่อ PostgreSQL, Redis, MongoDB และ provider ตาม ports; การอ่าน config snapshot/อัตราภายนอกแยกจากการคำนวณใน Domain |
 
-| จาก → ไป | ป้าย/ความหมาย | เหตุผลที่แสดง |
+เส้นทางเชิงแนวคิดคือ **Handler → Domain → business result → Handler → persistence** Domain ย่อยเป็นโค้ดภายใน core ใช้ร่วมกับ entities/value objects ได้ แต่ไม่ reference Application หรือ concrete Infrastructure กฎที่ต้องใช้ข้อมูลภายนอกให้ส่งข้อมูลเข้ามาหรือใช้ inner abstraction ที่มี contract ชัดเจน เหตุผลคือทดสอบ business rule ด้วย input เดิมได้โดยไม่ต้องต่อเครือข่าย และไม่ผูกสูตรเข้ากับ endpoint หรือ data-store vendor [Microsoft: Application Core และ domain services](https://learn.microsoft.com/en-us/dotnet/architecture/modern-web-apps-azure/common-web-application-architectures)
+
+ตำแหน่งตัวอย่างที่เจ้าของงานกำหนดคือ `e-commerce/repository/e-commerce-backend/src/Ecommerce.Domain/Authen/Domain/` สำหรับกฎของ Authen ที่ใช้ซ้ำ กฎภาษี/เงินควรอยู่ใต้ feature ที่เป็นเจ้าของกฎนั้น เช่น `<CommerceFeature>/Domain/` ไม่ทำให้ Authen หรือ Shared เป็นที่รวมกฎทุกเรื่อง
+
+สถานะกล่องใหม่คือ `PROPOSED · OWNER REQUEST`: เจ้าของงานกำหนดโครงสร้างสำหรับภาพแล้ว แต่ remote tree ที่ pin `d8255183cba54d0c2b218607456b895a70df32f0` ยังไม่มี `Authen/Domain/` จึงไม่ติดป้าย `CODE` และงานนี้ไม่สร้าง backend folder/class หรือเปลี่ยน business behavior
+
+## 4. Data/external services และสิ่งที่ละจากลูกศร
+
+| กล่อง | Authority / status | ขอบเขตความสอดคล้อง |
 | --- | --- | --- |
-| Client → API host | `HTTP / JSON` | จุดเข้าหลักของ use case |
-| API host → Domain | `RULES` | ใช้กฎของ model/value objects |
-| API host → Infrastructure | `VIA PORTS` | เรียกความสามารถภายนอกผ่าน interface ที่ DI จัดให้ |
-| Infrastructure → Domain | `IMPLEMENTS` | Adapter ทำตาม inner contracts; เป็นความสัมพันธ์เชิง interface ไม่ใช่ HTTP hop |
-| Infrastructure → PostgreSQL | `SQL` | อ่าน/เขียน business authority |
-| Infrastructure → MongoDB | `DOCS` | Config และ event/projection operations ที่เสนอ; ลูกศรไม่สัญญาว่าทุก operation เป็น synchronous |
-| Client → Stripe | `STRIPE.JS` | ข้อมูลบัตรอยู่บน provider path |
-| Infrastructure → Stripe | `STRIPE API` | สร้าง/reuse intent และ refund ตาม specification |
-| Stripe → API host | `SIGNED EVENT` | แจ้งผลที่ต้องตรวจ signature และ SQL guards |
-| Infrastructure → Redis cache | `CACHE` | อ่าน/เติม/invalidate public metadata |
-| Infrastructure → Redis rate store | `LIMITS` | ตัดสิน admission ร่วมกันหลาย instances |
+| PostgreSQL | **CODE adapters + SPEC business authority** | Account/order/payment/refund/stock/budget อาศัย SQL constraints, locks และ transaction |
+| MongoDB | **PROPOSED** config source + derived audit/event/status projections | Non-secret configuration มี revision; transaction copies อาจตามหลัง SQL และไม่ใช้ตัดสินเงิน/stock |
+| Redis public cache | **PROPOSED** rebuildable public descriptors | Live visibility/price/stock ยังตรวจ SQL; invalidate หลัง commit; isolated `allkeys-lfu` |
+| Redis shared admission | **PROPOSED** shared token buckets | แยก `noeviction` memory domain; quota 429 ต่างจาก protected-store outage 503; signed webhook ไม่ผ่าน user quota |
+| Stripe | **SPEC** external provider | PaymentIntent/refund, client Stripe.js, signed raw-body webhook; browser completion ไม่ยืนยัน paid |
 
-ลูกศร runtime ไม่ใช่ `.csproj` references โดยเฉพาะ API เรียก adapter ผ่าน port ได้โดย Application ไม่ต้อง reference Infrastructure ส่วน outbox relay เป็น responsibility ที่อธิบายในกล่องและเอกสาร ยังไม่เลือกรูปแบบ worker host หรือเพิ่ม broker
+เส้น SQL เป็น data path ที่มี code รองรับ ส่วน proposed Redis/MongoDB calls และ specified Stripe calls ไม่ขยายเป็น spokes ทุกเส้น เพราะจะเบียด layer decomposition ซึ่งเป็นคำถามหลักของภาพ การไม่มีลูกศรใน view นี้ไม่ได้แปลว่า data service ติดต่อ backend ไม่ได้; semantic contracts อยู่ใน [Redis design](redis-design.md) และ [MongoDB design](mongodb-design.md), Stripe interaction อยู่ [payment/01](../doc/api/payment/01-start-payment/spec.md) และ [payment/02](../doc/api/payment/02-stripe-webhook/spec.md)
+
+หมายเหตุใต้ service rail ระบุข้อเสนอ transactional outbox: business mutation และ publication intent commit ใน PostgreSQL transaction เดียว จากนั้น relay ส่ง MongoDB ด้วย stable event ID/source version; MongoDB ล่มไม่สั่ง charge หรือ stock movement ซ้ำ ไม่มี transaction ร่วมระหว่าง PostgreSQL/MongoDB และ worker host ยังไม่ได้เลือก ไม่วาด broker/worker deployment ขึ้นเอง
+
+MongoDB config ไม่เก็บ credentials/signing/encryption keys และไม่เป็น authorization grant; live PostgreSQL permission check ยังใช้ตามข้อกำหนด ค่าตัวเลขเรื่อง TTL, quota, last-known-good age, refresh interval และ retention เป็น proposal ที่ต้องอ่านสถานะ/ข้อจำกัดในเอกสารต้นทาง ไม่มี automatic TTL deletion จนกว่าจะอนุมัติ collection-specific retention
+
+Expiry และ automatic completion หลังเจ็ดวันยังเป็น **SPEC** ที่ใช้ SQL guards การจัดวาง responsibility ไว้ในหมายเหตุแทน worker box ช่วยไม่อ้าง host หรือ scheduler ที่ยังไม่มีการเลือก และไม่เพิ่ม order status ใหม่
 
 ## 5. เหตุผลที่ Redis แยกเป็นสองบริการ
 
@@ -168,8 +156,8 @@ Cache เป็นข้อมูลสร้างใหม่ได้ จึ�
 
 ## 8. แหล่งหลักฐานและเอกสารที่ต้องอ่านร่วมกัน
 
-- [README ของชุดภาพ](README.md), [semantic source](diagram_content.py) และ [research ของรูปแบบภาพ](research.md) ใช้ตรวจเนื้อหา/การจัดมุมมอง
-- [Backend project structure](../repository/project-structure.md), [Program.cs](../repository/src/Ecommerce.Api/Program.cs) และ [Infrastructure DI](../repository/src/Ecommerce.Infrastructure/DependencyInjection.cs) ใช้ยืนยันส่วนที่มีโค้ด
+- [README ของชุดภาพ](README.md), [semantic source](layered_core_content.py) และ [research ของรูปแบบภาพ](research.md) ใช้ตรวจเนื้อหา/การจัดมุมมอง
+- [Backend project structure](https://github.com/ittikornsopawan/e-commerce-backend/blob/d8255183cba54d0c2b218607456b895a70df32f0/project-structure.md), [Program.cs](https://github.com/ittikornsopawan/e-commerce-backend/blob/d8255183cba54d0c2b218607456b895a70df32f0/src/Ecommerce.Api/Program.cs) และ [Infrastructure DI](https://github.com/ittikornsopawan/e-commerce-backend/blob/d8255183cba54d0c2b218607456b895a70df32f0/src/Ecommerce.Infrastructure/DependencyInjection.cs) ใช้ยืนยันส่วนที่มีโค้ด
 - [Redis design](redis-design.md), [Redis research](redis-research.md) และ [Redis review](redis-review.md) ใช้พิจารณานโยบายและข้อจำกัดของข้อเสนอ
 - [MongoDB design](mongodb-design.md) และ [MongoDB research](mongodb-research.md) ใช้ตรวจ config ownership, event projections และ cross-store delivery
 - [System Design explanation](system-design.md) เชื่อม runtime decisions กับ order/payment/shipping guards โดยข้อกำหนด API ที่ลิงก์ไว้ยังเป็นต้นทางของรายละเอียดธุรกิจ

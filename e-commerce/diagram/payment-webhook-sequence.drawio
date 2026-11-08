@@ -1,0 +1,419 @@
+<?xml version='1.0' encoding='utf-8'?>
+<mxfile host="app.diagrams.net" agent="Jinny" version="32.6.10" type="device">
+  <diagram id="payment-webhook-sequence" name="Webhook: durable receipt before final effects">
+    <mxGraphModel dx="1584" dy="1120" grid="1" gridSize="4" page="1" pageScale="1" pageWidth="1584" pageHeight="1120" background="#f5f5f5">
+      <root>
+        <mxCell id="0" />
+        <mxCell id="1" parent="0" />
+        <mxCell id="op-0" value="E-COMMERCE / PROPOSED TEMPORAL INTERACTION / NATIVE BOUNDARY GROUPS" style="text;html=0;spacing=0;align=left;verticalAlign=middle;fontSize=8;fontFamily=Geist Mono,Courier New,monospace;fontColor=#5a6580;" parent="1" vertex="1">
+          <mxGeometry as="geometry" x="40" y="39" width="361.76" height="14" />
+        </mxCell>
+        <mxCell id="op-1" value="Webhook: durable receipt before final effects" style="text;html=0;spacing=0;align=left;verticalAlign=middle;fontSize=32;fontFamily=Instrument Serif,Georgia,serif;fontColor=#2d3142;" parent="1" vertex="1">
+          <mxGeometry as="geometry" x="40" y="55" width="958.4" height="38" />
+        </mxCell>
+        <mxCell id="op-2" value="Time flows down. Header nesting shows ownership; each lifeline represents the named interaction boundary." style="text;html=0;spacing=0;align=left;verticalAlign=middle;fontSize=12;fontFamily=Geist,Arial,sans-serif;fontColor=#4f5d75;" parent="1" vertex="1">
+          <mxGeometry as="geometry" x="40" y="103" width="839.6" height="18" />
+        </mxCell>
+        <mxCell id="group-alt" value="" style="rounded=1;absoluteArcSize=1;arcSize=8;html=0;fillColor=#f1f1f1;strokeColor=#bfc0c0;strokeWidth=0.8;container=1;collapsible=0;recursiveResize=0;" parent="1" vertex="1">
+          <mxGeometry as="geometry" x="556" y="540" width="472" height="252" />
+        </mxCell>
+        <mxCell id="op-4" value="" style="rounded=1;absoluteArcSize=1;arcSize=4;html=0;fillColor=#f5f5f5;strokeColor=#bfc0c0;strokeWidth=0.8;" parent="group-alt" vertex="1">
+          <mxGeometry as="geometry" x="0.0" y="0.0" width="40" height="16" />
+        </mxCell>
+        <mxCell id="op-5" value="ALT" style="text;html=0;spacing=0;align=center;verticalAlign=middle;fontSize=8;fontFamily=Geist Mono,Courier New,monospace;fontColor=#5a6580;" parent="group-alt" vertex="1">
+          <mxGeometry as="geometry" x="8.0" y="3.0" width="24" height="14" />
+        </mxCell>
+        <mxCell id="op-6" value="[known supported event + valid state]" style="text;html=0;spacing=0;align=left;verticalAlign=middle;fontSize=8;fontFamily=Geist Mono,Courier New,monospace;fontColor=#5a6580;" parent="group-alt" vertex="1">
+          <mxGeometry as="geometry" x="12.0" y="15.0" width="203.36" height="14" />
+        </mxCell>
+        <mxCell id="op-7" value="" style="rounded=1;arcSize=8;html=0;endArrow=none;endFill=1;strokeColor=#bfc0c0;strokeWidth=0.8;dashed=1;dashPattern=4 4;" parent="group-alt" edge="1">
+          <mxGeometry as="geometry" relative="1">
+            <mxPoint as="sourcePoint" x="8.0" y="128.0" />
+            <mxPoint as="targetPoint" x="464.0" y="128.0" />
+          </mxGeometry>
+        </mxCell>
+        <mxCell id="op-8" value="[unknown / duplicate / partial or unsettled refund]" style="text;html=0;spacing=0;align=left;verticalAlign=middle;fontSize=8;fontFamily=Geist Mono,Courier New,monospace;fontColor=#5a6580;" parent="group-alt" vertex="1">
+          <mxGeometry as="geometry" x="12.0" y="143.0" width="277.28" height="14" />
+        </mxCell>
+        <mxCell id="op-9" value="" style="rounded=1;arcSize=8;html=0;endArrow=none;endFill=1;strokeColor=#bfc0c0;strokeWidth=0.8;dashed=1;dashPattern=4 4;" parent="1" edge="1">
+          <mxGeometry as="geometry" relative="1">
+            <mxPoint as="sourcePoint" x="160" y="336" />
+            <mxPoint as="targetPoint" x="160" y="944" />
+          </mxGeometry>
+        </mxCell>
+        <mxCell id="group-boundary-stripe" value="" style="rounded=1;absoluteArcSize=1;arcSize=8;html=0;fillColor=#f0f0f1;strokeColor=#5a6580;strokeWidth=0.8;container=1;collapsible=0;recursiveResize=0;" parent="1" vertex="1">
+          <mxGeometry as="geometry" x="40" y="160" width="240" height="176" />
+        </mxCell>
+        <mxCell id="op-11" value="EXTERNAL PROVIDER" style="text;html=0;spacing=0;align=center;verticalAlign=middle;fontSize=8;fontFamily=Geist Mono,Courier New,monospace;fontColor=#5a6580;" parent="group-boundary-stripe" vertex="1">
+          <mxGeometry as="geometry" x="71.12" y="11.0" width="97.76" height="14" />
+        </mxCell>
+        <mxCell id="op-12" value="Stripe" style="text;html=0;spacing=0;align=center;verticalAlign=middle;fontSize=12;fontFamily=Geist,Arial,sans-serif;fontColor=#2d3142;fontStyle=1;" parent="group-boundary-stripe" vertex="1">
+          <mxGeometry as="geometry" x="92.24000000000001" y="27.0" width="55.52" height="18" />
+        </mxCell>
+        <mxCell id="group-participant-stripe" value="" style="rounded=1;absoluteArcSize=1;arcSize=8;html=0;fillColor=#ffffff;strokeColor=#bfc0c0;strokeWidth=0.8;container=1;collapsible=0;recursiveResize=0;" parent="group-boundary-stripe" vertex="1">
+          <mxGeometry as="geometry" x="12" y="52" width="216" height="112" />
+        </mxCell>
+        <mxCell id="op-14" value="SIGNED EVENT" style="text;html=0;spacing=0;align=center;verticalAlign=middle;fontSize=8;fontFamily=Geist Mono,Courier New,monospace;fontColor=#5a6580;" parent="group-participant-stripe" vertex="1">
+          <mxGeometry as="geometry" x="72.32" y="11.0" width="71.36" height="14" />
+        </mxCell>
+        <mxCell id="op-15" value="Provider side effects" style="text;html=0;spacing=0;align=center;verticalAlign=middle;fontSize=11;fontFamily=Geist,Arial,sans-serif;fontColor=#4f5d75;" parent="group-participant-stripe" vertex="1">
+          <mxGeometry as="geometry" x="27.769999999999996" y="36.0" width="160.46" height="17" />
+        </mxCell>
+        <mxCell id="op-16" value="Independent durable state" style="text;html=0;spacing=0;align=center;verticalAlign=middle;fontSize=11;fontFamily=Geist,Arial,sans-serif;fontColor=#4f5d75;" parent="group-participant-stripe" vertex="1">
+          <mxGeometry as="geometry" x="13.25" y="60.0" width="189.5" height="17" />
+        </mxCell>
+        <mxCell id="op-17" value="" style="rounded=1;arcSize=8;html=0;endArrow=none;endFill=1;strokeColor=#bfc0c0;strokeWidth=0.8;dashed=1;dashPattern=4 4;" parent="1" edge="1">
+          <mxGeometry as="geometry" relative="1">
+            <mxPoint as="sourcePoint" x="580" y="336" />
+            <mxPoint as="targetPoint" x="580" y="944" />
+          </mxGeometry>
+        </mxCell>
+        <mxCell id="group-boundary-api" value="" style="rounded=1;absoluteArcSize=1;arcSize=8;html=0;fillColor=#f1e7e4;strokeColor=#bf4520;strokeWidth=0.8;container=1;collapsible=0;recursiveResize=0;" parent="1" vertex="1">
+          <mxGeometry as="geometry" x="460" y="160" width="240" height="176" />
+        </mxCell>
+        <mxCell id="op-19" value="BACKEND SERVICE BOUNDARY" style="text;html=0;spacing=0;align=center;verticalAlign=middle;fontSize=8;fontFamily=Geist Mono,Courier New,monospace;fontColor=#5a6580;" parent="group-boundary-api" vertex="1">
+          <mxGeometry as="geometry" x="52.639999999999986" y="11.0" width="134.72" height="14" />
+        </mxCell>
+        <mxCell id="op-20" value="Webhook ingress" style="text;html=0;spacing=0;align=center;verticalAlign=middle;fontSize=12;fontFamily=Geist,Arial,sans-serif;fontColor=#2d3142;fontStyle=1;" parent="group-boundary-api" vertex="1">
+          <mxGeometry as="geometry" x="56.60000000000002" y="27.0" width="126.8" height="18" />
+        </mxCell>
+        <mxCell id="group-application-api" value="" style="rounded=1;absoluteArcSize=1;arcSize=8;html=0;fillColor=#f5f5f5;strokeColor=#5a6580;strokeWidth=0.8;container=1;collapsible=0;recursiveResize=0;" parent="group-boundary-api" vertex="1">
+          <mxGeometry as="geometry" x="12" y="52" width="216" height="112" />
+        </mxCell>
+        <mxCell id="op-22" value="Application coordination" style="text;html=0;spacing=0;align=center;verticalAlign=middle;fontSize=9;fontFamily=Geist,Arial,sans-serif;fontColor=#2d3142;fontStyle=1;" parent="group-application-api" vertex="1">
+          <mxGeometry as="geometry" x="32.72000000000003" y="6.0" width="150.56" height="15" />
+        </mxCell>
+        <mxCell id="group-role-api-0" value="" style="rounded=1;absoluteArcSize=1;arcSize=8;html=0;fillColor=#ffffff;strokeColor=#bfc0c0;strokeWidth=0.8;container=1;collapsible=0;recursiveResize=0;" parent="group-application-api" vertex="1">
+          <mxGeometry as="geometry" x="12" y="24" width="192" height="24" />
+        </mxCell>
+        <mxCell id="op-24" value="Command / Query" style="text;html=0;spacing=0;align=center;verticalAlign=middle;fontSize=10;fontFamily=Geist,Arial,sans-serif;fontColor=#4f5d75;" parent="group-role-api-0" vertex="1">
+          <mxGeometry as="geometry" x="42.5" y="5.0" width="107" height="16" />
+        </mxCell>
+        <mxCell id="group-role-api-1" value="" style="rounded=1;absoluteArcSize=1;arcSize=8;html=0;fillColor=#ffffff;strokeColor=#bfc0c0;strokeWidth=0.8;container=1;collapsible=0;recursiveResize=0;" parent="group-application-api" vertex="1">
+          <mxGeometry as="geometry" x="12" y="52" width="192" height="24" />
+        </mxCell>
+        <mxCell id="op-26" value="Validator / policy guard" style="text;html=0;spacing=0;align=center;verticalAlign=middle;fontSize=10;fontFamily=Geist,Arial,sans-serif;fontColor=#4f5d75;" parent="group-role-api-1" vertex="1">
+          <mxGeometry as="geometry" x="12.800000000000011" y="5.0" width="166.4" height="16" />
+        </mxCell>
+        <mxCell id="group-role-api-2" value="" style="rounded=1;absoluteArcSize=1;arcSize=8;html=0;fillColor=#ffffff;strokeColor=#bfc0c0;strokeWidth=0.8;container=1;collapsible=0;recursiveResize=0;" parent="group-application-api" vertex="1">
+          <mxGeometry as="geometry" x="12" y="80" width="192" height="24" />
+        </mxCell>
+        <mxCell id="op-28" value="Handler / transaction ports" style="text;html=0;spacing=0;align=center;verticalAlign=middle;fontSize=10;fontFamily=Geist,Arial,sans-serif;fontColor=#4f5d75;" parent="group-role-api-2" vertex="1">
+          <mxGeometry as="geometry" x="2.8999999999999773" y="5.0" width="186.2" height="16" />
+        </mxCell>
+        <mxCell id="op-29" value="" style="rounded=1;arcSize=8;html=0;endArrow=none;endFill=1;strokeColor=#bfc0c0;strokeWidth=0.8;dashed=1;dashPattern=4 4;" parent="1" edge="1">
+          <mxGeometry as="geometry" relative="1">
+            <mxPoint as="sourcePoint" x="1004" y="336" />
+            <mxPoint as="targetPoint" x="1004" y="944" />
+          </mxGeometry>
+        </mxCell>
+        <mxCell id="group-boundary-sql" value="" style="rounded=1;absoluteArcSize=1;arcSize=8;html=0;fillColor=#f0f0f1;strokeColor=#5a6580;strokeWidth=0.8;container=1;collapsible=0;recursiveResize=0;" parent="1" vertex="1">
+          <mxGeometry as="geometry" x="884" y="160" width="240" height="176" />
+        </mxCell>
+        <mxCell id="op-31" value="AUTHORITATIVE DATA BOUNDARY" style="text;html=0;spacing=0;align=center;verticalAlign=middle;fontSize=8;fontFamily=Geist Mono,Courier New,monospace;fontColor=#5a6580;" parent="group-boundary-sql" vertex="1">
+          <mxGeometry as="geometry" x="44.72000000000003" y="11.0" width="150.56" height="14" />
+        </mxCell>
+        <mxCell id="op-32" value="PostgreSQL" style="text;html=0;spacing=0;align=center;verticalAlign=middle;fontSize=12;fontFamily=Geist,Arial,sans-serif;fontColor=#2d3142;fontStyle=1;" parent="group-boundary-sql" vertex="1">
+          <mxGeometry as="geometry" x="76.39999999999998" y="27.0" width="87.2" height="18" />
+        </mxCell>
+        <mxCell id="group-participant-sql" value="" style="rounded=1;absoluteArcSize=1;arcSize=8;html=0;fillColor=#ffffff;strokeColor=#bfc0c0;strokeWidth=0.8;container=1;collapsible=0;recursiveResize=0;" parent="group-boundary-sql" vertex="1">
+          <mxGeometry as="geometry" x="12" y="52" width="216" height="112" />
+        </mxCell>
+        <mxCell id="op-34" value="RECEIPT / BUSINESS TX" style="text;html=0;spacing=0;align=center;verticalAlign=middle;fontSize=8;fontFamily=Geist Mono,Courier New,monospace;fontColor=#5a6580;" parent="group-participant-sql" vertex="1">
+          <mxGeometry as="geometry" x="48.559999999999945" y="11.0" width="118.88" height="14" />
+        </mxCell>
+        <mxCell id="op-35" value="Durable receipt / event identity" style="text;html=0;spacing=0;align=center;verticalAlign=middle;fontSize=11;fontFamily=Geist,Arial,sans-serif;fontColor=#4f5d75;" parent="1" vertex="1">
+          <mxGeometry as="geometry" x="883.84" y="248" width="240.32" height="17" />
+        </mxCell>
+        <mxCell id="op-36" value="Guarded order/payment effects" style="text;html=0;spacing=0;align=center;verticalAlign=middle;fontSize=11;fontFamily=Geist,Arial,sans-serif;fontColor=#4f5d75;" parent="group-boundary-sql" vertex="1">
+          <mxGeometry as="geometry" x="10.730000000000018" y="112.0" width="218.54" height="17" />
+        </mxCell>
+        <mxCell id="op-37" value="" style="rounded=1;arcSize=8;html=0;endArrow=none;endFill=1;strokeColor=#bfc0c0;strokeWidth=0.8;dashed=1;dashPattern=4 4;" parent="1" edge="1">
+          <mxGeometry as="geometry" relative="1">
+            <mxPoint as="sourcePoint" x="1424" y="336" />
+            <mxPoint as="targetPoint" x="1424" y="944" />
+          </mxGeometry>
+        </mxCell>
+        <mxCell id="group-boundary-relay" value="" style="rounded=1;absoluteArcSize=1;arcSize=8;html=0;fillColor=#f0f0f1;strokeColor=#5a6580;strokeWidth=0.8;container=1;collapsible=0;recursiveResize=0;" parent="1" vertex="1">
+          <mxGeometry as="geometry" x="1304" y="160" width="240" height="176" />
+        </mxCell>
+        <mxCell id="op-39" value="BACKGROUND WORKER BOUNDARY" style="text;html=0;spacing=0;align=center;verticalAlign=middle;fontSize=8;fontFamily=Geist Mono,Courier New,monospace;fontColor=#5a6580;" parent="group-boundary-relay" vertex="1">
+          <mxGeometry as="geometry" x="47.3599999999999" y="11.0" width="145.28" height="14" />
+        </mxCell>
+        <mxCell id="op-40" value="Outbox relay" style="text;html=0;spacing=0;align=center;verticalAlign=middle;fontSize=12;fontFamily=Geist,Arial,sans-serif;fontColor=#2d3142;fontStyle=1;" parent="group-boundary-relay" vertex="1">
+          <mxGeometry as="geometry" x="68.48000000000002" y="27.0" width="103.04" height="18" />
+        </mxCell>
+        <mxCell id="group-participant-relay" value="" style="rounded=1;absoluteArcSize=1;arcSize=8;html=0;fillColor=#ffffff;strokeColor=#bfc0c0;strokeWidth=0.8;container=1;collapsible=0;recursiveResize=0;" parent="group-boundary-relay" vertex="1">
+          <mxGeometry as="geometry" x="12" y="52" width="216" height="112" />
+        </mxCell>
+        <mxCell id="op-42" value="PROPOSED DELIVERY" style="text;html=0;spacing=0;align=center;verticalAlign=middle;fontSize=8;fontFamily=Geist Mono,Courier New,monospace;fontColor=#5a6580;" parent="group-participant-relay" vertex="1">
+          <mxGeometry as="geometry" x="59.11999999999989" y="11.0" width="97.76" height="14" />
+        </mxCell>
+        <mxCell id="op-43" value="Lease / retry / ACK" style="text;html=0;spacing=0;align=center;verticalAlign=middle;fontSize=11;fontFamily=Geist,Arial,sans-serif;fontColor=#4f5d75;" parent="group-participant-relay" vertex="1">
+          <mxGeometry as="geometry" x="35.02999999999997" y="36.0" width="145.94" height="17" />
+        </mxCell>
+        <mxCell id="op-44" value="No business-operation replay" style="text;html=0;spacing=0;align=center;verticalAlign=middle;fontSize=11;fontFamily=Geist,Arial,sans-serif;fontColor=#4f5d75;" parent="group-participant-relay" vertex="1">
+          <mxGeometry as="geometry" x="2.3599999999999" y="60.0" width="211.28" height="17" />
+        </mxCell>
+        <mxCell id="op-45" value="" style="rounded=1;absoluteArcSize=1;arcSize=0;html=0;fillColor=#e4e6e8;strokeColor=#4f5d75;strokeWidth=0.8;" parent="1" vertex="1">
+          <mxGeometry as="geometry" x="1000" y="428" width="8" height="52" />
+        </mxCell>
+        <mxCell id="op-46" value="" style="rounded=1;absoluteArcSize=1;arcSize=0;html=0;fillColor=#e4e6e8;strokeColor=#4f5d75;strokeWidth=0.8;" parent="1" vertex="1">
+          <mxGeometry as="geometry" x="576" y="384" width="8" height="140" />
+        </mxCell>
+        <mxCell id="op-47" value="" style="rounded=1;absoluteArcSize=1;arcSize=0;html=0;fillColor=#e4e6e8;strokeColor=#4f5d75;strokeWidth=0.8;" parent="group-alt" vertex="1">
+          <mxGeometry as="geometry" x="444.0" y="52.0" width="8" height="52" />
+        </mxCell>
+        <mxCell id="op-48" value="" style="rounded=1;absoluteArcSize=1;arcSize=0;html=0;fillColor=#e4e6e8;strokeColor=#4f5d75;strokeWidth=0.8;" parent="group-alt" vertex="1">
+          <mxGeometry as="geometry" x="444.0" y="180.0" width="8" height="52" />
+        </mxCell>
+        <mxCell id="op-49" value="" style="rounded=1;absoluteArcSize=1;arcSize=0;html=0;fillColor=#e4e6e8;strokeColor=#4f5d75;strokeWidth=0.8;" parent="1" vertex="1">
+          <mxGeometry as="geometry" x="1000" y="820" width="8" height="52" />
+        </mxCell>
+        <mxCell id="op-50" value="" style="rounded=1;arcSize=8;html=0;endArrow=block;endFill=1;strokeColor=#4f5d75;strokeWidth=1.2;" parent="1" edge="1">
+          <mxGeometry as="geometry" relative="1">
+            <mxPoint as="sourcePoint" x="164" y="384" />
+            <mxPoint as="targetPoint" x="576" y="384" />
+          </mxGeometry>
+        </mxCell>
+        <mxCell id="op-51" value="" style="rounded=1;absoluteArcSize=1;arcSize=4;html=0;fillColor=#f5f5f5;strokeColor=#f5f5f5;strokeWidth=0.8;" parent="1" vertex="1">
+          <mxGeometry as="geometry" x="332" y="364" width="76" height="12" />
+        </mxCell>
+        <mxCell id="op-52" value="SIGNED EVENT" style="text;html=0;spacing=0;align=center;verticalAlign=middle;fontSize=8;fontFamily=Geist Mono,Courier New,monospace;fontColor=#5a6580;" parent="1" vertex="1">
+          <mxGeometry as="geometry" x="334.32" y="364" width="71.36" height="14" />
+        </mxCell>
+        <mxCell id="op-53" value="01" style="text;html=0;spacing=0;align=left;verticalAlign=middle;fontSize=9;fontFamily=Geist Mono,Courier New,monospace;fontColor=#5a6580;" parent="1" vertex="1">
+          <mxGeometry as="geometry" x="40" y="377" width="24" height="15" />
+        </mxCell>
+        <mxCell id="op-54" value="" style="rounded=1;absoluteArcSize=1;arcSize=4;html=0;fillColor=#f5f5f5;strokeColor=#f5f5f5;strokeWidth=0.8;" parent="1" vertex="1">
+          <mxGeometry as="geometry" x="250" y="392" width="240" height="14" />
+        </mxCell>
+        <mxCell id="op-55" value="Raw body + signature; body/concurrency limits" style="text;html=0;spacing=0;align=center;verticalAlign=middle;fontSize=9;fontFamily=Geist,Arial,sans-serif;fontColor=#4f5d75;" parent="1" vertex="1">
+          <mxGeometry as="geometry" x="232.35" y="393" width="275.3" height="15" />
+        </mxCell>
+        <mxCell id="op-56" value="" style="rounded=1;arcSize=8;html=0;endArrow=block;endFill=1;strokeColor=#4f5d75;strokeWidth=1.2;" parent="1" edge="1">
+          <mxGeometry as="geometry" relative="1">
+            <mxPoint as="sourcePoint" x="584" y="428" />
+            <mxPoint as="targetPoint" x="1000" y="428" />
+          </mxGeometry>
+        </mxCell>
+        <mxCell id="op-57" value="" style="rounded=1;absoluteArcSize=1;arcSize=4;html=0;fillColor=#f5f5f5;strokeColor=#f5f5f5;strokeWidth=0.8;" parent="1" vertex="1">
+          <mxGeometry as="geometry" x="750" y="408" width="84" height="12" />
+        </mxCell>
+        <mxCell id="op-58" value="STORE RECEIPT" style="text;html=0;spacing=0;align=center;verticalAlign=middle;fontSize=8;fontFamily=Geist Mono,Courier New,monospace;fontColor=#5a6580;" parent="1" vertex="1">
+          <mxGeometry as="geometry" x="753.68" y="408" width="76.64" height="14" />
+        </mxCell>
+        <mxCell id="op-59" value="02" style="text;html=0;spacing=0;align=left;verticalAlign=middle;fontSize=9;fontFamily=Geist Mono,Courier New,monospace;fontColor=#5a6580;" parent="1" vertex="1">
+          <mxGeometry as="geometry" x="40" y="421" width="24" height="15" />
+        </mxCell>
+        <mxCell id="op-60" value="" style="rounded=1;absoluteArcSize=1;arcSize=4;html=0;fillColor=#f5f5f5;strokeColor=#f5f5f5;strokeWidth=0.8;" parent="1" vertex="1">
+          <mxGeometry as="geometry" x="656" y="436" width="272" height="14" />
+        </mxCell>
+        <mxCell id="op-61" value="PROPOSED stable event receipt + payload fingerprint" style="text;html=0;spacing=0;align=center;verticalAlign=middle;fontSize=9;fontFamily=Geist,Arial,sans-serif;fontColor=#4f5d75;" parent="1" vertex="1">
+          <mxGeometry as="geometry" x="636.53" y="437" width="310.94" height="15" />
+        </mxCell>
+        <mxCell id="op-62" value="" style="rounded=1;arcSize=8;html=0;endArrow=block;endFill=1;strokeColor=#4f5d75;strokeWidth=1.2;dashed=1;dashPattern=4 4;" parent="1" edge="1">
+          <mxGeometry as="geometry" relative="1">
+            <mxPoint as="sourcePoint" x="1000" y="472" />
+            <mxPoint as="targetPoint" x="584" y="472" />
+          </mxGeometry>
+        </mxCell>
+        <mxCell id="op-63" value="" style="rounded=1;absoluteArcSize=1;arcSize=4;html=0;fillColor=#f5f5f5;strokeColor=#f5f5f5;strokeWidth=0.8;" parent="1" vertex="1">
+          <mxGeometry as="geometry" x="766" y="452" width="52" height="12" />
+        </mxCell>
+        <mxCell id="op-64" value="DURABLE" style="text;html=0;spacing=0;align=center;verticalAlign=middle;fontSize=8;fontFamily=Geist Mono,Courier New,monospace;fontColor=#5a6580;" parent="1" vertex="1">
+          <mxGeometry as="geometry" x="769.52" y="452" width="44.96" height="14" />
+        </mxCell>
+        <mxCell id="op-65" value="03" style="text;html=0;spacing=0;align=left;verticalAlign=middle;fontSize=9;fontFamily=Geist Mono,Courier New,monospace;fontColor=#5a6580;" parent="1" vertex="1">
+          <mxGeometry as="geometry" x="40" y="465" width="24" height="15" />
+        </mxCell>
+        <mxCell id="op-66" value="" style="rounded=1;absoluteArcSize=1;arcSize=4;html=0;fillColor=#f5f5f5;strokeColor=#f5f5f5;strokeWidth=0.8;" parent="1" vertex="1">
+          <mxGeometry as="geometry" x="682" y="480" width="220" height="14" />
+        </mxCell>
+        <mxCell id="op-67" value="Unknown provider links remain recoverable" style="text;html=0;spacing=0;align=center;verticalAlign=middle;fontSize=9;fontFamily=Geist,Arial,sans-serif;fontColor=#4f5d75;" parent="1" vertex="1">
+          <mxGeometry as="geometry" x="666.23" y="481" width="251.54" height="15" />
+        </mxCell>
+        <mxCell id="op-68" value="" style="rounded=1;arcSize=8;html=0;endArrow=block;endFill=1;strokeColor=#4f5d75;strokeWidth=1.2;dashed=1;dashPattern=4 4;" parent="1" edge="1">
+          <mxGeometry as="geometry" relative="1">
+            <mxPoint as="sourcePoint" x="576" y="516" />
+            <mxPoint as="targetPoint" x="164" y="516" />
+          </mxGeometry>
+        </mxCell>
+        <mxCell id="op-69" value="" style="rounded=1;absoluteArcSize=1;arcSize=4;html=0;fillColor=#f5f5f5;strokeColor=#f5f5f5;strokeWidth=0.8;" parent="1" vertex="1">
+          <mxGeometry as="geometry" x="334" y="496" width="72" height="12" />
+        </mxCell>
+        <mxCell id="op-70" value="ACK RECEIPT" style="text;html=0;spacing=0;align=center;verticalAlign=middle;fontSize=8;fontFamily=Geist Mono,Courier New,monospace;fontColor=#5a6580;" parent="1" vertex="1">
+          <mxGeometry as="geometry" x="336.96" y="496" width="66.08" height="14" />
+        </mxCell>
+        <mxCell id="op-71" value="04" style="text;html=0;spacing=0;align=left;verticalAlign=middle;fontSize=9;fontFamily=Geist Mono,Courier New,monospace;fontColor=#5a6580;" parent="1" vertex="1">
+          <mxGeometry as="geometry" x="40" y="509" width="24" height="15" />
+        </mxCell>
+        <mxCell id="op-72" value="" style="rounded=1;absoluteArcSize=1;arcSize=4;html=0;fillColor=#f5f5f5;strokeColor=#f5f5f5;strokeWidth=0.8;" parent="1" vertex="1">
+          <mxGeometry as="geometry" x="230" y="524" width="280" height="14" />
+        </mxCell>
+        <mxCell id="op-73" value="PROPOSED acknowledgement after durable responsibility" style="text;html=0;spacing=0;align=center;verticalAlign=middle;fontSize=9;fontFamily=Geist,Arial,sans-serif;fontColor=#4f5d75;" parent="1" vertex="1">
+          <mxGeometry as="geometry" x="208.59" y="525" width="322.82" height="15" />
+        </mxCell>
+        <mxCell id="op-74" value="" style="rounded=1;arcSize=8;html=0;endArrow=block;endFill=1;strokeColor=#4f5d75;strokeWidth=1.2;" parent="group-alt" edge="1">
+          <mxGeometry as="geometry" relative="1">
+            <mxPoint as="sourcePoint" x="28.0" y="52.0" />
+            <mxPoint as="targetPoint" x="444.0" y="52.0" />
+          </mxGeometry>
+        </mxCell>
+        <mxCell id="op-75" value="" style="rounded=1;absoluteArcSize=1;arcSize=4;html=0;fillColor=#f5f5f5;strokeColor=#f5f5f5;strokeWidth=0.8;" parent="group-alt" vertex="1">
+          <mxGeometry as="geometry" x="194.0" y="32.0" width="84" height="12" />
+        </mxCell>
+        <mxCell id="op-76" value="APPLY GUARDED" style="text;html=0;spacing=0;align=center;verticalAlign=middle;fontSize=8;fontFamily=Geist Mono,Courier New,monospace;fontColor=#5a6580;" parent="group-alt" vertex="1">
+          <mxGeometry as="geometry" x="197.67999999999995" y="32.0" width="76.64" height="14" />
+        </mxCell>
+        <mxCell id="op-77" value="05" style="text;html=0;spacing=0;align=left;verticalAlign=middle;fontSize=9;fontFamily=Geist Mono,Courier New,monospace;fontColor=#5a6580;" parent="1" vertex="1">
+          <mxGeometry as="geometry" x="40" y="585" width="24" height="15" />
+        </mxCell>
+        <mxCell id="op-78" value="" style="rounded=1;absoluteArcSize=1;arcSize=4;html=0;fillColor=#f5f5f5;strokeColor=#f5f5f5;strokeWidth=0.8;" parent="group-alt" vertex="1">
+          <mxGeometry as="geometry" x="106.0" y="60.0" width="260" height="14" />
+        </mxCell>
+        <mxCell id="op-79" value="Known supported event; order lock + current state" style="text;html=0;spacing=0;align=center;verticalAlign=middle;fontSize=9;fontFamily=Geist,Arial,sans-serif;fontColor=#4f5d75;" parent="group-alt" vertex="1">
+          <mxGeometry as="geometry" x="86.47000000000003" y="61.0" width="299.06" height="15" />
+        </mxCell>
+        <mxCell id="op-80" value="" style="rounded=1;arcSize=8;html=0;endArrow=block;endFill=1;strokeColor=#4f5d75;strokeWidth=1.2;dashed=1;dashPattern=4 4;" parent="group-alt" edge="1">
+          <mxGeometry as="geometry" relative="1">
+            <mxPoint as="sourcePoint" x="444.0" y="96.0" />
+            <mxPoint as="targetPoint" x="28.0" y="96.0" />
+          </mxGeometry>
+        </mxCell>
+        <mxCell id="op-81" value="" style="rounded=1;absoluteArcSize=1;arcSize=4;html=0;fillColor=#f5f5f5;strokeColor=#f5f5f5;strokeWidth=0.8;" parent="group-alt" vertex="1">
+          <mxGeometry as="geometry" x="194.0" y="76.0" width="84" height="12" />
+        </mxCell>
+        <mxCell id="op-82" value="COMMIT EFFECT" style="text;html=0;spacing=0;align=center;verticalAlign=middle;fontSize=8;fontFamily=Geist Mono,Courier New,monospace;fontColor=#5a6580;" parent="group-alt" vertex="1">
+          <mxGeometry as="geometry" x="197.67999999999995" y="76.0" width="76.64" height="14" />
+        </mxCell>
+        <mxCell id="op-83" value="06" style="text;html=0;spacing=0;align=left;verticalAlign=middle;fontSize=9;fontFamily=Geist Mono,Courier New,monospace;fontColor=#5a6580;" parent="1" vertex="1">
+          <mxGeometry as="geometry" x="40" y="629" width="24" height="15" />
+        </mxCell>
+        <mxCell id="op-84" value="" style="rounded=1;absoluteArcSize=1;arcSize=4;html=0;fillColor=#f5f5f5;strokeColor=#f5f5f5;strokeWidth=0.8;" parent="group-alt" vertex="1">
+          <mxGeometry as="geometry" x="126.0" y="104.0" width="220" height="14" />
+        </mxCell>
+        <mxCell id="op-85" value="Business state + outbox intent atomically" style="text;html=0;spacing=0;align=center;verticalAlign=middle;fontSize=9;fontFamily=Geist,Arial,sans-serif;fontColor=#4f5d75;" parent="group-alt" vertex="1">
+          <mxGeometry as="geometry" x="110.23000000000002" y="105.0" width="251.54" height="15" />
+        </mxCell>
+        <mxCell id="op-86" value="" style="rounded=1;arcSize=8;html=0;endArrow=block;endFill=1;strokeColor=#4f5d75;strokeWidth=1.2;" parent="group-alt" edge="1">
+          <mxGeometry as="geometry" relative="1">
+            <mxPoint as="sourcePoint" x="28.0" y="180.0" />
+            <mxPoint as="targetPoint" x="444.0" y="180.0" />
+          </mxGeometry>
+        </mxCell>
+        <mxCell id="op-87" value="" style="rounded=1;absoluteArcSize=1;arcSize=4;html=0;fillColor=#f5f5f5;strokeColor=#f5f5f5;strokeWidth=0.8;" parent="group-alt" vertex="1">
+          <mxGeometry as="geometry" x="194.0" y="160.0" width="84" height="12" />
+        </mxCell>
+        <mxCell id="op-88" value="HOLD / DEDUPE" style="text;html=0;spacing=0;align=center;verticalAlign=middle;fontSize=8;fontFamily=Geist Mono,Courier New,monospace;fontColor=#5a6580;" parent="group-alt" vertex="1">
+          <mxGeometry as="geometry" x="197.67999999999995" y="160.0" width="76.64" height="14" />
+        </mxCell>
+        <mxCell id="op-89" value="07" style="text;html=0;spacing=0;align=left;verticalAlign=middle;fontSize=9;fontFamily=Geist Mono,Courier New,monospace;fontColor=#5a6580;" parent="1" vertex="1">
+          <mxGeometry as="geometry" x="40" y="713" width="24" height="15" />
+        </mxCell>
+        <mxCell id="op-90" value="" style="rounded=1;absoluteArcSize=1;arcSize=4;html=0;fillColor=#f5f5f5;strokeColor=#f5f5f5;strokeWidth=0.8;" parent="group-alt" vertex="1">
+          <mxGeometry as="geometry" x="90.0" y="188.0" width="292" height="14" />
+        </mxCell>
+        <mxCell id="op-91" value="Unknown identity, unsettled/partial refund or duplicate" style="text;html=0;spacing=0;align=center;verticalAlign=middle;fontSize=9;fontFamily=Geist,Arial,sans-serif;fontColor=#4f5d75;" parent="group-alt" vertex="1">
+          <mxGeometry as="geometry" x="68.64999999999998" y="189.0" width="334.7" height="15" />
+        </mxCell>
+        <mxCell id="op-92" value="" style="rounded=1;arcSize=8;html=0;endArrow=block;endFill=1;strokeColor=#4f5d75;strokeWidth=1.2;dashed=1;dashPattern=4 4;" parent="group-alt" edge="1">
+          <mxGeometry as="geometry" relative="1">
+            <mxPoint as="sourcePoint" x="444.0" y="224.0" />
+            <mxPoint as="targetPoint" x="28.0" y="224.0" />
+          </mxGeometry>
+        </mxCell>
+        <mxCell id="op-93" value="" style="rounded=1;absoluteArcSize=1;arcSize=4;html=0;fillColor=#f5f5f5;strokeColor=#f5f5f5;strokeWidth=0.8;" parent="group-alt" vertex="1">
+          <mxGeometry as="geometry" x="200.0" y="204.0" width="72" height="12" />
+        </mxCell>
+        <mxCell id="op-94" value="DISPOSITION" style="text;html=0;spacing=0;align=center;verticalAlign=middle;fontSize=8;fontFamily=Geist Mono,Courier New,monospace;fontColor=#5a6580;" parent="group-alt" vertex="1">
+          <mxGeometry as="geometry" x="202.96000000000004" y="204.0" width="66.08" height="14" />
+        </mxCell>
+        <mxCell id="op-95" value="08" style="text;html=0;spacing=0;align=left;verticalAlign=middle;fontSize=9;fontFamily=Geist Mono,Courier New,monospace;fontColor=#5a6580;" parent="1" vertex="1">
+          <mxGeometry as="geometry" x="40" y="757" width="24" height="15" />
+        </mxCell>
+        <mxCell id="op-96" value="" style="rounded=1;absoluteArcSize=1;arcSize=4;html=0;fillColor=#f5f5f5;strokeColor=#f5f5f5;strokeWidth=0.8;" parent="group-alt" vertex="1">
+          <mxGeometry as="geometry" x="114.0" y="232.0" width="244" height="14" />
+        </mxCell>
+        <mxCell id="op-97" value="Reconcile or retain no-op; no invented restock" style="text;html=0;spacing=0;align=center;verticalAlign=middle;fontSize=9;fontFamily=Geist,Arial,sans-serif;fontColor=#4f5d75;" parent="group-alt" vertex="1">
+          <mxGeometry as="geometry" x="95.38" y="233.0" width="281.24" height="15" />
+        </mxCell>
+        <mxCell id="op-98" value="" style="rounded=1;arcSize=8;html=0;endArrow=block;endFill=1;strokeColor=#4f5d75;strokeWidth=1.2;" parent="1" edge="1">
+          <mxGeometry as="geometry" relative="1">
+            <mxPoint as="sourcePoint" x="1420" y="820" />
+            <mxPoint as="targetPoint" x="1008" y="820" />
+          </mxGeometry>
+        </mxCell>
+        <mxCell id="op-99" value="" style="rounded=1;absoluteArcSize=1;arcSize=4;html=0;fillColor=#f5f5f5;strokeColor=#f5f5f5;strokeWidth=0.8;" parent="1" vertex="1">
+          <mxGeometry as="geometry" x="1178" y="800" width="72" height="12" />
+        </mxCell>
+        <mxCell id="op-100" value="CLAIM LATER" style="text;html=0;spacing=0;align=center;verticalAlign=middle;fontSize=8;fontFamily=Geist Mono,Courier New,monospace;fontColor=#5a6580;" parent="1" vertex="1">
+          <mxGeometry as="geometry" x="1180.96" y="800" width="66.08" height="14" />
+        </mxCell>
+        <mxCell id="op-101" value="09" style="text;html=0;spacing=0;align=left;verticalAlign=middle;fontSize=9;fontFamily=Geist Mono,Courier New,monospace;fontColor=#5a6580;" parent="1" vertex="1">
+          <mxGeometry as="geometry" x="40" y="813" width="24" height="15" />
+        </mxCell>
+        <mxCell id="op-102" value="" style="rounded=1;absoluteArcSize=1;arcSize=4;html=0;fillColor=#f5f5f5;strokeColor=#f5f5f5;strokeWidth=0.8;" parent="1" vertex="1">
+          <mxGeometry as="geometry" x="1112" y="828" width="204" height="14" />
+        </mxCell>
+        <mxCell id="op-103" value="Publish only committed business events" style="text;html=0;spacing=0;align=center;verticalAlign=middle;fontSize=9;fontFamily=Geist,Arial,sans-serif;fontColor=#4f5d75;" parent="1" vertex="1">
+          <mxGeometry as="geometry" x="1097.14" y="829" width="233.72" height="15" />
+        </mxCell>
+        <mxCell id="op-104" value="" style="rounded=1;arcSize=8;html=0;endArrow=block;endFill=1;strokeColor=#4f5d75;strokeWidth=1.2;dashed=1;dashPattern=4 4;" parent="1" edge="1">
+          <mxGeometry as="geometry" relative="1">
+            <mxPoint as="sourcePoint" x="1008" y="864" />
+            <mxPoint as="targetPoint" x="1420" y="864" />
+          </mxGeometry>
+        </mxCell>
+        <mxCell id="op-105" value="" style="rounded=1;absoluteArcSize=1;arcSize=4;html=0;fillColor=#f5f5f5;strokeColor=#f5f5f5;strokeWidth=0.8;" parent="1" vertex="1">
+          <mxGeometry as="geometry" x="1178" y="844" width="72" height="12" />
+        </mxCell>
+        <mxCell id="op-106" value="EVENT BATCH" style="text;html=0;spacing=0;align=center;verticalAlign=middle;fontSize=8;fontFamily=Geist Mono,Courier New,monospace;fontColor=#5a6580;" parent="1" vertex="1">
+          <mxGeometry as="geometry" x="1180.96" y="844" width="66.08" height="14" />
+        </mxCell>
+        <mxCell id="op-107" value="10" style="text;html=0;spacing=0;align=left;verticalAlign=middle;fontSize=9;fontFamily=Geist Mono,Courier New,monospace;fontColor=#5a6580;" parent="1" vertex="1">
+          <mxGeometry as="geometry" x="40" y="857" width="24" height="15" />
+        </mxCell>
+        <mxCell id="op-108" value="" style="rounded=1;absoluteArcSize=1;arcSize=4;html=0;fillColor=#f5f5f5;strokeColor=#f5f5f5;strokeWidth=0.8;" parent="1" vertex="1">
+          <mxGeometry as="geometry" x="1092" y="872" width="244" height="14" />
+        </mxCell>
+        <mxCell id="op-109" value="Destination delivery follows separate protocol" style="text;html=0;spacing=0;align=center;verticalAlign=middle;fontSize=9;fontFamily=Geist,Arial,sans-serif;fontColor=#4f5d75;" parent="1" vertex="1">
+          <mxGeometry as="geometry" x="1073.38" y="873" width="281.24" height="15" />
+        </mxCell>
+        <mxCell id="op-110" value="Header nesting shows ownership. Each lifeline is one interaction boundary; child boxes are structural context, not extra timings." style="text;html=0;spacing=0;align=left;verticalAlign=middle;fontSize=10;fontFamily=Geist,Arial,sans-serif;fontColor=#4f5d75;" parent="1" vertex="1">
+          <mxGeometry as="geometry" x="40" y="953" width="859.4" height="16" />
+        </mxCell>
+        <mxCell id="op-111" value="SPEC: validate signature/raw body and guard SQL state. PROPOSED: durable receipt closes the orphan-acknowledgement gap." style="text;html=0;spacing=0;align=left;verticalAlign=middle;fontSize=10;fontFamily=Geist,Arial,sans-serif;fontColor=#4f5d75;" parent="1" vertex="1">
+          <mxGeometry as="geometry" x="40" y="977" width="793.4" height="16" />
+        </mxCell>
+        <mxCell id="op-112" value="Current refund-event contract is broader than safe provider semantics; partial/unsettled outcomes need explicit reconciliation." style="text;html=0;spacing=0;align=left;verticalAlign=middle;fontSize=10;fontFamily=Geist,Arial,sans-serif;fontColor=#4f5d75;" parent="1" vertex="1">
+          <mxGeometry as="geometry" x="40" y="997" width="846.2" height="16" />
+        </mxCell>
+        <mxCell id="op-113" value="Sources: linked spec.md + sequence.wsd, diagram-semantics.md and supporting research | Proposed coordination; exact SQL remains in API sequences." style="text;html=0;spacing=0;align=left;verticalAlign=middle;fontSize=9;fontFamily=Geist Mono,Courier New,monospace;fontColor=#5a6580;" parent="1" vertex="1">
+          <mxGeometry as="geometry" x="40" y="1026" width="869.3" height="15" />
+        </mxCell>
+        <mxCell id="op-114" value="" style="rounded=1;arcSize=8;html=0;endArrow=none;endFill=1;strokeColor=#bfc0c0;strokeWidth=0.8;" parent="1" edge="1">
+          <mxGeometry as="geometry" relative="1">
+            <mxPoint as="sourcePoint" x="40" y="1052" />
+            <mxPoint as="targetPoint" x="1544" y="1052" />
+          </mxGeometry>
+        </mxCell>
+        <mxCell id="op-115" value="Solid = synchronous call" style="text;html=0;spacing=0;align=left;verticalAlign=middle;fontSize=9;fontFamily=Geist,Arial,sans-serif;fontColor=#4f5d75;" parent="1" vertex="1">
+          <mxGeometry as="geometry" x="40" y="1066" width="150.56" height="15" />
+        </mxCell>
+        <mxCell id="op-116" value="Dashed filled = return" style="text;html=0;spacing=0;align=left;verticalAlign=middle;fontSize=9;fontFamily=Geist,Arial,sans-serif;fontColor=#4f5d75;" parent="1" vertex="1">
+          <mxGeometry as="geometry" x="336" y="1066" width="138.68" height="15" />
+        </mxCell>
+        <mxCell id="op-117" value="Dashed open = async hint" style="text;html=0;spacing=0;align=left;verticalAlign=middle;fontSize=9;fontFamily=Geist,Arial,sans-serif;fontColor=#4f5d75;" parent="1" vertex="1">
+          <mxGeometry as="geometry" x="632" y="1066" width="150.56" height="15" />
+        </mxCell>
+        <mxCell id="op-118" value="ALT = mutually exclusive" style="text;html=0;spacing=0;align=left;verticalAlign=middle;fontSize=9;fontFamily=Geist,Arial,sans-serif;fontColor=#4f5d75;" parent="1" vertex="1">
+          <mxGeometry as="geometry" x="928" y="1066" width="150.56" height="15" />
+        </mxCell>
+        <mxCell id="op-119" value="Header boxes = ownership" style="text;html=0;spacing=0;align=left;verticalAlign=middle;fontSize=9;fontFamily=Geist,Arial,sans-serif;fontColor=#4f5d75;" parent="1" vertex="1">
+          <mxGeometry as="geometry" x="1224" y="1066" width="150.56" height="15" />
+        </mxCell>
+      </root>
+    </mxGraphModel>
+  </diagram>
+</mxfile>
