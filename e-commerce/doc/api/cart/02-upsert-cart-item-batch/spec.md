@@ -53,7 +53,8 @@
 - Add (no `id`): when the user already has a line of the same SKU the quantity is added to that line (merge, HTTP 200), otherwise a new line is inserted (HTTP 201). An add is one statement, `INSERT ... ON CONFLICT (user_id, shop_id, product_id, sku_id) WHERE row_status <> 'DELETED' DO UPDATE`, that uses the partial unique index `uq_t_cart_user_id_shop_id_product_id_sku_id` (it covers the lines that are not DELETED): two requests at the same time can never create two lines of the same SKU, the merge is limited by the stock in the same statement, and a line that was deleted is outside the index, so adding the SKU again inserts a new line (approved by the product owner on 2026-11-08). Update (`id`): the quantity of the line is replaced (HTTP 200). Delete (`rowStatus = DELETED`): the line is soft-deleted (HTTP 204, no response body). The cart has no archive.
 - Stock rule: the SKU must be on sale: the shop, the product, the shop product, the shop product SKU and the product SKU must be ACTIVE, otherwise the request is rejected with 404 (E10005) and the cart is not changed. One lot must be on sale and the quantity of the line after the request must not be larger than the remaining quantity of that lot, otherwise the request is rejected with 409 (E10007) and the cart is not changed. The rule is checked on add, merge and update, not on delete (approved by the product owner on 2026-11-08).
 - The cart keeps no price and no lot. The price, the stock status and the total are read from the lot that is on sale each time the cart is read, so they always follow the shop (see the inquiry). A line can later become larger than the stock or no longer on sale, the cart still holds it and the inquiry reports it.
-- Execution order: validate the request (400) -> existence checks (404, the line of the user and the shop, product and SKU that must be ACTIVE) -> stock checks (409, E10007) -> write the line (an add is the one `INSERT ... ON CONFLICT` that merges) -> line limit check (409, E10008, the transaction is rolled back). The whole request is one transaction.
+- Lock: the transaction starts by locking the ACTIVE row of the user (`authen.m_user`, `FOR UPDATE`, the first statement after BEGIN, as every authen API does), so that two requests of the same user are applied one after the other: the merge, the stock rule and the limit of 100 lines are then exact, because no other request of the user can write a line between the write and the count. A user that is missing or not ACTIVE gets 401 (E10002) and nothing is written (a technical decision of the lead SA that does not change the business rules approved by the product owner on 2026-11-08).
+- Execution order: validate the request (400) -> verify the access token (401) -> BEGIN and lock the user (401 when the user is missing or not ACTIVE) -> existence checks (404, the line of the user and the shop, product and SKU that must be ACTIVE) -> stock checks (409, E10007) -> write the line (an add is the one `INSERT ... ON CONFLICT` that merges) -> line limit check (409, E10008, the transaction is rolled back). The whole request is one transaction.
 - Batch: the HTTP status is always 200. The request based validation (400) of all items runs first in the request order, then the checks that need the database (404, then 409) in the request order, then the writes. The first failing item stops the batch and its error is returned with the position `items[i]`, nothing is changed. The limit of 100 lines is checked against the cart after all items are applied.
 
 #### Example Body Parameters
@@ -393,6 +394,19 @@ curl --location --request POST 'https://www.domain.com/api-dev/v1/cart/item/upse
 ---
 
 ## Database Relations
+
+### Table: [authen.m_user](../../../schema/authen/m_user.md)
+
+#### QUERY - Lock the user
+
+```SQL
+SELECT
+    u.id as user_id
+FROM authen.m_user u
+WHERE u.id = '<sequence.userId>'
+AND u.row_status = 'ACTIVE'
+FOR UPDATE -- every authen API locks the user row first
+```
 
 ### Table: [shop.t_shop_product_sku](../../../schema/shop/t_shop_product_sku.md)
 
