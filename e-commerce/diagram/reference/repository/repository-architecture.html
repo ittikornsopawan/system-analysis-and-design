@@ -1,0 +1,259 @@
+<!DOCTYPE html>
+<html lang="en"><head><meta charset="UTF-8"><meta name="viewport" content="width=device-width,initial-scale=1.0">
+<title>Source packages &amp; responsibility map</title><link href="https://fonts.googleapis.com/css2?family=Instrument+Serif:ital@0;1&amp;family=Geist:wght@400;500;600&amp;family=Geist+Mono:wght@400;500;600&amp;display=swap" rel="stylesheet">
+<style>
+* {box-sizing:border-box;} body {margin:0;padding:24px;background:#f5f5f5;color:#2d3142;font-family:'Geist',Arial,sans-serif;}
+main {width:100%;max-width:1584px;min-width:0;margin:0 auto;} h1 {font-family:'Instrument Serif',Georgia,serif;font-size:32px;font-weight:400;}
+.diagram-container {width:100%;overflow-x:auto;} svg {display:block;width:100%;min-width:1584px;}
+.source-note {font-size:12px;line-height:1.6;color:#4f5d75;} @media print {body {padding:0;} .diagram-container {overflow-x:visible;} svg {min-width:0;}}
+</style></head><body><main><h1>Source packages &amp; responsibility map</h1><div class="diagram-container"><svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 1584 1120" role="img" aria-labelledby="repository-architecture-title repository-architecture-desc">
+<title id="repository-architecture-title">Source packages &amp; responsibility map</title>
+<desc id="repository-architecture-desc">The independently versioned backend Component Repository contains source projects, tests, shared build files and its own guides, with project references recorded as text.</desc>
+<defs>
+<marker id="repository-architecture-arrow" markerWidth="8" markerHeight="6" refX="7" refY="3" orient="auto"><polygon points="0 0,8 3,0 6" fill="#4f5d75"/></marker>
+<marker id="repository-architecture-accent" markerWidth="8" markerHeight="6" refX="7" refY="3" orient="auto"><polygon points="0 0,8 3,0 6" fill="#bf4520"/></marker>
+<marker id="repository-architecture-link" markerWidth="8" markerHeight="6" refX="7" refY="3" orient="auto"><polygon points="0 0,8 3,0 6" fill="#2e5aa8"/></marker>
+</defs>
+<rect width="1584" height="1120" fill="#f5f5f5"/>
+<g data-container-id="r-root" data-parent="root"><rect data-role="container-bounds" x="40" y="160" width="1504" height="856" rx="4" fill="#f0f0f1" stroke="#5a6580" stroke-width="1"/>
+<line x1="40" y1="196" x2="1544" y2="196" stroke="#bfc0c0" stroke-width="0.8"/>
+<text x="52" y="176" font-size="12" font-family="Geist,Arial,sans-serif" font-weight="600" fill="#5a6580" text-anchor="start">e-commerce/repository/e-commerce-backend/</text>
+<text x="52" y="189" font-size="8" font-family="Geist Mono,Courier New,monospace" font-weight="400" fill="#5a6580" text-anchor="start">COMPONENT REPOSITORY · github.com/ittikornsopawan/e-commerce-backend · PIN d8255183cba54d0c2b218607456b895a70df32f0</text>
+</g>
+<g data-container-id="r-src" data-parent="r-root"><rect data-role="container-bounds" x="64" y="208" width="1112" height="784" rx="4" fill="#f5f5f5" stroke="#5a6580" stroke-width="1"/>
+<line x1="64" y1="244" x2="1176" y2="244" stroke="#bfc0c0" stroke-width="0.8"/>
+<text x="76" y="224" font-size="12" font-family="Geist,Arial,sans-serif" font-weight="600" fill="#5a6580" text-anchor="start">src/</text>
+<text x="76" y="237" font-size="8" font-family="Geist Mono,Courier New,monospace" font-weight="400" fill="#5a6580" text-anchor="start">5 PRODUCTION .csproj</text>
+</g>
+<g data-container-id="r-tests" data-parent="r-root"><rect data-role="container-bounds" x="1200" y="208" width="320" height="384" rx="4" fill="#f5f5f5" stroke="#5a6580" stroke-width="1"/>
+<line x1="1200" y1="244" x2="1520" y2="244" stroke="#bfc0c0" stroke-width="0.8"/>
+<text x="1212" y="224" font-size="12" font-family="Geist,Arial,sans-serif" font-weight="600" fill="#5a6580" text-anchor="start">tests/</text>
+<text x="1212" y="237" font-size="8" font-family="Geist Mono,Courier New,monospace" font-weight="400" fill="#5a6580" text-anchor="start">2 xUnit .csproj</text>
+</g>
+<g data-container-id="r-build" data-parent="r-root"><rect data-role="container-bounds" x="1200" y="616" width="320" height="176" rx="4" fill="#f5f5f5" stroke="#5a6580" stroke-width="1"/>
+<line x1="1200" y1="652" x2="1520" y2="652" stroke="#bfc0c0" stroke-width="0.8"/>
+<text x="1212" y="632" font-size="12" font-family="Geist,Arial,sans-serif" font-weight="600" fill="#5a6580" text-anchor="start">Component root files</text>
+<text x="1212" y="645" font-size="8" font-family="Geist Mono,Courier New,monospace" font-weight="400" fill="#5a6580" text-anchor="start">CODE · SOLUTION / SHARED BUILD</text>
+</g>
+<g data-container-id="r-evidence" data-parent="r-root"><rect data-role="container-bounds" x="1200" y="816" width="320" height="176" rx="4" fill="#f5f5f5" stroke="#5a6580" stroke-width="1"/>
+<line x1="1200" y1="852" x2="1520" y2="852" stroke="#bfc0c0" stroke-width="0.8"/>
+<text x="1212" y="832" font-size="12" font-family="Geist,Arial,sans-serif" font-weight="600" fill="#5a6580" text-anchor="start">Component guides</text>
+<text x="1212" y="845" font-size="8" font-family="Geist Mono,Courier New,monospace" font-weight="400" fill="#5a6580" text-anchor="start">CODE BASELINE · KNOWN SPEC GAPS</text>
+</g>
+<g data-container-id="r-api" data-parent="r-src"><rect data-role="container-bounds" x="88" y="256" width="520" height="208" rx="4" fill="#f5f5f5" stroke="#5a6580" stroke-width="1"/>
+<line x1="88" y1="292" x2="608" y2="292" stroke="#bfc0c0" stroke-width="0.8"/>
+<text x="100" y="272" font-size="12" font-family="Geist,Arial,sans-serif" font-weight="600" fill="#5a6580" text-anchor="start">Ecommerce.Api/</text>
+<text x="100" y="285" font-size="8" font-family="Geist Mono,Courier New,monospace" font-weight="400" fill="#5a6580" text-anchor="start">CODE · HTTP + COMPOSITION</text>
+</g>
+<g data-container-id="r-app" data-parent="r-src"><rect data-role="container-bounds" x="632" y="256" width="520" height="352" rx="8" fill="#f1e7e4" stroke="#bf4520" stroke-width="1"/>
+<line x1="632" y1="292" x2="1152" y2="292" stroke="#bfc0c0" stroke-width="0.8"/>
+<text x="644" y="272" font-size="12" font-family="Geist,Arial,sans-serif" font-weight="600" fill="#bf4520" text-anchor="start">Ecommerce.Application/</text>
+<text x="644" y="285" font-size="8" font-family="Geist Mono,Courier New,monospace" font-weight="400" fill="#5a6580" text-anchor="start">CODE · FEATURE / USE CASE</text>
+</g>
+<g data-container-id="r-domain" data-parent="r-src"><rect data-role="container-bounds" x="88" y="488" width="520" height="272" rx="4" fill="#f5f5f5" stroke="#5a6580" stroke-width="1"/>
+<line x1="88" y1="524" x2="608" y2="524" stroke="#bfc0c0" stroke-width="0.8"/>
+<text x="100" y="504" font-size="12" font-family="Geist,Arial,sans-serif" font-weight="600" fill="#5a6580" text-anchor="start">Ecommerce.Domain/</text>
+<text x="100" y="517" font-size="8" font-family="Geist Mono,Courier New,monospace" font-weight="400" fill="#5a6580" text-anchor="start">CODE + OWNER-DIRECTED DOMAIN/ PATH</text>
+</g>
+<g data-container-id="r-infra" data-parent="r-src"><rect data-role="container-bounds" x="632" y="632" width="520" height="336" rx="4" fill="#f5f5f5" stroke="#5a6580" stroke-width="1"/>
+<line x1="632" y1="668" x2="1152" y2="668" stroke="#bfc0c0" stroke-width="0.8"/>
+<text x="644" y="648" font-size="12" font-family="Geist,Arial,sans-serif" font-weight="600" fill="#5a6580" text-anchor="start">Ecommerce.Infrastructure/</text>
+<text x="644" y="661" font-size="8" font-family="Geist Mono,Courier New,monospace" font-weight="400" fill="#5a6580" text-anchor="start">CODE + PROPOSED ADAPTERS</text>
+</g>
+<g data-container-id="r-shared" data-parent="r-src"><rect data-role="container-bounds" x="88" y="784" width="520" height="184" rx="4" fill="#f5f5f5" stroke="#5a6580" stroke-width="1"/>
+<line x1="88" y1="820" x2="608" y2="820" stroke="#bfc0c0" stroke-width="0.8"/>
+<text x="100" y="800" font-size="12" font-family="Geist,Arial,sans-serif" font-weight="600" fill="#5a6580" text-anchor="start">Ecommerce.Shared/</text>
+<text x="100" y="813" font-size="8" font-family="Geist Mono,Courier New,monospace" font-weight="400" fill="#5a6580" text-anchor="start">CODE · COMMON PRIMITIVES</text>
+</g>
+<g data-container-id="r-domain-tests" data-parent="r-tests"><rect data-role="container-bounds" x="1216" y="256" width="288" height="152" rx="4" fill="#f5f5f5" stroke="#5a6580" stroke-width="1"/>
+<line x1="1216" y1="292" x2="1504" y2="292" stroke="#bfc0c0" stroke-width="0.8"/>
+<text x="1228" y="272" font-size="12" font-family="Geist,Arial,sans-serif" font-weight="600" fill="#5a6580" text-anchor="start">Ecommerce.Domain.Tests/</text>
+<text x="1228" y="285" font-size="8" font-family="Geist Mono,Courier New,monospace" font-weight="400" fill="#5a6580" text-anchor="start">CODE</text>
+</g>
+<g data-container-id="r-app-tests" data-parent="r-tests"><rect data-role="container-bounds" x="1216" y="424" width="288" height="152" rx="4" fill="#f5f5f5" stroke="#5a6580" stroke-width="1"/>
+<line x1="1216" y1="460" x2="1504" y2="460" stroke="#bfc0c0" stroke-width="0.8"/>
+<text x="1228" y="440" font-size="12" font-family="Geist,Arial,sans-serif" font-weight="600" fill="#5a6580" text-anchor="start">Ecommerce.Application.Tests/</text>
+<text x="1228" y="453" font-size="8" font-family="Geist Mono,Courier New,monospace" font-weight="400" fill="#5a6580" text-anchor="start">CODE</text>
+</g>
+<g data-container-id="r-feature" data-parent="r-app"><rect data-role="container-bounds" x="648" y="304" width="488" height="152" rx="4" fill="#f5f5f5" stroke="#5a6580" stroke-width="1"/>
+<line x1="648" y1="340" x2="1136" y2="340" stroke="#bfc0c0" stroke-width="0.8"/>
+<text x="660" y="320" font-size="12" font-family="Geist,Arial,sans-serif" font-weight="600" fill="#5a6580" text-anchor="start">Features/Authen/</text>
+<text x="660" y="333" font-size="8" font-family="Geist Mono,Courier New,monospace" font-weight="400" fill="#5a6580" text-anchor="start">CODE · ROLE SUMMARIES ACROSS USE-CASE FOLDERS</text>
+</g>
+<g data-node-id="r-http" data-parent="r-api">
+<rect data-role="node-bounds" x="104" y="304" width="232" height="144" rx="4" fill="#ffffff" stroke="#2d3142" stroke-width="1"/>
+<text x="116" y="326" font-size="12" font-family="Geist,Arial,sans-serif" font-weight="600" fill="#2d3142" text-anchor="start">Controllers / Contracts</text>
+<text x="116" y="342" font-size="8" font-family="Geist Mono,Courier New,monospace" font-weight="400" fill="#5a6580" text-anchor="start">CODE</text>
+<text x="116" y="358" font-size="9" font-family="Geist Mono,Courier New,monospace" font-weight="400" fill="#4f5d75" text-anchor="start">AuthenController / AuthenRequests</text>
+<text x="116" y="372" font-size="11" font-family="Geist,Arial,sans-serif" font-weight="400" fill="#4f5d75" text-anchor="start">Build command/query from HTTP</text>
+<text x="116" y="386" font-size="9" font-family="Geist Mono,Courier New,monospace" font-weight="400" fill="#4f5d75" text-anchor="start">REF: Application + Shared</text>
+</g>
+<g data-node-id="r-composition" data-parent="r-api">
+<rect data-role="node-bounds" x="352" y="304" width="240" height="144" rx="4" fill="#ffffff" stroke="#2d3142" stroke-width="1"/>
+<text x="364" y="326" font-size="12" font-family="Geist,Arial,sans-serif" font-weight="600" fill="#2d3142" text-anchor="start">Program / Extensions</text>
+<text x="364" y="342" font-size="8" font-family="Geist Mono,Courier New,monospace" font-weight="400" fill="#5a6580" text-anchor="start">CODE</text>
+<text x="364" y="358" font-size="9" font-family="Geist Mono,Courier New,monospace" font-weight="400" fill="#4f5d75" text-anchor="start">DI / JWT / ResultExtensions</text>
+<text x="364" y="372" font-size="9" font-family="Geist Mono,Courier New,monospace" font-weight="400" fill="#4f5d75" text-anchor="start">REF: Infrastructure</text>
+<text x="364" y="386" font-size="11" font-family="Geist,Arial,sans-serif" font-weight="400" fill="#4f5d75" text-anchor="start">PROPOSED: quota middleware</text>
+</g>
+<g data-node-id="r-input" data-parent="r-feature">
+<rect data-role="node-bounds" x="664" y="352" width="136" height="88" rx="4" fill="#ffffff" stroke="#2d3142" stroke-width="1"/>
+<text x="676" y="374" font-size="12" font-family="Geist,Arial,sans-serif" font-weight="600" fill="#2d3142" text-anchor="start">Command / Query</text>
+<text x="676" y="390" font-size="8" font-family="Geist Mono,Courier New,monospace" font-weight="400" fill="#5a6580" text-anchor="start">CODE · FILE ROLES</text>
+<text x="676" y="406" font-size="11" font-family="Geist,Arial,sans-serif" font-weight="400" fill="#4f5d75" text-anchor="start">4 cmds + 1 query</text>
+<text x="676" y="420" font-size="11" font-family="Geist,Arial,sans-serif" font-weight="400" fill="#4f5d75" text-anchor="start">Use-case files</text>
+</g>
+<g data-node-id="r-validators" data-parent="r-feature">
+<rect data-role="node-bounds" x="824" y="352" width="136" height="88" rx="4" fill="#ffffff" stroke="#2d3142" stroke-width="1"/>
+<text x="836" y="374" font-size="12" font-family="Geist,Arial,sans-serif" font-weight="600" fill="#2d3142" text-anchor="start">Validators</text>
+<text x="836" y="390" font-size="8" font-family="Geist Mono,Courier New,monospace" font-weight="400" fill="#5a6580" text-anchor="start">CODE · FILE ROLES</text>
+<text x="836" y="406" font-size="11" font-family="Geist,Arial,sans-serif" font-weight="400" fill="#4f5d75" text-anchor="start">4 validators</text>
+<text x="836" y="420" font-size="11" font-family="Geist,Arial,sans-serif" font-weight="400" fill="#4f5d75" text-anchor="start">Commands; no /me</text>
+</g>
+<g data-node-id="r-handlers" data-parent="r-feature">
+<rect data-role="node-bounds" x="984" y="352" width="136" height="88" rx="4" fill="#ffffff" stroke="#2d3142" stroke-width="1"/>
+<text x="996" y="374" font-size="12" font-family="Geist,Arial,sans-serif" font-weight="600" fill="#2d3142" text-anchor="start">Handlers</text>
+<text x="996" y="390" font-size="8" font-family="Geist Mono,Courier New,monospace" font-weight="400" fill="#5a6580" text-anchor="start">CODE · FILE ROLES</text>
+<text x="996" y="406" font-size="11" font-family="Geist,Arial,sans-serif" font-weight="400" fill="#4f5d75" text-anchor="start">5 handlers</text>
+<text x="996" y="420" font-size="11" font-family="Geist,Arial,sans-serif" font-weight="400" fill="#4f5d75" text-anchor="start">Use-case files</text>
+</g>
+<g data-node-id="r-map" data-parent="r-app">
+<rect data-role="node-bounds" x="648" y="480" width="224" height="112" rx="4" fill="#ffffff" stroke="#2d3142" stroke-width="1"/>
+<text x="660" y="502" font-size="12" font-family="Geist,Arial,sans-serif" font-weight="600" fill="#2d3142" text-anchor="start">Mapping / responses</text>
+<text x="660" y="518" font-size="8" font-family="Geist Mono,Courier New,monospace" font-weight="400" fill="#5a6580" text-anchor="start">CODE · Features/Authen/</text>
+<text x="660" y="534" font-size="9" font-family="Geist Mono,Courier New,monospace" font-weight="400" fill="#4f5d75" text-anchor="start">Mapping/AuthenMappings</text>
+<text x="660" y="548" font-size="11" font-family="Geist,Arial,sans-serif" font-weight="400" fill="#4f5d75" text-anchor="start">Response records in use cases</text>
+<text x="660" y="562" font-size="11" font-family="Geist,Arial,sans-serif" font-weight="400" fill="#4f5d75" text-anchor="start">Domain → response records</text>
+</g>
+<g data-node-id="r-abstractions" data-parent="r-app">
+<rect data-role="node-bounds" x="888" y="480" width="248" height="112" rx="4" fill="#ffffff" stroke="#2d3142" stroke-width="1"/>
+<text x="900" y="502" font-size="12" font-family="Geist,Arial,sans-serif" font-weight="600" fill="#2d3142" text-anchor="start">Abstractions / Common</text>
+<text x="900" y="518" font-size="8" font-family="Geist Mono,Courier New,monospace" font-weight="400" fill="#5a6580" text-anchor="start">CODE + PROPOSED PORTS</text>
+<text x="900" y="534" font-size="11" font-family="Geist,Arial,sans-serif" font-weight="400" fill="#4f5d75" text-anchor="start">UnitOfWork / hash / token / email</text>
+<text x="900" y="548" font-size="9" font-family="Geist Mono,Courier New,monospace" font-weight="400" fill="#4f5d75" text-anchor="start">REF: Domain + Shared</text>
+<text x="900" y="562" font-size="11" font-family="Geist,Arial,sans-serif" font-weight="400" fill="#4f5d75" text-anchor="start">PROPOSED: cache/rate/config/events</text>
+</g>
+<g data-node-id="r-entities" data-parent="r-domain">
+<rect data-role="node-bounds" x="104" y="536" width="232" height="88" rx="4" fill="#ffffff" stroke="#2d3142" stroke-width="1"/>
+<text x="116" y="558" font-size="12" font-family="Geist,Arial,sans-serif" font-weight="600" fill="#2d3142" text-anchor="start">Authen/Entities/</text>
+<text x="116" y="574" font-size="8" font-family="Geist Mono,Courier New,monospace" font-weight="400" fill="#5a6580" text-anchor="start">CODE</text>
+<text x="116" y="590" font-size="9" font-family="Geist Mono,Courier New,monospace" font-weight="400" fill="#4f5d75" text-anchor="start">User / PasswordResetToken</text>
+<text x="116" y="604" font-size="9" font-family="Geist Mono,Courier New,monospace" font-weight="400" fill="#4f5d75" text-anchor="start">Common: Entity / IAggregateRoot</text>
+</g>
+<g data-node-id="r-value" data-parent="r-domain">
+<rect data-role="node-bounds" x="352" y="536" width="240" height="88" rx="4" fill="#ffffff" stroke="#2d3142" stroke-width="1"/>
+<text x="364" y="558" font-size="12" font-family="Geist,Arial,sans-serif" font-weight="600" fill="#2d3142" text-anchor="start">Authen/ValueObjects/</text>
+<text x="364" y="574" font-size="8" font-family="Geist Mono,Courier New,monospace" font-weight="400" fill="#5a6580" text-anchor="start">CODE</text>
+<text x="364" y="590" font-size="9" font-family="Geist Mono,Courier New,monospace" font-weight="400" fill="#4f5d75" text-anchor="start">Username / EmailAddress</text>
+<text x="364" y="604" font-size="9" font-family="Geist Mono,Courier New,monospace" font-weight="400" fill="#4f5d75" text-anchor="start">PlainPassword / credentials</text>
+</g>
+<g data-node-id="r-business" data-parent="r-domain">
+<rect data-role="node-bounds" x="104" y="640" width="232" height="112" rx="4" fill="#efeff0" stroke="#5a6580" stroke-width="1" stroke-dasharray="5,4"/>
+<text x="116" y="662" font-size="12" font-family="Geist,Arial,sans-serif" font-weight="600" fill="#2d3142" text-anchor="start">Authen/Domain/</text>
+<text x="116" y="678" font-size="8" font-family="Geist Mono,Courier New,monospace" font-weight="400" fill="#5a6580" text-anchor="start">PROPOSED · OWNER REQUEST</text>
+<text x="116" y="694" font-size="11" font-family="Geist,Arial,sans-serif" font-weight="400" fill="#4f5d75" text-anchor="start">Reusable Authen business rules</text>
+<text x="116" y="708" font-size="11" font-family="Geist,Arial,sans-serif" font-weight="400" fill="#4f5d75" text-anchor="start">No implementation at pinned SHA</text>
+</g>
+<g data-node-id="r-repos" data-parent="r-domain">
+<rect data-role="node-bounds" x="352" y="640" width="240" height="112" rx="4" fill="#ffffff" stroke="#2d3142" stroke-width="1"/>
+<text x="364" y="662" font-size="12" font-family="Geist,Arial,sans-serif" font-weight="600" fill="#2d3142" text-anchor="start">Repositories / Common</text>
+<text x="364" y="678" font-size="8" font-family="Geist Mono,Courier New,monospace" font-weight="400" fill="#5a6580" text-anchor="start">CODE · Authen/Repositories/</text>
+<text x="364" y="694" font-size="9" font-family="Geist Mono,Courier New,monospace" font-weight="400" fill="#4f5d75" text-anchor="start">IAuthenRepositories</text>
+<text x="364" y="708" font-size="9" font-family="Geist Mono,Courier New,monospace" font-weight="400" fill="#4f5d75" text-anchor="start">IUser / IPassword / IToken</text>
+<text x="364" y="722" font-size="11" font-family="Geist,Arial,sans-serif" font-weight="400" fill="#4f5d75" text-anchor="start">Result/Error; domain errors</text>
+<text x="364" y="736" font-size="11" font-family="Geist,Arial,sans-serif" font-weight="400" fill="#4f5d75" text-anchor="start">Duplicate key; REF: Shared</text>
+</g>
+<g data-node-id="r-persistence" data-parent="r-infra">
+<rect data-role="node-bounds" x="648" y="680" width="224" height="112" rx="4" fill="#ffffff" stroke="#2d3142" stroke-width="1"/>
+<text x="660" y="702" font-size="12" font-family="Geist,Arial,sans-serif" font-weight="600" fill="#2d3142" text-anchor="start">Persistence/</text>
+<text x="660" y="718" font-size="8" font-family="Geist Mono,Courier New,monospace" font-weight="400" fill="#5a6580" text-anchor="start">CODE</text>
+<text x="660" y="734" font-size="9" font-family="Geist Mono,Courier New,monospace" font-weight="400" fill="#4f5d75" text-anchor="start">Authen: User / Password / Token</text>
+<text x="660" y="748" font-size="9" font-family="Geist Mono,Courier New,monospace" font-weight="400" fill="#4f5d75" text-anchor="start">DbSession / UnitOfWork</text>
+<text x="660" y="762" font-size="9" font-family="Geist Mono,Courier New,monospace" font-weight="400" fill="#4f5d75" text-anchor="start">Dapper / Npgsql</text>
+</g>
+<g data-node-id="r-security" data-parent="r-infra">
+<rect data-role="node-bounds" x="888" y="680" width="248" height="112" rx="4" fill="#ffffff" stroke="#2d3142" stroke-width="1"/>
+<text x="900" y="702" font-size="12" font-family="Geist,Arial,sans-serif" font-weight="600" fill="#2d3142" text-anchor="start">Security/</text>
+<text x="900" y="718" font-size="8" font-family="Geist Mono,Courier New,monospace" font-weight="400" fill="#5a6580" text-anchor="start">CODE</text>
+<text x="900" y="734" font-size="9" font-family="Geist Mono,Courier New,monospace" font-weight="400" fill="#4f5d75" text-anchor="start">Pbkdf2PasswordHasher / TokenService</text>
+<text x="900" y="748" font-size="9" font-family="Geist Mono,Courier New,monospace" font-weight="400" fill="#4f5d75" text-anchor="start">FieldProtector</text>
+<text x="900" y="762" font-size="11" font-family="Geist,Arial,sans-serif" font-weight="400" fill="#4f5d75" text-anchor="start">JWT / opaque tokens / field crypto</text>
+</g>
+<g data-node-id="r-options" data-parent="r-infra">
+<rect data-role="node-bounds" x="648" y="808" width="224" height="136" rx="4" fill="#ffffff" stroke="#2d3142" stroke-width="1"/>
+<text x="660" y="830" font-size="12" font-family="Geist,Arial,sans-serif" font-weight="600" fill="#2d3142" text-anchor="start">Email/ · Options/ · DI</text>
+<text x="660" y="846" font-size="8" font-family="Geist Mono,Courier New,monospace" font-weight="400" fill="#5a6580" text-anchor="start">CODE</text>
+<text x="660" y="862" font-size="11" font-family="Geist,Arial,sans-serif" font-weight="400" fill="#4f5d75" text-anchor="start">LoggingEmailSender is dev-only</text>
+<text x="660" y="876" font-size="9" font-family="Geist Mono,Courier New,monospace" font-weight="400" fill="#4f5d75" text-anchor="start">Database / Jwt / Security options</text>
+<text x="660" y="890" font-size="9" font-family="Geist Mono,Courier New,monospace" font-weight="400" fill="#4f5d75" text-anchor="start">REF: Application, Domain, Shared</text>
+</g>
+<g data-node-id="r-proposed" data-parent="r-infra">
+<rect data-role="node-bounds" x="888" y="808" width="248" height="144" rx="4" fill="#efeff0" stroke="#5a6580" stroke-width="1" stroke-dasharray="5,4"/>
+<text x="900" y="830" font-size="12" font-family="Geist,Arial,sans-serif" font-weight="600" fill="#2d3142" text-anchor="start">Proposed source seams</text>
+<text x="900" y="846" font-size="8" font-family="Geist Mono,Courier New,monospace" font-weight="400" fill="#5a6580" text-anchor="start">PROPOSED · FILES ABSENT</text>
+<text x="900" y="862" font-size="9" font-family="Geist Mono,Courier New,monospace" font-weight="400" fill="#4f5d75" text-anchor="start">Caching/ + RateLimiting/ (Redis)</text>
+<text x="900" y="876" font-size="9" font-family="Geist Mono,Courier New,monospace" font-weight="400" fill="#4f5d75" text-anchor="start">Configuration/ + Documents/ (Mongo)</text>
+<text x="900" y="890" font-size="11" font-family="Geist,Arial,sans-serif" font-weight="400" fill="#4f5d75" text-anchor="start">Client/options registration; relay</text>
+<text x="900" y="904" font-size="11" font-family="Geist,Arial,sans-serif" font-weight="400" fill="#4f5d75" text-anchor="start">TBD</text>
+</g>
+<g data-node-id="r-cqrs" data-parent="r-shared">
+<rect data-role="node-bounds" x="104" y="832" width="232" height="112" rx="4" fill="#ffffff" stroke="#2d3142" stroke-width="1"/>
+<text x="116" y="854" font-size="12" font-family="Geist,Arial,sans-serif" font-weight="600" fill="#2d3142" text-anchor="start">Cqrs/</text>
+<text x="116" y="870" font-size="8" font-family="Geist Mono,Courier New,monospace" font-weight="400" fill="#5a6580" text-anchor="start">CODE</text>
+<text x="116" y="886" font-size="9" font-family="Geist Mono,Courier New,monospace" font-weight="400" fill="#4f5d75" text-anchor="start">Messaging / Dispatcher / registration</text>
+<text x="116" y="900" font-size="11" font-family="Geist,Arial,sans-serif" font-weight="400" fill="#4f5d75" text-anchor="start">Validators run before handler</text>
+<text x="116" y="914" font-size="11" font-family="Geist,Arial,sans-serif" font-weight="400" fill="#4f5d75" text-anchor="start">Assembly scanning; no broker</text>
+</g>
+<g data-node-id="r-results" data-parent="r-shared">
+<rect data-role="node-bounds" x="352" y="832" width="240" height="112" rx="4" fill="#ffffff" stroke="#2d3142" stroke-width="1"/>
+<text x="364" y="854" font-size="12" font-family="Geist,Arial,sans-serif" font-weight="600" fill="#2d3142" text-anchor="start">Results/</text>
+<text x="364" y="870" font-size="8" font-family="Geist Mono,Courier New,monospace" font-weight="400" fill="#5a6580" text-anchor="start">CODE</text>
+<text x="364" y="886" font-size="9" font-family="Geist Mono,Courier New,monospace" font-weight="400" fill="#4f5d75" text-anchor="start">Result / Result&lt;T&gt; / Error</text>
+<text x="364" y="900" font-size="11" font-family="Geist,Arial,sans-serif" font-weight="400" fill="#4f5d75" text-anchor="start">Expected failure values</text>
+<text x="364" y="914" font-size="9" font-family="Geist Mono,Courier New,monospace" font-weight="400" fill="#4f5d75" text-anchor="start">REF: none</text>
+</g>
+<g data-node-id="r-domain-suite" data-parent="r-domain-tests">
+<rect data-role="node-bounds" x="1232" y="304" width="256" height="88" rx="4" fill="#ffffff" stroke="#2d3142" stroke-width="1"/>
+<text x="1244" y="326" font-size="12" font-family="Geist,Arial,sans-serif" font-weight="600" fill="#2d3142" text-anchor="start">Authen model tests</text>
+<text x="1244" y="342" font-size="8" font-family="Geist Mono,Courier New,monospace" font-weight="400" fill="#5a6580" text-anchor="start">CODE</text>
+<text x="1244" y="358" font-size="9" font-family="Geist Mono,Courier New,monospace" font-weight="400" fill="#4f5d75" text-anchor="start">EntityTests / ValueObjectTests</text>
+<text x="1244" y="372" font-size="9" font-family="Geist Mono,Courier New,monospace" font-weight="400" fill="#4f5d75" text-anchor="start">REF: Domain + Shared (2)</text>
+</g>
+<g data-node-id="r-app-suite" data-parent="r-app-tests">
+<rect data-role="node-bounds" x="1232" y="472" width="256" height="88" rx="4" fill="#ffffff" stroke="#2d3142" stroke-width="1"/>
+<text x="1244" y="494" font-size="12" font-family="Geist,Arial,sans-serif" font-weight="600" fill="#2d3142" text-anchor="start">Handler / dispatcher tests</text>
+<text x="1244" y="510" font-size="8" font-family="Geist Mono,Courier New,monospace" font-weight="400" fill="#5a6580" text-anchor="start">CODE</text>
+<text x="1244" y="526" font-size="9" font-family="Geist Mono,Courier New,monospace" font-weight="400" fill="#4f5d75" text-anchor="start">AuthenHandlerTests / Fakes</text>
+<text x="1244" y="540" font-size="9" font-family="Geist Mono,Courier New,monospace" font-weight="400" fill="#4f5d75" text-anchor="start">REF: Application, Domain, Shared (3)</text>
+</g>
+<g data-node-id="r-settings" data-parent="r-build">
+<rect data-role="node-bounds" x="1216" y="664" width="288" height="112" rx="4" fill="#ffffff" stroke="#2d3142" stroke-width="1"/>
+<text x="1228" y="686" font-size="12" font-family="Geist,Arial,sans-serif" font-weight="600" fill="#2d3142" text-anchor="start">Build &amp; entry documents</text>
+<text x="1228" y="702" font-size="8" font-family="Geist Mono,Courier New,monospace" font-weight="400" fill="#5a6580" text-anchor="start">CODE</text>
+<text x="1228" y="718" font-size="9" font-family="Geist Mono,Courier New,monospace" font-weight="400" fill="#4f5d75" text-anchor="start">Ecommerce.sln / net10.0</text>
+<text x="1228" y="732" font-size="9" font-family="Geist Mono,Courier New,monospace" font-weight="400" fill="#4f5d75" text-anchor="start">Directory.Build.props: warnings=errors</text>
+<text x="1228" y="746" font-size="9" font-family="Geist Mono,Courier New,monospace" font-weight="400" fill="#4f5d75" text-anchor="start">README / project-structure; dotnet test</text>
+</g>
+<g data-node-id="r-analysis" data-parent="r-evidence">
+<rect data-role="node-bounds" x="1216" y="864" width="288" height="112" rx="4" fill="#efeff0" stroke="#5a6580" stroke-width="1"/>
+<text x="1228" y="886" font-size="12" font-family="Geist,Arial,sans-serif" font-weight="600" fill="#2d3142" text-anchor="start">Backend guidance</text>
+<text x="1228" y="902" font-size="8" font-family="Geist Mono,Courier New,monospace" font-weight="400" fill="#5a6580" text-anchor="start">COMPONENT-OWNED DOCS</text>
+<text x="1228" y="918" font-size="9" font-family="Geist Mono,Courier New,monospace" font-weight="400" fill="#4f5d75" text-anchor="start">README.md / project-structure.md</text>
+<text x="1228" y="932" font-size="9" font-family="Geist Mono,Courier New,monospace" font-weight="400" fill="#4f5d75" text-anchor="start">code.md: legacy implementation gaps</text>
+<text x="1228" y="946" font-size="11" font-family="Geist,Arial,sans-serif" font-weight="400" fill="#4f5d75" text-anchor="start">Showcase owns REPOS.md + specs</text>
+</g>
+<text x="40" y="48" font-size="8" font-family="Geist Mono,Courier New,monospace" font-weight="500" fill="#5a6580" text-anchor="start">E-COMMERCE / 02 / PHYSICAL CODE OWNERSHIP</text>
+<text x="40" y="88" font-size="32" font-family="Instrument Serif,Georgia,serif" font-weight="400" fill="#2d3142" text-anchor="start">Source packages &amp; responsibility map</text>
+<text x="40" y="116" font-size="12" font-family="Geist,Arial,sans-serif" font-weight="400" fill="#4f5d75" text-anchor="start">Native folders → use-case files and role summaries. Five production projects, two test projects; direct REF lines account for all 9 + 5 references.</text>
+<text x="40" y="1036" font-size="9" font-family="Geist Mono,Courier New,monospace" font-weight="400" fill="#5a6580" text-anchor="start">Manifest: e-commerce/REPOS.md | Component: https://github.com/ittikornsopawan/e-commerce-backend · PIN d8255183cba54d0c2b218607456b895a70df32f0 | 9 source + 5 test refs</text>
+<line x1="40" y1="1052" x2="1544" y2="1052" stroke="#bfc0c0"/>
+<text x="40" y="1076" font-size="9" font-family="Geist,Arial,sans-serif" font-weight="400" fill="#4f5d75" text-anchor="start">CODE source responsibility</text>
+<text x="290.667" y="1076" font-size="9" font-family="Geist,Arial,sans-serif" font-weight="400" fill="#4f5d75" text-anchor="start">Application use-case package</text>
+<text x="541.333" y="1076" font-size="9" font-family="Geist,Arial,sans-serif" font-weight="400" fill="#4f5d75" text-anchor="start">PROPOSED path; file absent</text>
+<text x="792" y="1076" font-size="9" font-family="Geist,Arial,sans-serif" font-weight="400" fill="#4f5d75" text-anchor="start">REF = direct project reference</text>
+<text x="1042.67" y="1076" font-size="9" font-family="Geist,Arial,sans-serif" font-weight="400" fill="#4f5d75" text-anchor="start">9 production + 5 test references</text>
+<text x="1293.33" y="1076" font-size="9" font-family="Geist,Arial,sans-serif" font-weight="400" fill="#4f5d75" text-anchor="start">Containers = paths; leaves = roles</text>
+</svg></div>
+<p class="source-note">View: Nested. A3 landscape, 1584 × 1120. Default light style.
+The matching PNG contains editable draw.io data. Supplied font fallbacks: Georgia, Arial and Courier New. Research, evidence and limitations: <a href="../../design/research.md">research</a> and <a href="../../README.md">diagram guide</a>.</p>
+</main></body></html>

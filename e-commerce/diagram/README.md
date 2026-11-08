@@ -5,40 +5,56 @@ description: สารบัญและวิธีอ่าน diagram ทั�
 
 # E-commerce diagrams
 
-ชุดนี้แยก **คำถามและ notation ของแต่ละภาพ** ก่อนจัด layout ตามข้อทักท้วงวันที่2026-11-08 อ่าน [ความหมายและขอบเขตทั้ง15ภาพ](diagram-semantics.md) และ [แผน/approval boundary](implementation-readiness-plan.md) ก่อนใช้ภาพประกอบการพัฒนา
+ชุดนี้แยก **คำถามและ notation ของแต่ละภาพ** ก่อนจัด layout ตามข้อทักท้วงวันที่2026-11-08 อ่าน [ความหมายและขอบเขตทั้ง15ภาพ](design/diagram-semantics.md) และ [แผน/approval boundary](design/implementation-readiness-plan.md) ก่อนใช้ภาพประกอบการพัฒนา
 
 Architecture มี Presentation/Application/Domain/Infrastructure/Shared เป็น parent layers และ Command/Query, Validator, Handler, Mapping, Ports เป็น child boxes จริง Repository ใช้ project/feature ownership; State ใช้ guard/effect compartments; Sequence ใช้เวลา/lifelines/activation/OPT/ALT; Document model ใช้ fields/cardinality; Deployment ใช้ zones/hosts/artifacts; Observability ใช้ signal pipelines; Recovery ใช้ owner lanes/actions/decision gates
 
 กล่องซ้อนทุกกลุ่มเป็น native draw.io parents ไม่ใช่เส้นกรอบตกแต่ง ตัวเลข child boxes ไม่ใช่จำนวน microservices, tables หรือ persisted states ภาพที่ต้องแสดง decomposition ใช้รายละเอียดตาม hierarchy ที่เจ้าของงานขอ แทนการตัดให้เหลือเก้ากล่องใหญ่
 
-## ภาพหลัก
+## โครงสร้างโฟลเดอร์
 
-| ภาพ PNG ที่เปิดแก้ไขได้ | คำอธิบาย | ความหมายและ nesting |
+```text
+diagram/
+├── README.md
+├── main/                  # 4 ภาพหลัก พร้อม PNG/draw.io/HTML/คำอธิบาย
+├── reference/             # ภาพเพิ่มเติม เก็บเป็น reference ตามเรื่อง
+│   ├── business/          # Commerce overview และ checkout
+│   ├── payment/           # Start payment, webhook และ refund
+│   ├── data/              # MongoDB documents และ configuration
+│   ├── operations/        # Deployment, observability และ recovery
+│   └── repository/        # Source code และ tests
+├── design/                # Design proposals, research, semantics และผลตรวจ
+└── scripts/               # Content models, generators และ output-path map
+```
+
+ไฟล์ทั้งสี่รูปแบบของแต่ละภาพอยู่โฟลเดอร์เดียวกัน เปิด PNG เพื่อนำเสนอหรือเปิดแก้ใน draw.io; อ่าน `.md` สำหรับขอบเขตและแหล่งอ้างอิง ส่วน `scripts/diagram_paths.py` กำหนดตำแหน่ง output ของตัวสร้างภาพ
+
+## ชุดนำเสนอหลัก — 4 ภาพ
+
+| ภาพ PNG ที่เปิดแก้ไขได้ | คำอธิบาย | คำถามที่รับผิดชอบ |
 | --- | --- | --- |
-| [architecture-design.drawio.png](architecture-design.drawio.png) | [architecture-design.md](architecture-design.md) | Logical layers/components: backend → layers → responsibilities; Dispatcherอยู่Shared และเรียกValidator/Handler |
-| [repository-architecture.drawio.png](repository-architecture.drawio.png) | [repository-architecture.md](repository-architecture.md) | Component repository →src/tests→projects→feature ownership/file-role summaries; REFเป็นcompile dependency |
-| [system-design.drawio.png](system-design.drawio.png) | [system-design.md](system-design.md) | Order states → guard/effect compartments; payment/parcel statesแยกกัน และมีguarded7-day completion |
+| [architecture-design.drawio.png](main/architecture-design.drawio.png) | [architecture-design.md](main/architecture-design.md) | Backend ร่วมงานกันอย่างไร: Controller → Dispatcher → Handler (Application use case) → Domain/ports → Infrastructure |
+| [event-outbox-design.drawio.png](main/event-outbox-design.drawio.png) | [event-outbox-design.md](main/event-outbox-design.md) | Publication lifecycle เริ่มจาก checkout transaction; quarantine ต้องผ่าน operator review ก่อน controlled replay |
+| [outbox-delivery-sequence.drawio.png](main/outbox-delivery-sequence.drawio.png) | [outbox-delivery-sequence.md](main/outbox-delivery-sequence.md) | Relay, PostgreSQL และ MongoDB ประสาน claim transaction → destination transaction → guarded ACK รวม replay/lease expiry |
+| [order-lifecycle.drawio.png](main/order-lifecycle.drawio.png) | [order-lifecycle.md](main/order-lifecycle.md) | สถานะธุรกิจของ Order และ transition guards; เปลี่ยนชื่อจาก `system-design` และแยกจาก publication states |
 
-## ภาพเสริม
+Checkout สร้าง `WAIT_PAYMENT`, จอง stock/budget, บันทึกข้อมูลที่เกี่ยวข้องและ proposed outbox intent ใน PostgreSQL transaction เดียว เมื่อ commit จึงมี event `READY` ให้ relay ส่ง Payment success เป็นอีก event ภายหลัง การ replay ไม่เรียก checkout หรือจอง stock/budget ซ้ำ ทั้งหมดที่เป็น outbox ยังคง **PROPOSED / in-review** ต้องออกแบบและอนุมัติก่อน implementation
 
-| ภาพ PNG ที่เปิดแก้ไขได้ | คำอธิบาย | คำถามเฉพาะของภาพ |
-| --- | --- | --- |
-| [commerce-overview.drawio.png](commerce-overview.drawio.png) | [commerce-overview.md](commerce-overview.md) | Business contextใดเป็นเจ้าของcapabilityใด ไม่ใช่บังคับเดินjourneyเส้นเดียว |
-| [checkout-sequence.drawio.png](checkout-sequence.drawio.png) | [checkout-sequence.md](checkout-sequence.md) | Source commit จองstock/budgetและpublication intent เกิดก่อนresponse/copiesอย่างไร |
-| [start-payment-sequence.drawio.png](start-payment-sequence.drawio.png) | [start-payment-sequence.md](start-payment-sequence.md) | Stable provider identity และผลไม่แน่นอนข้ามSQL/providerจัดการอย่างไร |
-| [payment-webhook-sequence.drawio.png](payment-webhook-sequence.drawio.png) | [payment-webhook-sequence.md](payment-webhook-sequence.md) | Signature, durable receipt, guarded application และorphan/duplicate disposition |
-| [refund-sequence.drawio.png](refund-sequence.drawio.png) | [refund-sequence.md](refund-sequence.md) | Full settled successแยกจากpending/partial/unknownก่อนคืนstock/budget |
-| [outbox-delivery-sequence.drawio.png](outbox-delivery-sequence.drawio.png) | [outbox-delivery-sequence.md](outbox-delivery-sequence.md) | Claim lease→Mongo local transaction→guarded ACK และreplay |
-| [config-publication-sequence.drawio.png](config-publication-sequence.drawio.png) | [config-publication-sequence.md](config-publication-sequence.md) | Live authorization→validation/CAS→revision/audit→snapshot refresh |
-| [event-outbox-design.drawio.png](event-outbox-design.drawio.png) | [event-outbox-design.md](event-outbox-design.md) | Publication states, lease/retry/quarantine และevent envelope compartments |
-| [mongodb-document-model.drawio.png](mongodb-document-model.drawio.png) | [mongodb-document-model.md](mongodb-document-model.md) | Collections→Identity/Payload/Integrity และlogical reference/cardinality |
-| [deployment-security.drawio.png](deployment-security.drawio.png) | [deployment-security.md](deployment-security.md) | Proposed environment→zones→host pools→version-bound artifacts พร้อมTLS paths |
-| [observability-design.drawio.png](observability-design.drawio.png) | [observability-design.md](observability-design.md) | App/data instruments→metrics/traces/logs→SLO/alert/diagnostic outputs |
-| [recovery-design.drawio.png](recovery-design.drawio.png) | [recovery-design.md](recovery-design.md) | Owner lanes→contain/restore/reconcile/rebuild→MATCH?/READY? gates และrework |
+## Reference ตามเรื่อง
+
+เก็บทุกภาพด้านล่างไว้เป็น reference ไม่ลบทิ้ง `repository-architecture` พักจากชุดนำเสนอ เพราะคำถามเรื่องตำแหน่ง source/tests ใช้ [project-structure.md](https://github.com/ittikornsopawan/e-commerce-backend/blob/d8255183cba54d0c2b218607456b895a70df32f0/project-structure.md) เป็นคู่มือหลักได้ ส่วน architecture หลักรับผิดชอบการทำงานร่วมกัน
+
+| กลุ่ม | ภาพ / คำอธิบาย |
+| --- | --- |
+| Source และ tests | [repository-architecture PNG](reference/repository/repository-architecture.drawio.png) · [คำอธิบาย](reference/repository/repository-architecture.md) |
+| ธุรกิจและ checkout | [commerce-overview PNG](reference/business/commerce-overview.drawio.png) · [คำอธิบาย](reference/business/commerce-overview.md); [checkout-sequence PNG](reference/business/checkout-sequence.drawio.png) · [คำอธิบาย](reference/business/checkout-sequence.md) |
+| Payment recovery | [start-payment-sequence PNG](reference/payment/start-payment-sequence.drawio.png) · [คำอธิบาย](reference/payment/start-payment-sequence.md); [payment-webhook-sequence PNG](reference/payment/payment-webhook-sequence.drawio.png) · [คำอธิบาย](reference/payment/payment-webhook-sequence.md); [refund-sequence PNG](reference/payment/refund-sequence.drawio.png) · [คำอธิบาย](reference/payment/refund-sequence.md) |
+| MongoDB และ configuration | [mongodb-document-model PNG](reference/data/mongodb-document-model.drawio.png) · [คำอธิบาย](reference/data/mongodb-document-model.md); [config-publication-sequence PNG](reference/data/config-publication-sequence.drawio.png) · [คำอธิบาย](reference/data/config-publication-sequence.md) |
+| Operations | [deployment-security PNG](reference/operations/deployment-security.drawio.png) · [คำอธิบาย](reference/operations/deployment-security.md); [observability-design PNG](reference/operations/observability-design.drawio.png) · [คำอธิบาย](reference/operations/observability-design.md); [recovery-design PNG](reference/operations/recovery-design.drawio.png) · [คำอธิบาย](reference/operations/recovery-design.md) |
 
 ทุกภาพมี `.drawio` และ self-contained `.html` ชื่อเดียวกัน PNGฝังmodelที่เปิดแก้ไขได้ HTMLมีinlineSVG, accessible title/description และlocal horizontal scrollingเมื่อหน้าจอแคบ
 
-เพิ่มตาม convention ของเจ้าของงาน: Domain Layer มีกล่องย่อย **`Domain`** สำหรับ business logic ที่ใช้ซ้ำ และ repository view แสดง **`src/Ecommerce.Domain/Authen/Domain/`** ใต้ Domain project กล่องใหม่เป็น `PROPOSED · OWNER REQUEST` เพราะยังไม่อยู่ใน pinned code ตัวอย่างคำนวณภาษีอธิบายชนิดงาน ไม่ใช่ความสามารถ Authen ที่ implement แล้ว อ่านหน้าที่และเหตุผลใน [Architecture](architecture-design.md) และ [Repository](repository-architecture.md)
+เพิ่มตาม convention ของเจ้าของงาน: Domain Layer มีกล่องย่อย **`Domain`** สำหรับ business logic ที่ใช้ซ้ำ และ repository view แสดง **`src/Ecommerce.Domain/Authen/Domain/`** ใต้ Domain project กล่องใหม่เป็น `PROPOSED · OWNER REQUEST` เพราะยังไม่อยู่ใน pinned code ตัวอย่างคำนวณภาษีอธิบายชนิดงาน ไม่ใช่ความสามารถ Authen ที่ implement แล้ว อ่านหน้าที่และเหตุผลใน [Architecture](main/architecture-design.md) และ [Repository](reference/repository/repository-architecture.md)
 
 ## แหล่งหลักฐานและสถานะ
 
@@ -56,11 +72,11 @@ Provider researchพบว่าSQLrollbackไม่ย้อนprovider success
 
 ## Research และ policy records
 
-- [Diagram semantics](diagram-semantics.md): ความหมาย, viewpoints, parent/child และสิ่งที่ห้ามสับสน
-- [Diagram research เดิม](research.md): C4/Microsoft/W3C และbusiness lifecycle evidence; การจัดรูปแบบเดิมถูกแทนด้วยฉบับhierarchyนี้
-- [Redis design](redis-design.md), [research](redis-research.md), [review](redis-review.md)
-- [MongoDB design](mongodb-design.md), [research](mongodb-research.md)
-- [Payment evidence](supporting-payments-research.md), [data/operations evidence](supporting-data-operations-research.md)
+- [Diagram semantics](design/diagram-semantics.md): ความหมาย, viewpoints, parent/child และสิ่งที่ห้ามสับสน
+- [Diagram research เดิม](design/research.md): C4/Microsoft/W3C และbusiness lifecycle evidence; การจัดรูปแบบเดิมถูกแทนด้วยฉบับhierarchyนี้
+- [Redis design](design/redis-design.md), [research](design/redis-research.md), [review](design/redis-review.md)
+- [MongoDB design](design/mongodb-design.md), [research](design/mongodb-research.md)
+- [Payment evidence](design/supporting-payments-research.md), [data/operations evidence](design/supporting-data-operations-research.md)
 
 ค่าSLO/load/RPO/RTO/lease/retry/retentionและreplica countsเป็นcandidateที่อธิบายเหตุผล/ข้อแลกเปลี่ยนไว้ในcompanion ยังไม่ใช่production capacity, SLA, compliance certification หรือผลทดสอบสำเร็จ
 
@@ -71,8 +87,8 @@ Provider researchพบว่าSQLrollbackไม่ย้อนprovider success
 `generate_layered_diagrams.py` เป็นentrypointปัจจุบัน ใช้paper `#f5f5f5`, ink `#2d3142`, accent `#bf4520` ตามที่เจ้าของงานเลือก Canvas A3แนวนอน1584×1120 พร้อมprinttype ramp ไม่ติดตั้งdependenciesหรือfontsเพิ่ม
 
 ```sh
-python3 -B e-commerce/diagram/generate_layered_diagrams.py
-python3 -B e-commerce/diagram/generate_layered_diagrams.py --check
+python3 -B e-commerce/diagram/scripts/generate_layered_diagrams.py
+python3 -B e-commerce/diagram/scripts/generate_layered_diagrams.py --check
 ```
 
 ส่งออกด้วยdraw.io Desktopที่ติดตั้งอยู่ ตัวอย่างหนึ่งไฟล์ (ทำกับทุกslugในสารบัญ):
@@ -81,15 +97,15 @@ python3 -B e-commerce/diagram/generate_layered_diagrams.py --check
 /Applications/draw.io.app/Contents/MacOS/draw.io \
   -x -f png --embed-diagram --size page -s 1.5 --theme light \
   --disable-update --timeout 45 \
-  -o e-commerce/diagram/architecture-design.drawio.png \
-  e-commerce/diagram/architecture-design.drawio
+  -o e-commerce/diagram/main/architecture-design.drawio.png \
+  e-commerce/diagram/main/architecture-design.drawio
 
-python3 -B e-commerce/diagram/generate_layered_diagrams.py --finalize-pngs
+python3 -B e-commerce/diagram/scripts/generate_layered_diagrams.py --finalize-pngs
 ```
 
 draw.io Desktop32.6.10มีpage frameหนึ่งpixelก่อนscale ผลscale1.5คือ2378×1682 Native PNGเก็บcompressed `mxGraphModel` metadata; finalizerตรวจว่าตรงXMLsourceและเพิ่มcompressed compatible `mxfile` key โดยไม่เปลี่ยนIDAT pixels ไม่cropหรือraster-resampleหลังexport Native outputใช้Georgia/Arial/Courier New fallbacks; HTMLยังประกาศInstrument Serif/Geist/Geist Mono web stacks Python PNGhelperของskillไม่มีPlaywright จึงใช้native rendererและตรวจผลจริง
 
-ดู [ผลตรวจรอบสุดท้ายทั้ง15ภาพ](verification.md) สำหรับผลที่รันจริง, native hierarchy counts, PNG sizes และข้อจำกัด
+ดู [ผลตรวจ handoff ชุดหลัก 4 ภาพ](design/handoff-verification.md) และ [ผลตรวจเดิมทั้ง15ภาพ](design/verification.md) สำหรับผลที่รันจริง, native hierarchy counts, PNG sizes และข้อจำกัด
 
 ## เกณฑ์ตรวจฉบับ hierarchy
 

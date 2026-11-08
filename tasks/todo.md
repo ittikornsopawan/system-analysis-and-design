@@ -846,3 +846,29 @@ Status: Implemented in the managed workspace of Marry on branch `docs/marry-cart
 - [x] Repair of `main` found while checking M1 (`api-sequence-spec` was red at 31327ab): `authen-and-author/03-reset-password` and `07-upsert-user-profile` pass the checks since PR #56 and #57, so they leave `LEGACY_SEQUENCES` and `LEGACY_TOKEN_SEQUENCES` (decision of the lead).
 - [x] Found while rendering the changed diagrams: the INSERT of `cart/01` and `cart/02` merged in #58 had its value lines (`'<sequence.userId>',`) written with a bare leading quote, which PlantUML draws as a comment, so six lines were missing from the picture while the checker (which reads raw text) passed. They are written `&#39;` now, as the skeleton script does; every SQL line shows at least as often as in the spec. The same defect is in four older diagrams outside this assignment (`authen-and-author/09` 10 lines, `consent/02` 11, `consent/06` 5, `consent/07` 5), reported to the lead.
 - [ ] Merge `main`, preflight, push, open the follow-up pull request, tell the lead at once; hold the lock until the merge, then release and park.
+
+## e-commerce: Curate four presentation diagrams from the owner handoff
+
+Assignment: Codex executing with the Diagram Designer perspective; delivery `none`; authorized by `ittikorn`. The owner explicitly requested a separate workspace after Jinny's managed clone was found locked by an active domain-model task. This task uses the app-managed `diagram-handoff` worktree on `codex/diagram-handoff`; it does not acquire, release or modify Jinny's workspace or assignment. Scope: `e-commerce/diagram/` and required task records. Governing content: owner handoff in this chat, existing diagram companions and API-source references. Outbox remains proposed; no backend/API/schema implementation or approval is included.
+
+- [x] Inspect sources, task isolation, existing changes and baseline checks for the four diagrams.
+- [x] Add the Controller → Dispatcher → Handler → Domain/ports → Infrastructure call paths, preserving real layer containment and CODE/SPEC/PROPOSED distinctions.
+- [x] Show checkout's atomic source transaction before READY and mandatory operator review before controlled quarantine replay.
+- [x] Retain and clarify outbox sequence claim transaction, destination transaction, fenced ACK, replay and lease expiry.
+- [x] Rename system-design to order-lifecycle and remove Redis/MongoDB detail from its image and companion.
+- [x] Curate the four primary images and topic-based references; synchronize source generators, companions and links.
+- [x] Regenerate only the four selected views; export editable PNGs and verify source parity, geometry, HTML accessibility, links and final visual renders.
+- [x] Record final results and hand off the separate workspace without committing or opening a PR.
+
+## e-commerce: Organize diagram folders and deliver the handoff PR
+
+Authority: direct request from Ittikorn in this chat to separate folders and open a PR; delivery is now `open-pr` for this task's existing Codex worktree/branch. The prior Jinny workspace remains untouched. Scope: `e-commerce/diagram/` plus required task records. The owner handoff still governs content; proposed outbox design remains unapproved for implementation.
+
+- [x] Inspect delivery rules, baseline, existing files and generator/link dependencies.
+- [x] Group four primary bundles under main/, eleven reference bundles by topic under reference/, supporting design records under design/, and generators under scripts/.
+- [x] Adapt generator output resolution and update all affected Markdown links, HTML navigation and reproduction commands.
+- [x] Verify all fifteen generated views, editable PNG/source parity, folder membership, Markdown links/frontmatter, HTML checks and preservation of reference diagram content.
+- [x] Update final verification and task records; run delivery preflight and inspect the staged diff.
+- [ ] Commit the scoped work, push codex/diagram-handoff and open a PR targeting main; report checks and remaining limitations.
+
+Delivery state in this checklist is the pre-send snapshot captured by the commit. Confirm the actual commit, branch push and PR outcome from Git/GitHub; do not infer an open or merged PR from a checkbox.
