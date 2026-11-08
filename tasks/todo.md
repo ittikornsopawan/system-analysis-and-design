@@ -615,6 +615,27 @@ Verification: see the PR. No spec, diagram or other checker is changed.
 Lesson for the team: a merge that keeps a file parseable can still drop the end of a function; after resolving a conflict in `check_docs.py`, run `python3 -c "import ast"` on it and run every sub-command, not only the one that was edited.
 
 
+## e-commerce: Peter API review — own-user profile upsert (API 11, 2026-11-08)
+
+Scope: authen-and-author/07-upsert-user-profile with its checker/task evidence. Owner Q13 preserves immediate credential/user revocation; WP4 U18/U23 governs own-user partial profile writes. Q15 permits moving to a fresh main-based branch after open PR delivery without waiting for merge. No backend/schema/publication implementation. Consent Q18/Q19 remain pending.
+
+- [x] Preserve reset-password PR #56 and assignment history, return to main and prepare a fresh authorized profile-upsert branch with all baselines.
+- [x] Read both profile endpoints, current credential rules, user/information schema and partial unique index. Reproduce the old diagram running INSERT and UPDATE in sequence and omitting current stored-token checks.
+- [x] Revise spec and generated-then-completed sequence together: verified own user, post-lock credential check, per-field presence masks/null clearing, separate information insert/update and 17 complete terminal traces.
+- [x] Add exact SQL/path/semantic/render checks; 64/64 mutations caught; synchronized semantic faults, pre-lock credential read, original sequential INSERT/UPDATE and real renderer omission rejected. Six exact PostgreSQL statements passed typed presence/null/date/bytea, ownership, preserved lifecycle/audit, rollback and concurrent first/disjoint writes plus revocation/expiry wait fixtures. PlantUML inspected with nine participants and 58/58 visible SQL lines; no backend/encryption-runtime certification.
+- [x] Run all current checker commands (49/49), SQL audit (53 tables/0 findings), database suite (ALL PASSED), skeleton tests (12/12) and authorized preflight (four paths/no blockers).
+- [ ] Open one profile-upsert API PR, preserve branch/history and continue from main.
+## e-commerce: Peter API review — reset-password (API 10, 2026-11-08)
+
+Scope: authen-and-author/03-reset-password and its checker/task evidence. Existing WP4 U11/U12/U23 controls public uniform responses, three issuances per rolling hour, one ACTIVE reset and user-first serialization. Owner Q15 permits one editing branch at a time and continuation without a merge gate. No backend, email transport, outbox, schema or published API implementation.
+
+- [x] Preserve PR #53/#55 history, return to main and prepare an authorized fresh branch with all baselines after the completed reset legacy correction merged.
+- [x] Read both endpoint files, user/reset schema, register/login identifier handling and prior reset/refresh locking rules. Reproduce transaction-start created_at backdating under a shorter configured test window; run the fixture in UTC as the contract requires.
+- [x] Update spec and generated-then-completed sequence together: fresh post-lock throttle/creation/expiry time, atomic replacement, ten terminal traces, mappings and post-commit email boundary.
+- [x] Add exact SQL/semantic/path/render checks; mutations 49/49 after tightening database/Application result mapping (initial run 48/49); synchronized semantic faults and real rendered omission rejected. Exact PostgreSQL issuance/quota/completion races and rollback passed; PlantUML inspected with eight participants and 39/39 visible SQL lines. Email transport and real HTTP timing remain outside verification.
+- [x] Run every current checker (49/49), audit (53 tables/0 findings), database suite (ALL PASSED), skeleton tests (12/12) and authorized delivery preflight (four paths/no blockers).
+- [ ] Open one reset-password API PR, preserve its branch/assignment history and continue from main.
+
 ## Peter — API 9: create-new-password paired contract review (2026-11-07)
 
 Scope: authen-and-author/04-create-new-password; owner Q13 credential revocation and existing reset rules. One API per PR; continue from main without waiting for merge under Q15. No backend/schema implementation. Q18–Q19 remain pending for consent inquiry.
@@ -625,7 +646,7 @@ Scope: authen-and-author/04-create-new-password; owner Q13 credential revocation
 - [x] Complete final image inspection: scoped flow/character-for-character SQL checks pass; 59/59 mutations caught; synchronized SQL faults, whitespace drift and rendered omission rejected; exact PostgreSQL reset/refresh races and rollback fixtures passed.
 - [x] Run every current doc command (48/48), audit (53 tables, 0 findings), database suite (ALL PASSED) and authorized delivery preflight (5 files, no blockers).
 - [x] Commit paired files and support changes and open API PR #53; initial head 863d47a.
-- [ ] Retain branch/assignment history and continue from updated main under owner Q15.
+- [x] Retain branch/assignment history and continue from updated main under owner Q15; PR #55 merged and clean main baselines passed before API 10.
 
 Integration: GitHub reported a conflict after main advanced. Preserve all upstream diagram, component-repository migration and task changes; conflict is only the shared todo append. Re-run all checks before the integration push; this PR changes only the five authorized task paths relative to current origin/main.
 
@@ -643,6 +664,8 @@ Scope: authen-and-author/08-inquiry-user-profile with checker/task evidence. Own
 - [x] Add exact SQL/semantic/path/render checks; 39/39 mutations caught after tightening the unique snapshot-rule needle (initially 38/39); synchronized credential/projection/Q20 faults, early information query, SQL whitespace and real renderer omission rejected. Exact PostgreSQL SELECTs passed own-user/current token, strict expiry, non-DELETED visibility, immutable Q20 normalization, READ ONLY rejection and two-connection snapshot consistency. PlantUML inspected with eight participants and 23/23 visible SQL lines; no backend/decryption-runtime claim.
 - [x] Run pre-integration checkers (49/49), audit (53 tables/0 findings), database suite (ALL PASSED), skeleton tests (12/12), and authorized preflight (four paths/no blockers).
 - [ ] Preserve latest main changes (including merged #56/#57 and cart #58), rerun the complete merged checker set, open one inquiry API PR and continue from main.
+
+Integration finding: current main restored stale transaction/token-timeout exemptions for already-complete API #56 (reset request) and #57 (profile upsert). The full merged check catches this. Remove only those four stale checker entries, preserve their API artifacts byte-for-byte and keep every registered function; rerun all commands before push. This is checker reconciliation within the existing assignment scope, not another API revision.
 
 ## e-commerce: Peter API review — logout (API 8)
 
@@ -761,3 +784,16 @@ Status: Implemented in the managed workspace of Marry on branch `test/marry-enfo
 - [x] Mutation tests: 15 cases of the harness on the three rules and the list, 13 cases that check which message fires (10 must fail, 3 controls must pass); the earlier mutation sets still behave (see the pull request).
 - [x] Run every `check_docs.py` sub-command, `audit_all.py`, `run_db_tests.sh`, `test_sequence_skeleton.py`.
 - [ ] Merge `main` into the branch, preflight, push, open the pull request, tell the lead; hold the lock until the merge, then release and park.
+
+## e-commerce: Cart upsert (cart/01, 02) — 404 for an inactive SKU, ON CONFLICT merge, line limit after the write (M1)
+
+Status: Implemented in the managed workspace of Marry on branch `docs/marry-cart-sku-404-on-conflict`; the pull request is opened after the checks and the lead is told at once. Scope: `cart/01-upsert-cart-item`, `cart/02-upsert-cart-item-batch`, the needles of `cart-spec` in `check_docs.py`, and `tasks/`. No schema is changed. Decision (C) of the lead, approved by the product owner on 2026-11-08.
+
+- [x] Rule text: a shop, product, shop product, shop product SKU or product SKU that is not ACTIVE answers 404 (E10005) as the SQL already did; 409 (E10007) stays for no lot on sale, not enough stock and a quantity over the maximum. The example "The SKU is out of stock or no longer on sale." becomes "The SKU is out of stock.".
+- [x] The add is one `INSERT ... ON CONFLICT (user_id, shop_id, product_id, sku_id) WHERE row_status <> 'DELETED' DO UPDATE` that merges into the existing line and applies the stock rule in the same statement (no row returned = 409 E10007); `RETURNING ... (xmax = 0) as is_insert` tells 201 from 200. The predicate is required because `uq_t_cart_user_id_shop_id_product_id_sku_id` is a partial index; a soft-deleted line is outside it, so adding the SKU again inserts a new line. The read "Get the line of the same SKU for merging" is removed and "UPDATE - Merge, update or delete a line" is renamed "UPDATE - Update or delete a line".
+- [x] The line limit (100) is checked after the write in the same transaction; more than 100 lines rolls back with 409 (E10008).
+- [x] Spec and diagram changed together (`cart/01` and `cart/02`); the needles of `cart-spec` that depended on the old wording are updated and new needles guard the `ON CONFLICT` clause (tied to the SQL, not to the prose), `DO UPDATE SET`, the stock `WHERE`, `is_insert`, the renamed UPDATE and the limit rule.
+- [x] Proof on PostgreSQL 17 with the real migrations (throw-away cluster): insert, merge, merge over the stock (no row), re-add after a soft delete (new line) and the count behave as designed; without the predicate PostgreSQL rejects the statement.
+- [x] Mutation tests: 24 of 24 caught (each new clause removed from the spec and from the diagram, the 404 rule, the limit rule).
+- [x] Lesson of the notice before the owner merges (see `tasks/lessons.md`).
+- [ ] Merge `main`, preflight, push, open the pull request, tell the lead at once; hold the lock until the merge, then release and park.

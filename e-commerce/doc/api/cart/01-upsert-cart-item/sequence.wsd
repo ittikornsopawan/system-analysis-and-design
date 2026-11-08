@@ -87,8 +87,8 @@ activate page
                                 api -> page: Not found
                                 page -> user: Display the cart item is not found
                             else Line found
-                                app -> infra: UPDATE - Merge, update or delete a line
-                                infra -> t_cart: UPDATE - Merge, update or delete a line
+                                app -> infra: UPDATE - Update or delete a line
+                                infra -> t_cart: UPDATE - Update or delete a line
                                 activate t_cart
                                     note right of t_cart
                                         UPDATE cart.t_cart
@@ -96,7 +96,7 @@ activate page
                                             updated_by = '<sequence.userId>',
                                             updated_at = NOW() AT TIME ZONE 'UTC',
                                             row_status = '<sequence.rowStatus>',
-                                            quantity = '<sequence.newQuantity>' -- existing quantity + quantity when merging, quantity when updating, not changed when deleting
+                                            quantity = '<sequence.newQuantity>' -- quantity when updating, not changed when deleting
                                         WHERE id = '<sequence.cartId>'
                                         AND user_id = '<sequence.userId>'
                                         RETURNING id as cart_id, quantity
@@ -173,7 +173,7 @@ activate page
                                 else SKU found
                                     alt No lot on sale or the lot has no stock
                                         app -> infra: ROLLBACK
-                                        app -> api: HTTP 409 E10007 The SKU is out of stock or no longer on sale.
+                                        app -> api: HTTP 409 E10007 The SKU is out of stock.
                                         api -> page: Conflict
                                         page -> user: Display out of stock
                                     else quantity > max_order_quantity
@@ -182,8 +182,8 @@ activate page
                                         api -> page: Conflict
                                         page -> user: Display the quantity that can be bought
                                     else Stock is enough
-                                        app -> infra: UPDATE - Merge, update or delete a line
-                                        infra -> t_cart: UPDATE - Merge, update or delete a line
+                                        app -> infra: UPDATE - Update or delete a line
+                                        infra -> t_cart: UPDATE - Update or delete a line
                                         activate t_cart
                                             note right of t_cart
                                                 UPDATE cart.t_cart
@@ -191,7 +191,7 @@ activate page
                                                     updated_by = '<sequence.userId>',
                                                     updated_at = NOW() AT TIME ZONE 'UTC',
                                                     row_status = '<sequence.rowStatus>',
-                                                    quantity = '<sequence.newQuantity>' -- existing quantity + quantity when merging, quantity when updating, not changed when deleting
+                                                    quantity = '<sequence.newQuantity>' -- quantity when updating, not changed when deleting
                                                 WHERE id = '<sequence.cartId>'
                                                 AND user_id = '<sequence.userId>'
                                                 RETURNING id as cart_id, quantity
@@ -246,69 +246,54 @@ activate page
                                 api -> page: Not found
                                 page -> user: Display the SKU is not available
                             else SKU found
-                                app -> infra: QUERY - Get the line of the same SKU for merging
-                                infra -> t_cart: QUERY - Get the line of the same SKU for merging
-                                activate t_cart
-                                    note right of t_cart
-                                        SELECT
-                                            c.id as cart_id,
-                                            c.quantity
-                                        FROM cart.t_cart c
-                                        WHERE c.user_id = '<sequence.userId>'
-                                        AND c.shop_id = '<sequence.shopId>'
-                                        AND c.product_id = '<sequence.productId>'
-                                        AND c.sku_id = '<sequence.skuId>'
-                                        AND c.row_status = 'ACTIVE'
-                                    end note
-                                    t_cart -> infra: Return query result
-                                deactivate t_cart
-                                infra -> app: Return the line of the same SKU or no row
-                                alt The user already has a line of the same SKU (merge)
-                                    alt No lot on sale or the lot has no stock
-                                        app -> infra: ROLLBACK
-                                        app -> api: HTTP 409 E10007 The SKU is out of stock or no longer on sale.
-                                        api -> page: Conflict
-                                        page -> user: Display out of stock
-                                    else existing quantity + quantity > max_order_quantity
-                                        app -> infra: ROLLBACK
-                                        app -> api: HTTP 409 E10007 Quantity exceeds the available stock; the SKU can be bought up to max_order_quantity.
-                                        api -> page: Conflict
-                                        page -> user: Display the quantity that can be bought
-                                    else Stock is enough
-                                        app -> infra: UPDATE - Merge, update or delete a line
-                                        infra -> t_cart: UPDATE - Merge, update or delete a line
-                                        activate t_cart
-                                            note right of t_cart
-                                                UPDATE cart.t_cart
-                                                SET
-                                                    updated_by = '<sequence.userId>',
-                                                    updated_at = NOW() AT TIME ZONE 'UTC',
-                                                    row_status = '<sequence.rowStatus>',
-                                                    quantity = '<sequence.newQuantity>' -- existing quantity + quantity when merging, quantity when updating, not changed when deleting
-                                                WHERE id = '<sequence.cartId>'
-                                                AND user_id = '<sequence.userId>'
-                                                RETURNING id as cart_id, quantity
-                                            end note
-                                            t_cart -> infra: Return updated result
-                                        deactivate t_cart
-                                        infra -> app: Return the merged line
-                                        app -> infra: COMMIT
-                                        app -> api: HTTP 200 S10000 Merge Cart Item Success
-                                        api -> page: Return committed result
-                                        page -> user: Display success result
-                                    end
-                                else No line of the same SKU (insert)
-                                    alt No lot on sale or the lot has no stock
-                                        app -> infra: ROLLBACK
-                                        app -> api: HTTP 409 E10007 The SKU is out of stock or no longer on sale.
-                                        api -> page: Conflict
-                                        page -> user: Display out of stock
-                                    else quantity > max_order_quantity
+                                alt No lot on sale or the lot has no stock
+                                    app -> infra: ROLLBACK
+                                    app -> api: HTTP 409 E10007 The SKU is out of stock.
+                                    api -> page: Conflict
+                                    page -> user: Display out of stock
+                                else quantity > max_order_quantity
+                                    app -> infra: ROLLBACK
+                                    app -> api: HTTP 409 E10007 Quantity exceeds the available stock; the SKU can be bought up to max_order_quantity.
+                                    api -> page: Conflict
+                                    page -> user: Display the quantity that can be bought
+                                else Stock is enough
+                                    app -> infra: INSERT - Add a line
+                                    infra -> t_cart: INSERT - Add a line
+                                    activate t_cart
+                                        note right of t_cart
+                                            INSERT INTO cart.t_cart (
+                                                created_by,
+                                                user_id,
+                                                shop_id,
+                                                product_id,
+                                                sku_id,
+                                                quantity
+                                            )
+                                            VALUES (
+                                                '<sequence.userId>',
+                                                '<sequence.userId>',
+                                                '<sequence.shopId>',
+                                                '<sequence.productId>',
+                                                '<sequence.skuId>',
+                                                '<sequence.quantity>'
+                                            )
+                                            ON CONFLICT (user_id, shop_id, product_id, sku_id) WHERE row_status <> 'DELETED' -- the partial unique index uq_t_cart_user_id_shop_id_product_id_sku_id
+                                            DO UPDATE SET
+                                                updated_by = '<sequence.userId>',
+                                                updated_at = NOW() AT TIME ZONE 'UTC',
+                                                quantity = cart.t_cart.quantity + EXCLUDED.quantity
+                                            WHERE cart.t_cart.quantity + EXCLUDED.quantity <= '<sequence.maxOrderQuantity>' -- the stock rule of a merge, no row is returned when the merged quantity is over the stock
+                                            RETURNING id as cart_id, quantity, (xmax = 0) as is_insert -- is_insert is true for a new line and false for a merge
+                                        end note
+                                        t_cart -> infra: Return inserted result
+                                    deactivate t_cart
+                                    infra -> app: Return the written line (is_insert) or no row
+                                    alt No row returned (the line of the same SKU exists and the merged quantity is over the stock)
                                         app -> infra: ROLLBACK
                                         app -> api: HTTP 409 E10007 Quantity exceeds the available stock; the SKU can be bought up to max_order_quantity.
                                         api -> page: Conflict
                                         page -> user: Display the quantity that can be bought
-                                    else Stock is enough
+                                    else The line is written (inserted or merged)
                                         app -> infra: QUERY - Count the lines of the user
                                         infra -> t_cart: QUERY - Count the lines of the user
                                         activate t_cart
@@ -322,41 +307,22 @@ activate page
                                             t_cart -> infra: Return query result
                                         deactivate t_cart
                                         infra -> app: Return line_count
-                                        alt line_count >= 100 (the limit is a config)
+                                        alt line_count > 100 (the limit is a config)
                                             app -> infra: ROLLBACK
                                             app -> api: HTTP 409 E10008 The cart can hold at most 100 items.
                                             api -> page: Conflict
                                             page -> user: Display the cart is full
-                                        else The cart has room
-                                            app -> infra: INSERT - Add a line
-                                            infra -> t_cart: INSERT - Add a line
-                                            activate t_cart
-                                                note right of t_cart
-                                                    INSERT INTO cart.t_cart (
-                                                        created_by,
-                                                        user_id,
-                                                        shop_id,
-                                                        product_id,
-                                                        sku_id,
-                                                        quantity
-                                                    )
-                                                    VALUES (
-                                                        &#39;<sequence.userId>',
-                                                        &#39;<sequence.userId>',
-                                                        &#39;<sequence.shopId>',
-                                                        &#39;<sequence.productId>',
-                                                        &#39;<sequence.skuId>',
-                                                        &#39;<sequence.quantity>'
-                                                    )
-                                                    RETURNING id as cart_id, quantity
-                                                end note
-                                                t_cart -> infra: Return inserted result
-                                            deactivate t_cart
-                                            infra -> app: Return the new line
+                                        else The cart is within the limit
                                             app -> infra: COMMIT
-                                            app -> api: HTTP 201 S10000 Add Cart Item Success
-                                            api -> page: Return committed result
-                                            page -> user: Display success result
+                                            alt is_insert = true (a new line)
+                                                app -> api: HTTP 201 S10000 Add Cart Item Success
+                                                api -> page: Return committed result
+                                                page -> user: Display success result
+                                            else is_insert = false (merged into the existing line)
+                                                app -> api: HTTP 200 S10000 Merge Cart Item Success
+                                                api -> page: Return committed result
+                                                page -> user: Display success result
+                                            end
                                         end
                                     end
                                 end
