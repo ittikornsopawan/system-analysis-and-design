@@ -1,6 +1,8 @@
-@startuml ResetPassword Sequence
+@startuml ResetPassword
 
 title Reset Password API Sequence
+
+' Leading SQL apostrophes use &#39; so PlantUML preserves literals; parity compares decoded SQL.
 
 ' Visual style
 skinparam defaultFontName "Sarabun"
@@ -24,65 +26,87 @@ skinparam sequence {
 ' Do not show participant footers at the bottom of the diagram
 hide footbox
 
-
 actor "User" as user
-
 box "Frontend" #F8FAFC
     participant "Reset Password Page" as page
 end box
-
 box "Web API" #F8FAFC
     participant "API" as api
     participant "Application" as app
     participant "Domain" as domain
     participant "Infrastructure" as infra
 end box
-
 box "Database" #F8FAFC
     database "m_user" as m_user
     database "t_user_reset_password" as t_user_reset_password
 end box
 
-user -> page: Submit Reset Password
-
+user -> page: Request password reset
 activate page
-    page -> api: Call POST v1/auth/reset-password
-    activate api
-        api -> app: [**ResetPasswordCommandHandler**] Process request
-        activate app
-            app -> app: Validate request parameters and business rules
-            alt If request is invalid
-                app -> api: Return error response
-                api -> page: Return error response
-                page -> user: Display error message
-            else If request is valid
-                app -> infra: Execute database operations
-                activate infra
-                    infra -> m_user: QUERY - Find the active user by email address
-                    activate m_user
-                        note right of m_user
-                            SELECT
-                                u.id as user_id
-                            FROM authen.m_user u
-                            WHERE u.email_address = '<sequence.emailAddressBytes>'
-                            AND u.row_status = 'ACTIVE'
-                        end note
-                        m_user -> infra: Return query result
-                    deactivate m_user
-
-                    infra -> m_user: QUERY - Lock the user
-                    activate m_user
-                        note right of m_user
-                            SELECT
-                                u.id as user_id
-                            FROM authen.m_user u
-                            WHERE u.id = '<sequence.userId>'
-                            AND u.row_status = 'ACTIVE'
-                            FOR UPDATE -- every authen API locks the user row first
-                        end note
-                        m_user -> infra: Return query result
-                    deactivate m_user
-
+page -> api: POST v1/auth/reset-password (UTC timestamp, emailAddress over TLS)
+activate api
+api -> app: [**ResetPasswordCommandHandler**] Process request
+activate app
+app -> app: Generate requestId if omitted; validate UTC timestamp and email string/format/max 254
+alt Invalid timestamp or email
+    app -> api: HTTP 400 E10001
+    api -> page: Display generic operational/validation failure
+else Valid input
+    app -> app: emailAddressBytes = same deterministic encryption as register/login; no trimming or case change
+    app -> app: Generate 32 random bytes; rawResetToken = unpadded base64url; resetTokenHash = SHA-256 exact encoded token
+    alt Routing lookup timeout before BEGIN
+        app -> api: HTTP 408 E90001
+        api -> page: Display generic operational/validation failure
+    else Routing lookup failure before BEGIN
+        app -> api: HTTP 500 Internal Server Error; omit bizCode
+        api -> page: Display generic operational/validation failure
+    else Routing lookup completes
+        app -> infra: QUERY - Find the active user by email address
+        infra -> m_user: QUERY - Find the active user by email address
+        activate m_user
+            note right of m_user
+                SELECT
+                    u.id as user_id
+                FROM authen.m_user u
+                WHERE u.email_address = '<sequence.emailAddressBytes>'
+                AND u.row_status = 'ACTIVE'
+            end note
+            m_user -> infra: Return ACTIVE matching userId or no row
+        deactivate m_user
+        infra -> app: Return ACTIVE matching userId or no row
+        alt No ACTIVE matching user
+            app -> app: Discard unused secret; no email; apply common configured response-latency policy
+            app -> api: HTTP 200 S10000 If the email address is registered, a reset link has been sent.; status only, no data
+            api -> page: Display same generic acknowledgement
+            page -> user: Check email if registered
+        else ACTIVE matching user returned
+            app -> app: userId = returned user_id; never request target user
+            app -> infra: BEGIN READ COMMITTED
+            alt Transaction work completes
+                app -> infra: QUERY - Lock the user
+                infra -> m_user: QUERY - Lock the user
+                activate m_user
+                    note right of m_user
+                        SELECT
+                            u.id as user_id
+                        FROM authen.m_user u
+                        WHERE u.id = '<sequence.userId>'
+                        AND u.row_status = 'ACTIVE'
+                        AND u.email_address = '<sequence.emailAddressBytes>'
+                        FOR UPDATE -- every authen API locks the user row first
+                    end note
+                    m_user -> infra: Return ACTIVE same-email user row or no row
+                deactivate m_user
+                infra -> app: Return ACTIVE same-email user row or no row
+                alt User no longer ACTIVE or email no longer matches
+                    app -> infra: COMMIT
+                    app -> app: Discard unused secret; no email; apply common configured response-latency policy
+                    app -> api: HTTP 200 S10000 If the email address is registered, a reset link has been sent.; status only, no data
+                    api -> page: Display same generic acknowledgement
+                    page -> user: Check email if registered
+                else Locked ACTIVE same-email user
+                    app -> app: Capture fresh server UTC now after user lock; windowStart = now minus 1 hour; expiredAt = now plus 30 minutes
+                    app -> infra: QUERY - Count the requests of the last hour
                     infra -> t_user_reset_password: QUERY - Count the requests of the last hour
                     activate t_user_reset_password
                         note right of t_user_reset_password
@@ -92,56 +116,85 @@ activate page
                             WHERE rp.user_id = '<sequence.userId>'
                             AND rp.created_at > '<sequence.windowStart>' -- now minus 1 hour (configurable)
                         end note
-                        t_user_reset_password -> infra: Return query result
+                        t_user_reset_password -> infra: Return requests count across every reset lifecycle status
                     deactivate t_user_reset_password
-
-                    infra -> t_user_reset_password: UPDATE - Make the old reset token INACTIVE
-                    activate t_user_reset_password
-                        note right of t_user_reset_password
-                            UPDATE authen.t_user_reset_password
-                            SET
-                                updated_by = '<sequence.userId>',
-                                updated_at = NOW() AT TIME ZONE 'UTC',
-                                row_status = 'INACTIVE'
-                            WHERE user_id = '<sequence.userId>'
-                            AND row_status = 'ACTIVE'
-                        end note
-                        t_user_reset_password -> infra: Return updated result
-                    deactivate t_user_reset_password
-
-                    infra -> t_user_reset_password: INSERT - Create reset token
-                    activate t_user_reset_password
-                        note right of t_user_reset_password
-                            INSERT INTO authen.t_user_reset_password (
-                                created_by,
-                                user_id,
-                                reset_token,
-                                expired_at
-                            )
-                            VALUES (
-                                '<sequence.userId>',
-                                '<sequence.userId>',
-                                '<sequence.resetTokenHash>', -- SHA-256 of the token that is sent by email
-                                '<sequence.expiredAt>' -- now plus 30 minutes (configurable)
-                            )
-                        end note
-                        t_user_reset_password -> infra: Return inserted result
-                    deactivate t_user_reset_password
-
-                    infra -> app: Return database result
-                deactivate infra
-
-                app -> domain: Apply domain rules and prepare response
-                activate domain
-                    domain -> app: Return response data
-                deactivate domain
-
-                app -> api: Return success response
-                api -> page: Return success response
-                page -> user: Display success result
-            end alt
-        deactivate app
-    deactivate api
+                    infra -> app: Return requests count across every reset lifecycle status
+                    alt requests >= 3
+                        app -> infra: COMMIT
+                        app -> app: Discard unused secret; no reset changes or email; apply common configured response-latency policy
+                        app -> api: HTTP 200 S10000 If the email address is registered, a reset link has been sent.; status only, no data
+                        api -> page: Display same generic acknowledgement
+                        page -> user: Check email if registered
+                    else requests < 3
+                        app -> infra: UPDATE - Make the old reset token INACTIVE
+                        infra -> t_user_reset_password: UPDATE - Make the old reset token INACTIVE
+                        activate t_user_reset_password
+                            note right of t_user_reset_password
+                                UPDATE authen.t_user_reset_password
+                                SET
+                                    updated_by = '<sequence.userId>',
+                                    updated_at = '<sequence.now>',
+                                    row_status = 'INACTIVE'
+                                WHERE user_id = '<sequence.userId>'
+                                AND row_status = 'ACTIVE'
+                            end note
+                            t_user_reset_password -> infra: Return oldClosedCount; zero is valid
+                        deactivate t_user_reset_password
+                        infra -> app: Return oldClosedCount; zero is valid
+                        app -> infra: INSERT - Create reset token
+                        infra -> t_user_reset_password: INSERT - Create reset token
+                        activate t_user_reset_password
+                            note right of t_user_reset_password
+                                INSERT INTO authen.t_user_reset_password (
+                                    created_by,
+                                    created_at,
+                                    user_id,
+                                    reset_token,
+                                    expired_at
+                                )
+                                VALUES (
+                                    &#39;<sequence.userId>',
+                                    &#39;<sequence.now>',
+                                    &#39;<sequence.userId>',
+                                    &#39;<sequence.resetTokenHash>', -- SHA-256 of the token that is sent by email
+                                    &#39;<sequence.expiredAt>' -- now plus 30 minutes (configurable)
+                                )
+                                RETURNING id as reset_id
+                            end note
+                            t_user_reset_password -> infra: Return new reset_id or unexpected no row
+                        deactivate t_user_reset_password
+                        infra -> app: Return new reset_id or unexpected no row
+                        alt Exactly one new reset_id returned
+                            app -> app: resetId = returned reset_id; retain raw token only in memory until post-commit handoff
+                            app -> infra: COMMIT
+                            infra -> app: Return committed reset replacement
+                            app -> app: Request email handoff only for committed new reset; registered recipient and configured trusted reset URL
+                            app -> infra: Hand off reset email after COMMIT (delivery outside this API contract)
+                            infra -> app: Return handoff attempt; do not expose delivery outcome or undo commit
+                            app -> app: Discard raw secret; apply common configured response-latency policy
+                            app -> api: HTTP 200 S10000 If the email address is registered, a reset link has been sent.; status only, no data
+                            api -> page: Display same generic acknowledgement
+                            page -> user: Check email if registered
+                        else Unexpected zero INSERT result
+                            app -> infra: ROLLBACK
+                            app -> api: HTTP 500 Internal Server Error; omit bizCode
+                            api -> page: Display generic operational/validation failure
+                        end
+                    end
+                end
+            else Timeout before COMMIT
+                app -> infra: ROLLBACK
+                app -> api: HTTP 408 E90001
+                api -> page: Display generic operational/validation failure
+            else Unexpected pre-commit failure
+                app -> infra: ROLLBACK
+                app -> api: HTTP 500 Internal Server Error; omit bizCode
+                api -> page: Display generic operational/validation failure
+            end
+        end
+    end
+end
+deactivate app
+deactivate api
 deactivate page
-
 @enduml

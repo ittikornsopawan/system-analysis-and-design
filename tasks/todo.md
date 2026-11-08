@@ -615,6 +615,17 @@ Verification: see the PR. No spec, diagram or other checker is changed.
 Lesson for the team: a merge that keeps a file parseable can still drop the end of a function; after resolving a conflict in `check_docs.py`, run `python3 -c "import ast"` on it and run every sub-command, not only the one that was edited.
 
 
+## e-commerce: Peter API review — reset-password (API 10, 2026-11-08)
+
+Scope: authen-and-author/03-reset-password and its checker/task evidence. Existing WP4 U11/U12/U23 controls public uniform responses, three issuances per rolling hour, one ACTIVE reset and user-first serialization. Owner Q15 permits one editing branch at a time and continuation without a merge gate. No backend, email transport, outbox, schema or published API implementation.
+
+- [x] Preserve PR #53/#55 history, return to main and prepare an authorized fresh branch with all baselines after the completed reset legacy correction merged.
+- [x] Read both endpoint files, user/reset schema, register/login identifier handling and prior reset/refresh locking rules. Reproduce transaction-start created_at backdating under a shorter configured test window; run the fixture in UTC as the contract requires.
+- [x] Update spec and generated-then-completed sequence together: fresh post-lock throttle/creation/expiry time, atomic replacement, ten terminal traces, mappings and post-commit email boundary.
+- [x] Add exact SQL/semantic/path/render checks; mutations 49/49 after tightening database/Application result mapping (initial run 48/49); synchronized semantic faults and real rendered omission rejected. Exact PostgreSQL issuance/quota/completion races and rollback passed; PlantUML inspected with eight participants and 39/39 visible SQL lines. Email transport and real HTTP timing remain outside verification.
+- [x] Run every current checker (49/49), audit (53 tables/0 findings), database suite (ALL PASSED), skeleton tests (12/12) and authorized delivery preflight (four paths/no blockers).
+- [ ] Open one reset-password API PR, preserve its branch/assignment history and continue from main.
+
 ## Peter — API 9: create-new-password paired contract review (2026-11-07)
 
 Scope: authen-and-author/04-create-new-password; owner Q13 credential revocation and existing reset rules. One API per PR; continue from main without waiting for merge under Q15. No backend/schema implementation. Q18–Q19 remain pending for consent inquiry.
@@ -625,7 +636,7 @@ Scope: authen-and-author/04-create-new-password; owner Q13 credential revocation
 - [x] Complete final image inspection: scoped flow/character-for-character SQL checks pass; 59/59 mutations caught; synchronized SQL faults, whitespace drift and rendered omission rejected; exact PostgreSQL reset/refresh races and rollback fixtures passed.
 - [x] Run every current doc command (48/48), audit (53 tables, 0 findings), database suite (ALL PASSED) and authorized delivery preflight (5 files, no blockers).
 - [x] Commit paired files and support changes and open API PR #53; initial head 863d47a.
-- [ ] Retain branch/assignment history and continue from updated main under owner Q15.
+- [x] Retain branch/assignment history and continue from updated main under owner Q15; PR #55 merged and clean main baselines passed before API 10.
 
 Integration: GitHub reported a conflict after main advanced. Preserve all upstream diagram, component-repository migration and task changes; conflict is only the shared todo append. Re-run all checks before the integration push; this PR changes only the five authorized task paths relative to current origin/main.
 
