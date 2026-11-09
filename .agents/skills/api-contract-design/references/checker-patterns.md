@@ -23,13 +23,13 @@ Register the new endpoints in `status-codes` (single and batch lists) only when 
 
 Build a list of deliberate mistakes (a JSON file for `mutation_harness.py`) and run it; every case must be caught. Cases that matter: change a number in an example, remove each rule sentence, remove each guard in the SQL, change a column name in a query, flip an HTTP code, expose a hidden field, break the sort order, remove the approval sentence, put a forbidden word back. When a case is missed, the checker (not the case) is wrong. Report `caught / total` and mention what slipped through first.
 
-For paired spec/sequence rules, mutate the same SQL predicate in both files and also reorder complete orchestration blocks. Generic SQL parity may still pass; the focused checker must reject the semantic or phase fault. Report those cases separately from isolated text mutations.
+For paired spec/sequence rules, mutate the same SQL predicate in both files and also reorder complete orchestration blocks. Generic SQL parity may still pass; the focused checker must reject the semantic or phase fault. Report those cases separately from isolated text mutations. Distinguish the SQL-only comparison from a combined CLI that also checks credentials or transaction closure: report which layer rejected each fault instead of requiring that every fault pass the combined checker.
 
 For SQL fixtures, assert lifecycle and ownership preconditions before testing error precedence, especially when earlier scenarios delete or archive reused ids. Identify whether a failed precondition comes from setup or the artifact under test; correct that cause, preserve the approved contract, and rerun the scenario and dependent fixtures. Before optional rendering steps, check tool availability; use an available image viewer plus counted SVG SQL verification when a crop dependency is absent, and report the actual coverage.
 
 ## Common mistakes
 
-- Before irreversible parent deletion, trace retained children through their cleanup endpoints and downstream usage guards. For an atomic batch, separately prove final-state rejection before per-item result mapping and use a concrete later-item failure to verify earlier parent, child and audit writes all roll back; a representative structural loop trace alone cannot prove multi-item atomicity.
+- Before an irreversible parent transition, trace retained children through their cleanup endpoints and downstream in-use guards. Verify the approved cleanup/retention policy remains reachable after the transition; a passing parent-only or child-only check cannot establish that. Test the complete transition and same-request cleanup before approving the final-state rule.
 
 - Execution-order prose copied into scaffold hints can be counted as transaction commands. Use wording such as `begin transaction (READ COMMITTED)` in that prose, keep real transaction messages explicit, and rerun the skeleton suite after changing an execution-order sentence even when SQL is unchanged.
 

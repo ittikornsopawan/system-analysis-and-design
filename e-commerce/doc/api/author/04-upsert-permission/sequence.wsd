@@ -512,6 +512,16 @@ activate page
                 deactivate t_permission_scope
                 infra -> app: Return definitionCount including every non-DELETED definition
                 app -> app: finalDefinitionCount = definitionCount; require valid nonnegative integer
+                alt Parent rowStatus = DELETED and finalDefinitionCount > 0 (Q24)
+                    break Reject this request
+                        app -> infra: ROLLBACK
+                        app -> api: HTTP 409 E10006 Permission cannot be deleted while scope definitions remain.
+                        api -> page: Reject the whole permission request; no partial success
+                        page -> user: Display failure; keep unsaved input
+                    end break
+                else Q24 passed
+                    app -> app: Q24 passed: parent is not DELETED or finalDefinitionCount = 0
+                end
                 alt beforeDefinitionCount > 0 and finalDefinitionCount = 0 (Q22 transition)
                     app -> infra: QUERY - Check role permission in use
                     infra -> t_role_permission: QUERY - Check role permission in use

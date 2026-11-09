@@ -431,3 +431,10 @@ description: Repository-wide and project-specific lessons captured from user cor
 - Cause: the old checker protected a short phrase rather than the Q22 parent-uniqueness/child-ownership clause that makes each post-item count final.
 - Correction: anchor that complete Q22 clause and rerun the full mutation set, including synchronized SQL and final-state/phase cases. Keep the approved policy intact.
 - Prevention: `.agents/skills/api-contract-design/references/checker-patterns.md` now requires rerunning existing clause mutations when neighbouring policy prose is added. Its lifecycle guidance also requires concrete later-item parent/child/audit rollback evidence for batch irreversible transitions.
+### 2026-11-09 — Trace retained children across irreversible parent deletion
+
+- **Finding**: Permission delete could keep non-DELETED scope definitions, but the final parent status made its cleanup API unreachable while scope delete/archive still counted those definitions as usage. Reviewing either endpoint alone missed this stranded state.
+- **Root cause**: Parent lifecycle, child retention and downstream in-use checks were verified separately without checking whether cleanup remained possible after the transition.
+- **Corrected behavior**: Owner Q24 requires zero final non-DELETED definitions before permission deletion, with explicit complete withdrawal allowed in the same atomic request. Preserve archive retention, Q22 and Q23. Add lifecycle reachability guidance to `.agents/skills/api-contract-design/references/checker-patterns.md` and prove single/batch behaviors in separate PRs; no implicit cascade or legacy rewrite.
+
+- **Q24 verification finding**: A mutation harness assumed the combined api-sequence-spec command would pass after removing a rollback, but that command correctly enforces transaction closure as well as SQL parity. Keep that validator unchanged; compare exact recovered SQL definitions separately, require the focused checker to reject every fault, and report whether the combined CLI also rejected it. Strengthen the checker-patterns guidance and rerun the complete guard cases.
