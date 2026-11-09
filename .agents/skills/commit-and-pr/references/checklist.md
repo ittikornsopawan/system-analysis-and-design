@@ -45,6 +45,6 @@ Required when the change includes any of `e-commerce/doc/api/`, `e-commerce/doc/
 - `python3 e-commerce/db/tests/audit_all.py`: must end with `0 findings`
 - `bash e-commerce/db/tests/run_db_tests.sh`: must end with `ALL PASSED` (needs PostgreSQL tools; if they are missing, say it was not run and why)
 
-For checks spanning a resumed chat, save output to a task log and inspect it before reusing an old process handle. An expired handle establishes neither test failure nor success; use the final completion evidence, or rerun when that evidence is incomplete.
+For checks spanning a resumed chat, save output to a task log and inspect any existing output before reusing an old process handle. Check that the log exists before reading it; a missing or unfinished log is incomplete evidence, so keep the check pending. An expired handle establishes neither test failure nor success; use the final completion evidence, or rerun when that evidence is incomplete.
 
 `--run-checks` runs all three and pastes their last lines for the PR's Verification section. Other projects: run that project's own build and tests instead, and say which.

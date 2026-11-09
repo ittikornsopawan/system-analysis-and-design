@@ -4696,8 +4696,8 @@ def author_needles(key: str):
     base = [*AUTHOR_ADMIN, "E10009", "#### Fail - Forbidden", f"You do not have permission to {'read' if kind == 'inquiry' else 'manage'} {lower}s."]
     if key in ("01", "02", "05", "07"):
         base = ["Permission: only a platform administrator from the verified JWT roles claim", "Approved by the product owner", "E10009", "#### Fail - Forbidden", f"You do not have permission to manage {lower}s."]
-    if key == "03":
-        base = ["use exact PLATFORM_ADMIN in verified JWT role claims", "Approved by the product owner", "E10009", "#### Fail - Forbidden", "You do not have permission to read roles."]
+    if key in ("03", "06"):
+        base = ["use exact PLATFORM_ADMIN in verified JWT role claims", "Approved by the product owner", "E10009", "#### Fail - Forbidden", f"You do not have permission to read {lower}s."]
     if key == "04":
         base = ["Permission: only a platform administrator from verified JWT roles", "Approved by the product owner", "E10009", "#### Fail - Forbidden", "You do not have permission to manage permissions."]
     if kind in ("upsert", "batch") and key not in ("01", "02", "04", "05", "07"):
@@ -4741,6 +4741,10 @@ def author_counted(key: str):
         return [("AND ('<sequence.id>' IS NULL OR r.id = '<sequence.id>') -- only when id is specified", 2),
                 ("AND ('<sequence.searchPattern>' IS NULL OR r.name ILIKE '<sequence.searchPattern>' OR r.description ILIKE '<sequence.searchPattern>') -- only when search is specified", 2),
                 ("AND ('<sequence.rowStatus>' IS NULL OR r.row_status = '<sequence.rowStatus>') -- only when rowStatus is specified", 2)]
+    if key == "06":
+        return [("AND ('<sequence.id>' IS NULL OR p.id = '<sequence.id>') -- only when id is specified", 2),
+                ("AND ('<sequence.searchPattern>' IS NULL OR p.name ILIKE '<sequence.searchPattern>' OR p.description ILIKE '<sequence.searchPattern>') -- only when search is specified", 2),
+                ("AND ('<sequence.rowStatus>' IS NULL OR p.row_status = '<sequence.rowStatus>') -- only when rowStatus is specified", 2)]
     if m and key == m[2]:
         alias, ucol = m[7], m[8]
         return [(f"AND ({alias}.{ucol} ILIKE '%<sequence.search>%' OR {alias}.description ILIKE '%<sequence.search>%') -- only when search is specified", 2),
@@ -6582,6 +6586,145 @@ def check_permission_batch_flow() -> int:
 COMMANDS['permission-batch-flow'] = check_permission_batch_flow
 
 
+def check_permission_inquiry_flow() -> int:
+    """Check token-claim administration and consistent filtered current role metadata."""
+    path=f'{AUTHOR_DIR}/{AUTHOR_SPECS["06"]}/spec.md';md=read(path);wsd=read(str(Path(path).with_name('sequence.wsd')));errors=[]
+    for n in ('status: in-review', 'approved_by: null', 'approved_at: null', '2026-11-07-api-review-design.md', 'exact PLATFORM_ADMIN in verified JWT role claims', 'positive signed 64-bit integers', 'nonnegative BIGINT', 'one bound text searchPattern', 'Missing/malformed roles is generic 401', 'Grant withdrawal after token issuance leaves the old privilege usable', 'Count first and optionally fetch the page in the same read-only repeatable-read snapshot', 'identical non-DELETED/id/searchPattern/rowStatus WHERE predicates', 'an offset beyond the range returns items=[] with positive totals/pages', 'Sort by name then id ascending', 'exactly permissionId/name/description/scopes/rowStatus', 'exactly five data keys', 'integer quotient/remainder', 'Map the full response before COMMIT', 'distinct UUID[] of that page', 'An empty page skips both definition and master queries', 'A page with no definitions maps scopes=[]', 'including INACTIVE/LOCKED/ARCHIVED/DELETED masters', 'Metadata is matched by immutable scope_id', 'exactly permissionScopeId/scopeId/scope/scopeName/rowStatus', "rowStatus is the definition's status", 'derive master rank', 'Credential/count/page/definition/master SELECTs share the same read-only repeatable-read snapshot', 'No per-permission or per-scope SQL queries', 'Scenario correspondence with sequence.wsd'):
+        if n not in md:errors.append(f'permission-inquiry spec missing {n!r}')
+    for n in ('QUERY - Get the platform administrator role','QUERY - Check platform administrator'):
+        if n in md or n in wsd:errors.append('permission inquiry authorization must not reload current assignments')
+    ops=spec_database_operations(md);heads=('QUERY - Check current credential and user','QUERY - Get total items','QUERY - Get permissions','QUERY - Get the scopes of the permissions','QUERY - Get scope')
+    if tuple(h for _,h,_ in ops)!=heads:errors.append('permission inquiry needs credential/count/page in declared order')
+    sql={h:re.sub(r'--[^\n]*','',s) for _,h,s in ops};filters=["WHERE p.row_status <> 'DELETED'","AND ('<sequence.id>' IS NULL OR p.id = '<sequence.id>')","AND ('<sequence.searchPattern>' IS NULL OR p.name ILIKE '<sequence.searchPattern>' OR p.description ILIKE '<sequence.searchPattern>')","AND ('<sequence.rowStatus>' IS NULL OR p.row_status = '<sequence.rowStatus>')"]
+    required={heads[0]:['JOIN authen.m_user u ON u.id = at.user_id',"at.token = '<sequence.accessTokenHash>'","at.user_id = '<sequence.callerUserId>'","at.row_status = 'ACTIVE'","at.expired_at > '<sequence.now>'","u.row_status = 'ACTIVE'"],heads[1]:filters+['COUNT(p.id) as total_items'],heads[2]:filters+["LIMIT '<sequence.pageSize>' OFFSET '<sequence.offset>'"]}
+    required[heads[1]]+=['FROM author.m_permission p']
+    required[heads[2]]+=['FROM author.m_permission p']
+    required[heads[3]]=['FROM author.t_permission_scope ps',"WHERE ps.permission_id = ANY ('<sequence.permissionIds>'::UUID[])","AND ps.row_status <> 'DELETED'",'ORDER BY ps.permission_id, ps.id']
+    required[heads[4]]=['FROM author.m_scope s',"WHERE s.id = ANY ('<sequence.scopeIds>'::UUID[])",'ORDER BY s.scope, s.id']
+    for h,ns in required.items():
+        for n in ns:
+            if n not in sql.get(h,''):errors.append(f'{h} missing {n!r}')
+    def where(h):
+        r=re.search(r'\bWHERE\b(.*?)(?:\bORDER BY\b|\bLIMIT\b|$)',sql.get(h,''),re.S);return normalize(r[1]) if r else None
+    if where(heads[1])!=where(heads[2]):errors.append('permission count/page WHERE predicates must be identical')
+    if any(where(h)!=normalize(' '.join(filters).removeprefix('WHERE ')) for h in heads[1:3]):errors.append('permission count/page must use only the four declared lifecycle/nullable predicates')
+    projection=re.search(r'SELECT\s+(.*?)\s+FROM\s',sql.get(heads[2],''),re.S)
+    if not projection or normalize(projection[1])!=normalize('p.id as permission_id, p.name, p.description, p.row_status'):errors.append('permission page returns exactly four permission fields, no audit/assignment/caller data')
+    if not re.search(r"ORDER BY p\.name, p\.id(?: ASC)?\s+LIMIT",sql.get(heads[2],'')):errors.append('permission page requires name then unique ascending id order')
+    if SEQUENCE_LOCK.search('\n'.join(sql.values())) or 'NOW()' in '\n'.join(sql.values()) or any(not q.lstrip().startswith('SELECT') for q in sql.values()):errors.append('permission inquiry must use SELECT-only fresh-bound credential time, with no locks')
+    for h,expected_where,expected_projection in [(heads[3],"ps.permission_id = ANY ('<sequence.permissionIds>'::UUID[]) AND ps.row_status <> 'DELETED'",'ps.id as permission_scope_id, ps.permission_id, ps.scope_id, ps.row_status'),(heads[4],"s.id = ANY ('<sequence.scopeIds>'::UUID[])",'s.id as scope_id, s.scope, s.name')]:
+        if where(h)!=normalize(expected_where):errors.append(f'{h} must use exact page/definition-derived ids without master/grant/status filtering')
+        projection=re.search(r'SELECT\s+(.*?)\s+FROM\s',sql.get(h,''),re.S)
+        if not projection or normalize(projection[1])!=normalize(expected_projection):errors.append(f'{h} projection must preserve exact parent/definition/master identity')
+    actual,lifecycle=sequence_database_operations(wsd);errors+=lifecycle
+    if actual!=[(t.split('.')[-1],h,q) for t,h,q in ops]:errors.append('permission inquiry SQL differs character-for-character or execution order')
+    lines=wsd.splitlines()
+    for i,l in enumerate(lines):
+        req=re.match(r'^( *)infra -> \w+: QUERY - ',l)
+        if not req:continue
+        pad=' '*(len(req[1])+8);j=i+3
+        while j<len(lines) and lines[j].strip()!='end note':
+            if lines[j] and not lines[j].startswith(pad):errors.append('permission SQL must retain exact added presentation prefix and original SQL indentation')
+            j+=1
+    for _,h,_ in ops:
+        if wsd.count('app -> infra: '+h+'\n')!=1:errors.append(f'{h} needs one Application request')
+    for mat in re.finditer(r'(?m)^( *)infra -> (\w+): (QUERY - [^\n]+)\n',wsd):
+        r=re.search(rf'{mat[2]} -> infra: Return ([^\n]+)\n.*?deactivate {mat[2]}\n\s*infra -> app: Return ([^\n]+)',wsd[mat.start():],re.S)
+        if not r or r[1]!=r[2]:errors.append('role database result must return with the same meaning to Application')
+    for n in ('Compute checked offset = (pageIndex - 1) * pageSize; reject numeric/offset overflow beyond nonnegative BIGINT', 'Verify JWT signature/issuer/audience/expiry/UUID sub and structured unique roleIds/name array', 'callerUserId = verified sub; accessTokenHash = SHA-256 exact JWT', 'Bind omitted id/searchPattern/rowStatus as typed SQL NULL; supplied searchPattern = percent + search + percent, preserving ILIKE wildcards', 'Capture fresh server UTC now immediately before joined credential read; recheck JWT exp', 'JWT expired before fresh credential read', 'Missing/invalid JWT or malformed roles', 'Current token/user missing/inactive/revoked/expired/mismatched', 'alt totalItems = 0', 'Authorize once using exact case-sensitive PLATFORM_ADMIN in verified JWT roles; never reload current grants', 'No exact PLATFORM_ADMIN role claim', 'integer quotient plus nonzero remainder', 'items = []; skip page/definition/master queries; totalPages = 0', 'Require page row count = min(pageSize, max(0, totalItems-offset)); unique parent UUIDs and non-null required columns', 'Bind permissionIds as distinct typed UUID[] from returned page permission_id values only', 'Validate definition ids/parent membership/unique scopeId per parent/non-DELETED status', 'Bind scopeIds as distinct typed UUID[] from returned definition scope_id values', 'Require one exact master for every referenced scope_id', 'Build master rank from database scope-code/id order', 'never rebind by reused code', 'Prepare groups by permission_id, ordered by master rank then definition UUID', 'Set all page scopes=[]; skip master query', 'Map exactly permissionId/name/description/scopes/rowStatus', 'Map exactly permissionScopeId/scopeId/scope/scopeName/rowStatus', 'rowStatus comes from definition', 'items = []; retain positive totalItems/totalPages; skip definition/master queries; no 404', 'data = exactly items/pageIndex/pageSize/totalItems/totalPages; echo validated page values; explicit empty arrays; finish full nested mapping'):
+        if n not in wsd:errors.append(f'permission inquiry sequence missing {n!r}')
+    if wsd.count('Authorize once using exact')!=1:errors.append('permission inquiry checks claims permission exactly once')
+    for response in re.finditer(r'(?m)^( *)app -> api: HTTP [^\n]+\n',wsd):
+        following=wsd[response.end():].splitlines()[:2]
+        if len(following)!=2 or not following[0].strip().startswith('api -> page:') or not following[1].strip().startswith('page -> user:'):errors.append('all permission inquiry responses must reach frontend and caller')
+    # Mapping loops perform no SQL and are traversed once for structural checks only.
+    flat=[];stack=[];note=False;loops=0
+    for line in lines:
+        t=line.strip()
+        if t.startswith('note ') and ':' not in t:note=True
+        if note:
+            flat.append(line)
+            if t=='end note':note=False
+            continue
+        if t.startswith('loop '):stack.append(('loop',len(flat)));loops+=1;continue
+        if t.startswith('alt '):stack.append(('alt',len(flat)))
+        elif t in ('end','end alt'):
+            if not stack:errors.append('unbalanced permission mapping loop/branch');continue
+            kind,start=stack.pop()
+            if kind=='loop':
+                if any('app -> infra:' in e or 'app -> api: HTTP' in e for e in flat[start:]):errors.append('mapping loops contain no SQL, commit or response')
+                continue
+        flat.append(line)
+    if stack or loops!=2:errors.append('permission inquiry requires complete parent/definition mapping loops')
+    traces,structure=login_sequence_paths('\n'.join(flat));errors+=structure
+    from collections import Counter
+    outcomes=[];modes=Counter();unauthorized=[]
+    for tr in traces:
+        response=[e for e in tr if e.startswith('app -> api: HTTP ')];joined='\n'.join(tr)
+        if len(response)!=1:errors.append('permission inquiry trace needs one terminal outcome');continue
+        code=int(response[0].split('HTTP ')[1].split()[0]);outcomes.append(code);queries=[e for e in tr if e.startswith('infra -> ')];begun=any(e.startswith('app -> infra: BEGIN') for e in tr)
+        def ordered(*parts):
+            pos=[next((i for i,e in enumerate(tr) if p in e),-1) for p in parts]
+            return -1 not in pos and pos==sorted(set(pos))
+        if queries and not ordered('Compute checked offset','Verify JWT','callerUserId = verified sub','Bind omitted id/searchPattern','BEGIN REPEATABLE READ READ ONLY','Capture fresh server UTC now',heads[0]):errors.append('permission SQL needs checked pagination, verified caller and fresh read-only credential snapshot')
+        if 'Authorize once using exact' in joined and not ordered(heads[0],'Authorize once using exact'):errors.append('claims permission requires valid current credential')
+        if heads[1] in joined and not ordered('Authorize once using exact',heads[1]):errors.append('no permission count may precede claims permission')
+        if heads[2] in joined and not ordered(heads[1],heads[2]):errors.append('permission page must follow its identical-filter count')
+        if heads[3] in joined and not ordered(heads[2],'Bind permissionIds',heads[3]):errors.append('definitions require exact returned page ids after the page query')
+        if heads[4] in joined and not ordered(heads[3],'Bind scopeIds',heads[4],'Build master rank'):errors.append('master reads require exact definition ids and retain database rank')
+        if any(': QUERY' not in e for e in queries):errors.append('permission inquiry may never write')
+        if code==200:
+            mode='zero' if 'skip page/definition/master queries' in joined else 'beyond' if 'retain positive totalItems' in joined else 'no_links' if 'Set all page scopes=[]' in joined else 'rows';modes[mode]+=1
+            if len(queries)!={'zero':2,'beyond':3,'no_links':4,'rows':5}[mode]:errors.append('zero permission count skips page query; positive count queries page')
+            if not ordered(heads[1],'data = exactly items','app -> infra: COMMIT','HTTP 200') or 'ROLLBACK' in joined:errors.append('success needs complete mapped read-only response then commit')
+            if mode!='zero' and 'Require page row count' not in joined:errors.append('positive permission count must validate page cardinality')
+            if 'all five pagination keys' not in response[0]:errors.append('permission inquiry success must include every pagination key')
+        elif begun:
+            if not ordered('BEGIN','ROLLBACK',f'HTTP {code}') or 'app -> infra: COMMIT' in joined:errors.append('permission inquiry transaction failures roll back before response')
+            if code in (401,403) and len(queries)>1:errors.append('invalid credentials or non-admin must not count/read permissions')
+        elif code not in (400,401) or queries:errors.append('pre-BEGIN permission inquiry reject must be no-SQL validation/JWT error')
+        if code==401:unauthorized.append(len(queries))
+    if Counter(outcomes)!=Counter({400:1,401:3,403:1,200:4,408:1,500:1}) or modes!=Counter({'zero':1,'rows':1,'beyond':1,'no_links':1}) or sorted(unauthorized)!=[0,0,1]:errors.append(f'expected 11 permission inquiry terminal traces, got {dict(Counter(outcomes))}, modes={dict(modes)},401 SQL={unauthorized}')
+    for title,code in {'Success':200,'Success - By Id':200,'Success - Not Found':200,'Success - Page Beyond Range':200,'Success - Closed Scope Master':200,'Success - Non-Active Definition':200,'Fail - Bad Request':400,'Fail - Unauthorized':401,'Fail - Forbidden':403,'Fail - Request Timeout':408,'Fail - Internal Server Error':500}.items():
+        try:
+            obj=author_json(md,title);status=obj['status']
+            if status['code']!=code or code==500 and 'bizCode' in status:errors.append(f'{title} permission inquiry envelope incorrect')
+            if code==200:
+                d=obj['data'];keys={'items','pageIndex','pageSize','totalItems','totalPages'}
+                if set(d)!=keys or type(d['items']) is not list:errors.append(f'{title} needs five keys and items array');continue
+                if any(type(d[k]) is not int for k in keys-{'items'}) or not 1<=d['pageIndex']<=2**63-1 or not 1<=d['pageSize']<=100 or d['totalItems']<0:errors.append(f'{title} invalid permission page integers');continue
+                total=d['totalItems'];size=d['pageSize'];offset=(d['pageIndex']-1)*size;pages=total//size+int(total%size!=0)
+                if offset>2**63-1 or d['totalPages']!=pages or len(d['items'])!=min(size,max(0,total-offset)):errors.append(f'{title} page cardinality/totals incorrect')
+                ids=[]
+                for item in d['items']:
+                    if set(item)!={'permissionId','name','description','scopes','rowStatus'} or any(v is None for v in item.values()) or item['rowStatus']=='DELETED':errors.append(f'{title} permission fields missing/null/leaked/DELETED')
+                    ids.append(item['permissionId'])
+                    scopes=item.get('scopes');seen=set();pairs=set()
+                    if type(scopes) is not list:errors.append(f'{title} requires scopes array');continue
+                    for child in scopes:
+                        if set(child)!={'permissionScopeId','scopeId','scope','scopeName','rowStatus'} or any(v is None for v in child.values()) or child['rowStatus'] not in ('ACTIVE','INACTIVE','LOCKED','ARCHIVED'):errors.append(f'{title} nested scope missing/null/leaked/status')
+                        if child['permissionScopeId'] in seen or child['scopeId'] in pairs:errors.append(f'{title} duplicate scope definition/pair')
+                        seen.add(child['permissionScopeId']);pairs.add(child['scopeId'])
+                    if title=='Success - Closed Scope Master' and (not scopes or scopes[0]['rowStatus']!='ACTIVE'):errors.append('closed master example must preserve definition status')
+                    if title=='Success - Non-Active Definition' and (not scopes or scopes[0]['rowStatus']!='INACTIVE'):errors.append('inactive definition example must remain visible')
+                if len(ids)!=len(set(ids)):errors.append(f'{title} repeats permission id')
+                if title=='Success - Page Beyond Range' and (not total or d['items'] or d['pageIndex']<=pages):errors.append('beyond-range role example must retain positive totals')
+        except (AttributeError,TypeError,KeyError,IndexError,ValueError):errors.append(f'{title} permission inquiry example missing/malformed')
+    errors+=json_blocks_parse(md);errors+=table_lines_aligned(md)
+    if '--rendered-svg' in sys.argv:
+        import xml.etree.ElementTree as ET
+        try:
+            root=ET.parse(sys.argv[sys.argv.index('--rendered-svg')+1]).getroot();wanted=Counter(' '.join(l.split()) for _,_,q in ops for l in q.splitlines() if l.strip());visible=Counter(' '.join(''.join(e.itertext()).split()) for e in root.iter() if e.tag.endswith('}text'));missing=wanted-visible
+            if missing:errors.append(f'rendered permission-inquiry SQL missing {sum(missing.values())} lines')
+            else:print(f'OK: rendered permission-inquiry SQL ({sum(wanted.values())}/{sum(wanted.values())} visible lines)')
+        except (IndexError,OSError,ET.ParseError) as exc:errors.append(f'cannot verify permission-inquiry SVG: {exc}')
+    if errors:return fail('; '.join(errors))
+    print('OK: permission-inquiry-flow (11 terminal traces; five exact SQL blocks, claim administration and consistent nested catalog mapping)')
+    return 0
+
+COMMANDS['permission-inquiry-flow'] = check_permission_inquiry_flow
+
+
 def check_scope_upsert_flow() -> int:
     """Check verified-claim scope administration and guarded master/definition lifecycle."""
     path=f'{AUTHOR_DIR}/{AUTHOR_SPECS["07"]}/spec.md';md=read(path);wsd=read(str(Path(path).with_name('sequence.wsd')));errors=[]
@@ -6676,7 +6819,6 @@ def check_scope_upsert_flow() -> int:
     if errors:return fail('; '.join(dict.fromkeys(errors)))
     print('OK: scope-upsert-flow (20 terminal traces; seven exact SQL definitions, claims/current credentials and guarded lifecycle)')
     return 0
-
 
 COMMANDS['scope-upsert-flow'] = check_scope_upsert_flow
 
