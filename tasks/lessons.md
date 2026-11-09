@@ -371,3 +371,15 @@ description: Repository-wide and project-specific lessons captured from user cor
 - **Finding**: A permission mutation removing the before-count rule passed because the short phrase “every non-DELETED definition” also occurred in the unrelated duplicate rule.
 - **Root cause**: A global substring check could be satisfied by another paragraph and did not prove the Q22 count definition.
 - **Corrected behavior**: Require the complete beforeDefinitionCount clause, keep exact SQL and phase checks independent, and test synchronized SQL faults in both spec and sequence. Recheck: 66/66 isolated mutations and 10/10 synchronized faults are rejected; positive permission/SQL/render checks pass.
+
+### 2026-11-09 — Establish fixture lifecycle before asserting error precedence
+
+- **Finding**: A batch SQL fixture expected the missing second target index, but its first target had already been deleted in the preceding all-delete scenario. The actual contract correctly returned the first missing target.
+- **Root cause**: A scenario reused a lifecycle-mutated id without checking its precondition.
+- **Corrected behavior**: Use an existing ACTIVE fixture target for the first item, then assert the missing later index. Preserve the contract and checker. The full real PostgreSQL batch driver now passes, including all-target existence, 100-item results, whole-batch rollback and concurrency. Carry this fixture-precondition guidance into the separate bounded verification-guidance follow-up; keep API19 scope intact.
+
+### 2026-11-09 — Compare a checker helper only across its supported API family
+
+- **Finding**: An integration comparison called author_needles for author API10, which belongs to another checker; the comparison stopped with KeyError before producing evidence.
+- **Root cause**: The broad AUTHOR_SPECS registry was mistaken for the helper's supported master API01..09 domain.
+- **Corrected behavior**: Re-run the comparison over the supported master family, retain the full registration/function preservation check, and report that the failed validator did not establish coverage. Corrected comparison passes for every unaffected master API and COMMANDS exactly 57 -> 58. Carry this generic validator-domain requirement into the verification-guidance follow-up without widening the API19 diff.
