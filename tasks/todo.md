@@ -7,6 +7,18 @@ description: Shared checklist for planning and tracking non-trivial tasks withou
 
 Use one section per task, named `<scope>: <task-name>`. Preserve other task sections and mark an item complete only after its completion criterion is satisfied.
 
+## repository-wide: Improve the delivery skill after every error
+
+Status: Guidance and publication package complete. Ittikorn requested that every error encountered with `commit-and-pr` lead to a preventive skill improvement as well as correction of the immediate failure. The existing skill now includes the loop in its procedure, completion and report criteria, preserving delivery authority, scope and protected-branch rules. PR72 is merged; this is an independent follow-up PR. Actual base integration and publication state are reported from Git/GitHub.
+
+1. [x] Read applicable rules, lessons and the current skill; confirm PR72 is merged and start a separate branch from current origin/main.
+2. [x] Add the root-cause, preventive skill update, verification and lesson loop; record the correction.
+3. [x] Verify metadata, links, diff and failure-scenario coverage; prepare the scoped package and required main-integration/check commands for publication. Report actual integration and PR state from Git/GitHub.
+
+Verification: YAML parsing passed for all three changed Markdown files; direct skill checks passed allowed metadata, name/description constraints, unfinished-placeholder checks and Markdown targets/anchors. Scoped preflight reports three task files and no blockers, and `git diff --check` passed. The loop was exercised when `quick_validate.py` could not start (`ModuleNotFoundError: No module named 'yaml'`): a preventive instruction now distinguishes startup failures from validation findings and requires explicit coverage/gaps for equivalent checks. Ruby YAML parsing and direct metadata/reference checks cover the relevant skill validation properties; no original-validator success is claimed. Review also confirms errors must produce an actual skill/resource change, lesson and evidence before completion, with integration/publication gates retained. No helper, API contract, schema or diagram changed, so runtime/database/generator tests and rendering were not run.
+
+Scope correction during publication: A temporary verification script rejected an unrelated concurrent edit to `e-commerce/doc/code-structure.md` because it demanded a globally clean working tree. The check was corrected to validate task paths and the three-file PR diff while preserving the other task's file; the skill's merged-result step and the lesson were improved accordingly. The unrelated edit is excluded from publication.
+
 ## e-commerce: Code structure guide with existing diagrams
 
 Status: Documentation complete; PR delivery directly authorized by Ittikorn's “เปิด pr มา”. Ittikorn requested `e-commerce/doc/code-structure.md` with diagrams reused from `e-commerce/diagram/`, following the clarification that Service = Domain means reusable business logic and the owner-selected path is `Ecommerce.Domain/Authen/Domain/`. The original writing phase read the pinned component and reused diagram bundles without changing them. The initial guide and lesson clarification are already in main at `ec4645e` through the separate handoff commit; this PR finalizes the guide's verification record and task completion rather than claiming to introduce that existing content.
