@@ -417,3 +417,17 @@ description: Repository-wide and project-specific lessons captured from user cor
 - **Finding**: Scope checks/audit/database passed, but the skeleton suite reproduced a scope-only BEGIN count failure. Its copied execution-order comment contained BEGIN READ COMMITTED in addition to the one actual generated transaction command. The completed handwritten sequence was already correct.
 - **Root cause**: Execution prose reused an executable marker that the existing skeleton test counts across the complete generated text; the earlier role lesson had not been promoted into the authoring reference.
 - **Corrected behavior**: Rephrase only the execution sentence as begin transaction (READ COMMITTED), retain every SQL byte and actual sequence transaction, and strengthen `.agents/skills/api-contract-design/references/checker-patterns.md` with the copied-hint trigger. Rerun the unchanged skeleton suite plus paired/flow checks and the full delivery suite; no test or transaction safeguard is weakened.
+
+### 2026-11-09 — Read the app attachment declaration before sending arguments
+
+- Error: PR85 existed on GitHub, but the app rejected two attachment attempts using guessed `url`/`type` fields.
+- Cause: The tool summary was read without its complete discovered declaration; the required key is `artifact_type`.
+- Correction: Read the full declaration and retry with `artifact_type: pull_request` plus the actual URL; the app returned the attached artifact successfully. GitHub publication was unaffected.
+- Prevention: `.agents/skills/commit-and-pr/references/checklist.md` now requires declaration-based arguments and separate attachment-result verification.
+
+### 2026-11-09 — Recheck old needles when new policy prose repeats their words
+
+- Error: the first Q24 batch regression mutation pass caught 93/94; removing the Q22 phrase `final whole-request state` was missed after the Q24 paragraph repeated it.
+- Cause: the old checker protected a short phrase rather than the Q22 parent-uniqueness/child-ownership clause that makes each post-item count final.
+- Correction: anchor that complete Q22 clause and rerun the full mutation set, including synchronized SQL and final-state/phase cases. Keep the approved policy intact.
+- Prevention: `.agents/skills/api-contract-design/references/checker-patterns.md` now requires rerunning existing clause mutations when neighbouring policy prose is added. Its lifecycle guidance also requires concrete later-item parent/child/audit rollback evidence for batch irreversible transitions.

@@ -11,7 +11,7 @@ description: How to add a spec-group checker to e-commerce/db/tests/check_docs.p
 
 1. **The file list** of the group (a dict from number to path) and a failure when a file is missing.
 2. **Generic checks per file**: tables aligned, JSON parses, relative links resolve.
-3. **Needles**: for each file the headings and sentences that must exist (the rule section, each SQL block title, the key guard such as `AND quantity >= '<sequence.quantity>'`, the approval sentence, the error code). Make a needle as specific as the thing it protects; a broad text such as `Authorization` matches a header and hides a deleted rule. Anchor phase-specific rules to the complete clause (for example the before-count definition); mutation-test removing that clause while leaving similar wording in unrelated paragraphs.
+3. **Needles**: for each file the headings and sentences that must exist (the rule section, each SQL block title, the key guard such as `AND quantity >= '<sequence.quantity>'`, the approval sentence, the error code). Make a needle as specific as the thing it protects; a broad text such as `Authorization` matches a header and hides a deleted rule. Anchor phase-specific rules to the complete clause (for example the before-count definition); mutation-test removing that clause while leaving similar wording in unrelated paragraphs. Rerun these mutations after adding a neighbouring rule: repeated wording such as final whole-request state can silently turn a formerly unique needle into a false pass.
 4. **Success codes**: `success_codes(md)` must equal the expected map (`{"Success - Insert": 201, ...}`).
 5. **Example arithmetic**: parse the success examples and recompute totals, counts, paging, ordering and tie-breaks; compare with what the example says. Check the existing example parser's accepted heading/prelude format first; when it expects adjacent fenced JSON (optionally after `Request:`), put other explanatory prose after the JSON fence rather than weakening the parser.
 6. **Forbidden words** for public or limited APIs (`authorization`, `costPrice`, `email`, `userId` in a request).
@@ -28,6 +28,8 @@ For paired spec/sequence rules, mutate the same SQL predicate in both files and 
 For SQL fixtures, assert lifecycle and ownership preconditions before testing error precedence, especially when earlier scenarios delete or archive reused ids. Identify whether a failed precondition comes from setup or the artifact under test; correct that cause, preserve the approved contract, and rerun the scenario and dependent fixtures. Before optional rendering steps, check tool availability; use an available image viewer plus counted SVG SQL verification when a crop dependency is absent, and report the actual coverage.
 
 ## Common mistakes
+
+- Before irreversible parent deletion, trace retained children through their cleanup endpoints and downstream usage guards. For an atomic batch, separately prove final-state rejection before per-item result mapping and use a concrete later-item failure to verify earlier parent, child and audit writes all roll back; a representative structural loop trace alone cannot prove multi-item atomicity.
 
 - Execution-order prose copied into scaffold hints can be counted as transaction commands. Use wording such as `begin transaction (READ COMMITTED)` in that prose, keep real transaction messages explicit, and rerun the skeleton suite after changing an execution-order sentence even when SQL is unchanged.
 
