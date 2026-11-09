@@ -455,3 +455,24 @@ description: Repository-wide and project-specific lessons captured from user cor
 - **Corrected behavior**: Owner Q24 requires zero final non-DELETED definitions before permission deletion, with explicit complete withdrawal allowed in the same atomic request. Preserve archive retention, Q22 and Q23. Add lifecycle reachability guidance to `.agents/skills/api-contract-design/references/checker-patterns.md` and prove single/batch behaviors in separate PRs; no implicit cascade or legacy rewrite.
 
 - **Q24 verification finding**: A mutation harness assumed the combined api-sequence-spec command would pass after removing a rollback, but that command correctly enforces transaction closure as well as SQL parity. Keep that validator unchanged; compare exact recovered SQL definitions separately, require the focused checker to reject every fault, and report whether the combined CLI also rejected it. Strengthen the checker-patterns guidance and rerun the complete guard cases.
+
+### 2026-11-09 — Parse endpoint headings after specification frontmatter
+
+- Error: the initial permission/scope inventory stopped at register because it assumed line 1 contained the route, but reviewed specs start with YAML metadata.
+- Cause: the parser used a legacy document shape although current specs intentionally have mixed frontmatter states.
+- Correction: locate exactly one anchored endpoint heading anywhere after metadata and rerun inventory across all 83 endpoint specs.
+- Prevention: `.agents/skills/api-contract-design/references/spec-structure.md` now requires mixed-shape inventory checks and explicit Allow Scope/permission/exception/status sections. No endpoint or authorization behavior was changed by this inventory failure.
+
+### 2026-11-09 — Select a scoped row before mutating an inventory effect
+
+- Error: the document fault harness stopped because its first API was public register, so replacing ALL:allow made no change.
+- Cause: a scope-specific mutation reused the first inventory row without checking the relevant cell.
+- Correction: choose a row that actually contains ALL:allow and retain the assertion that every mutation changes the document before checking rejection.
+- Prevention: `.agents/skills/api-contract-design/references/spec-structure.md` now requires row-type preconditions for mixed authorization inventory mutations. All verification is rerun after this harness correction; the document policy itself did not change.
+
+### 2026-11-09 — Separate capability names from data boundaries
+
+- Correction: the owner refined Allow Scope from ALL:allow-style strings to management:user:read:allow and management:user:crud:deny.
+- Cause: the first proposal used the existing boundary codes as capability names, hiding which module/resource/action was authorized.
+- Corrected behavior: use module:resource:action:effect, retain ALL/SHOP/OWN separately, update both mapping directions and examples, and explicitly explain CRUD/read overlap under deny precedence.
+- Prevention: `.agents/skills/api-contract-design/references/spec-structure.md` now separates all four capability components from boundaries and requires exact action-group semantics before writing an authorization matrix. Storage/JWT/endpoint enforcement remains separately scoped.
