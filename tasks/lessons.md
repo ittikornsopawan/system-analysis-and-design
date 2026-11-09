@@ -341,3 +341,9 @@ description: Repository-wide and project-specific lessons captured from user cor
 - **Finding**: Automatic approval review rejected closing PR67 after replacement PR73 opened because the owner had explicitly instructed leaving PRs open. No closure was performed.
 - **Root cause**: Replacement delivery was incorrectly treated as an exception to the earlier leave-open instruction.
 - **Corrected behavior**: Keep original PRs and branches intact unless the owner explicitly authorizes closing that specific PR; creating a replacement and resuming other work do not supply that authorization.
+
+### 2026-11-09 — Bind a narrative guard check to its actual phase
+
+- **Finding**: A permission mutation removing the before-count rule passed because the short phrase “every non-DELETED definition” also occurred in the unrelated duplicate rule.
+- **Root cause**: A global substring check could be satisfied by another paragraph and did not prove the Q22 count definition.
+- **Corrected behavior**: Require the complete beforeDefinitionCount clause, keep exact SQL and phase checks independent, and test synchronized SQL faults in both spec and sequence. Recheck: 66/66 isolated mutations and 10/10 synchronized faults are rejected; positive permission/SQL/render checks pass.
