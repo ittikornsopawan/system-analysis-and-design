@@ -7,6 +7,38 @@ description: Shared checklist for planning and tracking non-trivial tasks withou
 
 Use one section per task, named `<scope>: <task-name>`. Preserve other task sections and mark an item complete only after its completion criterion is satisfied.
 
+## repository-wide: Design the backend development skill
+
+Status: Skill, bundled references and behavioral evaluation complete; publication package prepared. All five interview decisions confirmed. The owner approved backend development in any language, feature/bug/refactor workflows, spec-first four-part clarification, real DB/HTTP evidence for relevant guarantees, canonical name `backend-development`, and test-first business changes/bug fixes. Authoring is now authorized in an isolated managed worktree. No component implementation or architecture change is authorized by this skill-design discussion. Preserve the existing code-review scope correction in lessons and unrelated cache files.
+
+1. [x] Load repository rules, SDD workflow, backend-developer role, component manifest, project knowledge and relevant lessons; inspect the current guide and approval/OpenAPI state.
+2. [x] Use a read-only fresh-context investigation to verify the pinned component and inspect actual architecture, libraries, transaction semantics and test coverage without changing either repository.
+3. [x] Confirm the design frontier with the owner: Q4 approved the `backend-development` name and Q5 approved test-first cadence, completing the material decisions and shared understanding.
+4. [x] After shared-understanding confirmation, write the skill and only necessary bundled references/examples; preserve existing approval, repository, architecture and delivery boundaries.
+5. [x] Finish the post-correction prose regression check and static/delivery preflight; register the actionable skill as ready and connect it to the specialized .NET role. Report actual changed files and verification.
+
+Proposed coverage: discover project/version/component boundaries; verify Approved Specs and published OpenAPI; map requirements to code/tests; implement use cases within existing layers and the owner's Business Domain convention; derive transaction/lock/error outcomes from each approved branch; choose meaningful unit/database/API evidence; run configured build/test/static checks; report traceability and improve the skill after each error. Keep dynamic project facts discoverable and provide instructional conventions/examples inside the skill rather than requiring a particular endpoint example to remain present.
+
+Owner decisions from round 1:
+
+- Q1: “ภาษาไหนก็ได้เลย” — support backend projects in any programming language; inspect the actual project stack and keep .NET/e-commerce conventions scoped to that project rather than imposing them globally.
+- Q2: “ใช่” — cover feature development, bug fixes and behavior-preserving refactors with the appropriate workflow for each.
+- Q3: “ใช่” with a spec-first clarification requirement — require real database/HTTP evidence appropriate to changed guarantees. Read the governing spec before writing code; if it is not understood, ask before implementing. Every clarification must explain (1) what happened or is unclear, (2) its impact, (3) the recommended resolution and (4) the future consequences of that resolution.
+- Use AskUserQuestion when available; this runtime has no tool with that name, so the current interview uses `request_user_input_async` as the available structured question UI, preserving all four required explanation fields.
+
+Round 2 confirmed through the question UI: Q4 “ใช่ เปลี่ยนเป็น backend-development (แนะนำ)” and Q5 “ใช่ ใช้ test-first ตามที่เสนอ (แนะนำ)”. These confirmations authorize the proposed skill design; they do not approve any production feature, new library or architecture change. Keep the existing .NET role specialized and connect it to the generic skill with the .NET project reference.
+
+Discovery evidence at the start of this task: The existing backend-developer role was ready, but the skill was a placeholder. The manifest-pinned child checkout is clean at `d8255183cba54d0c2b218607456b895a70df32f0`, with the exact declared origin. Read-only source inspection found .NET10, five production layers, custom CQRS, Dapper/Npgsql, exception-based UnitOfWork and Domain/Application tests using fakes; no new builds/tests or remote-reachability checks were performed. Login/refresh specs remain in-review, the code-structure guide remains draft and the OpenAPI paths are empty. These are evidence for readiness/consistency gates, not approval to implement those contracts. HTTP/Result failure alone cannot determine rollback: branch-specific retained effects must come from the approved spec.
+
+
+Verification: Eight authored Markdown frontmatters, local links/anchors, fences and registry paths passed static checks; skill naming/description/scaffold checks passed. Scoped delivery preflight reports nine task paths (one deleted placeholder, four new skill/reference files) with no blockers. PyYAML is unavailable, so Ruby YAML parsing and direct metadata/reference checks were used without claiming the original Python validator ran. No production component code, schema, API contract, dependency or architecture changed.
+
+Independent evaluation: An approved synthetic Python/SQLite bug-fix fixture captured a behavioral red on insufficient stock, then passed four public-interface tests after the minimal fix, including independent competing connections. A Go HTTP fixture with an in-review contradictory spec and empty OpenAPI produced two complete four-part questions and no implementation; its raw inputs stayed unchanged. A transaction planning fixture preserved the current callback interface and required successful audit commit before 401, with DB/HTTP tests identified as planned rather than executed. This is bounded evidence for the skill's decisions, not proof for every language/framework or production authentication.
+
+Improvement verified: The evaluation exposed the blanket error-learning wording's confusion between intended red evidence and execution mistakes. The skill and lesson now distinguish them, retain mandatory preventive updates after actual mistakes and preserve authorization for out-of-scope skill edits. An independent prose replay confirmed the gap is resolved; initial report and fixture source/tests remain unchanged. Evaluation artifacts stay in an isolated temporary directory and are excluded from the PR.
+
+Delivery readiness: The agreed skill is implemented on `codex/backend-development-skill` in its managed worktree. Existing skill-work delivery authorization continues for this bounded resource package; final integration SHA, PR inventory and publication state are reported from Git/GitHub. The primary checkout's uncommitted code-review lesson, draft interview plan and cache remain untouched. Actual .NET/Go application builds, real production PostgreSQL/HTTP integration and fresh component remote reachability were not run because no production application change was made.
+
 ## repository-wide: Show per-file PR change summaries
 
 Status: Guidance and delivery package complete. Ittikorn requested a file-by-file list with a nested summary in the PR delivery skill (called submit-and-pr in the request; the existing resource is commit-and-pr). The format now applies to PR Changes and chat Included, preserves the six PR sections and derives its inventory from the final integrated task diff. Actual integration, remote publication and file coverage are reported from Git/GitHub in the handoff.
