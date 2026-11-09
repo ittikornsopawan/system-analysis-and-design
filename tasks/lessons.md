@@ -19,6 +19,14 @@ description: Repository-wide and project-specific lessons captured from user cor
 
 ## Repository-wide
 
+### 2026-11-09 — Improve delivery guidance after every error
+
+- **Correction**: The owner requires errors in `commit-and-pr` to improve the skill as well as the immediate delivery result.
+- **Root cause**: The delivery skill required resolving failures before publication but had no mandatory step that feeds each failure back into its reusable instructions.
+- **Corrected behavior**: Apply the error improvement loop in `.agents/skills/commit-and-pr/SKILL.md` for self-discovered, check/integration/publication and review failures. Verify the preventive change, record its path and evidence, and preserve all delivery authorization and protected-branch boundaries.
+- **Applied evidence**: The Python skill validator could not start because PyYAML was missing. The new loop was strengthened to distinguish startup failures from validation findings and require explicit coverage/gaps for equivalent checks; Ruby YAML parsing and direct metadata/reference checks verify this prose-only change without claiming the original validator ran.
+- **Scope evidence**: A publication check incorrectly required the entire shared checkout to be clean while another task edited `e-commerce/doc/code-structure.md`. Verification now checks this task's paths and final branch diff separately; the skill's merged-result step explicitly requires inventorying/preserving unrelated working-tree edits rather than rejecting them as task failures.
+
 ### 2026-11-08 — Feed every API authoring error back into the skill
 
 - **Correction**: The owner requires every error to produce a skill improvement as well as a correction to the work.
