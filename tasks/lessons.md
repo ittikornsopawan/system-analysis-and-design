@@ -389,3 +389,13 @@ description: Repository-wide and project-specific lessons captured from user cor
 - **Finding**: An integration comparison called author_needles for author API10, which belongs to another checker; the comparison stopped with KeyError before producing evidence.
 - **Root cause**: The broad AUTHOR_SPECS registry was mistaken for the helper's supported master API01..09 domain.
 - **Corrected behavior**: Re-run the comparison over the supported master family, retain the full registration/function preservation check, and report that the failed validator did not establish coverage. Corrected comparison passes for every unaffected master API and COMMANDS exactly 57 -> 58. Carry this generic validator-domain requirement into the verification-guidance follow-up without widening the API19 diff.
+
+### 2026-11-09 — Adapt SQL aliases at token boundaries
+
+- **Finding**: The permission inquiry scratch generator replaced r. globally, turning author.m_permission into authop.m_permission in its count/page SQL. Review caught both blocks before delivery.
+- **Root cause**: A column-alias replacement also matched the suffix of the schema qualifier.
+- **Corrected behavior**: Use a word-boundary alias replacement, correct both SQL definitions and regenerate the unfinished sequence from the corrected spec. Strengthen `.agents/skills/api-contract-design/references/checker-patterns.md`; require exact schema-qualified relations in the focused checker and test synchronized wrong-schema mutations. Final audit/SQL/paired verification must establish the correction before publication.
+
+- **Related example finding**: The shared author_json parser accepts adjacent fenced JSON or a Request: prelude; newly inserted explanatory paragraphs made three examples invisible to it. Move those notes after their JSON blocks, preserve the helper and strengthen the same checker-patterns reference. Require all positive examples to parse before mutation testing.
+
+- **Related scripted-edit finding**: A follow-up replacement expected an already-renamed diagnostic and aborted before writing; later checks still ran because fail-fast handling began too late. Re-read the current anchor, assert one replacement, and start the entire dependent edit/check block with fail-fast handling. Strengthen the same checker-patterns instruction. Existing artifacts were preserved; final predicate and paired-mutation checks verify the corrected edit.

@@ -1,4 +1,4 @@
-@startuml InquiryPermission Sequence
+@startuml InquiryPermission
 
 title Inquiry Permission API Sequence
 
@@ -37,124 +37,155 @@ box "Web API" #F8FAFC
     participant "Infrastructure" as infra
 end box
 box "Database" #F8FAFC
-    database "m_role" as m_role
-    database "t_user_role" as t_user_role
+    database "t_user_access_token" as t_user_access_token
     database "m_permission" as m_permission
     database "t_permission_scope" as t_permission_scope
     database "m_scope" as m_scope
 end box
 
-user -> page: Request the permissions
+user -> page: Read permissions and scope definitions with optional filters and pagination
 activate page
-    page -> api: GET v1/author/permission
+    page -> api: GET v1/author/permission (Bearer JWT, UTC timestamp; query only)
     activate api
         api -> app: [**InquiryPermissionQueryHandler**] Process request
         activate app
-            app -> app: Create request context; generate requestId when omitted
-            app -> app: Validate headers and query parameters: pageIndex and pageSize are greater than 0, pageSize at most 100, rowStatus is a valid status
-            alt Invalid input
-                app -> api: HTTP 400 E10001
-                api -> page: Bad request
-                page -> user: Display validation error
-            else Valid input
-                app -> app: Verify JWT signature, issuer, audience, exp and UUID sub
-                alt Missing, malformed or invalid JWT
+            app -> app: Generate requestId; validate UTC timestamp, known single query keys/no body, UUID id, positive signed Int64 pages/default 1/10/pageSize <=100 and ACTIVE/INACTIVE/LOCKED/ARCHIVED filter
+            app -> app: Compute checked offset = (pageIndex - 1) * pageSize; reject numeric/offset overflow beyond nonnegative BIGINT
+            alt Invalid input or pagination overflow
+                break Reject this inquiry
+                    app -> api: HTTP 400 E10001
+                    api -> page: Show failure without a partial permission catalog
+                    page -> user: Display failure; no permission data
+                end break
+            else Check passed
+            end
+            app -> app: Verify JWT signature/issuer/audience/expiry/UUID sub and structured unique roleIds/name array
+            alt Missing/invalid JWT or malformed roles
+                break Reject this inquiry
                     app -> api: HTTP 401 E10002 Invalid or expired access token.
-                    api -> page: Authentication error
-                    page -> user: Ask the user to sign in again
-                else Verified JWT
-                    app -> app: userId = verified sub
-                    app -> infra: Execute database operations
-                    activate infra
-                    alt Work completes
-                        app -> infra: QUERY - Get the platform administrator role
-                        infra -> m_role: QUERY - Get the platform administrator role
-                        activate m_role
-                            note right of m_role
+                    api -> page: Show failure without a partial permission catalog
+                    page -> user: Display failure; no permission data
+                end break
+            else Check passed
+            end
+            app -> app: callerUserId = verified sub; accessTokenHash = SHA-256 exact JWT
+            app -> app: Bind omitted id/searchPattern/rowStatus as typed SQL NULL; supplied searchPattern = percent + search + percent, preserving ILIKE wildcards
+            app -> infra: BEGIN REPEATABLE READ READ ONLY
+            activate infra
+            alt Read and mapping work completes
+                note over app, infra
+                    Credentials, count, page, definitions and masters use one read-only repeatable-read snapshot.
+                    No locks or writes; do not serialize an in-flight read against revocation after its snapshot.
+                    Timeout or unexpected SQL/result/mapping failure may interrupt any step; no partial response.
+                end note
+                app -> app: Capture fresh server UTC now immediately before joined credential read; recheck JWT exp
+                alt JWT expired before fresh credential read
+                    break Reject this inquiry
+                        app -> infra: ROLLBACK
+                        app -> api: HTTP 401 E10002 Invalid or expired access token.
+                        api -> page: Show failure without a partial permission catalog
+                        page -> user: Display failure; no permission data
+                    end break
+                else Check passed
+                end
+                app -> infra: QUERY - Check current credential and user
+                infra -> t_user_access_token: QUERY - Check current credential and user
+                activate t_user_access_token
+                    note right of t_user_access_token
+                        SELECT
+                            at.id as access_token_id
+                        FROM authen.t_user_access_token at
+                        JOIN authen.m_user u ON u.id = at.user_id
+                        WHERE at.token = '<sequence.accessTokenHash>'
+                        AND at.user_id = '<sequence.callerUserId>'
+                        AND at.row_status = 'ACTIVE'
+                        AND at.expired_at > '<sequence.now>'
+                        AND u.row_status = 'ACTIVE'
+                    end note
+                    t_user_access_token -> infra: Return ACTIVE matching unexpired token/user or no row
+                deactivate t_user_access_token
+                infra -> app: Return ACTIVE matching unexpired token/user or no row
+                alt Current token/user missing/inactive/revoked/expired/mismatched
+                    break Reject this inquiry
+                        app -> infra: ROLLBACK
+                        app -> api: HTTP 401 E10002 Invalid or expired access token.
+                        api -> page: Show failure without a partial permission catalog
+                        page -> user: Display failure; no permission data
+                    end break
+                else Check passed
+                end
+                app -> app: Authorize once using exact case-sensitive PLATFORM_ADMIN in verified JWT roles; never reload current grants
+                alt No exact PLATFORM_ADMIN role claim
+                    break Reject this inquiry
+                        app -> infra: ROLLBACK
+                        app -> api: HTTP 403 E10009 You do not have permission to read permissions.
+                        api -> page: Show failure without a partial permission catalog
+                        page -> user: Display failure; no permission data
+                    end break
+                else Check passed
+                end
+                app -> infra: QUERY - Get total items
+                infra -> m_permission: QUERY - Get total items
+                activate m_permission
+                    note right of m_permission
+                        SELECT
+                            COUNT(p.id) as total_items
+                        FROM author.m_permission p
+                        WHERE p.row_status <> 'DELETED'
+                        AND ('<sequence.id>' IS NULL OR p.id = '<sequence.id>') -- only when id is specified
+                        AND ('<sequence.searchPattern>' IS NULL OR p.name ILIKE '<sequence.searchPattern>' OR p.description ILIKE '<sequence.searchPattern>') -- only when search is specified
+                        AND ('<sequence.rowStatus>' IS NULL OR p.row_status = '<sequence.rowStatus>') -- only when rowStatus is specified
+                    end note
+                    m_permission -> infra: Return totalItems for non-DELETED permissions and all nullable filters
+                deactivate m_permission
+                infra -> app: Return totalItems for non-DELETED permissions and all nullable filters
+                app -> app: totalPages = 0 when totalItems=0, otherwise integer quotient plus nonzero remainder; no floating point or overflowing count+pageSize-1
+                alt totalItems = 0
+                    app -> app: items = []; skip page/definition/master queries; totalPages = 0
+                else totalItems > 0
+                    app -> infra: QUERY - Get permissions
+                    infra -> m_permission: QUERY - Get permissions
+                    activate m_permission
+                        note right of m_permission
+                            SELECT
+                                p.id as permission_id,
+                                p.name,
+                                p.description,
+                                p.row_status
+                            FROM author.m_permission p
+                            WHERE p.row_status <> 'DELETED'
+                            AND ('<sequence.id>' IS NULL OR p.id = '<sequence.id>') -- only when id is specified
+                            AND ('<sequence.searchPattern>' IS NULL OR p.name ILIKE '<sequence.searchPattern>' OR p.description ILIKE '<sequence.searchPattern>') -- only when search is specified
+                            AND ('<sequence.rowStatus>' IS NULL OR p.row_status = '<sequence.rowStatus>') -- only when rowStatus is specified
+                            ORDER BY p.name, p.id
+                            LIMIT '<sequence.pageSize>' OFFSET '<sequence.offset>'
+                        end note
+                        m_permission -> infra: Return four parent columns in name/id order from identical filters/snapshot
+                    deactivate m_permission
+                    infra -> app: Return four parent columns in name/id order from identical filters/snapshot
+                    app -> app: Require page row count = min(pageSize, max(0, totalItems-offset)); unique parent UUIDs and non-null required columns; mismatch is internal failure
+                    alt Page contains rows
+                        app -> app: Bind permissionIds as distinct typed UUID[] from returned page permission_id values only; never request ids or all unpaged matches
+                        app -> infra: QUERY - Get the scopes of the permissions
+                        infra -> t_permission_scope: QUERY - Get the scopes of the permissions
+                        activate t_permission_scope
+                            note right of t_permission_scope
                                 SELECT
-                                    r.id as role_id
-                                FROM author.m_role r
-                                WHERE r.name = 'PLATFORM_ADMIN'
-                                AND r.row_status = 'ACTIVE'
+                                    ps.id as permission_scope_id,
+                                    ps.permission_id,
+                                    ps.scope_id,
+                                    ps.row_status
+                                FROM author.t_permission_scope ps
+                                WHERE ps.permission_id = ANY ('<sequence.permissionIds>'::UUID[])
+                                AND ps.row_status <> 'DELETED'
+                                ORDER BY ps.permission_id, ps.id
                             end note
-                            m_role -> infra: Return query result
-                        deactivate m_role
-                        infra -> app: Return the role id
-                        app -> infra: QUERY - Check platform administrator
-                        infra -> t_user_role: QUERY - Check platform administrator
-                        activate t_user_role
-                            note right of t_user_role
-                                SELECT
-                                    ur.id as user_role_id
-                                FROM author.t_user_role ur
-                                WHERE ur.user_id = '<sequence.userId>'
-                                AND ur.role_id = '<sequence.roleId>'
-                                AND ur.row_status = 'ACTIVE'
-                            end note
-                            t_user_role -> infra: Return query result
-                        deactivate t_user_role
-                        infra -> app: Return the assignment or no row
-                        alt The caller is not a platform administrator
-                            app -> api: HTTP 403 E10009 You do not have permission to read permissions.
-                            api -> page: Forbidden
-                            page -> user: Display no permission
-                        end
-                        app -> infra: QUERY - Get permissions
-                        infra -> m_permission: QUERY - Get permissions
-                        activate m_permission
-                            note right of m_permission
-                                SELECT
-                                    p.id as permission_id,
-                                    p.name,
-                                    p.description,
-                                    p.row_status
-                                FROM author.m_permission p
-                                WHERE p.row_status <> 'DELETED'
-                                AND p.id = '<sequence.id>' -- only when id is specified
-                                AND (p.name ILIKE '%<sequence.search>%' OR p.description ILIKE '%<sequence.search>%') -- only when search is specified
-                                AND p.row_status = '<sequence.rowStatus>' -- only when rowStatus is specified
-                                ORDER BY p.name, p.id
-                                LIMIT <sequence.pageSize> OFFSET (<sequence.pageIndex> - 1) * <sequence.pageSize>
-                            end note
-                            m_permission -> infra: Return query result
-                        deactivate m_permission
-                        infra -> app: Return the page of permissions
-                        app -> infra: QUERY - Get total items
-                        infra -> m_permission: QUERY - Get total items
-                        activate m_permission
-                            note right of m_permission
-                                SELECT
-                                    COUNT(p.id) as total_items
-                                FROM author.m_permission p
-                                WHERE p.row_status <> 'DELETED'
-                                AND p.id = '<sequence.id>' -- only when id is specified
-                                AND (p.name ILIKE '%<sequence.search>%' OR p.description ILIKE '%<sequence.search>%') -- only when search is specified
-                                AND p.row_status = '<sequence.rowStatus>' -- only when rowStatus is specified
-                            end note
-                            m_permission -> infra: Return query result
-                        deactivate m_permission
-                        infra -> app: Return total_items
-                        alt No permission matches
-                            app -> api: HTTP 200 S10000
-                            api -> page: Return an empty list
-                            page -> user: Display no permission
-                        else Permissions found
-                            app -> infra: QUERY - Get the scopes of the permissions
-                            infra -> t_permission_scope: QUERY - Get the scopes of the permissions
-                            activate t_permission_scope
-                                note right of t_permission_scope
-                                    SELECT
-                                        ps.id as permission_scope_id,
-                                        ps.permission_id,
-                                        ps.scope_id,
-                                        ps.row_status
-                                    FROM author.t_permission_scope ps
-                                    WHERE ps.permission_id IN ('<sequence.permissionIds>')
-                                    AND ps.row_status <> 'DELETED'
-                                end note
-                                t_permission_scope -> infra: Return query result
-                            deactivate t_permission_scope
-                            infra -> app: Return the scopes of the permissions
+                            t_permission_scope -> infra: Return non-DELETED definitions for page parents only, including inactive/locked/archived definitions
+                        deactivate t_permission_scope
+                        infra -> app: Return non-DELETED definitions for page parents only, including inactive/locked/archived definitions
+                        app -> app: Validate definition ids/parent membership/unique scopeId per parent/non-DELETED status and non-null required columns
+                        alt Definition rows exist
+                            app -> app: Bind scopeIds as distinct typed UUID[] from returned definition scope_id values
                             app -> infra: QUERY - Get scope
                             infra -> m_scope: QUERY - Get scope
                             activate m_scope
@@ -164,30 +195,47 @@ activate page
                                         s.scope,
                                         s.name
                                     FROM author.m_scope s
-                                    WHERE s.id IN ('<sequence.scopeIds>')
+                                    WHERE s.id = ANY ('<sequence.scopeIds>'::UUID[])
                                     ORDER BY s.scope, s.id
                                 end note
-                                m_scope -> infra: Return query result
+                                m_scope -> infra: Return exact referenced master scope_id/scope/name in database scope-code/id order, all lifecycle statuses
                             deactivate m_scope
-                            infra -> app: Return the scopes
-                            app -> api: HTTP 200 S10000
-                            api -> page: Return the permissions
-                            page -> user: Display the permissions
+                            infra -> app: Return exact referenced master scope_id/scope/name in database scope-code/id order, all lifecycle statuses
+                            app -> app: Require one exact master for every referenced scope_id, no duplicate/out-of-set/missing/null results; failure is internal 500, never silently drop a definition
+                            app -> app: Build master rank from database scope-code/id order; preserve closed-master metadata and exact scope_id identity, never rebind by reused code
+                            app -> app: Prepare groups by permission_id, ordered by master rank then definition UUID; definition rowStatus is separate from master status
+                        else No definition rows
+                            app -> app: Set all page scopes=[]; skip master query
                         end
-                    else Timeout
-                        app -> api: HTTP 408 E90001
-                        api -> page: Request timeout
-                        page -> user: Retry if needed
-                    else Unexpected failure
-                        app -> api: HTTP 500 generic error; no new bizCode
-                        api -> page: Internal server error
-                        page -> user: Display generic failure
+                        loop Map every returned permission in page order
+                            app -> app: Map exactly permissionId/name/description/scopes/rowStatus; scopes is [] when no owned definitions; exclude caller/assignment/token/hash/audit
+                            loop Map every owned definition in master-rank/id order
+                                app -> app: Map exactly permissionScopeId/scopeId/scope/scopeName/rowStatus from definition plus exact master; rowStatus comes from definition; preserve stored metadata
+                            end
+                        end
+                    else Page beyond range contains no rows
+                        app -> app: items = []; retain positive totalItems/totalPages; skip definition/master queries; no 404
                     end
-                    deactivate infra
                 end
+                app -> app: data = exactly items/pageIndex/pageSize/totalItems/totalPages; echo validated page values; explicit empty arrays; finish full nested mapping
+                app -> infra: COMMIT
+                infra -> app: Return committed consistent read-only permission catalog
+                app -> api: HTTP 200 S10000 Inquiry Permission Success; all five pagination keys
+                api -> page: Show authorized permission catalog and totals
+                page -> user: Display permissions with scopes or empty page
+            else Timeout before COMMIT
+                app -> infra: ROLLBACK
+                app -> api: HTTP 408 E90001
+                api -> page: Show failure without a partial permission catalog
+                page -> user: Display failure; no permission data
+            else Unexpected SQL/result/mapping failure before COMMIT
+                app -> infra: ROLLBACK
+                app -> api: HTTP 500 Internal Server Error; omit bizCode
+                api -> page: Show failure without a partial permission catalog
+                page -> user: Display failure; no permission data
             end
+            deactivate infra
         deactivate app
     deactivate api
 deactivate page
-
 @enduml
