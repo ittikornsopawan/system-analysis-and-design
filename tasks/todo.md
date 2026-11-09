@@ -7,6 +7,29 @@ description: Shared checklist for planning and tracking non-trivial tasks withou
 
 Use one section per task, named `<scope>: <task-name>`. Preserve other task sections and mark an item complete only after its completion criterion is satisfied.
 
+## repository-wide: Design the backend development skill
+
+Status: First interview round answered; scope expanded by the owner from .NET to backend development in any language. Continue the explicitly requested grill-me/grilling interview before authoring the existing placeholder; its canonical name is pending Q4. No component implementation or architecture change is authorized by this skill-design discussion. Preserve the existing code-review scope correction in lessons and unrelated cache files.
+
+1. [x] Load repository rules, SDD workflow, backend-developer role, component manifest, project knowledge and relevant lessons; inspect the current guide and approval/OpenAPI state.
+2. [x] Use a read-only fresh-context investigation to verify the pinned component and inspect actual architecture, libraries, transaction semantics and test coverage without changing either repository.
+3. [ ] Confirm the remaining design frontier with the owner: Q4 canonical naming after the language expansion and Q5 test-first cadence; resolve any dependent questions before shared-understanding confirmation.
+4. [ ] After shared-understanding confirmation, write the skill and only necessary bundled references/examples; preserve existing approval, repository, architecture and delivery boundaries.
+5. [ ] Validate the skill against representative implementation/fix scenarios, register it as ready and connect the backend role; report the actual changed files and verification.
+
+Proposed coverage: discover project/version/component boundaries; verify Approved Specs and published OpenAPI; map requirements to code/tests; implement use cases within existing layers and the owner's Business Domain convention; derive transaction/lock/error outcomes from each approved branch; choose meaningful unit/database/API evidence; run configured build/test/static checks; report traceability and improve the skill after each error. Keep dynamic project facts discoverable and provide instructional conventions/examples inside the skill rather than requiring a particular endpoint example to remain present.
+
+Owner decisions from round 1:
+
+- Q1: “ภาษาไหนก็ได้เลย” — support backend projects in any programming language; inspect the actual project stack and keep .NET/e-commerce conventions scoped to that project rather than imposing them globally.
+- Q2: “ใช่” — cover feature development, bug fixes and behavior-preserving refactors with the appropriate workflow for each.
+- Q3: “ใช่” with a spec-first clarification requirement — require real database/HTTP evidence appropriate to changed guarantees. Read the governing spec before writing code; if it is not understood, ask before implementing. Every clarification must explain (1) what happened or is unclear, (2) its impact, (3) the recommended resolution and (4) the future consequences of that resolution.
+- Use AskUserQuestion when available; this runtime has no tool with that name, so the current interview uses `request_user_input_async` as the available structured question UI, preserving all four required explanation fields.
+
+Pending round 2: Q4 recommends renaming the canonical skill to `backend-development` with stack-aware core guidance and project-specific references. Q5 recommends test-first for changed business behavior and bug reproductions, and baseline/before-after evidence for refactors, without inventing coverage quotas. Both questions were submitted through the question UI; dependent authoring waits for their answers.
+
+Discovery evidence: The existing backend-developer role is ready, but the skill is a placeholder. The manifest-pinned child checkout is clean at `d8255183cba54d0c2b218607456b895a70df32f0`, with the exact declared origin. Read-only source inspection found .NET10, five production layers, custom CQRS, Dapper/Npgsql, exception-based UnitOfWork and Domain/Application tests using fakes; no new builds/tests or remote-reachability checks were performed. Login/refresh specs remain in-review, the code-structure guide remains draft and the OpenAPI paths are empty. These are evidence for readiness/consistency gates, not approval to implement those contracts. HTTP/Result failure alone cannot determine rollback: branch-specific retained effects must come from the approved spec.
+
 ## repository-wide: Show per-file PR change summaries
 
 Status: Guidance and delivery package complete. Ittikorn requested a file-by-file list with a nested summary in the PR delivery skill (called submit-and-pr in the request; the existing resource is commit-and-pr). The format now applies to PR Changes and chat Included, preserves the six PR sections and derives its inventory from the final integrated task diff. Actual integration, remote publication and file coverage are reported from Git/GitHub in the handoff.

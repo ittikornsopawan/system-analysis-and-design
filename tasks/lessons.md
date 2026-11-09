@@ -35,6 +35,12 @@ description: Repository-wide and project-specific lessons captured from user cor
 
 ## Repository-wide
 
+### 2026-11-09 — Keep code-review focused on implementation
+
+- **Correction**: The owner intends `code-review` primarily for reviewing code, rather than a broad review of specification documents and diagrams.
+- **Root cause**: The recommendation centered the new skill on cross-artifact consistency because the recent work involved API specifications, obscuring the intended implementation-review scope.
+- **Corrected behavior**: Design `code-review` around C#/.NET correctness, architecture, security, data access, concurrency, maintainability and meaningful test coverage. Use the governing spec as evidence of intended behavior; keep full specification/schema/diagram audits in their specialist workflows.
+
 ### 2026-11-09 — Explain each delivered file individually
 
 - **Correction**: The owner requested a file name with a nested summary for every changed file when presenting a PR.
