@@ -85,6 +85,12 @@ Q19: The owner answered **“q19 ทั้งหมด”**. The management inqu
 
 ## Allow Scope notation and deny precedence (2026-11-09)
 
+The two-part display notation below is historical and superseded by the Four-part Allow Scope refinement at the end of this record; its deny-precedence decision remains in force.
+
 The owner requested `permission-scope.md`, API allowlists and spec links, then specified **“เพิ่ม section ขึ้นมา ประมาณว่า Allow Scope แล้วใส่ชื่อ scope มา”** and **“อยากปรับให้ scope มันประมาณนี้ <scope-name>:<allow, deny, อื่นๆ>”**. Use an `Allow Scope` section with notation such as `ALL:allow`, `SHOP:allow`, `OWN:deny`; keep the scope name distinct from its effect and associate every rule with its exact permission.
 
 The owner answered **“ใช่ deny ชนะเมื่อครอบคลุมข้อมูลเดียวกัน (แนะนำ)”** to the concrete same-permission example SHOP:allow plus ALL:deny. A matching deny wins over allow when both cover the requested resource. A deny for a different permission or a scope that does not cover that resource does not match. This approval covers the design rule and document format; it does not approve new scope/API pairings, effect values beyond allow/deny, JWT payload changes, schema/seed changes, delegated access or backend enforcement. Those remain detailed in-review work in [the permission/scope matrix](../../../e-commerce/doc/permission-scope.md), delivered per API with its spec/sequence when applicable.
+
+### Four-part Allow Scope refinement (2026-11-09)
+
+The owner subsequently requested **“ปรับนิดนึงอยากได้ประมาณนี้ management:user:read:allow, management:user:crud:deny ปรับ”**. This supersedes scope-name:effect as the active display format: use `<module>:<resource>:<action>:<effect>`, lowercase names and allow/deny. Keep ALL/SHOP/OWN as separate data boundaries, not the module/resource/action. CRUD means create/read/update/delete; a matching crud:deny therefore overrides read:allow on the same module/resource/data under the previously approved deny precedence. Do not silently redefine CRUD as write-only. Specific namespace/API mappings, grant storage, JWT/schema changes and additional effects remain in-review, not implicitly approved by this format correction.

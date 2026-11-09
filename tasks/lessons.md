@@ -459,3 +459,10 @@ description: Repository-wide and project-specific lessons captured from user cor
 - Cause: a scope-specific mutation reused the first inventory row without checking the relevant cell.
 - Correction: choose a row that actually contains ALL:allow and retain the assertion that every mutation changes the document before checking rejection.
 - Prevention: `.agents/skills/api-contract-design/references/spec-structure.md` now requires row-type preconditions for mixed authorization inventory mutations. All verification is rerun after this harness correction; the document policy itself did not change.
+
+### 2026-11-09 — Separate capability names from data boundaries
+
+- Correction: the owner refined Allow Scope from ALL:allow-style strings to management:user:read:allow and management:user:crud:deny.
+- Cause: the first proposal used the existing boundary codes as capability names, hiding which module/resource/action was authorized.
+- Corrected behavior: use module:resource:action:effect, retain ALL/SHOP/OWN separately, update both mapping directions and examples, and explicitly explain CRUD/read overlap under deny precedence.
+- Prevention: `.agents/skills/api-contract-design/references/spec-structure.md` now separates all four capability components from boundaries and requires exact action-group semantics before writing an authorization matrix. Storage/JWT/endpoint enforcement remains separately scoped.
