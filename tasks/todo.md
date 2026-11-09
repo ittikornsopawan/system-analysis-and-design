@@ -7,6 +7,17 @@ description: Shared checklist for planning and tracking non-trivial tasks withou
 
 Use one section per task, named `<scope>: <task-name>`. Preserve other task sections and mark an item complete only after its completion criterion is satisfied.
 
+## e-commerce: English code structure guide
+
+Status: Translate the complete guide to English under the existing documentation delivery authorization. PR78 is merged; deliver this language revision as a separate follow-up PR. Preserve every layer/sub-layer, source reference, diagram and implementation/design distinction. The owner's ordinary-Codex/current-checkout instruction remains applicable.
+
+1. [x] Inspect current guide, governing guidance, source baseline and merged PR state; preserve the source snapshot and reference inventory.
+2. [x] Translate all prose, headings, tables, captions and code-block comments, retaining Service = Domain and all five layers / 24 sub-layer groups.
+3. [x] Verify English-only content, unchanged link targets and structural coverage, frontmatter, source boundaries and all diagram bundles; record the translation-check correction and preventive delivery guidance.
+4. [x] Prepare the scoped delivery package and latest-main integration/check procedure; report actual integration and follow-up PR publication from Git/GitHub without merging the PR.
+
+Verification: English-only scan and heading/table/fence/link preservation passed; all five layers and 24 sub-layer groups retain substantive responsibilities, inputs/outputs, examples and boundaries. Four frontmatters, 20 local and 39 pinned component references passed. Three model/PNG integrity checks passed (72/47/99 cells), all 12 bundle hashes are unchanged and the component remains clean at its pin with 9 production / 5 test references. The captured positional-translation defect is rejected by the same gate that accepts the corrected guide; the delivery checklist and lesson record the prevention. No runtime build/tests are needed for this documentation-only change.
+
 ## e-commerce: Explain every code layer and sub-layer
 
 Status: Content and verification complete; scoped follow-up publication package prepared after owner review. Ittikorn requested that the guide's meaning/scope cover every layer, then explicitly included sub-layers. PR75 is already merged, so deliver a separate follow-up PR under the existing documentation delivery authorization. Preserve the pre-existing table formatting and the other task's unpublished commit on its branch; read the component and diagrams without changing them. Actual base integration and remote PR state are reported from Git/GitHub at delivery.

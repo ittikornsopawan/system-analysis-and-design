@@ -5,6 +5,13 @@ description: Repository-wide and project-specific lessons captured from user cor
 
 # Lessons
 
+### 2026-11-09 — Preserve structure during whole-document translation
+
+- **Error**: Draft translation review found remaining Thai and displaced headings/table rows after several replacements used incorrect numeric line offsets.
+- **Root cause**: Positional replacement assumed line numbers for a long document without proving the original structural inventory.
+- **Correction**: Rebuild from the saved source with corrected mappings, then compare numbered headings, every table's row/column structure, code-fence count and the complete link-target multiset. Check the entire guide for remaining source-language characters.
+- **Preventive resource**: The translation gate in `.agents/skills/commit-and-pr/references/checklist.md` requires whole-artifact language and structural-preservation checks, including comments/captions, before publication. The captured faulty draft must fail the same gate and the corrected guide must pass.
+
 ### 2026-11-09 — Cover all requested layers and their sub-layers
 
 - **Correction**: The owner asked why the meaning/scope section explained mainly Service = Domain, then required every layer and sub-layer to be explained.
