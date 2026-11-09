@@ -1,3 +1,11 @@
+---
+name: Permission Upsert and Scope Link API Specification
+description: Defines JWT administration, current credentials, atomic parent and scope-link writes, final scoping invariants and closed-scope cleanup.
+status: in-review
+approved_by: null
+approved_at: null
+---
+
 # [POST]: v1/author/permission/upsert
 
 | Title       | Description                                                                                                                                                                                                                                                             |
@@ -43,22 +51,58 @@
 
 #### Scope Object
 
-|     | Parameter Name | Data Type    | M/O       | Description                                                                                                                                                    | Example                              |
-| --- | -------------- | ------------ | --------- | -------------------------------------------------------------------------------------------------------------------------------------------------------------- | ------------------------------------ |
-| 1   | id             | String: UUID | OPTIONAL  | Permission Scope Id, Insert when not specified, Update or Delete when specified, Must belong to this permission and must not be duplicated                     | 3c4d5e6f-7a8b-4c9d-8e1f-2a3b4c5d6e7f |
-| 2   | scopeId        | String: UUID | MANDATORY | Scope Id, An ACTIVE scope (404 E10005), Cannot be changed when `id` is specified, The same scope must not be listed twice among the items that are not DELETED | 1a2b3c4d-5e6f-4a7b-8c9d-0e1f2a3b4c5d |
-| 3   | rowStatus      | String       | OPTIONAL  | Row status (ACTIVE, DELETED), Defaults to ACTIVE, Delete when DELETED (not allowed when inserting), A scope that a role or user still uses cannot be deleted   | ACTIVE                               |
+|     | Parameter Name | Data Type    | M/O       | Description                                                                                                                                                                                                            | Example                              |
+| --- | -------------- | ------------ | --------- | ---------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------- | ------------------------------------ |
+| 1   | id             | String: UUID | OPTIONAL  | Permission Scope Id, Insert when not specified, Update or Delete when specified, Must belong to this permission and must not be duplicated                                                                             | 3c4d5e6f-7a8b-4c9d-8e1f-2a3b4c5d6e7f |
+| 2   | scopeId        | String: UUID | MANDATORY | Scope Id, ACTIVE master required for an ACTIVE link (404 E10005), Existing DELETED-link requests may reference a closed master (Q23), Immutable when id is specified, No duplicate scope among non-DELETED input items | 1a2b3c4d-5e6f-4a7b-8c9d-0e1f2a3b4c5d |
+| 3   | rowStatus      | String       | OPTIONAL  | Row status (ACTIVE, DELETED), Defaults to ACTIVE, Delete when DELETED (not allowed when inserting), A scope that a role or user still uses cannot be deleted                                                           | ACTIVE                               |
 
 ### Permission Rules
 
 - `name` is unique among permissions that are not DELETED. The comparison is exact and a value held by an INACTIVE, LOCKED or ARCHIVED permission is still taken (409, E10003). The value of a DELETED permission can be used again.
 - `name` is the permission code: lower-case letters, digits, `_` and `.`, at least two parts separated by `.`, for example `catalog.manage` (max 64 characters) (400, E10001). Every field that is not optional is required in every request, including a delete and an archive.
-- DELETED is final: a DELETED permission is never reopened and its `id` counts as not found (404, E10004). INACTIVE, LOCKED and ARCHIVED are reversible: an update with `rowStatus` ACTIVE opens the permission again. `rowStatus` DELETED is rejected with 400 (E10001) when the request inserts a permission. A permission that is not ACTIVE gives no right to anyone.
+- DELETED is final: a DELETED permission is never reopened and its `id` counts as not found (404, E10004). INACTIVE, LOCKED and ARCHIVED are reversible: an update with `rowStatus` ACTIVE opens the permission again. `rowStatus` DELETED is rejected with 400 (E10001) when the request inserts a permission. A permission that is not ACTIVE is excluded from newly resolved login/refresh claims; an existing token keeps its previous claims until expiry (Q4/Q7).
 - A permission cannot be deleted or archived while a role (`author.t_role_permission`) or a user (`author.t_user_permission`) that is not DELETED still holds it (409, E10006). INACTIVE and LOCKED are allowed, the rows that use it are not changed.
-- `scopes` lists the scopes the permission can have (`author.t_permission_scope`). An item without `id` is added, with `id` is updated, with `rowStatus` DELETED is removed. Scopes that are not listed are kept. A scope that is not ACTIVE or does not exist is 404 (E10005). A scope cannot be deleted from the permission while a role (`author.t_role_permission_scope`) or a user (`author.t_user_permission`) still uses it (409, E10006). A permission without scopes has no scope dimension.
-- Permission: only a platform administrator (a user with an ACTIVE `author.t_user_role` row for the ACTIVE role `PLATFORM_ADMIN`) can call this API, any other caller gets 403 (E10009), after the existence check and before the duplicate check. Approved by the product owner (answered through the lead SA, 2026-11-06).
-- Execution order: validate the request (400) -> existence check (404) -> permission (403, E10009) -> scope check (404, E10005) -> duplicate check (409, E10003) -> in-use check (409, E10006, only when `rowStatus` is DELETED or ARCHIVED, or a scope is deleted) -> write.
+- `scopes` lists the scopes the permission can have (`author.t_permission_scope`). An item without `id` is added, with `id` is updated, with `rowStatus` DELETED is removed. Scopes that are not listed are kept. Adding or retaining an ACTIVE link requires an ACTIVE scope master (404 E10005); removing an existing link may reference a closed master under owner Q23. A scope cannot be deleted from the permission while a role (`author.t_role_permission_scope`) or a user (`author.t_user_permission`) still uses it (409, E10006). A permission without scopes has no scope dimension.
+- Permission: only a platform administrator from verified JWT roles can call this API, with exact case-sensitive PLATFORM_ADMIN. Valid non-admin claims give 403 E10009 after parent existence and before scope/conflict work; do not authorize from live assignment queries or request flags. Approved by the product owner (Q2/Q4/Q10/Q13); this supersedes the prior live-grant guard.
+- Execution order: validate the request (400) -> verify JWT (401) -> begin transaction (READ COMMITTED) -> caller lock/fresh current credentials (401) -> locked parent existence check (404) -> permission (403, E10009) -> scope check (404, E10005 for ACTIVE links), owned scope-link existence (404 E10004) and immutable scopeId (400) -> before-definition count -> duplicate check (409, E10003) -> parent/link in-use checks (409 E10006) -> guarded parent and child writes -> final definition count/Q22 grant guard (409 E10006) -> map -> COMMIT -> response. Every post-BEGIN error rolls back the whole request.
 - HTTP status of the single upsert: Insert 201 Created, Update 200 Ok, Delete 204 No Content (no response body), Archive 200 Ok.
+
+### Credential, Scope and Transaction Rules
+
+- Governing decisions: [owner-confirmed review](../../../../../docs/superpowers/specs/2026-11-07-api-review-design.md), including Q22/Q23 approved by the product owner on 2026-11-08. Detailed revision remains in-review; no schema/backend implementation.
+- Validate one JSON object with only id/name/description/scopes/rowStatus, no repeated keys or query fields, correct JSON content type and mandatory UTC timestamp. Generate requestId if omitted. Parent id, if supplied, is a non-null UUID; omitted means insert. Required name/description are non-null nonblank strings of at most 64/256 characters; name matches ^[a-z][a-z0-9_]*(\.[a-z0-9_]+)+$ without trimming/case-normalization. Parent status defaults to ACTIVE only when omitted, otherwise ACTIVE/INACTIVE/DELETED/LOCKED/ARCHIVED; insert-DELETED is 400.
+- scopes omitted or [] means no link change; null is invalid. Every supplied item is an object with only id/scopeId/rowStatus: optional id is a non-null UUID when present, scopeId is a required UUID, and child status is ACTIVE or DELETED, default ACTIVE only when omitted. Reject child insert-DELETED, duplicate parsed child ids, and duplicate scopeIds among non-DELETED input items with 400 before SQL. Required fields remain required on every parent/child delete. No new array-size limit is introduced.
+- Verify JWT signature/issuer/audience/expiry/UUID sub and structured roles before BEGIN. roles must be an array including [], every object has UUID roleId/non-empty name, and roleIds are unique; malformed/missing roles is generic 401 E10002, never an empty-role fallback. Derive callerUserId from verified sub and accessTokenHash as SHA-256 of exact JWT. createdBy/updatedBy are the caller UUID string; use fresh server UTC now, never request audit values.
+- Begin READ COMMITTED, lock caller user first, capture fresh server UTC now after that lock and recheck JWT exp, then require matching ACTIVE token/hash/caller, strict expired_at > now and ACTIVE user. Missing/revoked/inactive/expired credentials is generic 401 before parent lookup. Logout/reset share the caller lock. Authorization then uses only exact PLATFORM_ADMIN in verified JWT roles; [] or another valid role is 403. Grant changes alone do not invalidate a current old claim; refresh loads latest grants.
+- Lock the non-DELETED parent when id is supplied; missing/DELETED is 404 and never reopened. permissionId is that verified existing id, or typed SQL NULL before insert; after parent RETURNING bind the actual returned id for every child write/final query. Keep callerUserId, optional request id and derived permissionId distinct. No client-generated inserted parent id or live caller-grant lookup.
+- Lock order: caller user -> existing permission -> ACTIVE referenced scope masters ordered by id -> owned requested permission-scope rows ordered by id -> writes. activeScopeIds contains only scopeIds of requested ACTIVE links; permissionScopeIds contains supplied child ids. Both bind typed UUID[] (empty allowed). Before writing, validate each child in input order: ACTIVE child requires a returned ACTIVE master; DELETED child skips master-active validation (Q23), then a supplied child id must map to the owned non-DELETED row and its stored scopeId must equal the request (400 if changed). Missing/DELETED/other-parent child is 404 E10004. A child id cannot belong to a new parent; it likewise returns 404 after authorization. These checks never disclose another parent's child.
+- Q23 owner answer: “ใช่ อนุญาตถอน link ของ scope ที่ปิดแล้ว”. Deleting an owned existing definition works even when its master is INACTIVE/LOCKED/ARCHIVED/DELETED, subject to immutable scopeId and in-use/Q22 checks. ACTIVE link creation/retention still requires an ACTIVE master. No master status or grant row is changed by this API.
+- Scopes that are not listed are kept. Preserve existing precheck semantics: all child reference/duplicate/in-use checks precede any parent/child write. Deleting then readding the same existing scopeId in this array still returns duplicate 409 because the old definition exists at precheck time; remove it in a prior request before adding a replacement. Omitted insert ids bind typed SQL NULL and duplicate exclusions are null-safe. Root name uniqueness spans every non-DELETED parent; scope-pair uniqueness spans every non-DELETED definition.
+- Parent DELETED/ARCHIVED is 409 E10006 while any non-DELETED role/direct-user grant holds it, including inactive/locked/archived grants. A DELETED child is 409 E10006 while any non-DELETED role-scope/direct-user row references that definition, irrespective of current effective rights. Do not detach/rewrite grant history. Read these tables for business invariants, never to authorize the caller.
+- Capture beforeDefinitionCount as every non-DELETED definition of this permission (not only ACTIVE or ACTIVE-master definitions). After all parent/child writes, query finalDefinitionCount again. Q22 triggers only when beforeDefinitionCount > 0 and finalDefinitionCount = 0. Then freshly query role/direct-user grant usage and reject any non-DELETED grant with 409 E10006 `Permission cannot become unscoped while assigned to roles or users.`; ROLLBACK restores all parent/link/audit writes. Owner answer: “ใช่ ปฏิเสธจนถอน grant เดิมครบ”. A request that merely updates an already-unscoped permission (before count 0) may keep valid unscoped grants. This is a final whole-request invariant, not a transient intermediate count.
+- Shared grant/reference writers must lock and recheck their permission/definition parents before creating/reopening bindings; otherwise a soft-status invariant is not guaranteed by foreign keys. Their migrations remain separate APIs; this contract/SQL test does not certify unmigrated writers. Caller/target users must be locked in ascending id order in those writers before master/link rows.
+- Parent/child INSERTs explicitly set created_at from server now and must return exactly one UUID; missing/malformed result is internal 500. Existing parent UPDATE guards id and non-DELETED; child UPDATE guards id, permissionId, immutable scopeId and non-DELETED status. A zero-row update is 404 E10004 with whole-request rollback; a returned existing id must match its requested id. Preserve creation audit on updates. Do not reopen DELETED rows.
+- Parent delete/archive retains all unlisted child definitions. Explicit child actions still run atomically; there is no implicit cascade, even when the parent becomes DELETED. A new parent requested ARCHIVED is still an INSERT (201). Child ids are internal results, not added response fields.
+- Map exactly data.permissionId from the parent's RETURNING id before COMMIT. Insert is 201 S10000 Insert Permission Success; existing DELETED is 204 with no body/status/data; existing ARCHIVED is 200 S10000 Archive Permission Success; other existing updates are 200 S10000 Update Permission Success. Every child action and final Q22 check completes before success; no partial response.
+- SQLSTATE 23505 from uq_m_permission_name is 409 E10003 `Permission name already exists.`; from uq_t_permission_scope_permission_id_scope_id is 409 E10003 `Scope already exists in the permission.`. Both roll back the entire transaction, including earlier writes. Other SQL/result/mapping errors return generic 500 without bizCode after rollback; timeout before COMMIT is 408 E90001 after rollback. No retry is promised for an unknown commit result.
+
+#### Scenario correspondence with sequence.wsd
+
+| Scenario                                                              | Outcome                               | Effects                                        |
+| --------------------------------------------------------------------- | ------------------------------------- | ---------------------------------------------- |
+| Invalid parent/child/duplicate input or malformed JWT                 | 400 E10001 / 401 E10002 before SQL    | None                                           |
+| Missing caller, expiry during caller lock, invalid current token/user | 401 E10002                            | Rollback before parent read                    |
+| Missing/DELETED parent / valid non-admin                              | 404 E10004 / 403 E10009               | No scope/conflict work                         |
+| ACTIVE link master missing/closed / child missing or other-parent     | 404 E10005 / 404 E10004               | Whole request rejected                         |
+| Existing child scopeId changed                                        | 400 E10001                            | No writes                                      |
+| Closed master, deleting unused existing link                          | Allowed by Q23                        | Still checks owner/in-use/Q22                  |
+| Parent/child duplicate or in-use                                      | 409 E10003 / E10006                   | No partial write                               |
+| Last definition removed while a role/direct grant survives            | 409 E10006 (Q22)                      | Rollback parent, child and audit changes       |
+| Last definition removed without grants / already-unscoped update      | Normal success                        | Final count guard preserves intended dimension |
+| Parent insert/update/archive/delete with supplied child actions       | 201 / 200 / 200 / 204                 | One transaction, commit only after final guard |
+| Guarded update returns zero / malformed result                        | 404 E10004 / generic 500              | All writes rollback                            |
+| Concurrent unique collision / timeout / unexpected error              | 409 E10003 / 408 E90001 / generic 500 | Whole request rollback                         |
 
 #### Example Body Parameters
 
@@ -439,9 +483,118 @@ HTTP/1.1 204 No Content
 }
 ```
 
+#### Fail - Bad Request Scope Changed
+
+```JSON
+{
+    "status": {
+        "code": 400,
+        "message": "Bad Request",
+        "bizMessage": "Scope Id cannot be changed.",
+        "requestId": "req-permission-review",
+        "timestamp": "2026-11-09T00:00:00.123Z",
+        "status": "ERROR",
+        "bizCode": "E10001"
+    }
+}
+```
+
+#### Fail - Not Found Permission Scope
+
+```JSON
+{
+    "status": {
+        "code": 404,
+        "message": "Not Found",
+        "bizMessage": "Permission scope not found.",
+        "requestId": "req-permission-review",
+        "timestamp": "2026-11-09T00:00:00.123Z",
+        "status": "ERROR",
+        "bizCode": "E10004"
+    }
+}
+```
+
+#### Fail - Conflict Scope
+
+```JSON
+{
+    "status": {
+        "code": 409,
+        "message": "Conflict",
+        "bizMessage": "Scope already exists in the permission.",
+        "requestId": "req-permission-review",
+        "timestamp": "2026-11-09T00:00:00.123Z",
+        "status": "ERROR",
+        "bizCode": "E10003"
+    }
+}
+```
+
+#### Fail - Conflict Last Scope
+
+```JSON
+{
+    "status": {
+        "code": 409,
+        "message": "Conflict",
+        "bizMessage": "Permission cannot become unscoped while assigned to roles or users.",
+        "requestId": "req-permission-review",
+        "timestamp": "2026-11-09T00:00:00.123Z",
+        "status": "ERROR",
+        "bizCode": "E10006"
+    }
+}
+```
+
+#### Fail - Internal Server Error
+
+```JSON
+{
+    "status": {
+        "code": 500,
+        "message": "Internal Server Error",
+        "bizMessage": "An unexpected error occurred.",
+        "requestId": "req-permission-review",
+        "timestamp": "2026-11-09T00:00:00.123Z",
+        "status": "ERROR"
+    }
+}
+```
+
 ---
 
 ## Database Relations
+
+One READ COMMITTED transaction. All parameters are bound; caller identity, optional request id and derived permissionId are distinct. Arrays are typed UUID[]. Scope checks/duplicate prechecks use the existing candidate id (SQL NULL for a new parent); child writes/final checks use the actual parent RETURNING id. Definition count includes every non-DELETED row, regardless of master status.
+
+### Table: [authen.m_user](../../../schema/authen/m_user.md)
+
+#### QUERY - Lock the caller user
+
+```SQL
+SELECT
+    u.id as user_id
+FROM authen.m_user u
+WHERE u.id = '<sequence.callerUserId>'
+FOR UPDATE
+```
+
+### Table: [authen.t_user_access_token](../../../schema/authen/t_user_access_token.md)
+
+#### QUERY - Check current credential and user
+
+```SQL
+SELECT
+    at.id as access_token_id
+FROM authen.t_user_access_token at
+JOIN authen.m_user u ON u.id = at.user_id
+WHERE at.token = '<sequence.accessTokenHash>'
+AND at.user_id = '<sequence.callerUserId>'
+AND at.row_status = 'ACTIVE'
+AND at.expired_at > '<sequence.now>'
+AND u.row_status = 'ACTIVE'
+```
 
 ### Table: [author.m_permission](../../../schema/author/m_permission.md)
 
@@ -453,73 +606,7 @@ SELECT
 FROM author.m_permission p
 WHERE p.id = '<sequence.id>'
 AND p.row_status <> 'DELETED' -- the id of a DELETED permission counts as not found
-```
-
-#### QUERY - Check duplicate name
-
-```SQL
-SELECT
-    p.id as permission_id
-FROM author.m_permission p
-WHERE p.name = '<sequence.name>'
-AND p.row_status <> 'DELETED'
-AND p.id <> '<sequence.id>' -- only when id is specified
-```
-
-#### INSERT - Create permission
-
-```SQL
-INSERT INTO author.m_permission (
-    created_by,
-    row_status,
-    name,
-    description
-)
-VALUES (
-    '<sequence.createdBy>',
-    '<sequence.rowStatus>',
-    '<sequence.name>',
-    '<sequence.description>'
-)
-RETURNING id as permission_id
-```
-
-#### UPDATE - Update or delete permission
-
-```SQL
-UPDATE author.m_permission
-SET
-    updated_by = '<sequence.updatedBy>',
-    updated_at = NOW() AT TIME ZONE 'UTC',
-    row_status = '<sequence.rowStatus>',
-    name = '<sequence.name>',
-    description = '<sequence.description>'
-WHERE id = '<sequence.id>'
-RETURNING id as permission_id
-```
-
-### Table: [author.t_role_permission](../../../schema/author/t_role_permission.md)
-
-#### QUERY - Check role permission in use
-
-```SQL
-SELECT
-    rp.id as role_permission_id
-FROM author.t_role_permission rp
-WHERE rp.permission_id = '<sequence.id>' -- only when rowStatus is DELETED or ARCHIVED
-AND rp.row_status <> 'DELETED'
-```
-
-### Table: [author.t_user_permission](../../../schema/author/t_user_permission.md)
-
-#### QUERY - Check user permission in use
-
-```SQL
-SELECT
-    up.id as user_permission_id
-FROM author.t_user_permission up
-WHERE up.permission_id = '<sequence.id>' -- only when rowStatus is DELETED or ARCHIVED
-AND up.row_status <> 'DELETED'
+FOR UPDATE
 ```
 
 ### Table: [author.m_scope](../../../schema/author/m_scope.md)
@@ -530,8 +617,10 @@ AND up.row_status <> 'DELETED'
 SELECT
     s.id as scope_id
 FROM author.m_scope s
-WHERE s.id = '<sequence.scopes.scopeId>'
+WHERE s.id = ANY ('<sequence.activeScopeIds>'::UUID[])
 AND s.row_status = 'ACTIVE'
+ORDER BY s.id
+FOR UPDATE
 ```
 
 ### Table: [author.t_permission_scope](../../../schema/author/t_permission_scope.md)
@@ -543,10 +632,63 @@ SELECT
     ps.id as permission_scope_id,
     ps.scope_id
 FROM author.t_permission_scope ps
-WHERE ps.id = '<sequence.scopes.id>'
-AND ps.permission_id = '<sequence.id>'
-AND ps.row_status <> 'DELETED' -- only when the scope item has an id
+WHERE ps.id = ANY ('<sequence.permissionScopeIds>'::UUID[])
+AND ps.permission_id = '<sequence.permissionId>'
+AND ps.row_status <> 'DELETED' -- supplied ids must belong to this permission
+ORDER BY ps.id
+FOR UPDATE
 ```
+
+### Table: [author.t_permission_scope](../../../schema/author/t_permission_scope.md)
+
+#### QUERY - Count permission scope definitions
+
+```SQL
+SELECT
+    COUNT(ps.id) as definition_count
+FROM author.t_permission_scope ps
+WHERE ps.permission_id = '<sequence.permissionId>'
+AND ps.row_status <> 'DELETED'
+```
+
+### Table: [author.m_permission](../../../schema/author/m_permission.md)
+
+#### QUERY - Check duplicate name
+
+```SQL
+SELECT
+    p.id as permission_id
+FROM author.m_permission p
+WHERE p.name = '<sequence.name>'
+AND p.row_status <> 'DELETED'
+AND ('<sequence.id>' IS NULL OR p.id <> '<sequence.id>') -- omitted insert id is typed SQL NULL
+```
+
+### Table: [author.t_role_permission](../../../schema/author/t_role_permission.md)
+
+#### QUERY - Check role permission in use
+
+```SQL
+SELECT
+    rp.id as role_permission_id
+FROM author.t_role_permission rp
+WHERE rp.permission_id = '<sequence.permissionId>' -- destructive parent check or final Q22 guard
+AND rp.row_status <> 'DELETED'
+```
+
+### Table: [author.t_user_permission](../../../schema/author/t_user_permission.md)
+
+#### QUERY - Check user permission in use
+
+```SQL
+SELECT
+    up.id as user_permission_id
+FROM author.t_user_permission up
+WHERE up.permission_id = '<sequence.permissionId>' -- destructive parent check or final Q22 guard
+AND up.row_status <> 'DELETED'
+```
+
+### Table: [author.t_permission_scope](../../../schema/author/t_permission_scope.md)
 
 #### QUERY - Check duplicate permission scope
 
@@ -554,41 +696,10 @@ AND ps.row_status <> 'DELETED' -- only when the scope item has an id
 SELECT
     ps.id as permission_scope_id
 FROM author.t_permission_scope ps
-WHERE ps.permission_id = '<sequence.id>'
+WHERE ps.permission_id = '<sequence.permissionId>'
 AND ps.scope_id = '<sequence.scopes.scopeId>'
 AND ps.row_status <> 'DELETED'
-AND ps.id <> '<sequence.scopes.id>' -- only when the scope item has an id
-```
-
-#### INSERT - Create permission scope
-
-```SQL
-INSERT INTO author.t_permission_scope (
-    created_by,
-    row_status,
-    permission_id,
-    scope_id
-)
-VALUES (
-    '<sequence.createdBy>',
-    '<sequence.scopes.rowStatus>',
-    '<sequence.id>',
-    '<sequence.scopes.scopeId>'
-)
-RETURNING id as permission_scope_id
-```
-
-#### UPDATE - Update or delete permission scope
-
-```SQL
-UPDATE author.t_permission_scope
-SET
-    updated_by = '<sequence.updatedBy>',
-    updated_at = NOW() AT TIME ZONE 'UTC',
-    row_status = '<sequence.scopes.rowStatus>'
-WHERE id = '<sequence.scopes.id>'
-AND permission_id = '<sequence.id>'
-RETURNING id as permission_scope_id
+AND ('<sequence.scopes.id>' IS NULL OR ps.id <> '<sequence.scopes.id>') -- omitted child insert id is typed SQL NULL
 ```
 
 ### Table: [author.t_role_permission_scope](../../../schema/author/t_role_permission_scope.md)
@@ -615,27 +726,80 @@ WHERE up.permission_scope_id = '<sequence.scopes.id>' -- only when the scope ite
 AND up.row_status <> 'DELETED'
 ```
 
-### Table: [author.m_role](../../../schema/author/m_role.md)
+### Table: [author.m_permission](../../../schema/author/m_permission.md)
 
-#### QUERY - Get the platform administrator role
+#### INSERT - Create permission
 
 ```SQL
-SELECT
-    r.id as role_id
-FROM author.m_role r
-WHERE r.name = 'PLATFORM_ADMIN'
-AND r.row_status = 'ACTIVE'
+INSERT INTO author.m_permission (
+    created_by,
+    created_at,
+    row_status,
+    name,
+    description
+)
+VALUES (
+    '<sequence.createdBy>',
+    '<sequence.now>',
+    '<sequence.rowStatus>',
+    '<sequence.name>',
+    '<sequence.description>'
+)
+RETURNING id as permission_id
 ```
 
-### Table: [author.t_user_role](../../../schema/author/t_user_role.md)
+### Table: [author.m_permission](../../../schema/author/m_permission.md)
 
-#### QUERY - Check platform administrator
+#### UPDATE - Update or delete permission
 
 ```SQL
-SELECT
-    ur.id as user_role_id
-FROM author.t_user_role ur
-WHERE ur.user_id = '<sequence.userId>'
-AND ur.role_id = '<sequence.roleId>'
-AND ur.row_status = 'ACTIVE'
+UPDATE author.m_permission
+SET
+    updated_by = '<sequence.updatedBy>',
+    updated_at = '<sequence.now>',
+    row_status = '<sequence.rowStatus>',
+    name = '<sequence.name>',
+    description = '<sequence.description>'
+WHERE id = '<sequence.id>'
+AND row_status <> 'DELETED'
+RETURNING id as permission_id
+```
+
+### Table: [author.t_permission_scope](../../../schema/author/t_permission_scope.md)
+
+#### INSERT - Create permission scope
+
+```SQL
+INSERT INTO author.t_permission_scope (
+    created_by,
+    created_at,
+    row_status,
+    permission_id,
+    scope_id
+)
+VALUES (
+    '<sequence.createdBy>',
+    '<sequence.now>',
+    '<sequence.scopes.rowStatus>',
+    '<sequence.permissionId>',
+    '<sequence.scopes.scopeId>'
+)
+RETURNING id as permission_scope_id
+```
+
+### Table: [author.t_permission_scope](../../../schema/author/t_permission_scope.md)
+
+#### UPDATE - Update or delete permission scope
+
+```SQL
+UPDATE author.t_permission_scope
+SET
+    updated_by = '<sequence.updatedBy>',
+    updated_at = '<sequence.now>',
+    row_status = '<sequence.scopes.rowStatus>'
+WHERE id = '<sequence.scopes.id>'
+AND permission_id = '<sequence.permissionId>'
+AND scope_id = '<sequence.scopes.scopeId>'
+AND row_status <> 'DELETED'
+RETURNING id as permission_scope_id
 ```
