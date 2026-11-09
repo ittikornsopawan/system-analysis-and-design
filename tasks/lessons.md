@@ -5,6 +5,15 @@ description: Repository-wide and project-specific lessons captured from user cor
 
 # Lessons
 
+### 2026-11-09 — Cover all requested layers and their sub-layers
+
+- **Correction**: The owner asked why the meaning/scope section explained mainly Service = Domain, then required every layer and sub-layer to be explained.
+- **Root cause**: The latest terminology discussion displaced the guide's system-wide scope; a five-row overview and file inventory were treated as sufficient coverage of other layers.
+- **Corrected behavior**: Introduce the whole architecture first and give each requested layer/sub-layer its purpose, owned work, input/output, boundaries, collaborators, source example and evidence status. Keep Service = Domain in its proper Domain context and inspect the full document after a scope correction.
+- **Preventive resource**: `.agents/skills/commit-and-pr/references/checklist.md` now requires explicit substantive scope coverage before publication; names, diagram boxes and successful link checks alone are insufficient. Verify the current guide against the complete five-layer/sub-layer inventory and confirm the earlier Domain-focused introduction would fail that coverage gate.
+- **Delivery check exercised**: Preflight caught an extra blank line at EOF introduced by the scripted section append; per-line trailing-whitespace checks had not detected that whole-file condition. The guide was normalized to one final newline, the existing whitespace checklist now requires that normalization after scripted edits, and the document validator checks the same condition. A captured failing file confirms the guard rejects the original defect before the corrected checks are rerun; no publication occurred with the blocker.
+- **Integration check exercised**: Current main and this task inserted independent sections at the same position in `tasks/todo.md`, causing a real merge conflict. The resolution retains both complete sections and proves that removing this task's section reproduces incoming main byte-for-byte. The integration gate in `.agents/skills/commit-and-pr/references/checklist.md` now explicitly requires complete-section preservation and a non-task-content comparison for this conflict shape.
+
 ### 2026-11-08 — Show real decomposition and choose semantics before layout
 
 - **Correction**: The owner rejected the detail and layer grouping across the whole diagram set. Application must expose Command/Query, Validator and Handler as smaller boxes inside its layer; different diagram meanings must be researched before rendering.
