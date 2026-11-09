@@ -27,6 +27,12 @@ When the spec is missing, unapproved, ambiguous or internally inconsistent, or i
 
 Use `AskUserQuestion` when that tool exists. Otherwise use the runtime's structured question tool, such as `request_user_input_async`. If no question UI is available, present the same structure in the conversation and wait. Submitting an asynchronous question or showing a preselected option does not supply an answer.
 
+### Question language
+
+- Write the question topic/title in English.
+- Write the question body, the four explanations and answer-choice explanations in Thai. Keep technical terms, API/type names, identifiers, commands and status codes in English; preserve their exact spelling where they identify a contract or code element.
+- If the tool exposes one combined question field, put the English topic first and the Thai body below it. Use this language contract for every question, including spec, scope and issue-resolution questions.
+
 Ask every independent material question that can already be answered; defer questions whose prerequisites are unsettled. Each question must include all four parts and a recommended resolution:
 
 1. **What happened / what is unclear:** cite the relevant rule, example or observed conflict and give a concrete scenario. Separate evidence from the missing decision.
@@ -38,11 +44,13 @@ Ask every independent material question that can already be answered; defer ques
 
 The following is an illustrative ambiguity, not a production requirement:
 
-> **Question: Persist the failed attempt before answering 401?**
+> **Retain audit records before HTTP 401?**
 >
-> 1. **What happened:** Rule A says every rejected attempt is retained, while the transaction section says all error outcomes roll back. For an invalid credential, those instructions produce different audit records.
-> 2. **Impact:** One reading loses the attempt record; the other retains it. Security history, future throttling and rollback tests will behave differently.
-> 3. **Recommended fix:** If rejected attempts must be retained, explicitly specify and commit that effect before 401, then align the branch diagram, contract examples and implementation tests. Please confirm that resolution, or choose full rollback if retaining the record is not intended.
-> 4. **Future consequences:** Retained records support audit/throttle behavior but need the agreed retention and counting rules. Explicit transaction outcomes also prevent a later refactor from accidentally erasing those records.
+> 1. **เกิดอะไรขึ้น:** `Rule A` กำหนดให้เก็บ `audit record` ของทุก rejected attempt แต่ส่วน `transaction` กำหนดให้ `rollback` ทุก error outcome จึงยังไม่ชัดว่าเมื่อ credentials ไม่ถูกต้อง ต้องเก็บหรือลบ `audit record`
+> 2. **ส่งผลอย่างไร:** แต่ละทางเลือกทำให้ข้อมูลใน `database`, `security history`, `throttling` และผลของ `rollback tests` ต่างกัน หากเลือกเองอาจทำให้ implementation ไม่ตรงกับ spec
+> 3. **แก้อย่างไร:** แนะนำให้ระบุ branch นี้ใน spec ว่าต้อง `commit audit record` ก่อนตอบ `HTTP 401` แล้วปรับ `sequence`, contract examples และ tests ให้สอดคล้องกัน ยืนยันตามข้อเสนอนี้ใช่ไหม หรือเลือก `rollback` ทั้งหมดและแก้ข้อกำหนดการเก็บ `audit record` ให้ตรงกัน
+> 4. **ในอนาคตจะส่งผลอย่างไรหลังแก้:** `audit record` จะยังอยู่เพื่อรองรับ `audit` และ `throttling` จึงต้องกำหนด `retention` และ counting rules ให้ชัด ส่วน `transaction tests` จะช่วยป้องกันไม่ให้ refactor ในอนาคตลบข้อมูลที่ต้องเก็บโดยไม่ตั้งใจ
+>
+> **ตัวเลือก:** “ยืนยันให้ commit audit ก่อนตอบ HTTP 401 (แนะนำ)” / “rollback ทั้งหมดและแก้ Rule A”
 
 After an answer, record the exact decision against the affected item, update/approve the governing artifacts as required, and revise the test plan. Resume dependent code only once the behavior and required approvals are clear. This gate does not authorize redesigning unrelated endpoints or adding business rules absent from the approved scope.
