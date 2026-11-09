@@ -6343,6 +6343,12 @@ def check_permission_upsert_flow() -> int:
         if n not in md:errors.append(f'permission spec missing {n!r}')
     for n in ('QUERY - Get the platform administrator role','QUERY - Check platform administrator'):
         if n in md or n in wsd:errors.append('permission caller authorization may not reload live grants')
+    if 'Q24 approved by the product owner' not in md or 'rowStatus = DELETED and finalDefinitionCount > 0' not in md:errors.append('permission spec must define owner Q24 final deletion guard')
+    q24='alt Parent rowStatus = DELETED and finalDefinitionCount > 0 (Q24)'
+    passed='Q24 passed: parent is not DELETED or finalDefinitionCount = 0'
+    if q24 not in wsd or passed not in wsd:errors.append('permission sequence must enforce Q24 after final count')
+    block=re.search(r'(?m)^( *)'+re.escape(q24)+r'\n(.*?)^\1else Q24 passed\n(.*?)^\1end\n',wsd,re.S)
+    if not block or 'app -> infra: ROLLBACK' not in block[2] or 'HTTP 409 E10006 Permission cannot be deleted while scope definitions remain.' not in block[2] or passed not in block[3]:errors.append('Q24 branch must reject with exact 409 E10006 and rollback, otherwise pass explicitly')
     ops=spec_database_operations(md);heads=('QUERY - Lock the caller user','QUERY - Check current credential and user','QUERY - Check existing permission','QUERY - Check scope','QUERY - Check existing permission scope','QUERY - Count permission scope definitions','QUERY - Check duplicate name','QUERY - Check role permission in use','QUERY - Check user permission in use','QUERY - Check duplicate permission scope','QUERY - Check role permission scope in use','QUERY - Check user permission scope in use','INSERT - Create permission','UPDATE - Update or delete permission','INSERT - Create permission scope','UPDATE - Update or delete permission scope')
     if tuple(h for _,h,_ in ops)!=heads:errors.append('permission needs all 16 caller/parent/master/link/count/conflict/write definitions')
     sql={h:re.sub(r'--[^\n]*','',q) for _,h,q in ops};need={
@@ -6378,7 +6384,7 @@ def check_permission_upsert_flow() -> int:
         if not r or r[1]!=r[2]:errors.append('every permission SQL result must map back identically to Application')
     for n in ('Verify JWT signature/issuer/audience/expiry/UUID sub and structured unique roleIds/name array','callerUserId = verified sub; accessTokenHash = SHA-256 exact JWT','Capture fresh server UTC now after caller lock; recheck JWT exp','JWT expired while waiting for caller lock','Current token/user missing/inactive/revoked/expired/mismatched','Authorize only exact case-sensitive PLATFORM_ADMIN in verified JWT roles; never reload live caller grants','activeScopeIds = only requested ACTIVE child scopeIds','permissionScopeIds = supplied child ids','Q23 skip master ACTIVE validation for removing an existing definition','Child absent from owned non-DELETED definition map','Requested scopeId differs from stored immutable scopeId','beforeDefinitionCount = definitionCount','Parent UPDATE returned zero rows','Require exactly one returned parent id equal to request id','permissionId = actual parent RETURNING id; bind this server-derived id for all child writes and final queries','Child UPDATE returned zero rows','Require exactly one returned child id equal to input id','finalDefinitionCount = definitionCount','alt beforeDefinitionCount > 0 and finalDefinitionCount = 0 (Q22 transition)','Either fresh non-DELETED role/direct-user grant survives','Q22 does not prohibit existing unscoped grants','data = exactly permissionId from parent RETURNING; no child ids or audit fields','Suppress body/status/data for 204'):
         if n not in wsd:errors.append(f'permission sequence missing {n!r}')
-    phase=['Authorize only exact',heads[3],heads[4],'loop Validate every supplied','beforeDefinitionCount =',heads[6],'loop Precheck every supplied','alt Parent id omitted (INSERT','permissionId = actual parent RETURNING','loop Apply every supplied','finalDefinitionCount =','alt beforeDefinitionCount > 0']
+    phase=['Authorize only exact',heads[3],heads[4],'loop Validate every supplied','beforeDefinitionCount =',heads[6],'loop Precheck every supplied','alt Parent id omitted (INSERT','permissionId = actual parent RETURNING','loop Apply every supplied','finalDefinitionCount =',q24,passed,'alt beforeDefinitionCount > 0']
     positions=[wsd.find(x) for x in phase]
     if -1 in positions or positions!=sorted(set(positions)):errors.append('permission authorization/preflight/count/write/final-guard phases are out of order')
     q23=re.search(r'(?m)^( *)alt Child rowStatus = ACTIVE\n(.*?)^\1else Child rowStatus = DELETED\n(.*?)^\1end\n',wsd,re.S)
@@ -6423,7 +6429,7 @@ def check_permission_upsert_flow() -> int:
         if parentwrites and not ordered(heads[9],parentwrites[0]):errors.append('all scope duplicate prechecks precede parent mutation')
         if childwrites and not ordered('permissionId = actual parent RETURNING',childwrites[0]):errors.append('scope writes require the real returned parent id')
         if code in (200,201,204):
-            if len(parentwrites)!=1 or len(childwrites)!=1 or not ordered('beforeDefinitionCount =',parentwrites[0],childwrites[0],'finalDefinitionCount =','app -> infra: COMMIT',f'HTTP {code}') or 'ROLLBACK' in joined:errors.append('permission success must complete atomic parent/child/final-count phases then commit')
+            if len(parentwrites)!=1 or len(childwrites)!=1 or not ordered('beforeDefinitionCount =',parentwrites[0],childwrites[0],'finalDefinitionCount =',passed,'app -> infra: COMMIT',f'HTTP {code}') or 'ROLLBACK' in joined:errors.append('permission success must complete atomic parent/child/final-count phases then commit')
             if code==204:
                 if 'Suppress body/status/data for 204' not in joined or 'data = exactly permissionId' in joined:errors.append('permission delete has no response body')
             elif not ordered('data = exactly permissionId','app -> infra: COMMIT'):errors.append('nondelete success maps only parent permissionId before commit')
@@ -6432,17 +6438,23 @@ def check_permission_upsert_flow() -> int:
             if code==401 and (hasop(heads[2]) or heads[3] in joined):errors.append('invalid current credentials must not inspect parents/scopes')
             if code==403 and any(h in joined for h in heads[3:]):errors.append('403 must precede every scope/conflict/write phase')
         elif code not in (400,401) or db:errors.append('pre-BEGIN permission rejection is validation/JWT only, no SQL')
-        if 'finalDefinitionCount =' in joined and 'Q22 does not prohibit existing unscoped grants' not in joined:
+        if 'finalDefinitionCount =' in joined and passed in joined and 'Q22 does not prohibit existing unscoped grants' not in joined:
             final=next(i for i,e in enumerate(tr) if 'finalDefinitionCount =' in e);tail='\n'.join(tr[final:])
             if heads[7] not in tail or heads[8] not in tail:errors.append('Q22 must freshly read both role/direct-user grants after the final count')
+        if 'HTTP 409 E10006 Permission cannot be deleted while scope definitions remain.' in joined and not ordered('finalDefinitionCount =','ROLLBACK','HTTP 409'):errors.append('Q24 rejection must follow final count and roll back before response')
     if codes!={200,201,204,400,401,403,404,409,408,500}:errors.append(f'permission outcome coverage incomplete: {codes}')
-    for title,code in {'Success - Insert':201,'Success - Update':200,'Success - Archive':200,'Fail - Bad Request Scope Changed':400,'Fail - Not Found Permission Scope':404,'Fail - Conflict Scope':409,'Fail - Conflict Last Scope':409,'Fail - Internal Server Error':500}.items():
+    for title,code in {'Success - Insert':201,'Success - Update':200,'Success - Archive':200,'Fail - Bad Request Scope Changed':400,'Fail - Not Found Permission Scope':404,'Fail - Conflict Scope':409,'Fail - Conflict Last Scope':409,'Fail - Conflict Remaining Scopes':409,'Fail - Internal Server Error':500}.items():
         try:
             obj=author_json(md,title);status=obj['status']
             if status['code']!=code or code==500 and 'bizCode' in status:errors.append(f'{title} permission envelope incorrect')
             if code in (200,201) and set(obj['data'])!={'permissionId'}:errors.append('permission response must not add scope ids/other fields')
+            if title=='Fail - Conflict Remaining Scopes' and (status.get('bizCode')!='E10006' or status['bizMessage']!='Permission cannot be deleted while scope definitions remain.'):errors.append('Q24 error must be 409 E10006 with the documented message')
             if title=='Fail - Conflict Last Scope' and (status.get('bizCode')!='E10006' or status['bizMessage']!='Permission cannot become unscoped while assigned to roles or users.'):errors.append('Q22 error must be 409 E10006 with the documented message')
         except (AttributeError,TypeError,KeyError,ValueError):errors.append(f'missing/malformed permission example {title}')
+    delete=re.search(r'^##### Delete\n\n```JSON\n(.*?)```',md,re.M|re.S)
+    try:
+        body=json.loads(delete[1]);assert body.get('rowStatus')=='DELETED' and body.get('scopes') and all(c.get('id') and c.get('rowStatus')=='DELETED' for c in body['scopes'])
+    except (AssertionError,TypeError,KeyError,ValueError):errors.append('Q24 Delete example must explicitly withdraw its remaining definitions')
     errors+=json_blocks_parse(md);errors+=table_lines_aligned(md)
     if '--rendered-svg' in sys.argv:
         import xml.etree.ElementTree as ET
@@ -6452,7 +6464,7 @@ def check_permission_upsert_flow() -> int:
             else:print(f'OK: rendered permission-upsert SQL ({sum(wanted.values())}/{sum(wanted.values())} visible lines)')
         except (IndexError,OSError,ET.ParseError) as exc:errors.append(f'cannot verify permission SVG: {exc}')
     if errors:return fail('; '.join(dict.fromkeys(errors)))
-    print('OK: permission-upsert-flow (16 exact SQL definitions; scope phase/transaction structure and owner Q22/Q23 guards)')
+    print('OK: permission-upsert-flow (16 exact SQL definitions; scope phase/transaction structure and owner Q22/Q23/Q24 guards)')
     return 0
 
 
@@ -6460,12 +6472,18 @@ COMMANDS['permission-upsert-flow'] = check_permission_upsert_flow
 
 
 def check_permission_batch_flow() -> int:
-    """Check scoped permission parent/link phases, owner Q22/Q23 and atomic rollback."""
+    """Check scoped permission parent/link phases, owner Q22/Q23/Q24 and atomic rollback."""
     path=f'{AUTHOR_DIR}/{AUTHOR_SPECS["05"]}/spec.md';md=read(path);wsd=read(str(Path(path).with_name('sequence.wsd')));errors=[]
-    for n in ('status: in-review', 'approved_by: null', 'approved_at: null', 'Q22/Q23 approved by the product owner', 'permissions must be an array of 1..100', 'Reject duplicate parsed canonical parent ids', 'malformed/missing roles is generic 401', 'Lock order: caller user -> all existing target permissions ordered by id', 'Check all supplied target ids in original request order before permission', 'Authorize once from exact PLATFORM_ADMIN', 'activeScopeIds contains only scopeIds requested ACTIVE anywhere', 'Map each returned child id to its stored permission_id and scope_id', 'optional permissions.id, callerUserId and derived permissionId are distinct', 'scopes omitted or [] means no link change', 'Every child precheck precedes the current parent', 'Capture beforeDefinitionCount as every non-DELETED definition', 'beforeDefinitionCount > 0 and finalDefinitionCount = 0', 'final whole-request state', 'exactly index/permissionId/action', 'one COMMIT after the outer loop', 'Every item-specific 400/404/409 has permissions[i] prefix', 'uq_m_permission_name', 'uq_t_permission_scope_permission_id_scope_id', 'Scenario correspondence with sequence.wsd', 'ใช่ ปฏิเสธจนถอน grant เดิมครบ', 'ใช่ อนุญาตถอน link ของ scope ที่ปิดแล้ว'):
+    for n in ('status: in-review', 'approved_by: null', 'approved_at: null', 'Q22/Q23 approved by the product owner', 'permissions must be an array of 1..100', 'Reject duplicate parsed canonical parent ids', 'malformed/missing roles is generic 401', 'Lock order: caller user -> all existing target permissions ordered by id', 'Check all supplied target ids in original request order before permission', 'Authorize once from exact PLATFORM_ADMIN', 'activeScopeIds contains only scopeIds requested ACTIVE anywhere', 'Map each returned child id to its stored permission_id and scope_id', 'optional permissions.id, callerUserId and derived permissionId are distinct', 'scopes omitted or [] means no link change', 'Every child precheck precedes the current parent', 'Capture beforeDefinitionCount as every non-DELETED definition', 'beforeDefinitionCount > 0 and finalDefinitionCount = 0', "Because parent ids cannot repeat and child ownership is enforced, this post-item state is that permission's final whole-request state; no later item may alter its definitions.", 'exactly index/permissionId/action', 'one COMMIT after the outer loop', 'Every item-specific 400/404/409 has permissions[i] prefix', 'uq_m_permission_name', 'uq_t_permission_scope_permission_id_scope_id', 'Scenario correspondence with sequence.wsd', 'ใช่ ปฏิเสธจนถอน grant เดิมครบ', 'ใช่ อนุญาตถอน link ของ scope ที่ปิดแล้ว'):
         if n not in md:errors.append(f'permission batch spec missing {n!r}')
     for n in ('QUERY - Get the platform administrator role','QUERY - Check platform administrator'):
         if n in md or n in wsd:errors.append('permission caller authorization may not reload live grants')
+    if 'Q24 approved by the product owner' not in md or 'rowStatus = DELETED and finalDefinitionCount > 0' not in md:errors.append('permission batch spec must define owner Q24 final deletion guard')
+    q24='alt Current permission rowStatus = DELETED and finalDefinitionCount > 0 (Q24)'
+    passed='Q24 passed for permissions[i]: rowStatus is not DELETED or finalDefinitionCount = 0'
+    if q24 not in wsd or passed not in wsd:errors.append('permission batch sequence must enforce Q24 after final count')
+    block=re.search(r'(?m)^( *)'+re.escape(q24)+r'\n(.*?)^\1else Q24 passed\n(.*?)^\1end\n',wsd,re.S)
+    if not block or 'app -> infra: ROLLBACK' not in block[2] or 'HTTP 409 E10006 permissions[i]: Permission cannot be deleted while scope definitions remain.' not in block[2] or passed not in block[3]:errors.append('Q24 batch branch must reject with exact indexed 409 E10006 and full rollback, otherwise pass explicitly')
     ops=spec_database_operations(md);heads=('QUERY - Lock the caller user','QUERY - Check current credential and user','QUERY - Lock existing permissions','QUERY - Check scope','QUERY - Check existing permission scope','QUERY - Count permission scope definitions','QUERY - Check duplicate name','QUERY - Check role permission in use','QUERY - Check user permission in use','QUERY - Check duplicate permission scope','QUERY - Check role permission scope in use','QUERY - Check user permission scope in use','INSERT - Create permission','UPDATE - Update or delete permission','INSERT - Create permission scope','UPDATE - Update or delete permission scope')
     if tuple(h for _,h,_ in ops)!=heads:errors.append('permission needs all 16 caller/parent/master/link/count/conflict/write definitions')
     sql={h:re.sub(r'--[^\n]*','',q) for _,h,q in ops};need={
@@ -6501,7 +6519,7 @@ def check_permission_batch_flow() -> int:
         if not r or r[1]!=r[2]:errors.append('every permission SQL result must map back identically to Application')
     for n in ('Verify JWT signature/issuer/audience/expiry/UUID sub and structured unique roleIds/name array', 'callerUserId = verified sub; accessTokenHash = SHA-256 exact JWT', 'Capture fresh server UTC now after caller lock; recheck JWT exp', 'JWT expired while waiting for caller lock', 'Current token/user missing/inactive/revoked/expired/mismatched', 'Check every supplied parent id in original input order before permission', 'Authorize once using only exact case-sensitive PLATFORM_ADMIN in verified JWT roles; never reload live caller grants', 'activeScopeIds = all requested ACTIVE child scopeIds', 'permissionScopeIds = all supplied child ids', 'Q23 skip master ACTIVE validation for removing an existing definition', 'Child absent from owned non-DELETED definition map', 'Requested scopeId differs from stored immutable scopeId', 'beforeDefinitionCount = definitionCount', 'Parent UPDATE returned zero rows', 'Require exactly one returned parent id equal to request id', 'permissionId = actual parent RETURNING id; bind this server-derived id for all child writes and final queries', 'Child UPDATE returned zero rows', 'Require exactly one returned child id equal to input id', 'finalDefinitionCount = definitionCount', 'alt beforeDefinitionCount > 0 and finalDefinitionCount = 0 (Q22 transition)', 'Either fresh non-DELETED role/direct-user grant survives', 'Q22 does not prohibit existing unscoped grants', 'Process permissions[i] in original request order, not lock order', 'Map exactly index=i, permissionId=actual parent RETURNING id', 'Require result count = input count, indices 0..n-1 in order, unique returned parent UUIDs and exactly index/permissionId/action per item; data = exactly permissions; finish all mapping', 'one final COMMIT'):
         if n not in wsd:errors.append(f'permission batch sequence missing {n!r}')
-    phase=[heads[0],heads[1],heads[2],'loop Check every supplied parent id','Authorize once using only exact',heads[3],heads[4],'loop Process permissions[i]','loop Validate every supplied','beforeDefinitionCount =',heads[6],'loop Precheck every supplied','alt Parent id omitted (INSERT','permissionId = actual parent RETURNING','loop Apply every supplied','finalDefinitionCount =','alt beforeDefinitionCount > 0']
+    phase=[heads[0],heads[1],heads[2],'loop Check every supplied parent id','Authorize once using only exact',heads[3],heads[4],'loop Process permissions[i]','loop Validate every supplied','beforeDefinitionCount =',heads[6],'loop Precheck every supplied','alt Parent id omitted (INSERT','permissionId = actual parent RETURNING','loop Apply every supplied','finalDefinitionCount =',q24,passed,'alt beforeDefinitionCount > 0']
     positions=[wsd.find(x) for x in phase]
     if -1 in positions or positions!=sorted(set(positions)):errors.append('permission authorization/preflight/count/write/final-guard phases are out of order')
     q23=re.search(r'(?m)^( *)alt Child rowStatus = ACTIVE\n(.*?)^\1else Child rowStatus = DELETED\n(.*?)^\1end\n',wsd,re.S)
@@ -6546,18 +6564,19 @@ def check_permission_batch_flow() -> int:
         if parentwrites and not ordered(heads[9],parentwrites[0]):errors.append('all scope duplicate prechecks precede parent mutation')
         if childwrites and not ordered('permissionId = actual parent RETURNING',childwrites[0]):errors.append('scope writes require the real returned parent id')
         if code==200:
-            if len(parentwrites)!=1 or len(childwrites)!=1 or not ordered('beforeDefinitionCount =',parentwrites[0],childwrites[0],'finalDefinitionCount =','Map exactly index=i','Require result count = input count','app -> infra: COMMIT','HTTP 200') or 'ROLLBACK' in joined:errors.append('batch success must finish all nested writes/final-count/mapping phases before one outer commit')
+            if len(parentwrites)!=1 or len(childwrites)!=1 or not ordered('beforeDefinitionCount =',parentwrites[0],childwrites[0],'finalDefinitionCount =',passed,'Map exactly index=i','Require result count = input count','app -> infra: COMMIT','HTTP 200') or 'ROLLBACK' in joined:errors.append('batch success must finish all nested writes/final-count/mapping phases before one outer commit')
             if sum('app -> infra: COMMIT' in e for e in tr)!=1:errors.append('batch commits exactly once')
         elif begun:
             if not ordered('BEGIN','ROLLBACK',f'HTTP {code}') or 'app -> infra: COMMIT' in joined:errors.append('every post-BEGIN permission rejection rolls back the whole request')
             if code==401 and (hasop(heads[2]) or heads[3] in joined):errors.append('invalid current credentials must not inspect parents/scopes')
             if code==403 and any(h in joined for h in heads[3:]):errors.append('403 must precede every scope/conflict/write phase')
         elif code not in (400,401) or db:errors.append('pre-BEGIN permission rejection is validation/JWT only, no SQL')
-        if 'finalDefinitionCount =' in joined and 'Q22 does not prohibit existing unscoped grants' not in joined:
+        if 'finalDefinitionCount =' in joined and passed in joined and 'Q22 does not prohibit existing unscoped grants' not in joined:
             final=next(i for i,e in enumerate(tr) if 'finalDefinitionCount =' in e);tail='\n'.join(tr[final:])
             if heads[7] not in tail or heads[8] not in tail:errors.append('Q22 must freshly read both role/direct-user grants after the final count')
+        if 'HTTP 409 E10006 permissions[i]: Permission cannot be deleted while scope definitions remain.' in joined and not ordered('finalDefinitionCount =','ROLLBACK','HTTP 409'):errors.append('Q24 rejection must follow final count and roll back before indexed response')
     if codes!={200,400,401,403,404,409,408,500}:errors.append(f'permission outcome coverage incomplete: {codes}')
-    for title,code in {'Success':200,'Fail - Forbidden':403,'Fail - Bad Request Scope Changed':400,'Fail - Not Found Permission Scope':404,'Fail - Conflict Scope':409,'Fail - Conflict Last Scope':409,'Fail - Internal Server Error':500}.items():
+    for title,code in {'Success':200,'Fail - Forbidden':403,'Fail - Bad Request Scope Changed':400,'Fail - Not Found Permission Scope':404,'Fail - Conflict Scope':409,'Fail - Conflict Last Scope':409,'Fail - Conflict Remaining Scopes':409,'Fail - Internal Server Error':500}.items():
         try:
             obj=author_json(md,title);status=obj['status']
             if status['code']!=code or code==500 and 'bizCode' in status:errors.append(f'{title} permission batch envelope incorrect')
@@ -6566,11 +6585,23 @@ def check_permission_batch_flow() -> int:
                 if set(obj['data'])!={'permissions'} or not results or any(set(r)!={'index','permissionId','action'} or r['index']!=i or r['action'] not in ('INSERT','UPDATE','DELETE','ARCHIVE') for i,r in enumerate(results)):errors.append('batch result must contain ordered index/permissionId/action only')
             elif code in (400,404,409) and not status['bizMessage'].startswith('permissions['):errors.append('item error requires permissions[i] prefix')
             elif code==403 and 'permissions[' in status['bizMessage']:errors.append('caller permission error must not have an item index')
+            if title=='Fail - Conflict Remaining Scopes' and (status.get('bizCode')!='E10006' or status['bizMessage']!='permissions[1]: Permission cannot be deleted while scope definitions remain.'):errors.append('Q24 error must be indexed 409 E10006 with documented message')
             if title=='Fail - Conflict Last Scope' and (status.get('bizCode')!='E10006' or status['bizMessage']!='permissions[1]: Permission cannot become unscoped while assigned to roles or users.'):errors.append('Q22 error must be indexed 409 E10006 with documented message')
         except (AttributeError,TypeError,KeyError,ValueError):errors.append(f'missing/malformed permission batch example {title}')
     if wsd.count('app -> infra: COMMIT')!=1 or 'app -> api: HTTP 201' in wsd or 'app -> api: HTTP 204' in wsd:errors.append('batch has one 200 success and one final commit only')
     for line in wsd.splitlines():
         if re.search(r'app -> api: HTTP (404|409) ',line) and 'permissions[i]:' not in line:errors.append('every item not-found/conflict is indexed')
+    example=re.search(r'^#### Example Body Parameters\n\n```JSON\n(.*?)```',md,re.M|re.S)
+    try:
+        body=json.loads(example[1]);deletes=[p for p in body['permissions'] if p.get('rowStatus')=='DELETED']
+        assert deletes and all(p.get('id') and p.get('scopes') and all(c.get('id') and c.get('rowStatus')=='DELETED' for c in p['scopes']) for p in deletes)
+        # The HTTP and cURL examples must show the same complete withdrawal as the JSON example.
+        for p in deletes:
+            for c in p['scopes']:
+                assert md.count('"id": "'+c['id']+'"')==3
+        raw=body['permissions'];http=re.search(r'```HTTP\n.*?\n\n(.*?)```',md,re.S);curl=re.search(r"--data(?:-raw)? '(.*?)'",md,re.S)
+        assert http and curl and json.loads(http[1])['permissions']==raw and json.loads(curl[1])['permissions']==raw
+    except (AssertionError,TypeError,KeyError,ValueError):errors.append('Q24 batch Delete examples must consistently withdraw remaining definitions in JSON, HTTP and cURL')
     errors+=json_blocks_parse(md);errors+=table_lines_aligned(md)
     if '--rendered-svg' in sys.argv:
         import xml.etree.ElementTree as ET
@@ -6580,7 +6611,7 @@ def check_permission_batch_flow() -> int:
             else:print(f'OK: rendered permission-batch SQL ({sum(wanted.values())}/{sum(wanted.values())} visible lines)')
         except (IndexError,OSError,ET.ParseError) as exc:errors.append(f'cannot verify permission SVG: {exc}')
     if errors:return fail('; '.join(dict.fromkeys(errors)))
-    print('OK: permission-batch-flow (16 exact SQL definitions; batch lock/order/atomic-result structure and owner Q22/Q23 guards)')
+    print('OK: permission-batch-flow (16 exact SQL definitions; batch lock/order/atomic-result structure and owner Q22/Q23/Q24 guards)')
     return 0
 
 COMMANDS['permission-batch-flow'] = check_permission_batch_flow

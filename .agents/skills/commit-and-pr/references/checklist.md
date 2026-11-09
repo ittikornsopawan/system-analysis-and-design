@@ -26,6 +26,8 @@ When owner review changes or clarifies scope, reconcile the title, introduction 
 
 For whole-document translation, save the original artifact and verify the entire result, including headings, table cells, captions, link labels and code-block comments. Preserve the numbered-heading inventory, table row/column structure, code fences and link targets unless a structural change is explicitly requested. Do not rely on numeric line replacements without this comparison. Confirm no source-language text remains, and verify that a captured faulty translation is rejected by the same language/structure gate before accepting the correction.
 
+When attaching the published PR in the desktop app, read the currently discovered tool declaration before calling it. `attach_artifact` requires `artifact_type: "pull_request"` and `url`; `type` or an omitted artifact type is not accepted. Verify the attachment result separately from the already-created GitHub PR.
+
 ## Integrate the latest base before publication
 
 This gate runs after the task commit and before push/PR creation or update. `<base>` is the PR target, default `main`; run every merge while on the task branch. The preflight script checks uncommitted files and uses `--base` only as a report label: it does not fetch, merge, prove ancestry or validate the full committed PR diff.

@@ -80,7 +80,7 @@ activate page
             alt Work completes before commit
                 note over app, infra
                     Any step may fail after earlier permission/child writes.
-                    No item is committed or returned until all items, Q22 guards and mapping succeed.
+                    No item is committed or returned until all items, Q24/Q22 guards and mapping succeed.
                 end note
                 app -> infra: QUERY - Lock the caller user
                 infra -> m_user: QUERY - Lock the caller user
@@ -515,6 +515,16 @@ activate page
                     deactivate t_permission_scope
                     infra -> app: Return definitionCount including every non-DELETED definition
                     app -> app: finalDefinitionCount = definitionCount; require valid nonnegative integer
+                    alt Current permission rowStatus = DELETED and finalDefinitionCount > 0 (Q24)
+                        break Reject the entire batch
+                            app -> infra: ROLLBACK
+                            app -> api: HTTP 409 E10006 permissions[i]: Permission cannot be deleted while scope definitions remain.
+                            api -> page: Reject the entire batch; no results or partial success
+                            page -> user: Display failure; keep all unsaved input
+                        end break
+                    else Q24 passed
+                        app -> app: Q24 passed for permissions[i]: rowStatus is not DELETED or finalDefinitionCount = 0
+                    end
                     alt beforeDefinitionCount > 0 and finalDefinitionCount = 0 (Q22 transition)
                         app -> infra: QUERY - Check role permission in use
                         infra -> t_role_permission: QUERY - Check role permission in use
