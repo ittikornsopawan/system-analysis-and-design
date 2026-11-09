@@ -12,6 +12,7 @@ description: Repository-wide and project-specific lessons captured from user cor
 - **Corrected behavior**: Introduce the whole architecture first and give each requested layer/sub-layer its purpose, owned work, input/output, boundaries, collaborators, source example and evidence status. Keep Service = Domain in its proper Domain context and inspect the full document after a scope correction.
 - **Preventive resource**: `.agents/skills/commit-and-pr/references/checklist.md` now requires explicit substantive scope coverage before publication; names, diagram boxes and successful link checks alone are insufficient. Verify the current guide against the complete five-layer/sub-layer inventory and confirm the earlier Domain-focused introduction would fail that coverage gate.
 - **Delivery check exercised**: Preflight caught an extra blank line at EOF introduced by the scripted section append; per-line trailing-whitespace checks had not detected that whole-file condition. The guide was normalized to one final newline, the existing whitespace checklist now requires that normalization after scripted edits, and the document validator checks the same condition. A captured failing file confirms the guard rejects the original defect before the corrected checks are rerun; no publication occurred with the blocker.
+- **Integration check exercised**: Current main and this task inserted independent sections at the same position in `tasks/todo.md`, causing a real merge conflict. The resolution retains both complete sections and proves that removing this task's section reproduces incoming main byte-for-byte. The integration gate in `.agents/skills/commit-and-pr/references/checklist.md` now explicitly requires complete-section preservation and a non-task-content comparison for this conflict shape.
 
 ### 2026-11-08 — Show real decomposition and choose semantics before layout
 
@@ -26,6 +27,14 @@ description: Repository-wide and project-specific lessons captured from user cor
 - **Corrected behavior**: Use Service = Domain for reusable business operations in this project's code-structure discussion and preserve the owner-selected `Domain/` name instead of replacing it with Services/Policies. Show `Domain` explicitly under the Domain layer and the feature's physical path in the repository view. Explain reusable rules separately from handler orchestration and entity invariants; infrastructure services and database-domain associations still have their own roles. Treat tax calculation as a generic example owned by the relevant business feature, not an implemented Authen capability; distinguish owner-directed design from the pinned source baseline.
 
 ## Repository-wide
+
+### 2026-11-09 — Improve delivery guidance after every error
+
+- **Correction**: The owner requires errors in `commit-and-pr` to improve the skill as well as the immediate delivery result.
+- **Root cause**: The delivery skill required resolving failures before publication but had no mandatory step that feeds each failure back into its reusable instructions.
+- **Corrected behavior**: Apply the error improvement loop in `.agents/skills/commit-and-pr/SKILL.md` for self-discovered, check/integration/publication and review failures. Verify the preventive change, record its path and evidence, and preserve all delivery authorization and protected-branch boundaries.
+- **Applied evidence**: The Python skill validator could not start because PyYAML was missing. The new loop was strengthened to distinguish startup failures from validation findings and require explicit coverage/gaps for equivalent checks; Ruby YAML parsing and direct metadata/reference checks verify this prose-only change without claiming the original validator ran.
+- **Scope evidence**: A publication check incorrectly required the entire shared checkout to be clean while another task edited `e-commerce/doc/code-structure.md`. Verification now checks this task's paths and final branch diff separately; the skill's merged-result step explicitly requires inventorying/preserving unrelated working-tree edits rather than rejecting them as task failures.
 
 ### 2026-11-08 — Feed every API authoring error back into the skill
 
