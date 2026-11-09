@@ -35,12 +35,22 @@ description: Repository-wide and project-specific lessons captured from user cor
 
 ## Repository-wide
 
+### 2026-11-09 — Localize questions and learn from every actual issue
+
+- **Correction**: The owner requires English question topics, Thai question bodies with English technical terms, and a preventive skill improvement after every actual bug, conflict or issue.
+- **Root cause**: The question example was entirely English, while the previous learning-loop correction narrowed the trigger to execution mistakes and excluded an assigned existing bug when the guidance already described its fix.
+- **Corrected behavior**: The backend skill's clarification reference now defines the language contract and demonstrates all four required explanations in Thai. Its learning/completion rules and verification reference explicitly include existing bugs, Git/spec conflicts and tooling issues. Record one underlying issue per occurrence, link deliberate TDD red evidence to it and verify both the correction and the exact skill/resource improvement.
+- **Tooling evidence**: The first branch action was not executed because automatic approval review could not run due to a usage limit. No alternate route was used; retrying through the same approval gate after the user's continuation succeeded. The skill now distinguishes review-service failure from a completed review and requires protected actions to resume through that gate.
+- **Verification issue**: A temporary question checker expected the label colon outside Markdown bold and rejected the valid colon-inside form. The enclosing shell also ended with a successful diff command, so its final exit code did not represent the earlier assertion failure. The checker now validates normalized question content, and checks run with independently preserved exit statuses; the verification reference records both safeguards.
+- **Independent replay**: The evaluator encountered the same false negative on an answer-choice label. The verification guard now explicitly covers question and choice labels plus valid/malformed controls. Three independently generated questions satisfy English topics, four ordered Thai explanations and Thai choice explanations; five issue-classification cases preserve required learning and scope boundaries without rerunning application tests.
+
 ### 2026-11-09 — Distinguish test evidence from execution mistakes
 
 - **Error**: Independent evaluation found the backend skill's blanket error-improvement rule also treated a deliberately red test and faithful reproduction of the input bug as fresh workflow mistakes, making a successful sandbox bug fix require an unauthorized skill edit.
 - **Root cause**: The term error conflated expected business/test outcomes with failures in carrying out the method, and the improvement loop did not explicitly handle an assigned read-only or component-only boundary.
 - **Corrected behavior**: `.agents/skills/backend-development/SKILL.md` now keeps preventive skill updates mandatory for every actual execution mistake or owner/reviewer correction, identifies planned red/reproduction as evidence, and requires a concrete scope question before editing a skill outside authorization. Preserve pending improvement status when that scope decision is unavailable.
 - **Verification**: Independent prose replay of the original stock/read-only scenarios confirmed the gap is resolved, with no new material conflict. The initial evaluation report and Python fixture implementation/tests were preserved; their recorded four green SQLite tests were referenced without rerunning unchanged code.
+- **Later owner clarification**: The execution-only limit is superseded by the policy above: an assigned real bug also requires a preventive skill improvement. A deliberate red test remains evidence rather than a separate incident, but does not remove the learning obligation for the bug it reproduces. The initial evaluation remains historical evidence under its earlier policy.
 
 ### 2026-11-09 — Explain each delivered file individually
 
