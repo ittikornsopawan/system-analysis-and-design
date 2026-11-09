@@ -76,3 +76,15 @@ Q23: The owner answered **“ใช่ อนุญาตถอน link ขอ�
 ## Permission deletion decision (Q24, 2026-11-09)
 
 Q24: The owner answered **“ต้องถอน links ให้ครบก่อนลบ permission (แนะนำ)”**. A permission may become DELETED only when its final whole-request count of non-DELETED permission-scope definitions is zero. Otherwise return 409 E10006 and roll back all parent, child and audit changes (the entire batch for a batch request). Count ACTIVE/INACTIVE/LOCKED/ARCHIVED definitions regardless of master status. Complete explicit scope-link withdrawal and permission deletion in the same request are allowed, subject to the existing ownership/reference checks. Do not add an implicit cascade. ARCHIVED and other reversible parent statuses may retain definitions. Apply to permission single and batch through their separate paired spec/sequence PRs. Q22 grant-transition protection and Q23 closed-master cleanup remain in force. This prevents new irreversible parents with stranded live definitions; it does not approve a legacy-data rewrite or a new deleted-parent cleanup endpoint.
+
+## Consent management decisions (Q18–Q19, 2026-11-09)
+
+Q18: The owner answered **“q18 ถูกต้อง”** to the recommended PLATFORM_ADMIN-only management inquiry. `consent/03-inquiry-consent` requires the exact role from verified JWT claims, with the current token/user gate retained. This does not change token-only consent-type reference inquiry.
+
+Q19: The owner answered **“q19 ทั้งหมด”**. The management inquiry may retrieve all consent records according to its documented filters, including expired consent and consent whose type is not ACTIVE. Consumer visibility rules do not hide those management records. Detailed query/filter behavior belongs in the paired consent/03 revision; no new historical-content storage is approved here.
+
+## Allow Scope notation and deny precedence (2026-11-09)
+
+The owner requested `permission-scope.md`, API allowlists and spec links, then specified **“เพิ่ม section ขึ้นมา ประมาณว่า Allow Scope แล้วใส่ชื่อ scope มา”** and **“อยากปรับให้ scope มันประมาณนี้ <scope-name>:<allow, deny, อื่นๆ>”**. Use an `Allow Scope` section with notation such as `ALL:allow`, `SHOP:allow`, `OWN:deny`; keep the scope name distinct from its effect and associate every rule with its exact permission.
+
+The owner answered **“ใช่ deny ชนะเมื่อครอบคลุมข้อมูลเดียวกัน (แนะนำ)”** to the concrete same-permission example SHOP:allow plus ALL:deny. A matching deny wins over allow when both cover the requested resource. A deny for a different permission or a scope that does not cover that resource does not match. This approval covers the design rule and document format; it does not approve new scope/API pairings, effect values beyond allow/deny, JWT payload changes, schema/seed changes, delegated access or backend enforcement. Those remain detailed in-review work in [the permission/scope matrix](../../../e-commerce/doc/permission-scope.md), delivered per API with its spec/sequence when applicable.
