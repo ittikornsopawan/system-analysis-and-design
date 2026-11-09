@@ -399,3 +399,15 @@ description: Repository-wide and project-specific lessons captured from user cor
 - **Related example finding**: The shared author_json parser accepts adjacent fenced JSON or a Request: prelude; newly inserted explanatory paragraphs made three examples invisible to it. Move those notes after their JSON blocks, preserve the helper and strengthen the same checker-patterns reference. Require all positive examples to parse before mutation testing.
 
 - **Related scripted-edit finding**: A follow-up replacement expected an already-renamed diagnostic and aborted before writing; later checks still ran because fail-fast handling began too late. Re-read the current anchor, assert one replacement, and start the entire dependent edit/check block with fail-fast handling. Strengthen the same checker-patterns instruction. Existing artifacts were preserved; final predicate and paired-mutation checks verify the corrected edit.
+
+### 2026-11-09 — Recover completed checks from evidence after a resumed chat
+
+- **Finding**: Resuming the scope review attempted to poll a prior process handle, but the runtime no longer knew that id.
+- **Root cause**: A process identifier was treated as durable across chat execution boundaries instead of reading the saved task output first.
+- **Corrected behavior**: Read the complete scope SQL log, which contains every PASS and the final ALL SCOPE UPSERT SQL FIXTURES PASSED marker; do not classify the expired handle as a failed SQL suite. Strengthen `.agents/skills/commit-and-pr/references/checklist.md` to recover from durable completion evidence and rerun only if incomplete. Subsequent checker/mutation/render and final integration evidence remain separate requirements. Log inspection now tests file existence and completion markers before reading results; a not-yet-created later-phase log is pending, not a failed suite. The final integrated SQL log has its explicit passing completion marker.
+
+### 2026-11-09 — Check copied execution hints when transaction-count tests fail
+
+- **Finding**: Scope checks/audit/database passed, but the skeleton suite reproduced a scope-only BEGIN count failure. Its copied execution-order comment contained BEGIN READ COMMITTED in addition to the one actual generated transaction command. The completed handwritten sequence was already correct.
+- **Root cause**: Execution prose reused an executable marker that the existing skeleton test counts across the complete generated text; the earlier role lesson had not been promoted into the authoring reference.
+- **Corrected behavior**: Rephrase only the execution sentence as begin transaction (READ COMMITTED), retain every SQL byte and actual sequence transaction, and strengthen `.agents/skills/api-contract-design/references/checker-patterns.md` with the copied-hint trigger. Rerun the unchanged skeleton suite plus paired/flow checks and the full delivery suite; no test or transaction safeguard is weakened.
