@@ -14,9 +14,15 @@ Run `python3 .agents/skills/commit-and-pr/scripts/preflight.py --base main [--ru
 | 3 | No secret-looking content (private key headers, `AKIA...` keys, `password=`/`secret=`/`token=` with a value, bearer tokens) in a file you will commit | yes | remove it, or confirm with the user that it is a harmless example |
 | 4 | No build output or junk (`bin/`, `obj/`, `node_modules/`, `__pycache__/`, `*.pyc`, `.DS_Store`, `*.log`) | yes | leave it out or add it to `.gitignore` after asking |
 | 5 | No file over 1 MB | yes, unless the user confirms | ask, or leave it out |
-| 6 | `git diff --check` is clean (no trailing whitespace or conflict markers) in what you will commit | yes | fix the whitespace |
+| 6 | `git diff --check` is clean (no trailing whitespace, conflict markers or extra blank lines at EOF) in what you will commit | yes | fix whitespace; after scripted text edits, normalize each file to one final newline before preflight |
 | 7 | Project checkers pass when the change touches specs, schema, migrations, SQL tests or the ER diagram | yes | fix the cause; never edit a checker to make it pass |
 | 8 | In a managed named-agent workspace, active assignment metadata authorizes `open-pr` and every changed path is inside its recorded scope | yes | resume through `agent-workspace` with the original assignment or remove out-of-scope changes; never edit local metadata to bypass the check |
+
+## Verify requested artifact coverage
+
+Before staging documentation or diagram changes, map every explicitly requested topic and child topic to substantive artifact coverage. For a layered code guide, each requested layer and sub-layer needs its purpose, owned work, input/output, boundaries, collaborators, a concrete source example and implementation/design status. A label, folder list, summary row or passing link/render check alone does not satisfy this gate.
+
+When owner review changes or clarifies scope, reconcile the title, introduction and detailed sections against the complete request before publication. Record the coverage evidence alongside technical checks; missing requested coverage blocks delivery until corrected.
 
 ## Integrate the latest base before publication
 

@@ -7,6 +7,19 @@ description: Shared checklist for planning and tracking non-trivial tasks withou
 
 Use one section per task, named `<scope>: <task-name>`. Preserve other task sections and mark an item complete only after its completion criterion is satisfied.
 
+## e-commerce: Explain every code layer and sub-layer
+
+Status: Content and verification complete; scoped follow-up publication package prepared after owner review. Ittikorn requested that the guide's meaning/scope cover every layer, then explicitly included sub-layers. PR75 is already merged, so deliver a separate follow-up PR under the existing documentation delivery authorization. Preserve the pre-existing table formatting and the other task's unpublished commit on its branch; read the component and diagrams without changing them. Actual base integration and remote PR state are reported from Git/GitHub at delivery.
+
+1. [x] Inspect the owner's scope correction, current guide, pinned source, diagram responsibilities, Git/PR state and applicable writing/delivery guidance.
+2. [x] Rewrite the introduction around all five layers and explain each layer's sub-responsibilities, inputs/outputs, boundaries, interactions and concrete source examples; retain Service = Domain and current/proposed status.
+3. [x] Update the lesson and delivery checklist with a substantive coverage gate; verify all requested layers/sub-layers against source, Markdown/links and unchanged diagram/component evidence.
+4. [x] Prepare the scoped follow-up publication package and required current-main integration/check commands; report the actual integrated base and remote PR state from Git/GitHub without merging the PR.
+
+Coverage target: API (controllers, contracts, HTTP results, composition/authentication); Application (commands/queries, validators, handlers, mapping/responses, ports/common); Domain (entities/aggregates, value objects, business Domain, repository contracts, primitives/errors/status); Infrastructure (repository adapters, DbSession/UnitOfWork, security, email, options/DI, explicitly proposed adapters); Shared (messaging, dispatch/registration, results/errors). Cross-layer explanations must trace validation, transactions, security and error mapping without implying every request traverses every sub-layer.
+
+Verification: The pre-review guide fails the new coverage audit on nine missing intro/detail requirements; the revised guide passes for all five layers and 24 sub-layer groups, plus cross-layer responsibilities and both test projects. Four Markdown frontmatters, 20 local references, 39 pinned component references, table/fence/whitespace structure and seven project-reference counts passed. All three model/PNG integrity checks passed; hashes of 12 diagram bundle files and section 3–9 user formatting are unchanged. The component is clean at the manifest revision. The preventive delivery-checklist gate was reviewed against the original omission and the correction; no backend/API/schema/diagram edits or runtime tests were required.
+
 ## e-commerce: Code structure guide with existing diagrams
 
 Status: Documentation complete; PR delivery directly authorized by Ittikorn's “เปิด pr มา”. Ittikorn requested `e-commerce/doc/code-structure.md` with diagrams reused from `e-commerce/diagram/`, following the clarification that Service = Domain means reusable business logic and the owner-selected path is `Ecommerce.Domain/Authen/Domain/`. The original writing phase read the pinned component and reused diagram bundles without changing them. The initial guide and lesson clarification are already in main at `ec4645e` through the separate handoff commit; this PR finalizes the guide's verification record and task completion rather than claiming to introduce that existing content.
