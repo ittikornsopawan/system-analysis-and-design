@@ -349,3 +349,9 @@ description: Repository-wide and project-specific lessons captured from user cor
 - **Finding**: Automatic approval review rejected closing PR67 after replacement PR73 opened because the owner had explicitly instructed leaving PRs open. No closure was performed.
 - **Root cause**: Replacement delivery was incorrectly treated as an exception to the earlier leave-open instruction.
 - **Corrected behavior**: Keep original PRs and branches intact unless the owner explicitly authorizes closing that specific PR; creating a replacement and resuming other work do not supply that authorization.
+
+### 2026-11-09 — Establish fixture lifecycle before asserting error precedence
+
+- **Finding**: A batch SQL fixture expected the missing second target index, but its first target had already been deleted in the preceding all-delete scenario. The actual contract correctly returned the first missing target.
+- **Root cause**: A scenario reused a lifecycle-mutated id without checking its precondition.
+- **Corrected behavior**: Use an existing ACTIVE fixture target for the first item, then assert the missing later index. Preserve the contract and checker. The full real PostgreSQL batch driver now passes, including all-target existence, 100-item results, whole-batch rollback and concurrency. Carry this fixture-precondition guidance into the separate bounded verification-guidance follow-up; keep API19 scope intact.
