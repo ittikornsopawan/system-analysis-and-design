@@ -13,7 +13,7 @@ description: How to add a spec-group checker to e-commerce/db/tests/check_docs.p
 2. **Generic checks per file**: tables aligned, JSON parses, relative links resolve.
 3. **Needles**: for each file the headings and sentences that must exist (the rule section, each SQL block title, the key guard such as `AND quantity >= '<sequence.quantity>'`, the approval sentence, the error code). Make a needle as specific as the thing it protects; a broad text such as `Authorization` matches a header and hides a deleted rule. Anchor phase-specific rules to the complete clause (for example the before-count definition); mutation-test removing that clause while leaving similar wording in unrelated paragraphs.
 4. **Success codes**: `success_codes(md)` must equal the expected map (`{"Success - Insert": 201, ...}`).
-5. **Example arithmetic**: parse the success examples and recompute totals, counts, paging, ordering and tie-breaks; compare with what the example says.
+5. **Example arithmetic**: parse the success examples and recompute totals, counts, paging, ordering and tie-breaks; compare with what the example says. Check the existing example parser's accepted heading/prelude format first; when it expects adjacent fenced JSON (optionally after `Request:`), put other explanatory prose after the JSON fence rather than weakening the parser.
 6. **Forbidden words** for public or limited APIs (`authorization`, `costPrice`, `email`, `userId` in a request).
 7. **Cross-file agreement** where two specs describe the same thing (the shop name in a shop list and a shop page; a price in a list and on the product page).
 
@@ -30,5 +30,6 @@ For SQL fixtures, assert lifecycle and ownership preconditions before testing er
 ## Common mistakes
 
 - Saving `check_docs.py` from an old copy and erasing another person's sub-command: read the file again right before editing.
+- When adapting prototype SQL, replace a qualified alias only at token boundaries; an unbounded `r.` replacement also changes the end of `author.`. Verify every schema-qualified relation against the migrations and mutation-test a synchronized wrong-schema edit in both artifacts. Derive follow-up edit anchors from the current file or AST, assert replacement counts before writing, and start fail-fast handling before the first edit so a failed precondition stops dependent checks.
 - A needle that also appears in another place and therefore never fails.
 - A check on example arithmetic that skips examples with empty lists; check them too.
