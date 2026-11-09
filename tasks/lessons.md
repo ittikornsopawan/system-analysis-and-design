@@ -5,6 +5,15 @@ description: Repository-wide and project-specific lessons captured from user cor
 
 # Lessons
 
+### 2026-11-09 — Cover all requested layers and their sub-layers
+
+- **Correction**: The owner asked why the meaning/scope section explained mainly Service = Domain, then required every layer and sub-layer to be explained.
+- **Root cause**: The latest terminology discussion displaced the guide's system-wide scope; a five-row overview and file inventory were treated as sufficient coverage of other layers.
+- **Corrected behavior**: Introduce the whole architecture first and give each requested layer/sub-layer its purpose, owned work, input/output, boundaries, collaborators, source example and evidence status. Keep Service = Domain in its proper Domain context and inspect the full document after a scope correction.
+- **Preventive resource**: `.agents/skills/commit-and-pr/references/checklist.md` now requires explicit substantive scope coverage before publication; names, diagram boxes and successful link checks alone are insufficient. Verify the current guide against the complete five-layer/sub-layer inventory and confirm the earlier Domain-focused introduction would fail that coverage gate.
+- **Delivery check exercised**: Preflight caught an extra blank line at EOF introduced by the scripted section append; per-line trailing-whitespace checks had not detected that whole-file condition. The guide was normalized to one final newline, the existing whitespace checklist now requires that normalization after scripted edits, and the document validator checks the same condition. A captured failing file confirms the guard rejects the original defect before the corrected checks are rerun; no publication occurred with the blocker.
+- **Integration check exercised**: Current main and this task inserted independent sections at the same position in `tasks/todo.md`, causing a real merge conflict. The resolution retains both complete sections and proves that removing this task's section reproduces incoming main byte-for-byte. The integration gate in `.agents/skills/commit-and-pr/references/checklist.md` now explicitly requires complete-section preservation and a non-task-content comparison for this conflict shape.
+
 ### 2026-11-08 — Show real decomposition and choose semantics before layout
 
 - **Correction**: The owner rejected the detail and layer grouping across the whole diagram set. Application must expose Command/Query, Validator and Handler as smaller boxes inside its layer; different diagram meanings must be researched before rendering.
@@ -350,8 +359,20 @@ description: Repository-wide and project-specific lessons captured from user cor
 - **Root cause**: Replacement delivery was incorrectly treated as an exception to the earlier leave-open instruction.
 - **Corrected behavior**: Keep original PRs and branches intact unless the owner explicitly authorizes closing that specific PR; creating a replacement and resuming other work do not supply that authorization.
 
+### 2026-11-09 — Bind a narrative guard check to its actual phase
+
+- **Finding**: A permission mutation removing the before-count rule passed because the short phrase “every non-DELETED definition” also occurred in the unrelated duplicate rule.
+- **Root cause**: A global substring check could be satisfied by another paragraph and did not prove the Q22 count definition.
+- **Corrected behavior**: Require the complete beforeDefinitionCount clause, keep exact SQL and phase checks independent, and test synchronized SQL faults in both spec and sequence. Recheck: 66/66 isolated mutations and 10/10 synchronized faults are rejected; positive permission/SQL/render checks pass.
+
 ### 2026-11-09 — Establish fixture lifecycle before asserting error precedence
 
 - **Finding**: A batch SQL fixture expected the missing second target index, but its first target had already been deleted in the preceding all-delete scenario. The actual contract correctly returned the first missing target.
 - **Root cause**: A scenario reused a lifecycle-mutated id without checking its precondition.
 - **Corrected behavior**: Use an existing ACTIVE fixture target for the first item, then assert the missing later index. Preserve the contract and checker. The full real PostgreSQL batch driver now passes, including all-target existence, 100-item results, whole-batch rollback and concurrency. Carry this fixture-precondition guidance into the separate bounded verification-guidance follow-up; keep API19 scope intact.
+
+### 2026-11-09 — Compare a checker helper only across its supported API family
+
+- **Finding**: An integration comparison called author_needles for author API10, which belongs to another checker; the comparison stopped with KeyError before producing evidence.
+- **Root cause**: The broad AUTHOR_SPECS registry was mistaken for the helper's supported master API01..09 domain.
+- **Corrected behavior**: Re-run the comparison over the supported master family, retain the full registration/function preservation check, and report that the failed validator did not establish coverage. Corrected comparison passes for every unaffected master API and COMMANDS exactly 57 -> 58. Carry this generic validator-domain requirement into the verification-guidance follow-up without widening the API19 diff.
