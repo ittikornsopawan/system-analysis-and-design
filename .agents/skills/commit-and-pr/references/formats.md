@@ -29,7 +29,7 @@ Identical to the authored task commit subject (for several task commits, the dom
 ## PR body (English, six sections in this order, none omitted)
 
 1. `## Summary` — two to four bullets: what changed and why, in the reader's terms.
-2. `## Changes` — bullets grouped by area (API specs, schema, tests, tooling, docs); name paths in backticks.
+2. `## Changes` — the per-file change list defined below: one file/path bullet with its summary nested beneath it for every changed file.
 3. `## Verification` — the real commands and their output lines, pasted, not described. Include the fetched base SHA, main-to-task merge outcome/commit, any conflicts and their resolutions, ancestry/scope evidence and post-merge checks. Say what was not run and why.
 4. `## Decisions` — one line per decision you made yourself: **what** / **why** / **if wrong**, and its status (`approved by the product owner` or `pending owner confirmation`). Write "None" when there are none.
 5. `## Open questions` — numbered questions for the owner, with a recommended answer. Write "None" when there are none.
@@ -37,10 +37,23 @@ Identical to the authored task commit subject (for several task commits, the dom
 
 Keep the body free of secrets and of internal chatter; a reviewer who sees only this text must understand the change.
 
+## Per-file change list
+
+Use this structure in PR Changes and chat Included, repeating it once for every changed file:
+
+```markdown
+- `<file-path>`:
+  - <summary of the actual change and its purpose>
+```
+
+- Build the inventory from `git diff --name-status --find-renames origin/<base>...HEAD` after integration, then read each file's diff to write its summary. Account for every added, modified, deleted, renamed or generated file exactly once. Keep excluded local work and base-only integration changes out of this list.
+- Use repository-relative paths in the PR so duplicate basenames remain distinct. In chat, link existing workspace files to their absolute paths; identify deleted paths as deleted and show both old and new paths for a rename.
+- Write a short, concrete summary beneath each file, using the PR's language or the user's language for chat. State what changed in that file and why; preserve this file/summary hierarchy even when several files belong to the same area. Totals may supplement the list, while the per-file entries remain complete.
+
 ## No authorship lines
 
 Commit messages and PR bodies never say who or what generated them. Leave out `Co-Authored-By` trailers and "generated with" lines, even when a tool or session default would add one. This is the owner's instruction for this repository.
 
 ## Chat summary (the user's language)
 
-Fixed order and labels (Thai labels shown in the template; keep them when the user writes Thai, translate them when the user writes another language): Branch and base, Commit, PR, Included, Skipped, Verification, Needs your decision. One line each where possible; verification as results, not as intent. If nothing is waiting for the user, say so in the last section.
+Fixed order and labels (Thai labels shown in the template; keep them when the user writes Thai, translate them when the user writes another language): Branch and base, Commit, PR, Included, Skipped, Verification, Needs your decision. Included is the complete per-file change list above; keep other fields concise and report verification as results, not as intent. If nothing is waiting for the user, say so in the last section.
