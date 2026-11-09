@@ -35,6 +35,12 @@ description: Repository-wide and project-specific lessons captured from user cor
 
 ## Repository-wide
 
+### 2026-11-09 — Explain each delivered file individually
+
+- **Correction**: The owner requested a file name with a nested summary for every changed file when presenting a PR.
+- **Root cause**: The delivery formats grouped PR changes by area and allowed the chat's Included field to collapse the inventory into file counts, hiding each file's purpose.
+- **Corrected behavior**: Follow the per-file change-list contract in `.agents/skills/commit-and-pr/references/formats.md` for PR Changes and chat Included; verify its inventory against the final integrated PR diff and describe each file's actual change.
+
 ### 2026-11-09 — Improve delivery guidance after every error
 
 - **Correction**: The owner requires errors in `commit-and-pr` to improve the skill as well as the immediate delivery result.

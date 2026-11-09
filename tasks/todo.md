@@ -7,6 +7,16 @@ description: Shared checklist for planning and tracking non-trivial tasks withou
 
 Use one section per task, named `<scope>: <task-name>`. Preserve other task sections and mark an item complete only after its completion criterion is satisfied.
 
+## repository-wide: Show per-file PR change summaries
+
+Status: Guidance and delivery package complete. Ittikorn requested a file-by-file list with a nested summary in the PR delivery skill (called submit-and-pr in the request; the existing resource is commit-and-pr). The format now applies to PR Changes and chat Included, preserves the six PR sections and derives its inventory from the final integrated task diff. Actual integration, remote publication and file coverage are reported from Git/GitHub in the handoff.
+
+1. [x] Read the current skill, formats, templates and lessons; confirm PR76 is merged and start a separate branch from current origin/main.
+2. [x] Replace area/count-only summaries with the requested per-file nested format in the governing instructions and both templates; record the correction.
+3. [x] Verify metadata, links and diff; prepare the scoped package, per-file inventory and required integration/check commands. Report actual integration/publication and file coverage from Git/GitHub.
+
+Verification: Four Markdown frontmatters passed YAML parsing; skill metadata and Markdown targets/anchors passed direct checks. Both templates use the requested file/summary nesting, the PR template retains its six required sections and `git diff --check` passed. Scoped preflight reports six task files and no blockers. This correction updates the source format and both consumers so the delivered PR and chat must account for every file rather than collapse the list into areas/counts. No executable helper, API contract, database or diagram changed, so runtime/database tests and rendering were not required. The Python validator's missing PyYAML dependency was confirmed without starting a failing validator; Ruby YAML parsing and direct metadata/template checks cover this documentation-only change. The pre-existing untracked agent-workspace Python cache stays excluded.
+
 ## e-commerce: English code structure guide
 
 Status: Translate the complete guide to English under the existing documentation delivery authorization. PR78 is merged; deliver this language revision as a separate follow-up PR. Preserve every layer/sub-layer, source reference, diagram and implementation/design distinction. The owner's ordinary-Codex/current-checkout instruction remains applicable.
