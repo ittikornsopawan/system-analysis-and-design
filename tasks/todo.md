@@ -1146,6 +1146,18 @@ API18 integration: fetched origin/main d1ad5d97dcf738421a3c66bb9ca350b3300ada9e 
 
 Delivery: PR77 https://github.com/ittikornsopawan/system-analysis-and-design/pull/77 opened on the verified API18 branch. Initial GitHub mergeability is UNKNOWN (not yet computed), not a reported conflict. Preserve this open PR and its branch; continue under owner Q15 without merging or waiting.
 
+## e-commerce review: reusable verification guidance (2026-11-09)
+
+Required follow-up to the repository error-improvement rules. API18 PR77 and API19 PR79 each contain only their own API pair and scoped verification work; preserve both histories and avoid adding skill files to the API19 assignment after the fact. This fresh assignment changes only existing checker/delivery references and task/lesson records.
+
+- [x] Deliver/report PR79 with five files, preserve its verified head/history and return to main without a merge gate. Prepare a separately scoped guidance branch after green baselines.
+- [x] Strengthen existing guidance for phase-specific guard mutations, fixture lifecycle/ownership preconditions, supported comparison domains and recovery of required command inputs.
+- [x] Verify the guidance against the corrected permission single/batch scenarios and registry comparisons; retain scope/approval safeguards and inspect the complete prose diff.
+- [ ] Integrate current main, run required preflight/format checks and publish the preventive guidance separately.
+
+API19 delivery evidence: https://github.com/ittikornsopawan/system-analysis-and-design/pull/79 at head 8d0d80ad5f1534803a6f1c8fb03b0836bd4a37e6; integrated main 878d11229c8d78f385741da2fc6397d103ac7bda, 58/58 checks, audit 53/0, database ALL PASSED, 12 skeleton tests, 107 negative cases, real PostgreSQL batch fixtures and 141/141 visible SQL lines. Initial remote mergeability UNKNOWN was not a reported conflict. No PR was merged by Peter.
+
+Guidance verification: the phase-specific mutation fails with the unrelated phrase still present, both delivered flow checkers pass on their unchanged published pairs, helper-supported-family/registry comparisons pass, recreated readable commit input matches the successful merge subject, and the corrected entire PostgreSQL batch driver passes again against exact PR79 SQL. Review distinguishes setup defects from defects in the artifact under test; approved contract expectations and delivery authorization remain unchanged. Four owned Markdown files only; preflight and diff whitespace checks pass.
 ## e-commerce: Peter API review — permission batch (API 19, 2026-11-09)
 
 Authority: owner Q2/Q4/Q10/Q13/Q15/Q22/Q23; API18 PR77 is delivered/open and its branch/history preserved. Start from main without requiring merge. Scope: author/05 pair, checker, approved-decision log and task/lesson records; no backend/schema implementation.
