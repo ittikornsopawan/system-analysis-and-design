@@ -24,6 +24,8 @@ Before staging documentation or diagram changes, map every explicitly requested 
 
 When owner review changes or clarifies scope, reconcile the title, introduction and detailed sections against the complete request before publication. Record the coverage evidence alongside technical checks; missing requested coverage blocks delivery until corrected.
 
+For whole-document translation, save the original artifact and verify the entire result, including headings, table cells, captions, link labels and code-block comments. Preserve the numbered-heading inventory, table row/column structure, code fences and link targets unless a structural change is explicitly requested. Do not rely on numeric line replacements without this comparison. Confirm no source-language text remains, and verify that a captured faulty translation is rejected by the same language/structure gate before accepting the correction.
+
 ## Integrate the latest base before publication
 
 This gate runs after the task commit and before push/PR creation or update. `<base>` is the PR target, default `main`; run every merge while on the task branch. The preflight script checks uncommitted files and uses `--base` only as a report label: it does not fetch, merge, prove ancestry or validate the full committed PR diff.

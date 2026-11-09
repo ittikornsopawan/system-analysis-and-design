@@ -5,6 +5,13 @@ description: Repository-wide and project-specific lessons captured from user cor
 
 # Lessons
 
+### 2026-11-09 — Preserve structure during whole-document translation
+
+- **Error**: Draft translation review found remaining Thai and displaced headings/table rows after several replacements used incorrect numeric line offsets.
+- **Root cause**: Positional replacement assumed line numbers for a long document without proving the original structural inventory.
+- **Correction**: Rebuild from the saved source with corrected mappings, then compare numbered headings, every table's row/column structure, code-fence count and the complete link-target multiset. Check the entire guide for remaining source-language characters.
+- **Preventive resource**: The translation gate in `.agents/skills/commit-and-pr/references/checklist.md` requires whole-artifact language and structural-preservation checks, including comments/captions, before publication. The captured faulty draft must fail the same gate and the corrected guide must pass.
+
 ### 2026-11-09 — Cover all requested layers and their sub-layers
 
 - **Correction**: The owner asked why the meaning/scope section explained mainly Service = Domain, then required every layer and sub-layer to be explained.
@@ -371,3 +378,14 @@ description: Repository-wide and project-specific lessons captured from user cor
 - **Root causes**: Reused text, fixture state, helper domains and temporary inputs were assumed instead of checked. These failures either weakened evidence or stopped a validator before it produced evidence; they did not justify changing the approved API behavior.
 - **Corrected behavior and resources**: Strengthen `.agents/skills/api-contract-design/references/checker-patterns.md` for phase-bound mutations, synchronized SQL/flow faults and fixture/tool preconditions. Strengthen `.agents/skills/commit-and-pr/references/checklist.md` for current reference discovery, readable retry inputs and supported-domain preservation comparisons. Keep this work in its separately validated assignment instead of widening API19 metadata to pass preflight.
 - **Evidence**: The corrected single checker rejects 66 isolated plus 10 synchronized faults; the corrected batch checker rejects 93 isolated, 10 synchronized and four phase reorderings. Exact PostgreSQL fixtures pass, including the corrected later-missing-target assertion. Supported master expectations and full registrations compare successfully after integration. Actual SVG/PNG viewing plus counted SQL checks replace the unavailable optional crop; readable message input successfully produced merge 8d0d80a. Recheck and integration results for this guidance are recorded in the task and PR.
+### 2026-11-09 — Establish fixture lifecycle before asserting error precedence
+
+- **Finding**: A batch SQL fixture expected the missing second target index, but its first target had already been deleted in the preceding all-delete scenario. The actual contract correctly returned the first missing target.
+- **Root cause**: A scenario reused a lifecycle-mutated id without checking its precondition.
+- **Corrected behavior**: Use an existing ACTIVE fixture target for the first item, then assert the missing later index. Preserve the contract and checker. The full real PostgreSQL batch driver now passes, including all-target existence, 100-item results, whole-batch rollback and concurrency. Carry this fixture-precondition guidance into the separate bounded verification-guidance follow-up; keep API19 scope intact.
+
+### 2026-11-09 — Compare a checker helper only across its supported API family
+
+- **Finding**: An integration comparison called author_needles for author API10, which belongs to another checker; the comparison stopped with KeyError before producing evidence.
+- **Root cause**: The broad AUTHOR_SPECS registry was mistaken for the helper's supported master API01..09 domain.
+- **Corrected behavior**: Re-run the comparison over the supported master family, retain the full registration/function preservation check, and report that the failed validator did not establish coverage. Corrected comparison passes for every unaffected master API and COMMANDS exactly 57 -> 58. Carry this generic validator-domain requirement into the verification-guidance follow-up without widening the API19 diff.
