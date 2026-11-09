@@ -29,6 +29,8 @@ For SQL fixtures, assert lifecycle and ownership preconditions before testing er
 
 ## Common mistakes
 
+- Execution-order prose copied into scaffold hints can be counted as transaction commands. Use wording such as `begin transaction (READ COMMITTED)` in that prose, keep real transaction messages explicit, and rerun the skeleton suite after changing an execution-order sentence even when SQL is unchanged.
+
 - Saving `check_docs.py` from an old copy and erasing another person's sub-command: read the file again right before editing.
 - A needle that also appears in another place and therefore never fails.
 - A check on example arithmetic that skips examples with empty lists; check them too.

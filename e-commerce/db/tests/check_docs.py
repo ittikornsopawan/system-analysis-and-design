@@ -4694,13 +4694,13 @@ def author_needles(key: str):
     m = next(v for v in AUTHOR_MASTERS.values() if key in v[:3])
     _, _, _, path, title, lower, camel, alias, ucol, idname, _, use_msg = m
     base = [*AUTHOR_ADMIN, "E10009", "#### Fail - Forbidden", f"You do not have permission to {'read' if kind == 'inquiry' else 'manage'} {lower}s."]
-    if key in ("01", "02", "05"):
+    if key in ("01", "02", "05", "07"):
         base = ["Permission: only a platform administrator from the verified JWT roles claim", "Approved by the product owner", "E10009", "#### Fail - Forbidden", f"You do not have permission to manage {lower}s."]
     if key == "03":
         base = ["use exact PLATFORM_ADMIN in verified JWT role claims", "Approved by the product owner", "E10009", "#### Fail - Forbidden", "You do not have permission to read roles."]
     if key == "04":
         base = ["Permission: only a platform administrator from verified JWT roles", "Approved by the product owner", "E10009", "#### Fail - Forbidden", "You do not have permission to manage permissions."]
-    if kind in ("upsert", "batch") and key not in ("01", "02", "04", "05"):
+    if kind in ("upsert", "batch") and key not in ("01", "02", "04", "05", "07"):
         base.append("Permission: only a platform administrator (a user with an ACTIVE `author.t_user_role` row for the ACTIVE role `PLATFORM_ADMIN`) can call this API")
     if kind == "upsert":
         need = [f"# [POST]: v1/author/{path}/upsert", f"### {title} Rules", "-> permission (403, E10009) ->", f"{title} not found.", use_msg, f"{title} {ucol} already exists.",
@@ -4716,6 +4716,8 @@ def author_needles(key: str):
             need = [x.replace("AND r.id <> '<sequence.id>'", "AND ('<sequence.id>' IS NULL OR r.id <> '<sequence.id>')") for x in need]
         if key == "04":
             need = [x.replace("AND p.id <> '<sequence.id>'", "AND ('<sequence.id>' IS NULL OR p.id <> '<sequence.id>')") for x in need]
+        if key == "07":
+            need = [x.replace("AND s.id <> '<sequence.id>'", "AND ('<sequence.id>' IS NULL OR s.id <> '<sequence.id>')") for x in need]
         return base + need
     if kind == "batch":
         need = [f"# [POST]: v1/author/{path}/upsert/batch", f"### {title} Rules (same as the single upsert, applied per {lower})", f"{camel}s[2]: Id is duplicated with {camel}s[1].", f"{camel}s[2]: {ucol.capitalize()} is duplicated with {camel}s[0].",
@@ -6578,6 +6580,105 @@ def check_permission_batch_flow() -> int:
     return 0
 
 COMMANDS['permission-batch-flow'] = check_permission_batch_flow
+
+
+def check_scope_upsert_flow() -> int:
+    """Check verified-claim scope administration and guarded master/definition lifecycle."""
+    path=f'{AUTHOR_DIR}/{AUTHOR_SPECS["07"]}/spec.md';md=read(path);wsd=read(str(Path(path).with_name('sequence.wsd')));errors=[]
+    for n in ('status: in-review','approved_by: null','approved_at: null','2026-11-07-api-review-design.md','Permission: only a platform administrator from the verified JWT roles claim','exact case-sensitive role name PLATFORM_ADMIN','Malformed/missing roles is generic 401','Grant withdrawal alone does not revoke','Capture fresh server UTC now after caller lock','lock the non-DELETED scope FOR UPDATE','Duplicate scope exclusion is null-safe','Existing scope codes, including seed codes, remain editable','Lock order is caller user -> target scope -> usage reads/write','regardless of its parent permission\'s lifecycle','No parent/master/grant JOIN or ACTIVE-only filter may hide usage','Insert-ARCHIVED is allowed','zero returned rows is 404 E10004','exactly data.scopeId from RETURNING','SQLSTATE 23505 from uq_m_scope_scope','Scenario correspondence with sequence.wsd'):
+        if n not in md:errors.append(f'scope-upsert spec missing {n!r}')
+    for n in ('QUERY - Get the platform administrator role','QUERY - Check platform administrator'):
+        if n in md or n in wsd:errors.append('scope upsert must not reload live caller grants')
+    ops=spec_database_operations(md);heads=('QUERY - Lock the caller user','QUERY - Check current credential and user','QUERY - Check existing scope','QUERY - Check duplicate scope','QUERY - Check permission scope in use','INSERT - Create scope','UPDATE - Update or delete scope')
+    if tuple(h for _,h,_ in ops)!=heads:errors.append('scope upsert needs all seven caller/target/conflict/write definitions')
+    sql={h:re.sub(r'--[^\n]*','',q) for _,h,q in ops}
+    need={heads[0]:['FROM authen.m_user u',"WHERE u.id = '<sequence.callerUserId>'",'FOR UPDATE'],heads[1]:['JOIN authen.m_user u ON u.id = at.user_id',"at.token = '<sequence.accessTokenHash>'","at.user_id = '<sequence.callerUserId>'","at.row_status = 'ACTIVE'","at.expired_at > '<sequence.now>'","u.row_status = 'ACTIVE'"],heads[2]:['FROM author.m_scope s',"WHERE s.id = '<sequence.id>'","AND s.row_status <> 'DELETED'",'FOR UPDATE'],heads[3]:['FROM author.m_scope s',"WHERE s.scope = '<sequence.scope>'","AND s.row_status <> 'DELETED'","AND ('<sequence.id>' IS NULL OR s.id <> '<sequence.id>')"],heads[4]:['FROM author.t_permission_scope ps',"WHERE ps.scope_id = '<sequence.id>'","AND ps.row_status <> 'DELETED'"],heads[5]:['created_by,\n    created_at,','<sequence.createdBy>','<sequence.now>','<sequence.rowStatus>','<sequence.scope>','<sequence.name>','<sequence.description>','RETURNING id as scope_id'],heads[6]:["updated_by = '<sequence.updatedBy>'","updated_at = '<sequence.now>'","row_status = '<sequence.rowStatus>'","scope = '<sequence.scope>'","name = '<sequence.name>'","description = '<sequence.description>'","WHERE id = '<sequence.id>'","AND row_status <> 'DELETED'",'RETURNING id as scope_id']}
+    for h,ns in need.items():
+        for n in ns:
+            if n not in sql.get(h,''):errors.append(f'{h} missing {n!r}')
+    usage=sql.get(heads[4],'')
+    if 'JOIN' in usage or "row_status = 'ACTIVE'" in usage:errors.append('non-DELETED scope usage must not be hidden by parent/status joins')
+    if 'NOW()' in '\n'.join(sql.values()) or 'created_at =' in sql.get(heads[6],''):errors.append('scope writes bind fresh server now and preserve creation audit')
+    source=wsd.splitlines()
+    for i,l in enumerate(source):
+        match=re.match(r'^( *)infra -> \w+: (?:QUERY|INSERT|UPDATE) - ',l)
+        if not match:continue
+        pad=' '*(len(match[1])+8);j=i+3
+        while j<len(source) and source[j].strip()!='end note':
+            if source[j] and not source[j].startswith(pad):errors.append('scope SQL must preserve the exact note prefix/native indentation')
+            j+=1
+    actual,lifecycle=sequence_database_operations(wsd);errors+=lifecycle
+    from collections import Counter
+    expected=Counter((t.split('.')[-1],h,q) for t,h,q in ops)
+    for t,h,q in ops:
+        if h in (heads[3],heads[6]):expected[(t.split('.')[-1],h,q)]+=1
+    if Counter(actual)!=expected:errors.append('scope-upsert SQL differs character-for-character or repeated occurrences are missing/excess')
+    for _,h,_ in ops:
+        if wsd.count('app -> infra: '+h+'\n')!=(2 if h in (heads[3],heads[6]) else 1):errors.append(f'{h} Application request count incorrect')
+    for match in re.finditer(r'(?m)^( *)infra -> (\w+): ((?:QUERY|INSERT|UPDATE) - [^\n]+)\n',wsd):
+        ret=re.search(rf'{match[2]} -> infra: Return ([^\n]+)\n.*?deactivate {match[2]}\n\s*infra -> app: Return ([^\n]+)',wsd[match.start():],re.S)
+        if not ret or ret[1]!=ret[2]:errors.append('scope SQL return meaning must propagate intact to Application')
+    for n in ('Verify JWT signature/issuer/audience/expiry/UUID sub and structured unique roleIds/name array','callerUserId = verified sub; accessTokenHash = SHA-256 exact JWT; createdBy/updatedBy = caller UUID string; omitted id = typed SQL NULL','Capture fresh server UTC now after caller lock; recheck JWT exp','JWT expired while waiting for caller lock','Current token/user missing/inactive/revoked/expired/mismatched','Authorize only exact case-sensitive PLATFORM_ADMIN in verified JWT roles; never reload live grants','Any non-DELETED definition still references this scope','Guarded UPDATE returned zero rows','Require exactly one returned scope_id equal to requested id','Require exactly one inserted scope_id UUID','SQLSTATE 23505 from uq_m_scope_scope','data = exactly scopeId from RETURNING','Suppress response body/status/data for 204','Keep all definition/grant rows; code/name/description remain editable; old JWT claims stay unchanged'):
+        if n not in wsd:errors.append(f'scope upsert sequence missing {n!r}')
+    if wsd.count('alt Guarded UPDATE returned zero rows')!=2:errors.append('both existing scope UPDATE branches must handle zero rows')
+    for response in re.finditer(r'(?m)^( *)app -> api: HTTP [^\n]+\n',wsd):
+        tail=wsd[response.end():].splitlines()[:2]
+        if len(tail)!=2 or not tail[0].strip().startswith('api -> page:') or not tail[1].strip().startswith('page -> user:'):errors.append('every scope response must reach frontend and caller')
+    traces,structure=login_sequence_paths(wsd);errors+=structure;outcomes=[];unauthorized=[]
+    for tr in traces:
+        response=[e for e in tr if e.startswith('app -> api: HTTP ')];joined='\n'.join(tr)
+        if len(response)!=1:errors.append('each scope structural trace must terminate once');continue
+        code=int(response[0].split('HTTP ')[1].split()[0]);outcomes.append(code);db=[e for e in tr if e.startswith('infra -> ')];begun=any(e.startswith('app -> infra: BEGIN') for e in tr);writes=[e for e in db if ': INSERT' in e or ': UPDATE' in e];target=any(e.endswith(': '+heads[2]) for e in db)
+        def ordered(*parts):
+            pos=[next((i for i,e in enumerate(tr) if p in e),-1) for p in parts];return -1 not in pos and pos==sorted(set(pos))
+        if db and not ordered('Verify JWT','callerUserId = verified sub','BEGIN READ COMMITTED',heads[0]):errors.append('scope SQL requires verified caller and caller-first transaction lock')
+        if heads[1] in joined and not ordered(heads[0],'Capture fresh server UTC now',heads[1]):errors.append('scope credential check follows caller lock and fresh time')
+        if target and not ordered(heads[1],heads[2]):errors.append('target scope existence requires current credentials first')
+        if 'Authorize only exact' in joined:
+            if not ordered(heads[1],*([heads[2]] if target else []),'Authorize only exact'):errors.append('claims permission follows current credentials and optional target existence')
+            if sum('Authorize only exact' in e for e in tr)!=1:errors.append('scope authorizes exactly once per request')
+        if heads[3] in joined and not ordered('Authorize only exact',heads[3]):errors.append('scope conflict checks follow caller permission')
+        if heads[4] in joined and not ordered(heads[3],heads[4]):errors.append('scope usage follows duplicate check')
+        if heads[4] in joined and heads[6] in joined and not ordered(heads[4],heads[6]):errors.append('existing destructive scope usage must be read before its UPDATE')
+        if code in (200,201,204):
+            if len(writes)!=1 or not ordered(heads[3],writes[0] if writes else 'MISSING','app -> infra: COMMIT',f'HTTP {code}') or 'ROLLBACK' in joined:errors.append('scope success requires one validated write then commit before response')
+            if code==201:
+                if target or heads[4] in joined or heads[6] in joined or heads[5] not in joined:errors.append('scope insert skips target/usage and only INSERTs')
+            elif not target or heads[6] not in joined or heads[5] in joined:errors.append('existing scope success requires locked target and guarded UPDATE')
+            if code!=201 and not ordered(heads[6],'Require exactly one returned scope_id equal to requested id','app -> infra: COMMIT'):errors.append('existing scope success must validate returned id')
+            destructive=code==204 or 'Archive Scope Success' in response[0]
+            if destructive!=(heads[4] in joined):errors.append('only existing delete/archive must check non-DELETED definitions')
+            if code==204 and ('no response body' not in response[0] or 'data = exactly scopeId' in joined or 'Suppress response body/status/data for 204' not in joined):errors.append('scope delete must emit no body/status/data')
+            if code!=204 and not ordered(heads[5] if code==201 else heads[6],'Require exactly one inserted scope_id UUID' if code==201 else 'Require exactly one returned scope_id equal to requested id','data = exactly scopeId','app -> infra: COMMIT'):errors.append('scope body must map only the validated returned id after its write and before commit')
+        elif begun:
+            if not ordered('BEGIN','ROLLBACK',f'HTTP {code}') or 'app -> infra: COMMIT' in joined:errors.append('all transactional scope errors roll back before response')
+            if code in (401,403,409,408,500) and writes:errors.append('failed visible guard must not continue into a scope write')
+            if code==401 and (target or heads[4] in joined):errors.append('bad credentials never inspect target/reference rows')
+            if code==403 and any(h in joined for h in heads[3:]):errors.append('403 must precede conflicts and writes')
+        elif code not in (400,401) or db:errors.append('scope pre-BEGIN failures are no-SQL validation/JWT only')
+        if code==401:unauthorized.append(len(db))
+    if Counter(outcomes)!=Counter({400:1,401:4,403:2,404:3,409:4,201:1,200:2,204:1,408:1,500:1}) or sorted(unauthorized)!=[0,1,1,2]:errors.append(f'expected 20 scope terminal traces, got {dict(Counter(outcomes))},401 SQL={unauthorized}')
+    for title in ('Success - Insert','Success - Update','Success - Archive'):
+        obj=author_json(md,title)
+        if not obj or set(obj.get('data',{}))!={'scopeId'}:errors.append(f'{title} scope body must contain scopeId only')
+    obj=author_json(md,'Fail - Internal Server Error')
+    if not obj or obj['status']['code']!=500 or 'bizCode' in obj['status']:errors.append('scope internal error example is generic 500 without bizCode')
+    obj=author_json(md,'Fail - Conflict In Use')
+    if not obj or obj['status'].get('bizMessage')!='Scope is used by permissions.':errors.append('scope in-use response must preserve the contract message')
+    errors+=json_blocks_parse(md);errors+=table_lines_aligned(md)
+    if '--rendered-svg' in sys.argv:
+        import xml.etree.ElementTree as ET
+        try:
+            root=ET.parse(sys.argv[sys.argv.index('--rendered-svg')+1]).getroot();wanted=Counter(' '.join(l.split()) for _,_,q in actual for l in q.splitlines() if l.strip());visible=Counter(' '.join(''.join(e.itertext()).split()) for e in root.iter() if e.tag.endswith('}text'));missing=wanted-visible
+            if missing:errors.append(f'rendered scope-upsert SQL missing {sum(missing.values())} lines')
+            else:print(f'OK: rendered scope-upsert SQL ({sum(wanted.values())}/{sum(wanted.values())} visible lines)')
+        except (IndexError,OSError,ET.ParseError) as exc:errors.append(f'cannot verify scope SVG: {exc}')
+    if errors:return fail('; '.join(dict.fromkeys(errors)))
+    print('OK: scope-upsert-flow (20 terminal traces; seven exact SQL definitions, claims/current credentials and guarded lifecycle)')
+    return 0
+
+
+COMMANDS['scope-upsert-flow'] = check_scope_upsert_flow
 
 
 def check_role_upsert_flow() -> int:

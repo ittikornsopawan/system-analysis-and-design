@@ -389,3 +389,15 @@ description: Repository-wide and project-specific lessons captured from user cor
 - **Finding**: An integration comparison called author_needles for author API10, which belongs to another checker; the comparison stopped with KeyError before producing evidence.
 - **Root cause**: The broad AUTHOR_SPECS registry was mistaken for the helper's supported master API01..09 domain.
 - **Corrected behavior**: Re-run the comparison over the supported master family, retain the full registration/function preservation check, and report that the failed validator did not establish coverage. Corrected comparison passes for every unaffected master API and COMMANDS exactly 57 -> 58. Carry this generic validator-domain requirement into the verification-guidance follow-up without widening the API19 diff.
+
+### 2026-11-09 — Recover completed checks from evidence after a resumed chat
+
+- **Finding**: Resuming the scope review attempted to poll a prior process handle, but the runtime no longer knew that id.
+- **Root cause**: A process identifier was treated as durable across chat execution boundaries instead of reading the saved task output first.
+- **Corrected behavior**: Read the complete scope SQL log, which contains every PASS and the final ALL SCOPE UPSERT SQL FIXTURES PASSED marker; do not classify the expired handle as a failed SQL suite. Strengthen `.agents/skills/commit-and-pr/references/checklist.md` to recover from durable completion evidence and rerun only if incomplete. Subsequent checker/mutation/render and final integration evidence remain separate requirements.
+
+### 2026-11-09 — Check copied execution hints when transaction-count tests fail
+
+- **Finding**: Scope checks/audit/database passed, but the skeleton suite reproduced a scope-only BEGIN count failure. Its copied execution-order comment contained BEGIN READ COMMITTED in addition to the one actual generated transaction command. The completed handwritten sequence was already correct.
+- **Root cause**: Execution prose reused an executable marker that the existing skeleton test counts across the complete generated text; the earlier role lesson had not been promoted into the authoring reference.
+- **Corrected behavior**: Rephrase only the execution sentence as begin transaction (READ COMMITTED), retain every SQL byte and actual sequence transaction, and strengthen `.agents/skills/api-contract-design/references/checker-patterns.md` with the copied-hint trigger. Rerun the unchanged skeleton suite plus paired/flow checks and the full delivery suite; no test or transaction safeguard is weakened.
