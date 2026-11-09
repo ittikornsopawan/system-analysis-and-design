@@ -35,6 +35,13 @@ description: Repository-wide and project-specific lessons captured from user cor
 
 ## Repository-wide
 
+### 2026-11-09 — Distinguish test evidence from execution mistakes
+
+- **Error**: Independent evaluation found the backend skill's blanket error-improvement rule also treated a deliberately red test and faithful reproduction of the input bug as fresh workflow mistakes, making a successful sandbox bug fix require an unauthorized skill edit.
+- **Root cause**: The term error conflated expected business/test outcomes with failures in carrying out the method, and the improvement loop did not explicitly handle an assigned read-only or component-only boundary.
+- **Corrected behavior**: `.agents/skills/backend-development/SKILL.md` now keeps preventive skill updates mandatory for every actual execution mistake or owner/reviewer correction, identifies planned red/reproduction as evidence, and requires a concrete scope question before editing a skill outside authorization. Preserve pending improvement status when that scope decision is unavailable.
+- **Verification**: Independent prose replay of the original stock/read-only scenarios confirmed the gap is resolved, with no new material conflict. The initial evaluation report and Python fixture implementation/tests were preserved; their recorded four green SQLite tests were referenced without rerunning unchanged code.
+
 ### 2026-11-09 — Explain each delivered file individually
 
 - **Correction**: The owner requested a file name with a nested summary for every changed file when presenting a PR.
