@@ -41,13 +41,13 @@ approved_at: null
 
 ### Body Parameters
 
-|     | Parameter Name | Data Type                       | M/O       | Description                                                                                                                                                                                                                     | Example                              |
-| --- | -------------- | ------------------------------- | --------- | ------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------- | ------------------------------------ |
-| 1   | id             | String: UUID                    | OPTIONAL  | Permission Id, Insert when not specified, Update, Delete or Archive when specified, The id of a DELETED permission counts as not found                                                                                          | d4e5f6a7-b8c9-4d0e-9f1a-2b3c4d5e6f7a |
-| 2   | name           | String                          | MANDATORY | Permission Name, Permission code (max 64 characters): lower-case letters, digits, `_` and `.`, at least two parts, Unique among permissions that are not DELETED                                                                | report.read                          |
-| 3   | description    | String                          | MANDATORY | Permission Description (max 256 characters)                                                                                                                                                                                     | Reads the platform reports           |
-| 4   | scopes         | [Array of Scope](#scope-object) | OPTIONAL  | Scopes of the permission, Each item is inserted when `id` is not specified, updated when `id` is specified, deleted when `rowStatus` is DELETED, Scopes that are not listed are kept                                            |                                      |
-| 5   | rowStatus      | String                          | OPTIONAL  | Row status (ACTIVE, INACTIVE, DELETED, LOCKED, ARCHIVED), Defaults to ACTIVE, Delete when DELETED, Archive when ARCHIVED, DELETED is not allowed when inserting, Delete or archive is allowed only when no role or user uses it | ACTIVE                               |
+|     | Parameter Name | Data Type                       | M/O       | Description                                                                                                                                                                                                                                                                      | Example                              |
+| --- | -------------- | ------------------------------- | --------- | -------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------- | ------------------------------------ |
+| 1   | id             | String: UUID                    | OPTIONAL  | Permission Id, Insert when not specified, Update, Delete or Archive when specified, The id of a DELETED permission counts as not found                                                                                                                                           | d4e5f6a7-b8c9-4d0e-9f1a-2b3c4d5e6f7a |
+| 2   | name           | String                          | MANDATORY | Permission Name, Permission code (max 64 characters): lower-case letters, digits, `_` and `.`, at least two parts, Unique among permissions that are not DELETED                                                                                                                 | report.read                          |
+| 3   | description    | String                          | MANDATORY | Permission Description (max 256 characters)                                                                                                                                                                                                                                      | Reads the platform reports           |
+| 4   | scopes         | [Array of Scope](#scope-object) | OPTIONAL  | Scopes of the permission, Each item is inserted when `id` is not specified, updated when `id` is specified, deleted when `rowStatus` is DELETED, Scopes that are not listed are kept                                                                                             |                                      |
+| 5   | rowStatus      | String                          | OPTIONAL  | Row status (ACTIVE, INACTIVE, DELETED, LOCKED, ARCHIVED), Defaults to ACTIVE, Delete when DELETED, Archive when ARCHIVED, DELETED is not allowed when inserting, Delete/archive requires no role/user usage; Delete also requires zero final non-DELETED scope definitions (Q24) | ACTIVE                               |
 
 #### Scope Object
 
@@ -65,7 +65,7 @@ approved_at: null
 - A permission cannot be deleted or archived while a role (`author.t_role_permission`) or a user (`author.t_user_permission`) that is not DELETED still holds it (409, E10006). INACTIVE and LOCKED are allowed, the rows that use it are not changed.
 - `scopes` lists the scopes the permission can have (`author.t_permission_scope`). An item without `id` is added, with `id` is updated, with `rowStatus` DELETED is removed. Scopes that are not listed are kept. Adding or retaining an ACTIVE link requires an ACTIVE scope master (404 E10005); removing an existing link may reference a closed master under owner Q23. A scope cannot be deleted from the permission while a role (`author.t_role_permission_scope`) or a user (`author.t_user_permission`) still uses it (409, E10006). A permission without scopes has no scope dimension.
 - Permission: only a platform administrator from verified JWT roles can call this API, with exact case-sensitive PLATFORM_ADMIN. Valid non-admin claims give 403 E10009 after parent existence and before scope/conflict work; do not authorize from live assignment queries or request flags. Approved by the product owner (Q2/Q4/Q10/Q13); this supersedes the prior live-grant guard.
-- Execution order: validate the request (400) -> verify JWT (401) -> begin transaction (READ COMMITTED) -> caller lock/fresh current credentials (401) -> locked parent existence check (404) -> permission (403, E10009) -> scope check (404, E10005 for ACTIVE links), owned scope-link existence (404 E10004) and immutable scopeId (400) -> before-definition count -> duplicate check (409, E10003) -> parent/link in-use checks (409 E10006) -> guarded parent and child writes -> final definition count/Q22 grant guard (409 E10006) -> map -> COMMIT -> response. Every post-BEGIN error rolls back the whole request.
+- Execution order: validate the request (400) -> verify JWT (401) -> begin transaction (READ COMMITTED) -> caller lock/fresh current credentials (401) -> locked parent existence check (404) -> permission (403, E10009) -> scope check (404, E10005 for ACTIVE links), owned scope-link existence (404 E10004) and immutable scopeId (400) -> before-definition count -> duplicate check (409, E10003) -> parent/link in-use checks (409 E10006) -> guarded parent and child writes -> final definition count/Q24 deletion guard/Q22 grant guard (409 E10006) -> map -> COMMIT -> response. Every post-BEGIN error rolls back the whole request.
 - HTTP status of the single upsert: Insert 201 Created, Update 200 Ok, Delete 204 No Content (no response body), Archive 200 Ok.
 
 ### Credential, Scope and Transaction Rules
@@ -81,28 +81,31 @@ approved_at: null
 - Scopes that are not listed are kept. Preserve existing precheck semantics: all child reference/duplicate/in-use checks precede any parent/child write. Deleting then readding the same existing scopeId in this array still returns duplicate 409 because the old definition exists at precheck time; remove it in a prior request before adding a replacement. Omitted insert ids bind typed SQL NULL and duplicate exclusions are null-safe. Root name uniqueness spans every non-DELETED parent; scope-pair uniqueness spans every non-DELETED definition.
 - Parent DELETED/ARCHIVED is 409 E10006 while any non-DELETED role/direct-user grant holds it, including inactive/locked/archived grants. A DELETED child is 409 E10006 while any non-DELETED role-scope/direct-user row references that definition, irrespective of current effective rights. Do not detach/rewrite grant history. Read these tables for business invariants, never to authorize the caller.
 - Capture beforeDefinitionCount as every non-DELETED definition of this permission (not only ACTIVE or ACTIVE-master definitions). After all parent/child writes, query finalDefinitionCount again. Q22 triggers only when beforeDefinitionCount > 0 and finalDefinitionCount = 0. Then freshly query role/direct-user grant usage and reject any non-DELETED grant with 409 E10006 `Permission cannot become unscoped while assigned to roles or users.`; ROLLBACK restores all parent/link/audit writes. Owner answer: “ใช่ ปฏิเสธจนถอน grant เดิมครบ”. A request that merely updates an already-unscoped permission (before count 0) may keep valid unscoped grants. This is a final whole-request invariant, not a transient intermediate count.
+- Q24 approved by the product owner on 2026-11-09: owner answer “ต้องถอน links ให้ครบก่อนลบ permission (แนะนำ)”. After all explicit child writes, reuse the final whole-request definition count: rowStatus = DELETED and finalDefinitionCount > 0 is 409 E10006 `Permission cannot be deleted while scope definitions remain.` with complete rollback of parent/child/audit writes. Count every non-DELETED definition, including INACTIVE/LOCKED/ARCHIVED and closed-master links. Omitted/empty scopes keep existing definitions and cannot bypass this rule. The caller may explicitly withdraw every remaining definition and delete the parent in the same request when existing ownership, immutable-id, grant and child-reference checks pass. Already-zero definitions, including DELETED-only history, permit parent deletion. ARCHIVED may retain definitions. Check Q24 after the final count, before Q22 and before any COMMIT/success; no implicit cascade and no deleted-parent cleanup exception are added.
 - Shared grant/reference writers must lock and recheck their permission/definition parents before creating/reopening bindings; otherwise a soft-status invariant is not guaranteed by foreign keys. Their migrations remain separate APIs; this contract/SQL test does not certify unmigrated writers. Caller/target users must be locked in ascending id order in those writers before master/link rows.
 - Parent/child INSERTs explicitly set created_at from server now and must return exactly one UUID; missing/malformed result is internal 500. Existing parent UPDATE guards id and non-DELETED; child UPDATE guards id, permissionId, immutable scopeId and non-DELETED status. A zero-row update is 404 E10004 with whole-request rollback; a returned existing id must match its requested id. Preserve creation audit on updates. Do not reopen DELETED rows.
-- Parent delete/archive retains all unlisted child definitions. Explicit child actions still run atomically; there is no implicit cascade, even when the parent becomes DELETED. A new parent requested ARCHIVED is still an INSERT (201). Child ids are internal results, not added response fields.
-- Map exactly data.permissionId from the parent's RETURNING id before COMMIT. Insert is 201 S10000 Insert Permission Success; existing DELETED is 204 with no body/status/data; existing ARCHIVED is 200 S10000 Archive Permission Success; other existing updates are 200 S10000 Update Permission Success. Every child action and final Q22 check completes before success; no partial response.
+- Archive and other reversible parent updates retain unlisted child definitions. Parent deletion requires zero final non-DELETED definitions under Q24; unlisted definitions therefore cause 409 E10006 instead of being stranded. Explicit child actions remain atomic and there is no implicit cascade. A new parent requested ARCHIVED is still an INSERT (201). Child ids are internal results, not added response fields.
+- Map exactly data.permissionId from the parent's RETURNING id before COMMIT. Insert is 201 S10000 Insert Permission Success; existing DELETED is 204 with no body/status/data; existing ARCHIVED is 200 S10000 Archive Permission Success; other existing updates are 200 S10000 Update Permission Success. Every child action and final Q24/Q22 check completes before success; no partial response.
 - SQLSTATE 23505 from uq_m_permission_name is 409 E10003 `Permission name already exists.`; from uq_t_permission_scope_permission_id_scope_id is 409 E10003 `Scope already exists in the permission.`. Both roll back the entire transaction, including earlier writes. Other SQL/result/mapping errors return generic 500 without bizCode after rollback; timeout before COMMIT is 408 E90001 after rollback. No retry is promised for an unknown commit result.
 
 #### Scenario correspondence with sequence.wsd
 
-| Scenario                                                              | Outcome                               | Effects                                        |
-| --------------------------------------------------------------------- | ------------------------------------- | ---------------------------------------------- |
-| Invalid parent/child/duplicate input or malformed JWT                 | 400 E10001 / 401 E10002 before SQL    | None                                           |
-| Missing caller, expiry during caller lock, invalid current token/user | 401 E10002                            | Rollback before parent read                    |
-| Missing/DELETED parent / valid non-admin                              | 404 E10004 / 403 E10009               | No scope/conflict work                         |
-| ACTIVE link master missing/closed / child missing or other-parent     | 404 E10005 / 404 E10004               | Whole request rejected                         |
-| Existing child scopeId changed                                        | 400 E10001                            | No writes                                      |
-| Closed master, deleting unused existing link                          | Allowed by Q23                        | Still checks owner/in-use/Q22                  |
-| Parent/child duplicate or in-use                                      | 409 E10003 / E10006                   | No partial write                               |
-| Last definition removed while a role/direct grant survives            | 409 E10006 (Q22)                      | Rollback parent, child and audit changes       |
-| Last definition removed without grants / already-unscoped update      | Normal success                        | Final count guard preserves intended dimension |
-| Parent insert/update/archive/delete with supplied child actions       | 201 / 200 / 200 / 204                 | One transaction, commit only after final guard |
-| Guarded update returns zero / malformed result                        | 404 E10004 / generic 500              | All writes rollback                            |
-| Concurrent unique collision / timeout / unexpected error              | 409 E10003 / 408 E90001 / generic 500 | Whole request rollback                         |
+| Scenario                                                                | Outcome                               | Effects                                                  |
+| ----------------------------------------------------------------------- | ------------------------------------- | -------------------------------------------------------- |
+| Invalid parent/child/duplicate input or malformed JWT                   | 400 E10001 / 401 E10002 before SQL    | None                                                     |
+| Missing caller, expiry during caller lock, invalid current token/user   | 401 E10002                            | Rollback before parent read                              |
+| Missing/DELETED parent / valid non-admin                                | 404 E10004 / 403 E10009               | No scope/conflict work                                   |
+| ACTIVE link master missing/closed / child missing or other-parent       | 404 E10005 / 404 E10004               | Whole request rejected                                   |
+| Existing child scopeId changed                                          | 400 E10001                            | No writes                                                |
+| Closed master, deleting unused existing link                            | Allowed by Q23                        | Still checks owner/in-use/Q22                            |
+| Parent/child duplicate or in-use                                        | 409 E10003 / E10006                   | No partial write                                         |
+| Last definition removed while a role/direct grant survives              | 409 E10006 (Q22)                      | Rollback parent, child and audit changes                 |
+| Last definition removed without grants / already-unscoped update        | Normal success                        | Final count guard preserves intended dimension           |
+| Parent DELETED with any final non-DELETED definition                    | 409 E10006 (Q24)                      | Rollback parent, all explicit child actions and audit    |
+| Complete same-request withdrawal then parent DELETED / zero definitions | 204, no body                          | Retain deleted link history, no stranded live definition |
+| Parent insert/update/archive/delete with supplied child actions         | 201 / 200 / 200 / 204                 | One transaction, commit only after final guard           |
+| Guarded update returns zero / malformed result                          | 404 E10004 / generic 500              | All writes rollback                                      |
+| Concurrent unique collision / timeout / unexpected error                | 409 E10003 / 408 E90001 / generic 500 | Whole request rollback                                   |
 
 #### Example Body Parameters
 
@@ -155,17 +158,19 @@ approved_at: null
         {
             "id": "3c4d5e6f-7a8b-4c9d-8e1f-2a3b4c5d6e7f",
             "scopeId": "1a2b3c4d-5e6f-4a7b-8c9d-0e1f2a3b4c5d",
-            "rowStatus": "ACTIVE"
+            "rowStatus": "DELETED"
         },
         {
             "id": "4d5e6f7a-8b9c-4d0e-9f1a-2b3c4d5e6f70",
             "scopeId": "2b3c4d5e-6f7a-4b8c-9d0e-1f2a3b4c5d6e",
-            "rowStatus": "ACTIVE"
+            "rowStatus": "DELETED"
         }
     ],
     "rowStatus": "DELETED"
 }
 ```
+
+The example withdraws every remaining non-DELETED definition. Any unlisted definition causes 409 E10006 and rolls back the entire request.
 
 ## Example Request
 
@@ -556,6 +561,22 @@ HTTP/1.1 204 No Content
         "message": "Internal Server Error",
         "bizMessage": "An unexpected error occurred.",
         "requestId": "req-permission-review",
+        "timestamp": "2026-11-09T00:00:00.123Z",
+        "status": "ERROR"
+    }
+}
+```
+
+#### Fail - Conflict Remaining Scopes
+
+```JSON
+{
+    "status": {
+        "code": 409,
+        "message": "Conflict",
+        "bizCode": "E10006",
+        "bizMessage": "Permission cannot be deleted while scope definitions remain.",
+        "requestId": "req-permission-delete-scopes",
         "timestamp": "2026-11-09T00:00:00.123Z",
         "status": "ERROR"
     }
