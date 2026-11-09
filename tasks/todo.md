@@ -9,13 +9,17 @@ Use one section per task, named `<scope>: <task-name>`. Preserve other task sect
 
 ## e-commerce: Code structure guide with existing diagrams
 
-Status: In progress. Ittikorn requested `e-commerce/doc/code-structure.md` with diagrams reused from `e-commerce/diagram/`, following the clarification that Service = Domain means reusable business logic and the owner-selected path is `Ecommerce.Domain/Authen/Domain/`. This task writes documentation in the Showcase, reads the pinned component without changing it, reuses existing diagram bundles unchanged and does not include commit/PR delivery.
+Status: Documentation complete; PR delivery directly authorized by Ittikorn's “เปิด pr มา”. Ittikorn requested `e-commerce/doc/code-structure.md` with diagrams reused from `e-commerce/diagram/`, following the clarification that Service = Domain means reusable business logic and the owner-selected path is `Ecommerce.Domain/Authen/Domain/`. The original writing phase read the pinned component and reused diagram bundles without changing them. The initial guide and lesson clarification are already in main at `ec4645e` through the separate handoff commit; this PR finalizes the guide's verification record and task completion rather than claiming to introduce that existing content.
 
 1. [x] Read applicable rules, lessons, component manifest, current backend conventions and diagram-creator; inspect the three selected renders and their source/companion evidence.
-2. [ ] Write the Thai guide with runtime/repository/identity diagrams, layer and feature responsibilities, Service = Domain terminology, current versus owner-directed structure, CQRS flows and source links.
-3. [ ] Record the terminology correction in lessons; verify Markdown/frontmatter/links, model/PNG integrity, component evidence and unchanged diagram/component hashes; record actual results.
+2. [x] Write the Thai guide with runtime/repository/identity diagrams, layer and feature responsibilities, Service = Domain terminology, current versus owner-directed structure, CQRS flows and source links.
+3. [x] Record the terminology correction in lessons; verify Markdown/frontmatter/links, model/PNG integrity, component evidence and unchanged diagram/component hashes; record actual results.
 
 Selected views: runtime architecture explains collaboration and the proposed reusable Domain child; repository architecture explains source ownership and compile references; identity domain explains business concepts derived from schema without implying implemented classes or aggregate ownership. Existing pictures are embedded and linked to editable sources; no new rendering or diagram redesign is requested.
+
+Verification: The Thai guide has 11 main sections, three existing PNG embeds, 20 local references and 15 pinned component references. YAML/frontmatter, fences, table widths, links and all seven project-reference counts passed; production/test references total 9/5. All three existing editable model/PNG bundles passed integrity and native nesting checks, and their PNGs were opened for visual inspection. Hashes of all 12 selected bundle files are unchanged; the component remains clean at the pinned revision. The existing Domain-convention lesson was extended rather than duplicated. No backend/API/schema/diagram changes, runtime tests, new diagram rendering or native-editor interaction were performed for this documentation-only task.
+
+Delivery plan: use a two-file documentation commit (`code-structure.md` verification subsection and this task section), fetch and merge latest origin/main into the task branch, resolve any overlaps while preserving both sides, rerun document/diagram checks and publish a Showcase PR without merging it. Integration SHA and actual PR state are reported from Git/GitHub at delivery.
 
 ## repository-wide: Improve the API skill after every error
 

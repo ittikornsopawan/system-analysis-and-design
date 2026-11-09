@@ -311,3 +311,17 @@ Tests ที่มีอยู่แบ่งเป็น `Ecommerce.Domain.Test
 นำภาพเดิมสามภาพมา embed โดยไม่ copy, เปลี่ยนชื่อ หรือสร้างไฟล์ภาพใหม่ ตรวจภาพ PNG ที่ขนาดอ่านได้และตรวจ editable `.drawio`/PNG metadata parity พร้อม native nesting ผ่านทั้งสาม bundle ภาพที่ใช้มีขนาด 2378 × 1682 pixels ทุกภาพ
 
 งานนี้ตรวจ frontmatter, references, source/model correspondence และความคงเดิมของ component/diagram assets ไม่ได้แก้ backend, API specs, schema หรือ diagram และไม่ได้รัน build/runtime tests ใหม่สำหรับงานเอกสารนี้
+
+### 11.1 ผลตรวจสำหรับส่ง review — 9 พฤศจิกายน 2026
+
+| รายการตรวจ | ผลและขอบเขต |
+| --- | --- |
+| Markdown/frontmatter | YAML parse ผ่าน; คู่มือยังเป็น draft และ approval fields เป็น null; headings, tables และ code fences ถูกต้อง |
+| Source references | ลิงก์ภายใน 20 จุดเปิดไฟล์/โฟลเดอร์ได้ และ references ไป component 15 จุดตรวจพบ commit/blob ที่ pin ไว้ |
+| ภาพประกอบ | PNG เดิมสามภาพ ขนาดภาพละ 2378 × 1682 pixels พร้อมลิงก์ไป editable sources และคำอธิบาย |
+| Editable model/PNG integrity | architecture 72 cells, repository 47 cells, identity 99 cells; metadata parity และ native nesting ผ่านทั้งสาม bundle |
+| Diagram preservation | hashes ของ 12 ไฟล์ในสาม bundles ตรงก่อนและหลังเขียนคู่มือ; ไม่มีการวาดหรือ export ใหม่ |
+| Component evidence | component อยู่ที่ pinned SHA และ clean; project references รวม production 9 และ tests 5; `Authen/Domain/` ยังติดสถานะ owner-directed design ตาม source จริง |
+| Visual review | เปิดตรวจ PNG ที่นำมา embed แล้ว; ไม่มีการทดลองขยับกล่องหรือ re-export ใน native editor เพราะไม่ได้แก้ model |
+
+ตารางนี้เป็นหลักฐานการตรวจคู่มือและการอ้างอิงภาพ ไม่ได้ใช้แทน runtime/database/API integration tests หรืออนุมัติ implementation ของ Business Domain
