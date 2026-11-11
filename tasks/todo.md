@@ -1354,6 +1354,16 @@ Status: Written in the managed workspace of Marry on branch `ci/marry-github-act
 - [x] Real runs on pull request #91: passing https://github.com/ittikornsopawan/system-analysis-and-design/actions/runs/43008956970 (10 steps, 40 seconds); one temporary commit removes the heading `### Cart Rules` from `cart/01` so `cart-spec` fails: https://github.com/ittikornsopawan/system-analysis-and-design/actions/runs/43009141504 failed (only `check_docs.py` red, the other four steps still ran and passed; "60 sub-commands, 1 failed"); the revert commit on the same branch (no force push): https://github.com/ittikornsopawan/system-analysis-and-design/actions/runs/43009341327 passed. The net diff of the pull request is the workflow and `tasks/todo.md`.
 - [ ] Tell the lead; the owner sets the branch protection of `main` (required status check `checks`, require branches to be up to date); hold the lock until the merge, then release and park.
 
+### Author API08 scope batch — claims, sorted target locks and atomic writes
+
+Authority: owner Q2/Q4/Q7/Q10/Q13/Q15 and the owner-approved lock-before-in-use correction (2026-11-08) relayed by Josh (SA Lead); assignment `authorized_by: josh`, delivery `open-pr`. New Peter session after the previous one ended; workspace recovered and PR88 parked under Josh's approval.
+
+- [x] Recover the managed clone (release stale lock, named stash `peter-owner-scope-note`, park PR88) and prepare a branch from main e361a4b with the audit baseline.
+- [x] Revise spec.md and sequence.wsd together: verified JWT roles claim instead of live grants, caller lock and fresh credential gate, one ascending `FOR UPDATE` lock of all target scopes before any in-use check or write, whole-target 404 before one 403, request-order conflicts/writes, indexed results and one final commit.
+- [x] Add `scope-batch-flow` (seven exact SQL definitions, 18 representative traces) and move API08 to the claims needles in `author-spec`.
+- [x] Mutation-test the checker, render the diagram, and run every documentation command, the SQL audit, database tests and skeleton tests on the branch merged with origin/main.
+
+Scope-batch verification: 35/35 deliberate faults rejected (6 spec rules, 10 synchronized spec+sequence SQL faults, 15 sequence flow faults including permission before the target lock, 3 example faults, 1 rendered omission). PlantUML render shows 66/66 SQL lines. No schema, seed or backend change; SQL was not executed against concurrent PostgreSQL sessions in this task, so lock behaviour is proven by document checks only.
 ## e-commerce: Spec risks T2 (shipping and campaign)
 
 Status: Complete in the branch, waiting for review. Assignment: agent `tommy`, delivery `open-pr`, authorized by `josh` (the product owner approved the changes on 2026-11-08), workspace `.workspace/tommy`, branch `fix/tommy-spec-risks-shipping-campaign`, scopes `shipping/02-update-shipping-status`, `shipping/03-upsert-shipping-stop`, `shipping/06-confirm-delivery`, `campaign/01-upsert-campaign`, `e-commerce/db/tests/check_docs.py` (needles only) and `tasks`.
