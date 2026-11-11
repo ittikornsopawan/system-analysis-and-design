@@ -46,6 +46,7 @@
 - The system applies the same rule when `expires_at` has passed and the order is still `WAIT_PAYMENT` (the system acts as the caller `system`, this is a scheduled job, not an API).
 - The cancel is idempotent in outcome: cancelling an order that is already `CANCELLED` answers 409 (E10006), no quantity is added twice.
 - The budget that the order took from a campaign goes back in the same transaction as the stock, when the order is cancelled, also when the system cancels it because `expires_at` has passed (`docs/superpowers/specs/2026-11-06-campaign-design.md`, C7 and C9, approved by the product owner on 2026-11-06): every budget that has a ledger row `RESERVE` of the order and no `RELEASE` yet gets its `usage` back (`remaining` grows by that amount) and a ledger row `RELEASE` with the same `usage` is written. An order that took no budget changes nothing. The order of the locks is the order row, the lots by `id`, then the budgets by `id`.
+- The cancel of the PaymentIntent at Stripe carries the `Idempotency-Key` `cancel-<paymentIntentId>` and is the last step before the `COMMIT`, so a refusal at Stripe rolls everything back (approved by the product owner on 2026-11-08). If the `COMMIT` fails after Stripe cancelled the PaymentIntent, the order stays `WAIT_PAYMENT` and the payment `PENDING` until the Stripe event `payment_intent.canceled` arrives, and the webhook (`02-stripe-webhook`) then sets the payment `CANCELLED`; the customer or the shop can cancel the order again.
 - Execution order: validate the request (400) -> existence and ownership checks (404) -> permission of a member of the shop (the owner skips it) -> status check and payment check (409) -> write the order, cancel the pending payment and give the quantity back. The whole request is one transaction.
 
 #### Example Body Parameters
@@ -273,6 +274,7 @@ SELECT
 FROM sales.t_order o
 WHERE o.id = '<sequence.orderId>'
 AND o.row_status <> 'DELETED' -- an order of a user that is not the owner, a member of the shop or a platform administrator counts as not found
+FOR UPDATE -- the order row is locked first, then the lots by id, then the budgets by id
 ```
 
 #### UPDATE - Cancel the order
@@ -300,6 +302,7 @@ SELECT
 FROM sales.t_order_item oi
 WHERE oi.order_id = '<sequence.orderId>'
 AND oi.row_status <> 'DELETED'
+ORDER BY oi.lot_id -- the lots are locked in id order, the same as the checkout
 ```
 
 ### Table: [shop.t_shop_product_sku_lot](../../../schema/shop/t_shop_product_sku_lot.md)

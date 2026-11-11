@@ -84,6 +84,7 @@ activate page
                                 FROM sales.t_order o
                                 WHERE o.id = '<sequence.orderId>'
                                 AND o.row_status <> 'DELETED' -- an order of a user that is not the owner, a member of the shop or a platform administrator counts as not found
+                                FOR UPDATE -- the order row is locked first, then the lots by id, then the budgets by id
                             end note
                             t_order -> infra: Return query result
                         deactivate t_order
@@ -231,6 +232,7 @@ activate page
                                                 FROM sales.t_order_item oi
                                                 WHERE oi.order_id = '<sequence.orderId>'
                                                 AND oi.row_status <> 'DELETED'
+                                                ORDER BY oi.lot_id -- the lots are locked in id order, the same as the checkout
                                             end note
                                             t_order_item -> infra: Return query result
                                         deactivate t_order_item
@@ -305,7 +307,7 @@ activate page
                                             infra -> app: Return the budget and what is left
                                         end
                                         alt A PENDING payment was cancelled in the table
-                                            app -> infra: Cancel the PaymentIntent of the payment at Stripe (the last step before COMMIT, so a refusal rolls everything back)
+                                            app -> infra: Cancel the PaymentIntent of the payment at Stripe (Idempotency-Key = cancel-<paymentIntentId>; the last step before COMMIT, so a refusal rolls everything back)
                                             alt Stripe does not answer or refuses the request
                                                 app -> infra: ROLLBACK
                                                 app -> api: HTTP 408 E90001

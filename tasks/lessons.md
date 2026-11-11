@@ -485,3 +485,11 @@ description: Repository-wide and project-specific lessons captured from user cor
 - Cause: the first proposal used the existing boundary codes as capability names, hiding which module/resource/action was authorized.
 - Corrected behavior: use module:resource:action:effect, retain ALL/SHOP/OWN separately, update both mapping directions and examples, and explicitly explain CRUD/read overlap under deny precedence.
 - Prevention: `.agents/skills/api-contract-design/references/spec-structure.md` now separates all four capability components from boundaries and requires exact action-group semantics before writing an authorization matrix. Storage/JWT/endpoint enforcement remains separately scoped.
+
+### 2026-11-11 — The delivery check reads the local `main`, so fetch it before the preflight
+
+- **Correction**: After merging `origin/main` into the task branch, the preflight blocked with `changed paths exceed assignment scope` and listed about 170 paths of other tasks, although the PR diff against `origin/main` held only the task's 12 files. The same happened in WP3b.
+- **Root cause**: `agent-workspace delivery-check` compares the branch with the local `main` of the managed clone, which was 80 commits behind `origin/main`, so every incoming path looked like a change of the task.
+- **Corrected behavior**: Run `git fetch origin main:main` in the managed clone (a fast-forward of the local ref, never a checkout) before the preflight and again after each base merge, then check the PR diff with `git diff --name-status origin/main...HEAD`.
+- **Preventive skill change**: not made in this task because `.agents/skills/commit-and-pr` is outside the assignment scope; reported to the lead SA (a step in `commit-and-pr` that fetches `main:main`, or a delivery-check that reads `origin/main`).
+- **Verification**: after `git fetch origin main:main` the preflight reported `no blockers found`.

@@ -86,7 +86,8 @@ activate page
                                 WHERE c.user_id = '<sequence.userId>'
                                 AND c.row_status = 'ACTIVE'
                                 AND c.id IN ('<sequence.cartIds>') -- only when cartIds is specified, otherwise every ACTIVE line of the user
-                                ORDER BY c.created_at
+                                ORDER BY c.id
+                                FOR UPDATE -- the lines to order are locked in id order before the lots and the budgets, so a cart API cannot change them in the meantime
                             end note
                             t_cart -> infra: Return query result
                         deactivate t_cart

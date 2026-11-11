@@ -166,7 +166,7 @@ activate page
                                 api -> page: Conflict
                                 page -> user: Display the payment cannot be refunded
                             else The payment can be refunded
-                                app -> infra: Ask Stripe for the full refund of the PaymentIntent (Idempotency-Key = refund- + payment id)
+                                app -> infra: Ask Stripe for the full refund of the PaymentIntent (Idempotency-Key = refund-<paymentId>)
                                 alt Stripe does not answer or refuses the request
                                     app -> infra: ROLLBACK
                                     app -> api: HTTP 408 E90001
@@ -232,6 +232,7 @@ activate page
                                                     FROM sales.t_order_item oi
                                                     WHERE oi.order_id = '<sequence.orderId>'
                                                     AND oi.row_status <> 'DELETED'
+                                                    ORDER BY oi.lot_id -- the lots are locked in id order, the same as the checkout
                                                 end note
                                                 t_order_item -> infra: Return query result
                                             deactivate t_order_item

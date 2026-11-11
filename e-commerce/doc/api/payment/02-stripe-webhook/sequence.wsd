@@ -170,7 +170,7 @@ activate stripe
                                         app -> api: HTTP 200 S10000 action PAYMENT_COMPLETED
                                         api -> stripe: Event received
                                     else No row changed: the order was cancelled or expired first (late payment)
-                                        app -> stripe: Ask for a full refund (Idempotency-Key = refund- + payment id)
+                                        app -> stripe: Ask for a full refund (Idempotency-Key = refund-<paymentId>)
                                         stripe -> app: Return refundId
                                         app -> infra: UPDATE - Mark the payment as refunded
                                         infra -> t_payment: UPDATE - Mark the payment as refunded
@@ -203,7 +203,7 @@ activate stripe
                                     api -> stripe: Event received
                                 end
                             else FAILED or CANCELLED and payment_intent.succeeded (late payment)
-                                app -> stripe: Ask for a full refund (Idempotency-Key = refund- + payment id)
+                                app -> stripe: Ask for a full refund (Idempotency-Key = refund-<paymentId>)
                                 stripe -> app: Return refundId
                                 app -> infra: UPDATE - Mark the payment as refunded
                                 infra -> t_payment: UPDATE - Mark the payment as refunded
@@ -334,6 +334,7 @@ activate stripe
                                                 FROM sales.t_order_item oi
                                                 WHERE oi.order_id = '<sequence.orderId>'
                                                 AND oi.row_status <> 'DELETED'
+                                                ORDER BY oi.lot_id -- the lots are locked in id order, the same as the checkout
                                             end note
                                             t_order_item -> infra: Return query result
                                         deactivate t_order_item
@@ -385,7 +386,7 @@ activate stripe
                                             activate m_campaign_budget_ledger
                                                 note right of m_campaign_budget_ledger
                                                     INSERT INTO campaign.m_campaign_budget_ledger (created_by, campaign_budget_id, campaign_id, order_id, entry_type, reference, usage, remaining)
-                                                    VALUES ('<sequence.userId>', '<sequence.campaignBudgetId>', '<sequence.campaignId>', '<sequence.orderId>', 'RELEASE', '<sequence.reference>', '<sequence.usage>', '<sequence.remaining>')
+                                                    VALUES ('system', '<sequence.campaignBudgetId>', '<sequence.campaignId>', '<sequence.orderId>', 'RELEASE', '<sequence.reference>', '<sequence.usage>', '<sequence.remaining>')
                                                     RETURNING id as ledger_id
                                                 end note
                                                 m_campaign_budget_ledger -> infra: Return inserted result
@@ -397,7 +398,7 @@ activate stripe
                                                 note right of m_campaign_budget
                                                     UPDATE campaign.m_campaign_budget
                                                     SET
-                                                        updated_by = '<sequence.userId>',
+                                                        updated_by = 'system',
                                                         updated_at = NOW() AT TIME ZONE 'UTC',
                                                         remaining = remaining + '<sequence.usage>' -- the budget may be INACTIVE, LOCKED or ARCHIVED by now, it still gets the amount back
                                                     WHERE id = '<sequence.campaignBudgetId>'
