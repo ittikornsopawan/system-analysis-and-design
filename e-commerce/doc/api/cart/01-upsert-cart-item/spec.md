@@ -40,7 +40,7 @@
 | 3   | quantity         | Numeric      | OPTIONAL  | Quantity of the line (integer greater than 0), Required unless rowStatus is DELETED, Without id the quantity is added to the existing line of the same SKU, With id the quantity replaces the current quantity | 2                                    |
 | 4   | rowStatus        | String       | OPTIONAL  | Row status (ACTIVE, DELETED), Defaults to ACTIVE, Delete when DELETED (HTTP 204 No Content), Other statuses answer 400                                                                                         | ACTIVE                               |
 
-### Cart Rules
+### Cart Rule
 
 - The cart belongs to the user of the access token (customer). The request never carries a user id and a line of another user is treated as not found (404, E10004). A user has one cart that holds lines of any number of shops, the lines are grouped by shop only when the cart is read.
 - A line is one SKU of a shop. `shop_id`, `product_id` and `sku_id` of the line come from `shopProductSkuId`. There is at most one line that is not deleted per user and SKU, and at most 100 lines that are not deleted per user (the limit is a config). The limit is checked after the line is written, in the same transaction: when the cart then has more than 100 lines the transaction is rolled back and the request answers 409 (E10008) (approved by the product owner on 2026-11-08).
