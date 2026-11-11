@@ -503,7 +503,7 @@ class WorkspaceIntegrationTests(unittest.TestCase):
             expected=2,
             extra_env={"FAKE_GH_LIST_JSON": open_pr},
         )
-        self.assertIn("already has an open pull request", str(blocked["reason"]))
+        self.assertIn("open pull request whose assignment is not suspended", str(blocked["reason"]))
         self.assertEqual("main", self.git(workspace, "branch", "--show-current").stdout.strip())
 
     def test_commit_preflight_rejects_paths_outside_assignment_scope(self) -> None:
@@ -628,6 +628,220 @@ class WorkspaceIntegrationTests(unittest.TestCase):
             self.git(workspace, "rev-parse", "main").stdout.strip(),
             self.git(workspace, "rev-parse", "origin/main").stdout.strip(),
         )
+
+
+    # ---- suspend: a task whose pull request is open gives the workspace back, and the pull request comes back later ----
+    PR_URL = "https://github.com/example/system-analysis-and-design/pull/{number}"
+
+    def pr_item(self, branch: str, head: str, number: int = 5, state: str = "OPEN") -> dict[str, object]:
+        return {
+            "state": state,
+            "mergedAt": None,
+            "baseRefName": "main",
+            "headRefName": branch,
+            "headRefOid": head,
+            "url": self.PR_URL.format(number=number),
+            "number": number,
+        }
+
+    def prepare_tommy_task(self, topic: str, task: str, expected: int = 0, extra_env: dict[str, str] | None = None):
+        return self.cli(
+            "prepare", "--agent", "tommy", "--type", "docs", "--topic", topic, "--delivery", "open-pr",
+            "--authorized-by", "josh", "--task", task, "--scope", "e-commerce", expected=expected, extra_env=extra_env,
+        )
+
+    def start_pushed_task(self, topic: str = "first-task", task: str = "First task") -> tuple[Path, dict[str, object], str, str]:
+        workspace = self.create_tommy()
+        prepared = self.prepare_tommy_task(topic, task)
+        branch = str(prepared["branch"])
+        (workspace / "e-commerce").mkdir(exist_ok=True)
+        (workspace / "e-commerce" / f"{topic}.md").write_text("change\n", encoding="utf-8")
+        self.git(workspace, "add", "e-commerce")
+        self.git(workspace, "commit", "-m", f"docs: {topic}")
+        self.git(workspace, "push", "-u", "origin", branch)
+        return workspace, prepared, branch, self.git(workspace, "rev-parse", "HEAD").stdout.strip()
+
+    def suspend(self, token: object, pr_list: list[dict[str, object]], expected: int = 0):
+        return self.cli(
+            "suspend", "--agent", "tommy", "--token", str(token), expected=expected,
+            extra_env={"FAKE_GH_LIST_JSON": json.dumps(pr_list)},
+        )
+
+    def record_path(self, branch: str) -> Path:
+        return self.host / ".workspace" / ".state" / "tommy-prs" / f"{branch.replace('/', '__')}.json"
+
+    def assignment_file(self) -> Path:
+        return self.host / ".workspace" / ".state" / "tommy.json"
+
+    def test_suspend_returns_to_main_and_lets_the_next_task_start(self) -> None:
+        workspace, prepared, branch, head = self.start_pushed_task()
+        suspended = self.suspend(prepared["lock_token"], [self.pr_item(branch, head)])
+        self.assertEqual("suspended", suspended["status"])
+        record = json.loads(self.record_path(branch).read_text(encoding="utf-8"))
+        self.assertEqual(
+            {"assignment", "pr", "head", "state_at_delivery", "delivered_at"}, set(record)
+        )
+        self.assertEqual(self.PR_URL.format(number=5), record["pr"])
+        self.assertEqual(head, record["head"])
+        self.assertEqual(branch, record["assignment"]["branch"])
+        self.assertEqual("First task", record["assignment"]["task"])
+        self.assertFalse(self.assignment_file().exists())
+        self.assertFalse((self.host / ".workspace" / ".locks" / "tommy.json").exists())
+        self.assertEqual("main", self.git(workspace, "branch", "--show-current").stdout.strip())
+        status = self.cli("status", "--agent", "tommy")
+        self.assertEqual(branch, status["suspended"][0]["branch"])
+        # the next task can start although the first pull request is still open
+        second = self.prepare_tommy_task(
+            "second-task", "Second task", extra_env={"FAKE_GH_LIST_JSON": json.dumps([self.pr_item(branch, head)])}
+        )
+        self.assertEqual("prepared", second["status"])
+        self.assertEqual("docs/tommy-second-task", second["branch"])
+
+    def test_prepare_still_blocks_when_one_open_pull_request_is_not_suspended(self) -> None:
+        workspace, prepared, branch, head = self.start_pushed_task()
+        self.suspend(prepared["lock_token"], [self.pr_item(branch, head)])
+        other = self.pr_item("docs/tommy-other", "c" * 40, number=9)
+        blocked = self.prepare_tommy_task(
+            "second-task", "Second task", expected=2,
+            extra_env={"FAKE_GH_LIST_JSON": json.dumps([self.pr_item(branch, head), other])},
+        )
+        self.assertIn("not suspended", str(blocked["reason"]))
+        self.assertIn("/pull/9", str(blocked["reason"]))
+        self.assertNotIn("/pull/5", str(blocked["reason"]))
+
+    def test_suspend_blocks_without_an_open_pull_request_a_matching_head_or_a_clean_pushed_branch(self) -> None:
+        workspace, prepared, branch, head = self.start_pushed_task()
+        token = prepared["lock_token"]
+        no_pr = self.suspend(token, [], expected=2)
+        self.assertIn("no open pull request", str(no_pr["reason"]))
+        wrong_head = self.suspend(token, [self.pr_item(branch, "b" * 40)], expected=2)
+        self.assertIn("does not match the local HEAD", str(wrong_head["reason"]))
+        other_branch = self.suspend(token, [self.pr_item("docs/tommy-elsewhere", head)], expected=2)
+        self.assertIn("no open pull request", str(other_branch["reason"]))
+        wrong_token = self.suspend("not-the-token", [self.pr_item(branch, head)], expected=2)
+        self.assertIn("token does not match", str(wrong_token["reason"]))
+        (workspace / "dirty.txt").write_text("untracked\n", encoding="utf-8")
+        dirty = self.suspend(token, [self.pr_item(branch, head)], expected=2)
+        self.assertIn("changes", str(dirty["reason"]))
+        (workspace / "dirty.txt").unlink()
+        (workspace / "e-commerce" / "later.md").write_text("later\n", encoding="utf-8")
+        self.git(workspace, "add", "e-commerce")
+        self.git(workspace, "commit", "-m", "docs: a commit that is not pushed")
+        local_head = self.git(workspace, "rev-parse", "HEAD").stdout.strip()
+        unpushed = self.suspend(token, [self.pr_item(branch, local_head)], expected=2)
+        self.assertIn("not pushed", str(unpushed["reason"]))
+        # nothing was moved by the refused attempts
+        self.assertTrue(self.assignment_file().exists())
+        self.assertFalse(self.record_path(branch).exists())
+        self.assertEqual(branch, self.git(workspace, "branch", "--show-current").stdout.strip())
+
+    def test_suspend_blocks_on_main_and_without_the_lock(self) -> None:
+        workspace = self.create_tommy()
+        blocked = self.suspend("a" * 32, [], expected=2)
+        self.assertIn("lock is missing", str(blocked["reason"]))
+        self.assertEqual("main", self.git(workspace, "branch", "--show-current").stdout.strip())
+
+    def test_resume_restores_the_suspended_assignment_and_suspend_works_again(self) -> None:
+        workspace, prepared, branch, head = self.start_pushed_task()
+        self.suspend(prepared["lock_token"], [self.pr_item(branch, head)])
+        env = {"FAKE_GH_JSON": json.dumps(self.pr_item(branch, head))}
+
+        def resume(task: str = "First task", expected: int = 0):
+            return self.cli(
+                "prepare", "--agent", "tommy", "--type", "docs", "--topic", "first-task", "--delivery", "open-pr",
+                "--authorized-by", "josh", "--task", task, "--scope", "e-commerce", "--resume-pr", "5",
+                expected=expected, extra_env=env,
+            )
+
+        different = resume(task="Another task", expected=2)
+        self.assertIn("does not match", str(different["reason"]))
+        self.assertTrue(self.record_path(branch).exists())
+        self.assertEqual("main", self.git(workspace, "branch", "--show-current").stdout.strip())
+        stale = self.cli(
+            "prepare", "--agent", "tommy", "--type", "docs", "--topic", "first-task", "--delivery", "open-pr",
+            "--authorized-by", "josh", "--task", "First task", "--scope", "e-commerce", "--resume-pr", "5",
+            expected=2, extra_env={"FAKE_GH_JSON": json.dumps(self.pr_item(branch, "d" * 40))},
+        )
+        self.assertIn("does not match the pull-request head", str(stale["reason"]))
+        self.assertEqual("main", self.git(workspace, "branch", "--show-current").stdout.strip())
+        self.assertTrue(self.record_path(branch).exists())
+        resumed = resume()
+        self.assertEqual("resumed", resumed["status"])
+        self.assertEqual(branch, self.git(workspace, "branch", "--show-current").stdout.strip())
+        self.assertTrue(self.assignment_file().exists())
+        self.assertFalse(self.record_path(branch).exists())
+        again = self.suspend(resumed["lock_token"], [self.pr_item(branch, head)])
+        self.assertEqual("suspended", again["status"])
+
+    def test_resume_is_blocked_while_another_task_is_active(self) -> None:
+        workspace, prepared, branch, head = self.start_pushed_task()
+        self.suspend(prepared["lock_token"], [self.pr_item(branch, head)])
+        second = self.prepare_tommy_task(
+            "second-task", "Second task", extra_env={"FAKE_GH_LIST_JSON": json.dumps([self.pr_item(branch, head)])}
+        )
+        self.cli("release", "--agent", "tommy", "--token", str(second["lock_token"]))
+        blocked = self.cli(
+            "prepare", "--agent", "tommy", "--type", "docs", "--topic", "first-task", "--delivery", "open-pr",
+            "--authorized-by", "josh", "--task", "First task", "--scope", "e-commerce", "--resume-pr", "5",
+            expected=2, extra_env={"FAKE_GH_JSON": json.dumps(self.pr_item(branch, head))},
+        )
+        self.assertIn("does not match", str(blocked["reason"]))
+        self.assertTrue(self.record_path(branch).exists())
+        self.assertEqual("docs/tommy-second-task", self.git(workspace, "branch", "--show-current").stdout.strip())
+
+    def test_resume_is_blocked_when_active_assignment_metadata_remains_on_main(self) -> None:
+        workspace, prepared, branch, head = self.start_pushed_task()
+        self.suspend(prepared["lock_token"], [self.pr_item(branch, head)])
+        record = json.loads(self.record_path(branch).read_text(encoding="utf-8"))
+        self.assignment_file().write_text(json.dumps(record["assignment"]), encoding="utf-8")
+        blocked = self.cli(
+            "prepare", "--agent", "tommy", "--type", "docs", "--topic", "first-task", "--delivery", "open-pr",
+            "--authorized-by", "josh", "--task", "First task", "--scope", "e-commerce", "--resume-pr", "5",
+            expected=2, extra_env={"FAKE_GH_JSON": json.dumps(self.pr_item(branch, head))},
+        )
+        self.assertIn("finish or suspend it before resuming another", str(blocked["reason"]))
+        self.assertTrue(self.record_path(branch).exists())
+        self.assertEqual("main", self.git(workspace, "branch", "--show-current").stdout.strip())
+
+    def test_park_closes_a_suspended_assignment_only_after_the_merge(self) -> None:
+        workspace, prepared, branch, head = self.start_pushed_task()
+        self.suspend(prepared["lock_token"], [self.pr_item(branch, head)])
+        not_merged = self.cli(
+            "park", "--agent", "tommy", "--pr", "5", expected=2,
+            extra_env={"FAKE_GH_JSON": json.dumps(self.pr_item(branch, head))},
+        )
+        self.assertIn("not merged", str(not_merged["reason"]))
+        self.assertTrue(self.record_path(branch).exists())
+        merged_item = self.pr_item(branch, head, state="MERGED")
+        merged_item["mergedAt"] = "2026-11-11T12:00:00Z"
+        wrong_head = dict(merged_item, headRefOid="e" * 40)
+        mismatch = self.cli("park", "--agent", "tommy", "--pr", "5", expected=2, extra_env={"FAKE_GH_JSON": json.dumps(wrong_head)})
+        self.assertIn("does not match the merged pull-request head", str(mismatch["reason"]))
+        self.assertTrue(self.record_path(branch).exists())
+        parked = self.cli("park", "--agent", "tommy", "--pr", "5", extra_env={"FAKE_GH_JSON": json.dumps(merged_item)})
+        self.assertEqual("parked", parked["status"])
+        self.assertTrue(parked["suspended_record_removed"])
+        self.assertFalse(self.record_path(branch).exists())
+        gone = command(
+            ["git", "show-ref", "--verify", "--quiet", f"refs/heads/{branch}"], cwd=workspace, env=self.env
+        )
+        self.assertNotEqual(0, gone.returncode)
+        self.assertEqual("main", self.git(workspace, "branch", "--show-current").stdout.strip())
+
+    def test_park_of_a_suspended_assignment_leaves_the_current_task_alone(self) -> None:
+        workspace, prepared, branch, head = self.start_pushed_task()
+        self.suspend(prepared["lock_token"], [self.pr_item(branch, head)])
+        second = self.prepare_tommy_task(
+            "second-task", "Second task", extra_env={"FAKE_GH_LIST_JSON": json.dumps([self.pr_item(branch, head)])}
+        )
+        self.cli("release", "--agent", "tommy", "--token", str(second["lock_token"]))
+        merged_item = self.pr_item(branch, head, state="MERGED")
+        merged_item["mergedAt"] = "2026-11-11T12:00:00Z"
+        parked = self.cli("park", "--agent", "tommy", "--pr", "5", extra_env={"FAKE_GH_JSON": json.dumps(merged_item)})
+        self.assertEqual("parked", parked["status"])
+        self.assertEqual("docs/tommy-second-task", self.git(workspace, "branch", "--show-current").stdout.strip())
+        self.assertTrue(self.assignment_file().exists())
+        self.assertFalse(self.record_path(branch).exists())
 
 
 if __name__ == "__main__":
