@@ -45,6 +45,7 @@
 - The refund is always the whole `amount` of the payment, shipping fee included. The system asks Stripe for the refund of the PaymentIntent with the `Idempotency-Key` header `refund-` + payment id, so pressing the button twice refunds once. If Stripe does not answer or refuses, nothing is written and the answer is 408 (E90001).
 - The payment becomes `REFUNDED` with `provider_refund_id`, `refunded_at` and `refund_reason`, the order becomes `REFUNDED` and the quantity of every item is added back to its lot (`lot_id` of the item) even when that lot is no longer on sale, the same way as a cancel. The Stripe event `charge.refunded` that follows finds the payment already REFUNDED and changes nothing.
 - The budget that the order took from a campaign goes back in the same transaction as the stock, when the payment is refunded (`docs/superpowers/specs/2026-11-06-campaign-design.md`, C7 and C9, approved by the product owner on 2026-11-06): every budget that has a ledger row `RESERVE` of the order and no `RELEASE` yet gets its `usage` back (`remaining` grows by that amount) and a ledger row `RELEASE` with the same `usage` is written. An order that took no budget changes nothing. The order of the locks is the order row, the lots by `id`, then the budgets by `id`.
+- The Stripe refund carries the `Idempotency-Key` `refund-<paymentId>` (approved by the product owner on 2026-11-08). If the `COMMIT` fails after Stripe refunded, nothing is written here, the Stripe event `charge.refunded` that follows finds the payment COMPLETED and the webhook (`02-stripe-webhook`) applies the refund (payment and order REFUNDED, the stock and the budget go back), and a repeated request sends the same key and does not refund twice.
 - Execution order: validate the request (400) -> existence of the payment (404) -> permission (403) -> status check (409) -> refund at Stripe and write the payment, the order and the lots. The whole request is one transaction and the order row is locked (`FOR UPDATE`) before the payment is changed, the same lock order as the start payment, the webhook and the shipping APIs.
 
 #### Example Body Parameters
@@ -343,6 +344,7 @@ SELECT
 FROM sales.t_order_item oi
 WHERE oi.order_id = '<sequence.orderId>'
 AND oi.row_status <> 'DELETED'
+ORDER BY oi.lot_id -- the lots are locked in id order, the same as the checkout
 ```
 
 ### Table: [shop.t_shop_product_sku_lot](../../../schema/shop/t_shop_product_sku_lot.md)

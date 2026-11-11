@@ -1744,12 +1744,14 @@ def check_order_spec() -> int:
         "02": ["### Order Rules", "WAIT_PAYMENT", "expires_at", "ck_t_order_total_amount_sum", "ship_address", "#### INSERT - Create the order of a shop",
                "#### INSERT - Create the items of the order", "#### UPDATE - Take the quantity from the lot that is on sale",
                "AND quantity >= '<sequence.quantity>'", "AND is_on_sale = TRUE", "#### UPDATE - Delete the cart lines that were ordered",
-               "one transaction", "E10007", "ck_t_shop_product_sku_lot_price_not_below_cost"],
+               "one transaction", "E10007", "ck_t_shop_product_sku_lot_price_not_below_cost",
+               "ORDER BY c.id\nFOR UPDATE -- the lines to order are locked in id order", "the cart lines of the request by `id` (`FOR UPDATE` in `QUERY - Get the cart lines to order`)", "approved by the product owner on 2026-11-08"],
         "03": ["### Order Inquiry Rules", "ORDER BY o.created_at DESC, o.id", "o.user_id = '<sequence.userId>'", "#### QUERY - Count the orders of the user", "ILIKE"],
         "04": ["### Shop Order Inquiry Rules", "E10009", "#### Fail - Forbidden", "#### QUERY - Check shop member", "#### QUERY - Check platform administrator",
                "approved by the product owner", "platformProfit", "ORDER BY o.created_at DESC, o.id", "INNER JOIN authen.m_user ui"],
         "05": ["### Cancel Rules", "#### UPDATE - Cancel the order", "AND status = 'WAIT_PAYMENT'", "#### UPDATE - Give the quantity back to the lot", "E10006",
-               "restoredItems", "#### QUERY - Check shop member"],
+               "restoredItems", "#### QUERY - Check shop member", "FOR UPDATE -- the order row is locked first", "ORDER BY oi.lot_id",
+               "`Idempotency-Key` `cancel-<paymentIntentId>`", "approved by the product owner on 2026-11-08"],
     }
     for key, need in needles.items():
         for missing in missing_needles(mds[key], need):
@@ -2546,16 +2548,19 @@ def check_payment_spec() -> int:
     if errors:
         return fail("; ".join(errors))
     needles = {
-        "01": ["### Payment Rules", "CASH_ON_DELIVERY", "uq_t_payment_order_id_live", "header set to the id of the new payment row", "clientSecret", "amount x 100", "#### Fail - Conflict Payment In Progress",
+        "01": ["### Payment Rules", "CASH_ON_DELIVERY", "uq_t_payment_order_id_live", "payment-<orderId>-<attempt>-<paymentMethod>-<shippingMethod>", "cancel-<paymentIntentId>",
+               "#### QUERY - Count the payments of the order", "If the `COMMIT` fails after Stripe answered", "approved by the product owner on 2026-11-08", "clientSecret", "amount x 100", "#### Fail - Conflict Payment In Progress",
                "#### INSERT - Create the payment", "#### UPDATE - Set the shipping fee and the amount of the order", "AND status = 'WAIT_PAYMENT'", "FOR UPDATE", "E10006", "E90001"],
         "02": ["### Webhook Rules", "stripe-signature", "raw body", "5 minutes", "LATE_PAYMENT_REFUNDED", "IGNORED", "payment_intent.succeeded", "charge.refunded",
                "#### UPDATE - Mark the payment as completed", "#### UPDATE - Confirm the order", "AND status = 'WAIT_PAYMENT'", "#### UPDATE - Mark the payment as refunded",
-               "#### UPDATE - Give the quantity back to the lot", "idempotent", "E10001"],
+               "#### UPDATE - Give the quantity back to the lot", "idempotent", "E10001",
+               "ORDER BY oi.lot_id", "VALUES ('system', '<sequence.campaignBudgetId>'", "has `system` in `created_by` or `updated_by`", "refund-<paymentId>", "also makes the database match when another API called Stripe"],
         "03": ["### Payment Inquiry Rules", "ORDER BY p.created_at DESC, p.id", "o.user_id = '<sequence.userId>'", "#### QUERY - Count the payments of the user", "ILIKE"],
         "04": ["### Shop Payment Inquiry Rules", "E10009", "#### Fail - Forbidden", "#### QUERY - Check shop member", "#### QUERY - Check platform administrator",
                "providerPaymentId", "ORDER BY p.created_at DESC, p.id", "#### QUERY - Count the payments of the shop"],
         "05": ["### Refund Rules", "#### UPDATE - Refund the payment", "AND status = 'COMPLETED'", "#### UPDATE - Refund the order", "AND status = 'PAYMENT_CONFIRMED'",
-               "#### UPDATE - Give the quantity back to the lot", "refund-", "E10006", "E10009", "restoredItems", "#### QUERY - Check shop member", "FOR UPDATE -- taken before the payment is changed"],
+               "#### UPDATE - Give the quantity back to the lot", "refund-", "E10006", "E10009", "restoredItems", "#### QUERY - Check shop member", "FOR UPDATE -- taken before the payment is changed",
+               "ORDER BY oi.lot_id", "`Idempotency-Key` `refund-<paymentId>`", "If the `COMMIT` fails after Stripe refunded", "approved by the product owner on 2026-11-08"],
     }
     for key, need in needles.items():
         for missing in missing_needles(mds[key], need):

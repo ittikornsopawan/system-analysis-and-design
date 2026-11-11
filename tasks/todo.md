@@ -784,3 +784,12 @@ Status: Implemented in the managed workspace of Marry on branch `docs/marry-cart
 - [x] Mutation tests: 24 of 24 caught (each new clause removed from the spec and from the diagram, the 404 rule, the limit rule).
 - [x] Lesson of the notice before the owner merges (see `tasks/lessons.md`).
 - [ ] Merge `main`, preflight, push, open the pull request, tell the lead at once; hold the lock until the merge, then release and park.
+
+## e-commerce: Spec risks T1 (payment and sales)
+
+Status: Complete in the branch, waiting for review. Assignment: agent `tommy`, delivery `open-pr`, authorized by `josh` (the product owner approved the changes on 2026-11-08), workspace `.workspace/tommy`, branch `fix/tommy-spec-risks-payment-sales`, scopes `payment/01-start-payment`, `payment/02-stripe-webhook`, `payment/05-refund-payment`, `sales/02-create-order`, `sales/05-cancel-order`, `e-commerce/db/tests/check_docs.py` (needles only) and `tasks`.
+
+- [x] (A) Every call to Stripe has an `Idempotency-Key` written in the spec (`payment-<orderId>-<attempt>-<paymentMethod>-<shippingMethod>`, `cancel-<paymentIntentId>`, `refund-<paymentId>`), and each API says what makes the database match when the `COMMIT` fails after Stripe answered; the webhook has a branch for each of those states.
+- [x] (D) `FOR UPDATE` and `ORDER BY` for the lock order cart lines, order row, lots by id, budgets by id: `sales/02` locks the cart lines, `sales/05` locks the order row and sorts the items by `lot_id`, `payment/05` and the webhook sort the items by `lot_id`; the webhook writes `system` in the ledger and the budget.
+- [x] Move the matching diagrams, add the needles to `payment-spec` and `order-spec`, run every checker and the mutation tests.
+- [x] Open the PR with `commit-and-pr`; do not merge. T2 (shipping and campaign) follows after T1 is merged.

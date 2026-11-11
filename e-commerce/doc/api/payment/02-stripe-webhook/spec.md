@@ -64,7 +64,8 @@
 - **Late payment:** when the guarded update of the order changes no row (the order was cancelled or expired first), or the payment is already FAILED or CANCELLED, the money must not stay with the platform. The system asks Stripe for a full refund (`Idempotency-Key` = `refund-` + payment id) and sets the payment to REFUNDED directly with `refund_reason` = `Late payment: the order is not waiting for payment`. The order is not changed and the stock is not given back again.
 - On `charge.refunded` (a refund made in the Stripe dashboard or by the refund API) a COMPLETED payment becomes REFUNDED. When the order is `PAYMENT_CONFIRMED` it becomes `REFUNDED` and the quantity of every item goes back to its lot, otherwise (the order has started to ship) only the payment changes and the event is written to the log for a person to handle.
 - When `charge.refunded` turns a COMPLETED payment into REFUNDED the budget that the order took from a campaign goes back in the same transaction as the stock (`docs/superpowers/specs/2026-11-06-campaign-design.md`, C7 and C9, approved by the product owner on 2026-11-06), with the same `RELEASE` ledger rows as the refund API. A refund that arrives after the order was already cancelled (the late payment rule above) does not touch the budget, it went back when the order was cancelled.
-- The whole event is one transaction. The response never contains the secret or the signature.
+- The whole event is one transaction. The response never contains the secret or the signature. The webhook has no user, so every row it writes (the payment, the order, the lots, the ledger and the budget) has `system` in `created_by` or `updated_by` (approved by the product owner on 2026-11-08).
+- The webhook also makes the database match when another API called Stripe and its `COMMIT` failed afterwards (approved by the product owner on 2026-11-08): a `charge.refunded` after a refund of `05-refund-payment` finds the payment COMPLETED and applies the refund (payment and order REFUNDED, the stock and the budget go back, the lots in `lot_id` order), and a `payment_intent.canceled` after a cancel of `sales/05` or after a replaced payment of `01-start-payment` finds the payment PENDING and sets it CANCELLED. The refund of a late payment uses the `Idempotency-Key` `refund-<paymentId>`, so the retry of an event that failed after Stripe answered refunds once.
 
 #### Example Body Parameters
 
@@ -431,6 +432,7 @@ SELECT
 FROM sales.t_order_item oi
 WHERE oi.order_id = '<sequence.orderId>'
 AND oi.row_status <> 'DELETED'
+ORDER BY oi.lot_id -- the lots are locked in id order, the same as the checkout
 ```
 
 ### Table: [shop.t_shop_product_sku_lot](../../../schema/shop/t_shop_product_sku_lot.md)
@@ -474,7 +476,7 @@ ORDER BY l.campaign_budget_id
 
 ```SQL
 INSERT INTO campaign.m_campaign_budget_ledger (created_by, campaign_budget_id, campaign_id, order_id, entry_type, reference, usage, remaining)
-VALUES ('<sequence.userId>', '<sequence.campaignBudgetId>', '<sequence.campaignId>', '<sequence.orderId>', 'RELEASE', '<sequence.reference>', '<sequence.usage>', '<sequence.remaining>')
+VALUES ('system', '<sequence.campaignBudgetId>', '<sequence.campaignId>', '<sequence.orderId>', 'RELEASE', '<sequence.reference>', '<sequence.usage>', '<sequence.remaining>')
 RETURNING id as ledger_id
 ```
 
@@ -485,7 +487,7 @@ RETURNING id as ledger_id
 ```SQL
 UPDATE campaign.m_campaign_budget
 SET
-    updated_by = '<sequence.userId>',
+    updated_by = 'system',
     updated_at = NOW() AT TIME ZONE 'UTC',
     remaining = remaining + '<sequence.usage>' -- the budget may be INACTIVE, LOCKED or ARCHIVED by now, it still gets the amount back
 WHERE id = '<sequence.campaignBudgetId>'
