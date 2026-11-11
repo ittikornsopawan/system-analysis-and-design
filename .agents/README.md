@@ -68,6 +68,7 @@ Skills marked `placeholder` are unavailable until designed. Design each `SKILL.m
 | `skills/system-modeling/SKILL.md` | placeholder | Reserved |
 | `skills/backend-development/SKILL.md` | ready | Implementing approved backend features, fixing implementation bugs or refactoring in any stack with spec-first clarification and meaningful test-first DB/API evidence |
 | `skills/test-design/SKILL.md` | placeholder | Reserved |
+| `skills/api-test-case-creator/SKILL.md` | ready | Creating or updating documented API test cases from specs, with rule coverage, concrete expected outcomes and explicit gaps |
 | `skills/code-review/SKILL.md` | placeholder | Reserved |
 | `skills/diagram-creator/SKILL.md` | ready | Creating, updating or reviewing system diagrams from specs, code or DB evidence, with editable artifacts and rendered review |
 

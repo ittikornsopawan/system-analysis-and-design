@@ -7,6 +7,21 @@ description: Shared checklist for planning and tracking non-trivial tasks withou
 
 Use one section per task, named `<scope>: <task-name>`. Preserve other task sections and mark an item complete only after its completion criterion is satisfied.
 
+## repository-wide: Create the API test-case creator skill
+
+Status: Skill, verification and publication package complete. The owner selected documented test cases derived from API specs, rather than document checkers or executable API tests. `api-test-case-creator` provides rule traceability, reproducible inputs/steps and explicit HTTP/body/data expectations. Preserve English question topics, Thai question bodies with English technical terms, the four-part clarification format and learning after every actual bug, conflict or issue. PR89 is merged; this task starts from current origin/main on a separate branch. Actual integration and PR state are reported from Git/GitHub in the delivery handoff.
+
+1. [x] Inspect the registry, applicable rules, lessons, existing API/testing skills and owner-selected scope; establish a clean task branch.
+2. [x] Author the skill, focused case-design reference and reusable Markdown template; register the skill as ready without changing the broader placeholder test-design skill.
+3. [x] Exercise the skill with isolated valid/ambiguous spec fixtures; verify source-to-case coverage, exact expected outcomes, unresolved decisions and execution-status honesty. Correct observed gaps and record preventive improvements.
+4. [x] Verify metadata, local references and scoped diff; prepare the commit/PR package with per-file summaries under standing skill-delivery authorization. Record actual integration SHA, publication and remote PR state from Git/GitHub in the delivery handoff.
+
+Design choices: Use project conventions when supplied; otherwise place `test-cases.md` beside the endpoint's `spec.md`. Default to Markdown with a source baseline, coverage matrix, detailed cases and open gaps. Draft specs permit provisional design only; unresolved outcomes remain blocked. Generated cases start Not run, and document verification never establishes API runtime correctness. No application implementation, spec behavior, schema, dependency or live API operation is authorized by this task.
+
+Verification: Five Markdown frontmatters passed Ruby YAML parsing; naming, local references, ready registration, scaffold/whitespace checks and the six-file scoped preflight passed. Existing task/lesson content was preserved byte-for-byte. PyYAML is unavailable, so the original Python skill validator was not claimed run. No application or live DB/API tests were run.
+
+Behavioral evidence: The first independent evaluation created no artifacts after planning and supports no behavioral conclusion. The inventory step was corrected to write a representative case before expanding the suite. Its bounded replay produced six detailed cases and a four-part question in two tool calls: explicit partial coverage, unchanged raw source/history, stable TC-RES-003 identity, preserved historical v1 Pass, revised v2 Not run, exact success/rejection/rollback outcomes and blocked R6 durable effects. A separate parent replay produced six cases and verified the same core guarantees against R1–R6. Synthetic approval and the unresolved fixture question are not production decisions or execution evidence. Temporary fixtures/artifacts are excluded from delivery.
+
 ## repository-wide: Refine backend questions and issue learning
 
 Status: Guidance, verification and publication package complete. Ittikorn requested English question topics, Thai question bodies with English technical terms, and a skill improvement after every actual bug, conflict or issue. PR87 is merged; this is a separate follow-up. Preserve the four-part question structure and approved implementation/delivery boundaries. Actual integration SHA, PR state and final file coverage are reported from Git/GitHub.

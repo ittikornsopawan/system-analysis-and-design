@@ -35,6 +35,15 @@ description: Repository-wide and project-specific lessons captured from user cor
 
 ## Repository-wide
 
+### 2026-11-09 — Separate documented API cases from runtime tests
+
+- **Correction**: After the code-review recommendation, the owner selected `api-test-case-creator` and confirmed documented test cases derived from API specs.
+- **Root cause**: The proposed next step followed the implementation-review lifecycle without first distinguishing the owner's API test-design need from code review, spec checkers and executable API tests.
+- **Corrected behavior**: The new skill owns documented cases, explicit rule coverage, reachable fixtures, source-derived expectations and unresolved gaps. Its source/output and execution-status rules keep provisional design separate from approval and actual API results; new cases begin Not run. Preserve the owner's English topics, Thai four-part questions and learning after actual issues.
+- **Preventive resource**: `.agents/skills/api-test-case-creator/SKILL.md`, its case-design reference and template explicitly establish those boundaries and completion evidence. Verify with isolated spec-to-case exercises rather than claiming that document checks establish runtime behavior.
+- **Evaluation issue**: The first independent forward-test read the candidate but exhausted its useful bound planning and created no artifacts. It supplies no behavioral evidence. The skill's inventory step now requires an early representative case and visible uncovered rows instead of waiting for a fully planned suite; replay uses a small fixed fixture and bounded case set.
+- **Replay evidence**: The independent replay wrote six cases and its clarification artifact in two tool calls. It preserves raw inputs and verbatim v1 history, keeps TC-RES-003's identity while marking its v2 expectations Not run, distinguishes committed rejection audit from rollback and leaves the deliberate permission conflict blocked. Partial coverage is explicit. Parent source-to-case review and a separate six-case replay confirm the key expectations and the English-topic/Thai-four-part contract; no runtime tests occurred.
+
 ### 2026-11-09 — Localize questions and learn from every actual issue
 
 - **Correction**: The owner requires English question topics, Thai question bodies with English technical terms, and a preventive skill improvement after every actual bug, conflict or issue.
