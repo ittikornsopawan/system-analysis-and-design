@@ -1331,3 +1331,14 @@ Owner request: management:user:read:allow and management:user:crud:deny. Resume 
 - [x] Verify every route/rule/link and action-group example, update preventive guidance/lessons, integrate latest main and update the same PR with an ordinary push.
 
 Four-part revision verification: 83 API entries, 40 queued markers and 33 exact module:resource:action:effect allow-rule groups agree in both mapping directions. All local links and five YAML frontmatters pass. Nine in-memory document faults, 13 CRUD/action/namespace/boundary reference cases and five malformed/unknown rule cases pass; the user's read:allow + crud:deny example returns deny. The old two-part notation is marked historical in the owner-decision record and removed from the active matrix. All 60 documentation commands, audit 53/0, database ALL PASSED and 12 skeleton tests pass. API pairs, checkers, SQL, seed and schema are unchanged. This proves the document/reference semantics only, not backend/JWT storage or enforcement.
+
+## repository-wide: GitHub Actions workflow that runs every check (M3)
+
+Status: Written in the managed workspace of Marry on branch `ci/marry-github-actions-checks`; the first real run is the pull request itself. Scope: `.github/workflows` and `tasks/`. Authorized by the owner through the lead (2026-11-11). No secret is used.
+
+- [x] One workflow, `.github/workflows/checks.yml`, job `checks`, on `pull_request` and on `push` to `main`, with `permissions: contents: read` and one run per pull request at a time.
+- [x] Python 3 (3.12) and PostgreSQL 17 (the major version `run_db_tests.sh` was written against) from the PostgreSQL apt repository, plus the `en_US.UTF-8` locale. `run_db_tests.sh` starts its own throw-away cluster from `initdb`, `pg_ctl` and `psql` on the PATH, so a database service container would not be used by it.
+- [x] Steps: every sub-command of `check_docs.py` (the list is read from the script, not written in the workflow; the step fails when the list is empty), `audit_all.py`, `run_db_tests.sh`, `test_sequence_skeleton.py` and `test_agent_workspace.py`; each step after the first runs even when an earlier one failed, so one run shows every failure, and the job fails when any step fails.
+- [x] The same commands run locally on the tree with `main` merged: 60 sub-commands, 0 failed; audit 0 findings; database tests ALL PASSED; skeleton test OK; workspace test 15 tests OK.
+- [ ] The first real run on the pull request passes; then one temporary commit breaks a checker, the run fails, a revert commit on the same branch (no force push) makes it pass again.
+- [ ] Tell the lead; the owner sets the branch protection of `main` (required status check `checks`, require branches to be up to date); hold the lock until the merge, then release and park.

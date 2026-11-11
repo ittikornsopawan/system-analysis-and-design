@@ -1,0 +1,86 @@
+name: checks
+
+# Runs every documentation checker, the database tests and the tests of the tooling on each pull request and on each push
+# to main. Nothing here uses a secret: the job only reads the repository (permissions: contents: read).
+#
+# The repository owner sets up the branch protection of main in GitHub (Settings > Branches): require the status check
+# "checks" and require branches to be up to date before merging. A workflow cannot set that for itself.
+
+on:
+  pull_request:
+  push:
+    branches: [main]
+
+permissions:
+  contents: read
+
+concurrency:
+  group: checks-${{ github.event.pull_request.number || github.ref }}
+  cancel-in-progress: true
+
+jobs:
+  checks:
+    name: checks
+    runs-on: ubuntu-24.04
+    timeout-minutes: 30
+    steps:
+      - name: Check out the repository
+        uses: actions/checkout@v4
+
+      - name: Set up Python 3
+        uses: actions/setup-python@v5
+        with:
+          python-version: "3.12"
+
+      # run_db_tests.sh starts its own throw-away cluster with initdb, pg_ctl and psql from the PATH and needs the
+      # en_US.UTF-8 locale. It was written against PostgreSQL 17, so 17 is installed from the PostgreSQL apt repository.
+      - name: Install PostgreSQL 17 and the locale
+        run: |
+          sudo apt-get install -y postgresql-common
+          sudo /usr/share/postgresql-common/pgdg/apt.postgresql.org.sh -y
+          sudo apt-get install -y postgresql-17
+          sudo locale-gen en_US.UTF-8
+          echo "/usr/lib/postgresql/17/bin" >> "$GITHUB_PATH"
+
+      - name: Show the versions
+        run: |
+          python3 --version
+          psql --version
+          initdb --version
+          git --version
+
+      - name: check_docs.py (every sub-command)
+        run: |
+          # The list comes from check_docs.py itself, so a new sub-command is run without a change here.
+          list=$(python3 e-commerce/db/tests/check_docs.py | sed -n 's/^subcommands: //p' | tr -d ',')
+          if [ -z "$list" ]; then echo "no sub-command found in check_docs.py"; exit 1; fi
+          count=0
+          failed=0
+          for command in $list; do
+            count=$((count + 1))
+            if output=$(python3 e-commerce/db/tests/check_docs.py "$command" 2>&1); then
+              echo "OK   $command"
+            else
+              failed=$((failed + 1))
+              echo "FAIL $command: $output"
+              echo "::error title=check_docs.py $command::$output"
+            fi
+          done
+          echo "$count sub-commands, $failed failed"
+          [ "$failed" -eq 0 ]
+
+      - name: audit_all.py
+        if: ${{ !cancelled() }}
+        run: python3 e-commerce/db/tests/audit_all.py
+
+      - name: run_db_tests.sh (migrations up, down, up again and the SQL tests)
+        if: ${{ !cancelled() }}
+        run: bash e-commerce/db/tests/run_db_tests.sh
+
+      - name: test_sequence_skeleton.py
+        if: ${{ !cancelled() }}
+        run: python3 .agents/skills/api-contract-design/scripts/test_sequence_skeleton.py
+
+      - name: test_agent_workspace.py
+        if: ${{ !cancelled() }}
+        run: python3 .agents/skills/agent-workspace/tests/test_agent_workspace.py
