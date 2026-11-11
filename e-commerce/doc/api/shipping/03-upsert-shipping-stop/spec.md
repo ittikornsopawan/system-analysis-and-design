@@ -54,6 +54,7 @@
 - DELETED is final: a DELETED stop is never reopened and its `id` counts as not found (404, E10004). INACTIVE, LOCKED and ARCHIVED are reversible: an update with `rowStatus` ACTIVE shows the stop again. `rowStatus` DELETED is rejected with 400 (E10001) when the request inserts a stop. The customer sees only stops that are ACTIVE.
 - This API has no batch version, the shop records one hub at a time, and the stops are read through the inquiry APIs of the shipping (they are returned inside every shipping), so the stop has no inquiry of its own.
 - HTTP status of the single upsert: Insert 201 Created, Update 200 Ok, Delete 204 No Content (no response body), Archive 200 Ok.
+- A shipping that does not exist, or that is DELETED, answers 404 (E10004) `Shipping not found.` and a stop that does not exist answers 404 (E10004) `Shipping stop not found.` (approved by the product owner on 2026-11-08).
 - Execution order: validate the request (400) -> existence of the shipping and of the stop (404) -> permission of the caller (403) -> status of the shipping and duplicate `stopNumber` (409) -> write in one transaction. The shipping is first read without a lock only to find its order, then the order row of the shipping is locked (`SELECT ... FOR UPDATE`) before any stop is written.
 - This behaviour follows `docs/superpowers/specs/2026-11-06-shipping-design.md`, approved by the product owner on 2026-11-06. The payment columns that the shipping APIs read (`payment.t_payment.shipping_method`) belong to the payment design of WP2 (`docs/superpowers/specs/2026-11-06-payment-design.md`).
 
@@ -338,6 +339,22 @@ HTTP/1.1 204 No Content
         "bizMessage": "Shipping stop not found.",
         "requestId": "req-620a1b2c-3d4e-5f6a-7b8c-9d0e1f2a3b4c",
         "timestamp": "2026-11-06T09:12:14.123Z",
+        "status": "ERROR"
+    }
+}
+```
+
+#### Fail - Not Found Shipping
+
+```JSON
+{
+    "status": {
+        "code": 404,
+        "message": "Not Found",
+        "bizCode": "E10004",
+        "bizMessage": "Shipping not found.",
+        "requestId": "req-630a1b2c-3d4e-5f6a-7b8c-9d0e1f2a3b4c",
+        "timestamp": "2026-11-06T09:13:21.123Z",
         "status": "ERROR"
     }
 }

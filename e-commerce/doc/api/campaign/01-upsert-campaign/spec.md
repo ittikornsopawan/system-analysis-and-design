@@ -90,7 +90,8 @@
 - Discount: one live discount per campaign. `discountType` PERCENTAGE needs `discountValue` above 0 and up to 100, FIXED_AMOUNT needs a value above 0 (400, E10001, the database enforces both). A second discount without `id` while a live one exists is 409 (E10003). The discount can be changed or deleted while the campaign runs, the change reaches new orders only. A campaign without a live discount gives no discount.
 - Shops: the list of shops of the campaign, a campaign without any live shop row is for every shop. A row without `id` is inserted, a row with `id` is updated, `rowStatus` DELETED deletes it and rows that are not in the list are kept. `shopId` must be an existing shop that is not DELETED, otherwise 404 (E10005) with the position, `shops[1]: ...`. A shop that is already in the campaign (live row) is 409 (E10003). The same `shopId` or `id` twice in the request is 400 (E10001).
 - Products: the same child rules. A row names a product (`productId`) or a product category (`productCategoryId`), exactly one (400, E10001, `ck_t_campaign_product_target`). A category means that category only, its sub categories are not included. A campaign without any live product row is for every product. The product or category must exist and not be DELETED (404, E10005), the same product or category twice in the campaign is 409 (E10003), twice in the request is 400.
-- Children (`budget`, `discount`, `shops`, `products`): an `id` that does not belong to the campaign is 404 (E10004), `id` must not be duplicated in the request, up to 100 rows in `shops` and in `products`, and the id of a DELETED row counts as not found.
+- Children (`budget`, `discount`, `shops`, `products`): an `id` that does not belong to the campaign is 404 (E10004), `id` must not be duplicated in the request, up to 100 rows in `shops` and in `products`, and the id of a DELETED row counts as not found. A row of `shops` or `products` is checked with `QUERY - Check existing campaign shop` and `QUERY - Check existing campaign product`, no row answers 404 (E10004) (approved by the product owner on 2026-11-08).
+- When a campaign is deleted, its discount, shops and products are soft-deleted with it by `UPDATE - Delete the discount of a deleted campaign`, `UPDATE - Delete the shops of a deleted campaign` and `UPDATE - Delete the products of a deleted campaign`, one statement for all the rows of the campaign, in the same transaction as `UPDATE - Delete the budget of a deleted campaign` (approved by the product owner on 2026-11-08).
 - HTTP status of the single upsert: Insert 201 Created, Update 200 Ok, Delete 204 No Content (no response body), Archive 200 Ok.
 - Execution order: validate the request (400) -> existence of the campaign, the children and the shops, products and categories (404) -> permission (403) -> duplicate name, duplicate child, budget below used and in-use checks (409) -> write the campaign and its children in one transaction.
 - This behaviour follows `docs/superpowers/specs/2026-11-06-campaign-design.md`, approved by the product owner on 2026-11-06 (the proposals to the delivered specs in its section 4 are decided by the lead SA).
@@ -769,6 +770,18 @@ LIMIT 1 -- a row means an order used the budget, the campaign cannot be deleted 
 
 ### Table: [campaign.t_campaign_discount](../../../schema/campaign/t_campaign_discount.md)
 
+#### UPDATE - Delete the discount of a deleted campaign
+
+```SQL
+UPDATE campaign.t_campaign_discount
+SET
+    updated_by = '<sequence.userId>',
+    updated_at = NOW() AT TIME ZONE 'UTC',
+    row_status = 'DELETED'
+WHERE campaign_id = '<sequence.campaignId>'
+AND row_status <> 'DELETED'
+```
+
 #### QUERY - Check existing discount
 
 ```SQL
@@ -805,6 +818,29 @@ RETURNING id as discount_id, discount_type, discount_value, row_status
 
 ### Table: [campaign.t_campaign_shop](../../../schema/campaign/t_campaign_shop.md)
 
+#### QUERY - Check existing campaign shop
+
+```SQL
+SELECT
+    cs.id as campaign_shop_id
+FROM campaign.t_campaign_shop cs
+WHERE cs.campaign_id = '<sequence.campaignId>'
+AND cs.row_status <> 'DELETED'
+AND cs.id = '<sequence.shops.id>' -- only when the row has an id, no row means the id is not a live row of the campaign
+```
+
+#### UPDATE - Delete the shops of a deleted campaign
+
+```SQL
+UPDATE campaign.t_campaign_shop
+SET
+    updated_by = '<sequence.userId>',
+    updated_at = NOW() AT TIME ZONE 'UTC',
+    row_status = 'DELETED'
+WHERE campaign_id = '<sequence.campaignId>'
+AND row_status <> 'DELETED'
+```
+
 #### QUERY - Check duplicate campaign shop
 
 ```SQL
@@ -839,6 +875,29 @@ RETURNING id as campaign_shop_id, shop_id, row_status
 ```
 
 ### Table: [campaign.t_campaign_product](../../../schema/campaign/t_campaign_product.md)
+
+#### QUERY - Check existing campaign product
+
+```SQL
+SELECT
+    cp.id as campaign_product_id
+FROM campaign.t_campaign_product cp
+WHERE cp.campaign_id = '<sequence.campaignId>'
+AND cp.row_status <> 'DELETED'
+AND cp.id = '<sequence.products.id>' -- only when the row has an id, no row means the id is not a live row of the campaign
+```
+
+#### UPDATE - Delete the products of a deleted campaign
+
+```SQL
+UPDATE campaign.t_campaign_product
+SET
+    updated_by = '<sequence.userId>',
+    updated_at = NOW() AT TIME ZONE 'UTC',
+    row_status = 'DELETED'
+WHERE campaign_id = '<sequence.campaignId>'
+AND row_status <> 'DELETED'
+```
 
 #### QUERY - Check duplicate campaign product
 
