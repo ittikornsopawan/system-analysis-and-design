@@ -2795,10 +2795,10 @@ SHIPPING_NEEDLES = {
            "AND status = 'SHIPPED' -- no row changed means the status changed in the meantime", "#### QUERY - Check duplicate tracking number",
            "#### QUERY - Count the shippings that are still active", "#### UPDATE - Give the order back to PAYMENT_CONFIRMED", "AND status = 'PROCESSING'",
            "#### QUERY - Lock the order", "FOR UPDATE", "#### Fail - Conflict Tracking Number", "#### Fail - Conflict Status", "E10003", "E10006", "E10009",
-           "approved by the product owner", "#### QUERY - Check shop member", "#### QUERY - Check platform administrator"],
+           "approved by the product owner", "#### QUERY - Check shop member", "#### QUERY - Check platform administrator", "#### QUERY - Lock the shipping", "FOR UPDATE -- read again after the order row is locked", "the status step is checked on that second read", "approved by the product owner on 2026-11-08"],
     "03": ["### Shipping Stop Rules", "#### INSERT - Create the stop", "#### UPDATE - Update, delete or archive the stop", "#### QUERY - Check duplicate stop number",
            "#### QUERY - Lock the order", "FOR UPDATE", "#### Fail - Bad Request Row Status", "#### Fail - Conflict Status", "E10003", "E10006", "E10009",
-           "Delete 204 No Content (no response body)", "approved by the product owner", "#### QUERY - Check shop member"],
+           "Delete 204 No Content (no response body)", "approved by the product owner", "#### QUERY - Check shop member", "#### Fail - Not Found Shipping", "`Shipping not found.`", "approved by the product owner on 2026-11-08"],
     "04": ["### Shop Shipping Inquiry Rules", "E10009", "#### Fail - Forbidden", "#### Fail - Not Found Reference", "#### QUERY - Check shop member",
            "#### QUERY - Check platform administrator", "#### QUERY - Check shop", "ORDER BY s.created_at DESC, s.id", "o.shop_id = '<sequence.shopId>'",
            "#### QUERY - Count the shippings of the shop", "#### QUERY - Get the stops of the shippings", "o.ship_address", "approved by the product owner"],
@@ -2815,7 +2815,7 @@ SHIPPING_NEEDLES = {
            "AND s.shipped_at <= NOW() AT TIME ZONE 'UTC' - INTERVAL '<sequence.completionDays> days'", "ix_t_shipping_shipped_at", "never by the shop",
            "so the shop has to record a returned parcel before the seven days are over", "A partial shipment that cannot be finished",
            "locks the order row first (`SELECT ... FOR UPDATE`), checks the five conditions again under the lock",
-           "and by the automatic completion below (the system confirms after `completion_days`", "at least `completion_days` days old"],
+           "and by the automatic completion below (the system confirms after `completion_days`", "at least `completion_days` days old", "#### QUERY - Lock the shipping", "FOR UPDATE -- read again after the order row is locked", "the status is checked on that second read", "approved by the product owner on 2026-11-08"],
 }
 # phrases that must appear at least n times (a rule or a guard that two statements share must not lose one copy unnoticed)
 SHIPPING_COUNTS = {
@@ -4346,7 +4346,7 @@ CAMPAIGN_NEEDLES = {
            "#### Fail - Conflict In Use", "#### Fail - Conflict Budget Below Used", "#### Fail - Not Found Reference", "#### Fail - Forbidden",
            "#### Fail - Bad Request Row Status", "E10003", "E10005", "E10006", "E10009", "Delete 204 No Content (no response body)",
            "#### QUERY - Get the platform administrator role", "#### QUERY - Check platform administrator",
-           "validate the request (400) -> existence of the campaign, the children and the shops, products and categories (404) -> permission (403)"],
+           "validate the request (400) -> existence of the campaign, the children and the shops, products and categories (404) -> permission (403)", "#### QUERY - Check existing campaign shop", "#### QUERY - Check existing campaign product", "#### UPDATE - Delete the discount of a deleted campaign", "#### UPDATE - Delete the shops of a deleted campaign", "#### UPDATE - Delete the products of a deleted campaign", "one statement for all the rows of the campaign", "approved by the product owner on 2026-11-08"],
     "02": ["### Campaign Inquiry Rules", "ORDER BY c.start_at DESC, c.id", "NOT EXISTS (", "cs.row_status = 'ACTIVE'", "#### QUERY - Count the campaigns",
            "#### QUERY - Check shop member", "#### QUERY - Check shop", "#### QUERY - Check platform administrator", "#### Fail - Forbidden",
            "#### Fail - Not Found Reference", "activeOnly", "#### QUERY - Get the budgets of the campaigns", "#### QUERY - Get the shops of the campaigns",

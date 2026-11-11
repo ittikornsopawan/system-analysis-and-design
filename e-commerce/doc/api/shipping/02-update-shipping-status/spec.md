@@ -47,7 +47,7 @@
 - `SHIPPED` needs `carrierName` and `trackingNumber` and sets `shipped_at` to the time of the request. The pair (`carrierName`, `trackingNumber`) is unique among shippings that are not DELETED, a pair that already exists is 409 (E10003). The comparison is exact. `CANCELLED` and `RETURNED` do not accept the two fields (400, E10001) and keep the values the shipping already has.
 - A shipping is never deleted by the API: cancelling is the status `CANCELLED`, and `row_status` stays `ACTIVE`. The shipping method never changes.
 - The order follows the parcels. After a `CANCELLED` or `RETURNED` change, when the order is `PROCESSING` and none of its shippings is `PENDING`, `SHIPPED` or `DELIVERED` any more, the order becomes `PAYMENT_CONFIRMED` again in the same transaction, so that the payment API can refund an order whose goods never left the shop (a refund is only allowed at `PAYMENT_CONFIRMED`) and the shop can create a new shipping. Otherwise the order stays `PROCESSING`. `SHIPPED` does not change the order. `orderStatus` in the response is the status after the request.
-- Execution order: validate the request (400) -> existence of the shipping (404) -> permission of the caller (403) -> status step and duplicate tracking number (409) -> write the shipping and, when needed, the order in one transaction. The shipping is first read without a lock only to find its order, then the order row is locked (`SELECT ... FOR UPDATE`) before any row of `shipping.*` or `sales.*` is changed, and the update of the shipping repeats the current status in its `WHERE`.
+- Execution order: validate the request (400) -> existence of the shipping (404) -> permission of the caller (403) -> status step and duplicate tracking number (409) -> write the shipping and, when needed, the order in one transaction. The shipping is first read without a lock only to find its order, then the order row is locked (`SELECT ... FOR UPDATE`) and the shipping row is locked and read again (`QUERY - Lock the shipping`, `FOR UPDATE`), the status step is checked on that second read and not on the first, all before any row of `shipping.*` or `sales.*` is changed, and the update of the shipping repeats the current status in its `WHERE` (approved by the product owner on 2026-11-08).
 - This behaviour follows `docs/superpowers/specs/2026-11-06-shipping-design.md`, approved by the product owner on 2026-11-06. The payment columns that the shipping APIs read (`payment.t_payment.shipping_method`) belong to the payment design of WP2 (`docs/superpowers/specs/2026-11-06-payment-design.md`).
 
 #### Example Body Parameters
@@ -357,6 +357,18 @@ SELECT
 FROM shipping.t_shipping s
 WHERE s.id = '<sequence.shippingId>'
 AND s.row_status <> 'DELETED'
+```
+
+#### QUERY - Lock the shipping
+
+```SQL
+SELECT
+    s.id as shipping_id,
+    s.status
+FROM shipping.t_shipping s
+WHERE s.id = '<sequence.shippingId>'
+AND s.row_status <> 'DELETED'
+FOR UPDATE -- read again after the order row is locked, the status step is checked on this row
 ```
 
 #### QUERY - Check duplicate tracking number
