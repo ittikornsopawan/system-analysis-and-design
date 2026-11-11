@@ -1353,3 +1353,13 @@ Status: Written in the managed workspace of Marry on branch `ci/marry-github-act
 - [x] The same commands run locally on the tree with `main` merged: 60 sub-commands, 0 failed; audit 0 findings; database tests ALL PASSED; skeleton test OK; workspace test 15 tests OK.
 - [x] Real runs on pull request #91: passing https://github.com/ittikornsopawan/system-analysis-and-design/actions/runs/43008956970 (10 steps, 40 seconds); one temporary commit removes the heading `### Cart Rules` from `cart/01` so `cart-spec` fails: https://github.com/ittikornsopawan/system-analysis-and-design/actions/runs/43009141504 failed (only `check_docs.py` red, the other four steps still ran and passed; "60 sub-commands, 1 failed"); the revert commit on the same branch (no force push): https://github.com/ittikornsopawan/system-analysis-and-design/actions/runs/43009341327 passed. The net diff of the pull request is the workflow and `tasks/todo.md`.
 - [ ] Tell the lead; the owner sets the branch protection of `main` (required status check `checks`, require branches to be up to date); hold the lock until the merge, then release and park.
+
+## e-commerce: Spec risks T2 (shipping and campaign)
+
+Status: Complete in the branch, waiting for review. Assignment: agent `tommy`, delivery `open-pr`, authorized by `josh` (the product owner approved the changes on 2026-11-08), workspace `.workspace/tommy`, branch `fix/tommy-spec-risks-shipping-campaign`, scopes `shipping/02-update-shipping-status`, `shipping/03-upsert-shipping-stop`, `shipping/06-confirm-delivery`, `campaign/01-upsert-campaign`, `e-commerce/db/tests/check_docs.py` (needles only) and `tasks`.
+
+- [x] `shipping/02` and `shipping/06`: after the order row is locked the shipping row is locked and read again (`QUERY - Lock the shipping`, `FOR UPDATE`) and the status is checked on that read.
+- [x] `shipping/03`: the example `Fail - Not Found Shipping` (404 E10004) and the rule sentence.
+- [x] `campaign/01`: `QUERY - Check existing campaign shop` and `QUERY - Check existing campaign product` answer 404 for a row id that is not a live row of the campaign; deleting a campaign soft-deletes its discount, shops and products with one statement each.
+- [x] Move the diagrams of `shipping/02`, `shipping/06` and `campaign/01`, add the needles to `shipping-spec` and `campaign-spec`, run every checker and the mutation tests.
+- [x] Open the PR with `commit-and-pr`; do not merge.

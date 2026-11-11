@@ -110,6 +110,21 @@ activate page
                                 t_order -> infra: Return query result
                             deactivate t_order
                             infra -> app: Return the locked order
+                            app -> infra: QUERY - Lock the shipping
+                            infra -> t_shipping: QUERY - Lock the shipping
+                            activate t_shipping
+                                note right of t_shipping
+                                    SELECT
+                                        s.id as shipping_id,
+                                        s.status
+                                    FROM shipping.t_shipping s
+                                    WHERE s.id = '<sequence.shippingId>'
+                                    AND s.row_status <> 'DELETED'
+                                    FOR UPDATE -- read again after the order row is locked, the status step is checked on this row
+                                end note
+                                t_shipping -> infra: Return query result
+                            deactivate t_shipping
+                            infra -> app: Return the locked shipping and its status (the status step is checked on this read)
                             app -> infra: QUERY - Check shop member
                             infra -> t_shop_user: QUERY - Check shop member
                             activate t_shop_user

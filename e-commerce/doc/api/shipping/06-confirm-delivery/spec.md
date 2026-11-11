@@ -44,7 +44,7 @@
 - The shipping becomes `DELIVERED` and `delivered_at` is set to the time of the request. `DELIVERED` is set by this API (the customer confirms) and by the automatic completion below (the system confirms after `completion_days`, `updated_by` is `system`), never by the shop.
 - The order becomes `COMPLETED` when the order is `PROCESSING` and, for every item of the order that is not DELETED, the quantity in shippings with the status `DELIVERED` is equal to the quantity of the item (all goods were shipped and received). Otherwise the order stays `PROCESSING`. `orderStatus` in the response is the status after the request. `COMPLETED` is the status the shop review rule (`shop/15`) reads to know that the caller bought the product.
 - When the customer never confirms, the order completes by itself `completion_days` (7) days after the parcels were shipped, see Automatic Completion Rules below. The order of a partial shipment that cannot be finished does not complete by itself.
-- Execution order: validate the request (400) -> existence and ownership of the shipping (404) -> status of the shipping (409) -> write the shipping and, when needed, the order in one transaction. The shipping is first read without a lock only to find its order, then the order row is locked (`SELECT ... FOR UPDATE`) before any row of `shipping.*` or `sales.*` is changed, and the update of the shipping repeats the status `SHIPPED` in its `WHERE`.
+- Execution order: validate the request (400) -> existence and ownership of the shipping (404) -> status of the shipping (409) -> write the shipping and, when needed, the order in one transaction. The shipping is first read without a lock only to find its order, then the order row is locked (`SELECT ... FOR UPDATE`) and the shipping row is locked and read again (`QUERY - Lock the shipping`, `FOR UPDATE`), the status is checked on that second read and not on the first, all before any row of `shipping.*` or `sales.*` is changed, and the update of the shipping repeats the status `SHIPPED` in its `WHERE` (approved by the product owner on 2026-11-08).
 - This behaviour follows `docs/superpowers/specs/2026-11-06-shipping-design.md`, approved by the product owner on 2026-11-06. The payment columns that the shipping APIs read (`payment.t_payment.shipping_method`) belong to the payment design of WP2 (`docs/superpowers/specs/2026-11-06-payment-design.md`).
 
 ### Automatic Completion Rules
@@ -290,6 +290,18 @@ INNER JOIN sales.t_order o
 WHERE s.id = '<sequence.shippingId>'
 AND o.user_id = '<sequence.userId>'
 AND s.row_status <> 'DELETED' -- a shipping of another user counts as not found
+```
+
+#### QUERY - Lock the shipping
+
+```SQL
+SELECT
+    s.id as shipping_id,
+    s.status
+FROM shipping.t_shipping s
+WHERE s.id = '<sequence.shippingId>'
+AND s.row_status <> 'DELETED'
+FOR UPDATE -- read again after the order row is locked, the status step is checked on this row
 ```
 
 #### UPDATE - Confirm the delivery
