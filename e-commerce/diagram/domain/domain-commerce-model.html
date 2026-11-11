@@ -1,0 +1,216 @@
+<!DOCTYPE html>
+<html lang="en"><head><meta charset="UTF-8"><meta name="viewport" content="width=device-width,initial-scale=1.0">
+<title>Cart, orders, money &amp; fulfilment concepts</title><link href="https://fonts.googleapis.com/css2?family=Instrument+Serif:ital@0;1&amp;family=Geist:wght@400;500;600&amp;family=Geist+Mono:wght@400;500;600&amp;display=swap" rel="stylesheet">
+<style>
+* {box-sizing:border-box;} body {margin:0;padding:24px;background:#f5f5f5;color:#2d3142;font-family:'Geist',Arial,sans-serif;}
+main {width:100%;max-width:1584px;min-width:0;margin:0 auto;} h1 {font-family:'Instrument Serif',Georgia,serif;font-size:32px;font-weight:400;}
+.diagram-container {width:100%;overflow-x:auto;} svg {display:block;width:100%;min-width:1584px;}
+.source-note {font-size:12px;line-height:1.6;color:#4f5d75;} @media print {body {padding:0;} .diagram-container {overflow-x:visible;} svg {min-width:0;}}
+</style></head><body><main><h1>Cart, orders, money &amp; fulfilment concepts</h1><div class="diagram-container"><svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 1584 1120" role="img" aria-labelledby="domain-commerce-model-title domain-commerce-model-desc">
+<title id="domain-commerce-model-title">Cart, orders, money &amp; fulfilment concepts</title>
+<desc id="domain-commerce-model-desc">Cart, orders, money &amp; fulfilment concepts with business concepts, selected attributes and database-evidenced relationships grouped by SQL schema.</desc>
+<defs>
+<marker id="domain-commerce-model-arrow" markerWidth="8" markerHeight="6" refX="7" refY="3" orient="auto"><polygon points="0 0,8 3,0 6" fill="#4f5d75"/></marker>
+<marker id="domain-commerce-model-accent" markerWidth="8" markerHeight="6" refX="7" refY="3" orient="auto"><polygon points="0 0,8 3,0 6" fill="#bf4520"/></marker>
+<marker id="domain-commerce-model-link" markerWidth="8" markerHeight="6" refX="7" refY="3" orient="auto"><polygon points="0 0,8 3,0 6" fill="#2e5aa8"/></marker>
+</defs>
+<rect width="1584" height="1120" fill="#f5f5f5"/>
+<g data-container-id="cart" data-parent="root"><rect data-role="container-bounds" x="40" y="160" width="480" height="208" rx="4" fill="#f5f5f5" stroke="#5a6580" stroke-width="1"/>
+<line x1="40" y1="196" x2="520" y2="196" stroke="#bfc0c0" stroke-width="0.8"/>
+<text x="52" y="176" font-size="12" font-family="Geist,Arial,sans-serif" font-weight="600" fill="#5a6580" text-anchor="start">Customer selection</text>
+<text x="52" y="189" font-size="8" font-family="Geist Mono,Courier New,monospace" font-weight="400" fill="#5a6580" text-anchor="start">cart · 1 table; no cart header</text>
+</g>
+<g data-container-id="sales" data-parent="root"><rect data-role="container-bounds" x="40" y="416" width="480" height="572" rx="4" fill="#f5f5f5" stroke="#5a6580" stroke-width="1"/>
+<line x1="40" y1="452" x2="520" y2="452" stroke="#bfc0c0" stroke-width="0.8"/>
+<text x="52" y="432" font-size="12" font-family="Geist,Arial,sans-serif" font-weight="600" fill="#5a6580" text-anchor="start">Order &amp; snapshots</text>
+<text x="52" y="445" font-size="8" font-family="Geist Mono,Courier New,monospace" font-weight="400" fill="#5a6580" text-anchor="start">sales · 2 tables</text>
+</g>
+<g data-container-id="payment" data-parent="root"><rect data-role="container-bounds" x="560" y="160" width="464" height="208" rx="4" fill="#f5f5f5" stroke="#5a6580" stroke-width="1"/>
+<line x1="560" y1="196" x2="1024" y2="196" stroke="#bfc0c0" stroke-width="0.8"/>
+<text x="572" y="176" font-size="12" font-family="Geist,Arial,sans-serif" font-weight="600" fill="#5a6580" text-anchor="start">Financial attempts</text>
+<text x="572" y="189" font-size="8" font-family="Geist Mono,Courier New,monospace" font-weight="400" fill="#5a6580" text-anchor="start">payment · 1 table</text>
+</g>
+<g data-container-id="shipping" data-parent="root"><rect data-role="container-bounds" x="560" y="416" width="464" height="572" rx="4" fill="#f5f5f5" stroke="#5a6580" stroke-width="1"/>
+<line x1="560" y1="452" x2="1024" y2="452" stroke="#bfc0c0" stroke-width="0.8"/>
+<text x="572" y="432" font-size="12" font-family="Geist,Arial,sans-serif" font-weight="600" fill="#5a6580" text-anchor="start">Parcel fulfilment</text>
+<text x="572" y="445" font-size="8" font-family="Geist Mono,Courier New,monospace" font-weight="400" fill="#5a6580" text-anchor="start">shipping · 3 tables</text>
+</g>
+<g data-container-id="campaign" data-parent="root"><rect data-role="container-bounds" x="1064" y="160" width="480" height="828" rx="4" fill="#f5f5f5" stroke="#5a6580" stroke-width="1"/>
+<line x1="1064" y1="196" x2="1544" y2="196" stroke="#bfc0c0" stroke-width="0.8"/>
+<text x="1076" y="176" font-size="12" font-family="Geist,Arial,sans-serif" font-weight="600" fill="#5a6580" text-anchor="start">Promotion &amp; budget accounting</text>
+<text x="1076" y="189" font-size="8" font-family="Geist Mono,Courier New,monospace" font-weight="400" fill="#5a6580" text-anchor="start">campaign · 6 tables</text>
+</g>
+<path d="M 280 616 L 280 720" fill="none" stroke="#4f5d75" stroke-width="1.2"/>
+<path d="M 496 512 L 528 512 Q 536 512 536 504 L 536 288 Q 536 280 544 280 L 584 280" fill="none" stroke="#4f5d75" stroke-width="1.2"/>
+<path d="M 496 552 L 584 552" fill="none" stroke="#4f5d75" stroke-width="1.2"/>
+<path d="M 496 736 L 584 736" fill="none" stroke="#4f5d75" stroke-width="1.2"/>
+<path d="M 680 584 L 680 656" fill="none" stroke="#4f5d75" stroke-width="1.2"/>
+<path d="M 904 584 L 904 656" fill="none" stroke="#4f5d75" stroke-width="1.2"/>
+<path d="M 1280 272 L 1320 272" fill="none" stroke="#4f5d75" stroke-width="1.2"/>
+<path d="M 1192 328 L 1192 416" fill="none" stroke="#4f5d75" stroke-width="1.2"/>
+<path d="M 1424 328 L 1424 416" fill="none" stroke="#4f5d75" stroke-width="1.2"/>
+<path d="M 1088 280 L 1060 280 Q 1052 280 1052 288 L 1052 664 Q 1052 672 1060 672 L 1088 672" fill="none" stroke="#4f5d75" stroke-width="1.2"/>
+<path d="M 1280 304 L 1300 304 Q 1308 304 1308 312 L 1308 666 Q 1308 672 1314 672 L 1320 672" fill="none" stroke="#4f5d75" stroke-width="1.2"/>
+<g data-node-id="cart.t_cart" data-parent="cart">
+<rect data-role="node-bounds" x="64" y="216" width="432" height="128" rx="4" fill="#ffffff" stroke="#2d3142" stroke-width="1"/>
+<text x="76" y="238" font-size="12" font-family="Geist,Arial,sans-serif" font-weight="600" fill="#2d3142" text-anchor="start">Cart line</text>
+<text x="76" y="254" font-size="8" font-family="Geist Mono,Courier New,monospace" font-weight="400" fill="#5a6580" text-anchor="start">cart.t_cart</text>
+<text x="76" y="270" font-size="9" font-family="Geist Mono,Courier New,monospace" font-weight="400" fill="#4f5d75" text-anchor="start"># id / user_id / shop_id</text>
+<text x="76" y="284" font-size="9" font-family="Geist Mono,Courier New,monospace" font-weight="400" fill="#4f5d75" text-anchor="start">product_id / sku_id</text>
+<text x="76" y="298" font-size="9" font-family="Geist Mono,Courier New,monospace" font-weight="400" fill="#4f5d75" text-anchor="start">quantity &gt; 0</text>
+</g>
+<g data-node-id="sales.t_order" data-parent="sales">
+<rect data-role="node-bounds" x="64" y="472" width="432" height="144" rx="4" fill="#f1e7e4" stroke="#bf4520" stroke-width="1"/>
+<text x="76" y="494" font-size="12" font-family="Geist,Arial,sans-serif" font-weight="600" fill="#2d3142" text-anchor="start">Order</text>
+<text x="76" y="510" font-size="8" font-family="Geist Mono,Courier New,monospace" font-weight="400" fill="#5a6580" text-anchor="start">sales.t_order</text>
+<text x="76" y="526" font-size="9" font-family="Geist Mono,Courier New,monospace" font-weight="400" fill="#4f5d75" text-anchor="start"># id / user_id / shop_id</text>
+<text x="76" y="540" font-size="9" font-family="Geist Mono,Courier New,monospace" font-weight="400" fill="#4f5d75" text-anchor="start">address_id + ship_* snapshot</text>
+<text x="76" y="554" font-size="9" font-family="Geist Mono,Courier New,monospace" font-weight="400" fill="#4f5d75" text-anchor="start">total_price / total_discount / total_tax</text>
+<text x="76" y="568" font-size="9" font-family="Geist Mono,Courier New,monospace" font-weight="400" fill="#4f5d75" text-anchor="start">total_shipping / total_amount</text>
+<text x="76" y="582" font-size="9" font-family="Geist Mono,Courier New,monospace" font-weight="400" fill="#4f5d75" text-anchor="start">status / expires_at</text>
+</g>
+<g data-node-id="sales.t_order_item" data-parent="sales">
+<rect data-role="node-bounds" x="64" y="720" width="432" height="144" rx="4" fill="#ffffff" stroke="#2d3142" stroke-width="1"/>
+<text x="76" y="742" font-size="12" font-family="Geist,Arial,sans-serif" font-weight="600" fill="#2d3142" text-anchor="start">Order line</text>
+<text x="76" y="758" font-size="8" font-family="Geist Mono,Courier New,monospace" font-weight="400" fill="#5a6580" text-anchor="start">sales.t_order_item</text>
+<text x="76" y="774" font-size="9" font-family="Geist Mono,Courier New,monospace" font-weight="400" fill="#4f5d75" text-anchor="start"># id / order_id</text>
+<text x="76" y="788" font-size="9" font-family="Geist Mono,Courier New,monospace" font-weight="400" fill="#4f5d75" text-anchor="start">shop_id / product_id / sku_id</text>
+<text x="76" y="802" font-size="9" font-family="Geist Mono,Courier New,monospace" font-weight="400" fill="#4f5d75" text-anchor="start">lot_id / quantity</text>
+<text x="76" y="816" font-size="9" font-family="Geist Mono,Courier New,monospace" font-weight="400" fill="#4f5d75" text-anchor="start">price / discount / total_price</text>
+<text x="76" y="830" font-size="9" font-family="Geist Mono,Courier New,monospace" font-weight="400" fill="#4f5d75" text-anchor="start">gross_profit / profit shares</text>
+</g>
+<g data-node-id="payment.t_payment" data-parent="payment">
+<rect data-role="node-bounds" x="584" y="216" width="416" height="128" rx="4" fill="#ffffff" stroke="#2d3142" stroke-width="1"/>
+<text x="596" y="238" font-size="12" font-family="Geist,Arial,sans-serif" font-weight="600" fill="#2d3142" text-anchor="start">Payment attempt</text>
+<text x="596" y="254" font-size="8" font-family="Geist Mono,Courier New,monospace" font-weight="400" fill="#5a6580" text-anchor="start">payment.t_payment</text>
+<text x="596" y="270" font-size="9" font-family="Geist Mono,Courier New,monospace" font-weight="400" fill="#4f5d75" text-anchor="start"># id / order_id</text>
+<text x="596" y="284" font-size="9" font-family="Geist Mono,Courier New,monospace" font-weight="400" fill="#4f5d75" text-anchor="start">provider_payment_id / status</text>
+<text x="596" y="298" font-size="9" font-family="Geist Mono,Courier New,monospace" font-weight="400" fill="#4f5d75" text-anchor="start">amount / currency / refund IDs</text>
+</g>
+<g data-node-id="shipping.t_shipping" data-parent="shipping">
+<rect data-role="node-bounds" x="584" y="472" width="416" height="112" rx="4" fill="#ffffff" stroke="#2d3142" stroke-width="1"/>
+<text x="596" y="494" font-size="12" font-family="Geist,Arial,sans-serif" font-weight="600" fill="#2d3142" text-anchor="start">Shipment</text>
+<text x="596" y="510" font-size="8" font-family="Geist Mono,Courier New,monospace" font-weight="400" fill="#5a6580" text-anchor="start">shipping.t_shipping</text>
+<text x="596" y="526" font-size="9" font-family="Geist Mono,Courier New,monospace" font-weight="400" fill="#4f5d75" text-anchor="start"># id / order_id</text>
+<text x="596" y="540" font-size="9" font-family="Geist Mono,Courier New,monospace" font-weight="400" fill="#4f5d75" text-anchor="start">status / carrier / tracking</text>
+<text x="596" y="554" font-size="9" font-family="Geist Mono,Courier New,monospace" font-weight="400" fill="#4f5d75" text-anchor="start">shipped_at / delivered_at</text>
+</g>
+<g data-node-id="shipping.t_shipping_item" data-parent="shipping">
+<rect data-role="node-bounds" x="584" y="656" width="192" height="112" rx="4" fill="#ffffff" stroke="#2d3142" stroke-width="1"/>
+<text x="596" y="678" font-size="12" font-family="Geist,Arial,sans-serif" font-weight="600" fill="#2d3142" text-anchor="start">Shipment allocation</text>
+<text x="596" y="694" font-size="8" font-family="Geist Mono,Courier New,monospace" font-weight="400" fill="#5a6580" text-anchor="start">shipping.t_shipping_item</text>
+<text x="596" y="710" font-size="9" font-family="Geist Mono,Courier New,monospace" font-weight="400" fill="#4f5d75" text-anchor="start"># id / shipping_id</text>
+<text x="596" y="724" font-size="9" font-family="Geist Mono,Courier New,monospace" font-weight="400" fill="#4f5d75" text-anchor="start">order_item_id</text>
+<text x="596" y="738" font-size="9" font-family="Geist Mono,Courier New,monospace" font-weight="400" fill="#4f5d75" text-anchor="start">quantity &gt; 0</text>
+</g>
+<g data-node-id="shipping.t_shipping_stop" data-parent="shipping">
+<rect data-role="node-bounds" x="808" y="656" width="192" height="112" rx="4" fill="#ffffff" stroke="#2d3142" stroke-width="1"/>
+<text x="820" y="678" font-size="12" font-family="Geist,Arial,sans-serif" font-weight="600" fill="#2d3142" text-anchor="start">Shipment stop</text>
+<text x="820" y="694" font-size="8" font-family="Geist Mono,Courier New,monospace" font-weight="400" fill="#5a6580" text-anchor="start">shipping.t_shipping_stop</text>
+<text x="820" y="710" font-size="9" font-family="Geist Mono,Courier New,monospace" font-weight="400" fill="#4f5d75" text-anchor="start"># id / shipping_id</text>
+<text x="820" y="724" font-size="9" font-family="Geist Mono,Courier New,monospace" font-weight="400" fill="#4f5d75" text-anchor="start">stop_number / stop_type</text>
+<text x="820" y="738" font-size="9" font-family="Geist Mono,Courier New,monospace" font-weight="400" fill="#4f5d75" text-anchor="start">location_name</text>
+</g>
+<g data-node-id="campaign.m_campaign" data-parent="campaign">
+<rect data-role="node-bounds" x="1088" y="216" width="192" height="112" rx="4" fill="#ffffff" stroke="#2d3142" stroke-width="1"/>
+<text x="1100" y="238" font-size="12" font-family="Geist,Arial,sans-serif" font-weight="600" fill="#2d3142" text-anchor="start">Campaign</text>
+<text x="1100" y="254" font-size="8" font-family="Geist Mono,Courier New,monospace" font-weight="400" fill="#5a6580" text-anchor="start">campaign.m_campaign</text>
+<text x="1100" y="270" font-size="9" font-family="Geist Mono,Courier New,monospace" font-weight="400" fill="#4f5d75" text-anchor="start"># id / name</text>
+<text x="1100" y="284" font-size="9" font-family="Geist Mono,Courier New,monospace" font-weight="400" fill="#4f5d75" text-anchor="start">start_at / end_at</text>
+</g>
+<g data-node-id="campaign.m_campaign_budget" data-parent="campaign">
+<rect data-role="node-bounds" x="1320" y="216" width="208" height="112" rx="4" fill="#ffffff" stroke="#2d3142" stroke-width="1"/>
+<text x="1332" y="238" font-size="12" font-family="Geist,Arial,sans-serif" font-weight="600" fill="#2d3142" text-anchor="start">Campaign budget</text>
+<text x="1332" y="254" font-size="8" font-family="Geist Mono,Courier New,monospace" font-weight="400" fill="#5a6580" text-anchor="start">campaign.m_campaign_budget</text>
+<text x="1332" y="270" font-size="9" font-family="Geist Mono,Courier New,monospace" font-weight="400" fill="#4f5d75" text-anchor="start"># id / campaign_id</text>
+<text x="1332" y="284" font-size="9" font-family="Geist Mono,Courier New,monospace" font-weight="400" fill="#4f5d75" text-anchor="start">budget / remaining</text>
+</g>
+<g data-node-id="campaign.t_campaign_discount" data-parent="campaign">
+<rect data-role="node-bounds" x="1088" y="416" width="192" height="112" rx="4" fill="#ffffff" stroke="#2d3142" stroke-width="1"/>
+<text x="1100" y="438" font-size="12" font-family="Geist,Arial,sans-serif" font-weight="600" fill="#2d3142" text-anchor="start">Discount rule</text>
+<text x="1100" y="454" font-size="8" font-family="Geist Mono,Courier New,monospace" font-weight="400" fill="#5a6580" text-anchor="start">campaign.t_campaign_discount</text>
+<text x="1100" y="470" font-size="9" font-family="Geist Mono,Courier New,monospace" font-weight="400" fill="#4f5d75" text-anchor="start"># id / campaign_id</text>
+<text x="1100" y="484" font-size="9" font-family="Geist Mono,Courier New,monospace" font-weight="400" fill="#4f5d75" text-anchor="start">discount_type / discount_value</text>
+</g>
+<g data-node-id="campaign.m_campaign_budget_ledger" data-parent="campaign">
+<rect data-role="node-bounds" x="1320" y="416" width="208" height="112" rx="4" fill="#ffffff" stroke="#2d3142" stroke-width="1"/>
+<text x="1332" y="438" font-size="12" font-family="Geist,Arial,sans-serif" font-weight="600" fill="#2d3142" text-anchor="start">Budget movement</text>
+<text x="1332" y="454" font-size="8" font-family="Geist Mono,Courier New,monospace" font-weight="400" fill="#5a6580" text-anchor="start">campaign.m_campaign_budget_ledger</text>
+<text x="1332" y="470" font-size="9" font-family="Geist Mono,Courier New,monospace" font-weight="400" fill="#4f5d75" text-anchor="start"># id / campaign_budget_id</text>
+<text x="1332" y="484" font-size="9" font-family="Geist Mono,Courier New,monospace" font-weight="400" fill="#4f5d75" text-anchor="start">campaign_id / order_id</text>
+<text x="1332" y="498" font-size="9" font-family="Geist Mono,Courier New,monospace" font-weight="400" fill="#4f5d75" text-anchor="start">entry_type / usage / remaining</text>
+</g>
+<g data-node-id="campaign.t_campaign_product" data-parent="campaign">
+<rect data-role="node-bounds" x="1088" y="616" width="192" height="112" rx="4" fill="#ffffff" stroke="#2d3142" stroke-width="1"/>
+<text x="1100" y="638" font-size="12" font-family="Geist,Arial,sans-serif" font-weight="600" fill="#2d3142" text-anchor="start">Product/category target</text>
+<text x="1100" y="654" font-size="8" font-family="Geist Mono,Courier New,monospace" font-weight="400" fill="#5a6580" text-anchor="start">campaign.t_campaign_product</text>
+<text x="1100" y="670" font-size="9" font-family="Geist Mono,Courier New,monospace" font-weight="400" fill="#4f5d75" text-anchor="start"># id / campaign_id</text>
+<text x="1100" y="684" font-size="9" font-family="Geist Mono,Courier New,monospace" font-weight="400" fill="#4f5d75" text-anchor="start">product_id?</text>
+<text x="1100" y="698" font-size="9" font-family="Geist Mono,Courier New,monospace" font-weight="400" fill="#4f5d75" text-anchor="start">product_category_id? (XOR)</text>
+</g>
+<g data-node-id="campaign.t_campaign_shop" data-parent="campaign">
+<rect data-role="node-bounds" x="1320" y="616" width="208" height="112" rx="4" fill="#ffffff" stroke="#2d3142" stroke-width="1"/>
+<text x="1332" y="638" font-size="12" font-family="Geist,Arial,sans-serif" font-weight="600" fill="#2d3142" text-anchor="start">Shop eligibility</text>
+<text x="1332" y="654" font-size="8" font-family="Geist Mono,Courier New,monospace" font-weight="400" fill="#5a6580" text-anchor="start">campaign.t_campaign_shop</text>
+<text x="1332" y="670" font-size="9" font-family="Geist Mono,Courier New,monospace" font-weight="400" fill="#4f5d75" text-anchor="start"># id / campaign_id</text>
+<text x="1332" y="684" font-size="9" font-family="Geist Mono,Courier New,monospace" font-weight="400" fill="#4f5d75" text-anchor="start">shop_id</text>
+</g>
+<text x="64" y="914" font-size="10" font-family="Geist,Arial,sans-serif" font-weight="400" fill="#4f5d75" text-anchor="start">Order total = price - discount + tax + shipping.</text>
+<text x="64" y="938" font-size="10" font-family="Geist,Arial,sans-serif" font-weight="400" fill="#4f5d75" text-anchor="start">Item total_price = price x quantity (before discount).</text>
+<text x="584" y="826" font-size="10" font-family="Geist,Arial,sans-serif" font-weight="400" fill="#4f5d75" text-anchor="start">Payment history is 0..* per order.</text>
+<text x="584" y="850" font-size="10" font-family="Geist,Arial,sans-serif" font-weight="400" fill="#4f5d75" text-anchor="start">Only a live filtered subset is limited to one.</text>
+<text x="584" y="898" font-size="10" font-family="Geist,Arial,sans-serif" font-weight="400" fill="#4f5d75" text-anchor="start">Shipment allocation supports split quantities;</text>
+<text x="584" y="922" font-size="10" font-family="Geist,Arial,sans-serif" font-weight="400" fill="#4f5d75" text-anchor="start">the FK does not enforce shipment quantity sums.</text>
+<text x="1088" y="814" font-size="10" font-family="Geist,Arial,sans-serif" font-weight="400" fill="#4f5d75" text-anchor="start">Budget movement: RESERVE / RELEASE.</text>
+<text x="1088" y="838" font-size="10" font-family="Geist,Arial,sans-serif" font-weight="400" fill="#4f5d75" text-anchor="start">One entry per budget + order + type.</text>
+<text x="1088" y="886" font-size="10" font-family="Geist,Arial,sans-serif" font-weight="400" fill="#4f5d75" text-anchor="start">Eligibility chooses product XOR category.</text>
+<text x="1088" y="910" font-size="10" font-family="Geist,Arial,sans-serif" font-weight="400" fill="#4f5d75" text-anchor="start">Tax formula and rounding are not in DDL.</text>
+<text x="40" y="1012" font-size="11" font-family="Geist,Arial,sans-serif" font-weight="400" fill="#4f5d75" text-anchor="start">13 tables. Selected 11 / 27 FK associations. Cart -&gt; order is a use-case conversion, not a persisted FK relation.</text>
+<text x="40" y="48" font-size="8" font-family="Geist Mono,Courier New,monospace" font-weight="500" fill="#5a6580" text-anchor="start">E-COMMERCE / DATABASE-GROUNDED CONCEPTUAL DOMAIN MODEL</text>
+<text x="40" y="88" font-size="32" font-family="Instrument Serif,Georgia,serif" font-weight="400" fill="#2d3142" text-anchor="start">Cart, orders, money &amp; fulfilment concepts</text>
+<text x="40" y="116" font-size="12" font-family="Geist,Arial,sans-serif" font-weight="400" fill="#4f5d75" text-anchor="start">Named entities inside schema groups. Selected associations show all-row cardinality, not request order or aggregate ownership.</text>
+<text x="40" y="1036" font-size="9" font-family="Geist Mono,Courier New,monospace" font-weight="400" fill="#5a6580" text-anchor="start">Source: db/migrations/up + doc/schema | 53 tables / 11 schemas / 75 FK columns | Full references in companion Markdown</text>
+<line x1="40" y1="1052" x2="1544" y2="1052" stroke="#bfc0c0"/>
+<text x="40" y="1076" font-size="9" font-family="Geist,Arial,sans-serif" font-weight="400" fill="#4f5d75" text-anchor="start">Entity / association entity</text>
+<text x="340.8" y="1076" font-size="9" font-family="Geist,Arial,sans-serif" font-weight="400" fill="#4f5d75" text-anchor="start">Line = selected FK association</text>
+<text x="641.6" y="1076" font-size="9" font-family="Geist,Arial,sans-serif" font-weight="400" fill="#4f5d75" text-anchor="start">1 or 0..1 at parent end</text>
+<text x="942.4" y="1076" font-size="9" font-family="Geist,Arial,sans-serif" font-weight="400" fill="#4f5d75" text-anchor="start">0..* = historical children</text>
+<text x="1243.2" y="1076" font-size="9" font-family="Geist,Arial,sans-serif" font-weight="400" fill="#4f5d75" text-anchor="start">Editorial focus; not aggregate root</text>
+<line x1="72" y1="260" x2="488" y2="260" stroke="#bfc0c0" stroke-width="0.6"/>
+<line x1="72" y1="516" x2="488" y2="516" stroke="#bfc0c0" stroke-width="0.6"/>
+<line x1="72" y1="764" x2="488" y2="764" stroke="#bfc0c0" stroke-width="0.6"/>
+<line x1="592" y1="260" x2="992" y2="260" stroke="#bfc0c0" stroke-width="0.6"/>
+<line x1="592" y1="516" x2="992" y2="516" stroke="#bfc0c0" stroke-width="0.6"/>
+<line x1="592" y1="700" x2="768" y2="700" stroke="#bfc0c0" stroke-width="0.6"/>
+<line x1="816" y1="700" x2="992" y2="700" stroke="#bfc0c0" stroke-width="0.6"/>
+<line x1="1096" y1="260" x2="1272" y2="260" stroke="#bfc0c0" stroke-width="0.6"/>
+<line x1="1328" y1="260" x2="1520" y2="260" stroke="#bfc0c0" stroke-width="0.6"/>
+<line x1="1096" y1="460" x2="1272" y2="460" stroke="#bfc0c0" stroke-width="0.6"/>
+<line x1="1328" y1="460" x2="1520" y2="460" stroke="#bfc0c0" stroke-width="0.6"/>
+<line x1="1096" y1="660" x2="1272" y2="660" stroke="#bfc0c0" stroke-width="0.6"/>
+<line x1="1328" y1="660" x2="1520" y2="660" stroke="#bfc0c0" stroke-width="0.6"/>
+<g data-cardinality="card-0-source"><rect x="256" y="622" width="16" height="12" rx="2" fill="#f5f5f5"/><text x="264" y="631" font-size="8" font-family="Geist Mono,Courier New,monospace" font-weight="400" fill="#4f5d75" text-anchor="middle">1</text></g>
+<g data-cardinality="card-0-target"><rect x="244" y="702" width="28" height="12" rx="2" fill="#f5f5f5"/><text x="258" y="711" font-size="8" font-family="Geist Mono,Courier New,monospace" font-weight="400" fill="#4f5d75" text-anchor="middle">0..*</text></g>
+<g data-cardinality="card-1-source"><rect x="500" y="492" width="16" height="12" rx="2" fill="#f5f5f5"/><text x="508" y="501" font-size="8" font-family="Geist Mono,Courier New,monospace" font-weight="400" fill="#4f5d75" text-anchor="middle">1</text></g>
+<g data-cardinality="card-1-target"><rect x="554" y="260" width="28" height="12" rx="2" fill="#f5f5f5"/><text x="568" y="269" font-size="8" font-family="Geist Mono,Courier New,monospace" font-weight="400" fill="#4f5d75" text-anchor="middle">0..*</text></g>
+<g data-cardinality="card-2-source"><rect x="500" y="532" width="16" height="12" rx="2" fill="#f5f5f5"/><text x="508" y="541" font-size="8" font-family="Geist Mono,Courier New,monospace" font-weight="400" fill="#4f5d75" text-anchor="middle">1</text></g>
+<g data-cardinality="card-2-target"><rect x="554" y="532" width="28" height="12" rx="2" fill="#f5f5f5"/><text x="568" y="541" font-size="8" font-family="Geist Mono,Courier New,monospace" font-weight="400" fill="#4f5d75" text-anchor="middle">0..*</text></g>
+<g data-cardinality="card-3-source"><rect x="500" y="716" width="16" height="12" rx="2" fill="#f5f5f5"/><text x="508" y="725" font-size="8" font-family="Geist Mono,Courier New,monospace" font-weight="400" fill="#4f5d75" text-anchor="middle">1</text></g>
+<g data-cardinality="card-3-target"><rect x="554" y="716" width="28" height="12" rx="2" fill="#f5f5f5"/><text x="568" y="725" font-size="8" font-family="Geist Mono,Courier New,monospace" font-weight="400" fill="#4f5d75" text-anchor="middle">0..*</text></g>
+<g data-cardinality="card-4-source"><rect x="656" y="590" width="16" height="12" rx="2" fill="#f5f5f5"/><text x="664" y="599" font-size="8" font-family="Geist Mono,Courier New,monospace" font-weight="400" fill="#4f5d75" text-anchor="middle">1</text></g>
+<g data-cardinality="card-4-target"><rect x="644" y="638" width="28" height="12" rx="2" fill="#f5f5f5"/><text x="658" y="647" font-size="8" font-family="Geist Mono,Courier New,monospace" font-weight="400" fill="#4f5d75" text-anchor="middle">0..*</text></g>
+<g data-cardinality="card-5-source"><rect x="880" y="590" width="16" height="12" rx="2" fill="#f5f5f5"/><text x="888" y="599" font-size="8" font-family="Geist Mono,Courier New,monospace" font-weight="400" fill="#4f5d75" text-anchor="middle">1</text></g>
+<g data-cardinality="card-5-target"><rect x="868" y="638" width="28" height="12" rx="2" fill="#f5f5f5"/><text x="882" y="647" font-size="8" font-family="Geist Mono,Courier New,monospace" font-weight="400" fill="#4f5d75" text-anchor="middle">0..*</text></g>
+<g data-cardinality="card-6-source"><rect x="1284" y="252" width="16" height="12" rx="2" fill="#f5f5f5"/><text x="1292" y="261" font-size="8" font-family="Geist Mono,Courier New,monospace" font-weight="400" fill="#4f5d75" text-anchor="middle">1</text></g>
+<g data-cardinality="card-6-target"><rect x="1290" y="280" width="28" height="12" rx="2" fill="#f5f5f5"/><text x="1304" y="289" font-size="8" font-family="Geist Mono,Courier New,monospace" font-weight="400" fill="#4f5d75" text-anchor="middle">0..*</text></g>
+<g data-cardinality="card-7-source"><rect x="1168" y="334" width="16" height="12" rx="2" fill="#f5f5f5"/><text x="1176" y="343" font-size="8" font-family="Geist Mono,Courier New,monospace" font-weight="400" fill="#4f5d75" text-anchor="middle">1</text></g>
+<g data-cardinality="card-7-target"><rect x="1156" y="398" width="28" height="12" rx="2" fill="#f5f5f5"/><text x="1170" y="407" font-size="8" font-family="Geist Mono,Courier New,monospace" font-weight="400" fill="#4f5d75" text-anchor="middle">0..*</text></g>
+<g data-cardinality="card-8-source"><rect x="1400" y="334" width="16" height="12" rx="2" fill="#f5f5f5"/><text x="1408" y="343" font-size="8" font-family="Geist Mono,Courier New,monospace" font-weight="400" fill="#4f5d75" text-anchor="middle">1</text></g>
+<g data-cardinality="card-8-target"><rect x="1388" y="398" width="28" height="12" rx="2" fill="#f5f5f5"/><text x="1402" y="407" font-size="8" font-family="Geist Mono,Courier New,monospace" font-weight="400" fill="#4f5d75" text-anchor="middle">0..*</text></g>
+<g data-cardinality="card-9-source"><rect x="1068" y="260" width="16" height="12" rx="2" fill="#f5f5f5"/><text x="1076" y="269" font-size="8" font-family="Geist Mono,Courier New,monospace" font-weight="400" fill="#4f5d75" text-anchor="middle">1</text></g>
+<g data-cardinality="card-9-target"><rect x="1058" y="652" width="28" height="12" rx="2" fill="#f5f5f5"/><text x="1072" y="661" font-size="8" font-family="Geist Mono,Courier New,monospace" font-weight="400" fill="#4f5d75" text-anchor="middle">0..*</text></g>
+<g data-cardinality="card-10-source"><rect x="1284" y="312" width="16" height="12" rx="2" fill="#f5f5f5"/><text x="1292" y="321" font-size="8" font-family="Geist Mono,Courier New,monospace" font-weight="400" fill="#4f5d75" text-anchor="middle">1</text></g>
+<g data-cardinality="card-10-target"><rect x="1272" y="602" width="28" height="12" rx="2" fill="#f5f5f5"/><text x="1286" y="611" font-size="8" font-family="Geist Mono,Courier New,monospace" font-weight="400" fill="#4f5d75" text-anchor="middle">0..*</text></g></svg></div>
+<p class="source-note">View: ER. A3 landscape, 1584 × 1120. Default light style.
+The matching PNG contains editable draw.io data. Supplied font fallbacks: Georgia, Arial and Courier New. Domain source, evidence and limitations: <a href="domain-model.md">domain model</a> and <a href="README.md">domain guide</a>.</p>
+</main></body></html>

@@ -7,6 +7,193 @@ description: Shared checklist for planning and tracking non-trivial tasks withou
 
 Use one section per task, named `<scope>: <task-name>`. Preserve other task sections and mark an item complete only after its completion criterion is satisfied.
 
+## repository-wide: Refine backend questions and issue learning
+
+Status: Guidance, verification and publication package complete. Ittikorn requested English question topics, Thai question bodies with English technical terms, and a skill improvement after every actual bug, conflict or issue. PR87 is merged; this is a separate follow-up. Preserve the four-part question structure and approved implementation/delivery boundaries. Actual integration SHA, PR state and final file coverage are reported from Git/GitHub.
+
+1. [x] Inspect the current skill/reference, lessons and PR state; start a clean branch from current origin/main. The first branch attempt was not executed because approval review could not run due to a usage limit; retry through the same approval gate succeeded after the user asked to continue.
+2. [x] Define the question language contract and update its complete example; explicitly include existing bugs, conflicts and issues in the learning trigger and reconcile older execution-only wording.
+3. [x] Verify examples, trigger scenarios, metadata, links and scoped diff; prepare the per-file PR package and required main-integration/check commands. Report actual integration and publication from Git/GitHub.
+
+Verification: Five Markdown frontmatters and local references passed; the complete example has an English topic, four Thai explanations, Thai choices and preserved English technical terms. The corrected semantic checker accepts both valid Markdown emphasis variants and rejects four controls (missing explanation, Thai topic, English body and English choices). Independent evaluation generated three compliant questions and replayed five cases covering an existing bug, real merge conflict, expected rejection, deliberate TDD red and read-only scope. Existing sandbox reports/fixtures were preserved; application tests were not rerun because no application code changed. The new policy supersedes the earlier exemption for assigned known bugs without treating every red run as a separate incident.
+
+Issue improvements: Approval review initially could not complete due to a usage limit; the protected branch action remained unexecuted until a successful retry through the same gate. A brittle Markdown checker and masked aggregate exit status were corrected; the verification reference and lesson now preserve per-check status and validate semantic question content, including choice labels. Scoped preflight reports five task files and no blockers. PyYAML remains unavailable, so Ruby YAML parsing and direct metadata/language/reference checks are used without claiming the original validator ran. No production backend, API contract, schema or dependency changed.
+
+## repository-wide: Design the backend development skill
+
+Status: Skill, bundled references and behavioral evaluation complete; publication package prepared. All five interview decisions confirmed. The owner approved backend development in any language, feature/bug/refactor workflows, spec-first four-part clarification, real DB/HTTP evidence for relevant guarantees, canonical name `backend-development`, and test-first business changes/bug fixes. Authoring is now authorized in an isolated managed worktree. No component implementation or architecture change is authorized by this skill-design discussion. Preserve the existing code-review scope correction in lessons and unrelated cache files.
+
+1. [x] Load repository rules, SDD workflow, backend-developer role, component manifest, project knowledge and relevant lessons; inspect the current guide and approval/OpenAPI state.
+2. [x] Use a read-only fresh-context investigation to verify the pinned component and inspect actual architecture, libraries, transaction semantics and test coverage without changing either repository.
+3. [x] Confirm the design frontier with the owner: Q4 approved the `backend-development` name and Q5 approved test-first cadence, completing the material decisions and shared understanding.
+4. [x] After shared-understanding confirmation, write the skill and only necessary bundled references/examples; preserve existing approval, repository, architecture and delivery boundaries.
+5. [x] Finish the post-correction prose regression check and static/delivery preflight; register the actionable skill as ready and connect it to the specialized .NET role. Report actual changed files and verification.
+
+Proposed coverage: discover project/version/component boundaries; verify Approved Specs and published OpenAPI; map requirements to code/tests; implement use cases within existing layers and the owner's Business Domain convention; derive transaction/lock/error outcomes from each approved branch; choose meaningful unit/database/API evidence; run configured build/test/static checks; report traceability and improve the skill after each error. Keep dynamic project facts discoverable and provide instructional conventions/examples inside the skill rather than requiring a particular endpoint example to remain present.
+
+Owner decisions from round 1:
+
+- Q1: “ภาษาไหนก็ได้เลย” — support backend projects in any programming language; inspect the actual project stack and keep .NET/e-commerce conventions scoped to that project rather than imposing them globally.
+- Q2: “ใช่” — cover feature development, bug fixes and behavior-preserving refactors with the appropriate workflow for each.
+- Q3: “ใช่” with a spec-first clarification requirement — require real database/HTTP evidence appropriate to changed guarantees. Read the governing spec before writing code; if it is not understood, ask before implementing. Every clarification must explain (1) what happened or is unclear, (2) its impact, (3) the recommended resolution and (4) the future consequences of that resolution.
+- Use AskUserQuestion when available; this runtime has no tool with that name, so the current interview uses `request_user_input_async` as the available structured question UI, preserving all four required explanation fields.
+
+Round 2 confirmed through the question UI: Q4 “ใช่ เปลี่ยนเป็น backend-development (แนะนำ)” and Q5 “ใช่ ใช้ test-first ตามที่เสนอ (แนะนำ)”. These confirmations authorize the proposed skill design; they do not approve any production feature, new library or architecture change. Keep the existing .NET role specialized and connect it to the generic skill with the .NET project reference.
+
+Discovery evidence at the start of this task: The existing backend-developer role was ready, but the skill was a placeholder. The manifest-pinned child checkout is clean at `d8255183cba54d0c2b218607456b895a70df32f0`, with the exact declared origin. Read-only source inspection found .NET10, five production layers, custom CQRS, Dapper/Npgsql, exception-based UnitOfWork and Domain/Application tests using fakes; no new builds/tests or remote-reachability checks were performed. Login/refresh specs remain in-review, the code-structure guide remains draft and the OpenAPI paths are empty. These are evidence for readiness/consistency gates, not approval to implement those contracts. HTTP/Result failure alone cannot determine rollback: branch-specific retained effects must come from the approved spec.
+
+
+Verification: Eight authored Markdown frontmatters, local links/anchors, fences and registry paths passed static checks; skill naming/description/scaffold checks passed. Scoped delivery preflight reports nine task paths (one deleted placeholder, four new skill/reference files) with no blockers. PyYAML is unavailable, so Ruby YAML parsing and direct metadata/reference checks were used without claiming the original Python validator ran. No production component code, schema, API contract, dependency or architecture changed.
+
+Independent evaluation: An approved synthetic Python/SQLite bug-fix fixture captured a behavioral red on insufficient stock, then passed four public-interface tests after the minimal fix, including independent competing connections. A Go HTTP fixture with an in-review contradictory spec and empty OpenAPI produced two complete four-part questions and no implementation; its raw inputs stayed unchanged. A transaction planning fixture preserved the current callback interface and required successful audit commit before 401, with DB/HTTP tests identified as planned rather than executed. This is bounded evidence for the skill's decisions, not proof for every language/framework or production authentication.
+
+Improvement verified: The evaluation exposed the blanket error-learning wording's confusion between intended red evidence and execution mistakes. The skill and lesson now distinguish them, retain mandatory preventive updates after actual mistakes and preserve authorization for out-of-scope skill edits. An independent prose replay confirmed the gap is resolved; initial report and fixture source/tests remain unchanged. Evaluation artifacts stay in an isolated temporary directory and are excluded from the PR.
+
+Later owner policy: English topics/Thai question bodies and learning after every actual bug, conflict or issue are specified in the follow-up task above. That broader trigger supersedes the original execution-only/assigned-bug exemption; earlier evaluation records remain historical evidence, and deliberate red remains evidence linked to its actual underlying issue.
+
+Delivery readiness: The agreed skill is implemented on `codex/backend-development-skill` in its managed worktree. Existing skill-work delivery authorization continues for this bounded resource package; final integration SHA, PR inventory and publication state are reported from Git/GitHub. The primary checkout's uncommitted code-review lesson, draft interview plan and cache remain untouched. Actual .NET/Go application builds, real production PostgreSQL/HTTP integration and fresh component remote reachability were not run because no production application change was made.
+
+## repository-wide: Show per-file PR change summaries
+
+Status: Guidance and delivery package complete. Ittikorn requested a file-by-file list with a nested summary in the PR delivery skill (called submit-and-pr in the request; the existing resource is commit-and-pr). The format now applies to PR Changes and chat Included, preserves the six PR sections and derives its inventory from the final integrated task diff. Actual integration, remote publication and file coverage are reported from Git/GitHub in the handoff.
+
+1. [x] Read the current skill, formats, templates and lessons; confirm PR76 is merged and start a separate branch from current origin/main.
+2. [x] Replace area/count-only summaries with the requested per-file nested format in the governing instructions and both templates; record the correction.
+3. [x] Verify metadata, links and diff; prepare the scoped package, per-file inventory and required integration/check commands. Report actual integration/publication and file coverage from Git/GitHub.
+
+Verification: Four Markdown frontmatters passed YAML parsing; skill metadata and Markdown targets/anchors passed direct checks. Both templates use the requested file/summary nesting, the PR template retains its six required sections and `git diff --check` passed. Scoped preflight reports six task files and no blockers. This correction updates the source format and both consumers so the delivered PR and chat must account for every file rather than collapse the list into areas/counts. No executable helper, API contract, database or diagram changed, so runtime/database tests and rendering were not required. The Python validator's missing PyYAML dependency was confirmed without starting a failing validator; Ruby YAML parsing and direct metadata/template checks cover this documentation-only change. The pre-existing untracked agent-workspace Python cache stays excluded.
+
+## e-commerce: English code structure guide
+
+Status: Translate the complete guide to English under the existing documentation delivery authorization. PR78 is merged; deliver this language revision as a separate follow-up PR. Preserve every layer/sub-layer, source reference, diagram and implementation/design distinction. The owner's ordinary-Codex/current-checkout instruction remains applicable.
+
+1. [x] Inspect current guide, governing guidance, source baseline and merged PR state; preserve the source snapshot and reference inventory.
+2. [x] Translate all prose, headings, tables, captions and code-block comments, retaining Service = Domain and all five layers / 24 sub-layer groups.
+3. [x] Verify English-only content, unchanged link targets and structural coverage, frontmatter, source boundaries and all diagram bundles; record the translation-check correction and preventive delivery guidance.
+4. [x] Prepare the scoped delivery package and latest-main integration/check procedure; report actual integration and follow-up PR publication from Git/GitHub without merging the PR.
+
+Verification: English-only scan and heading/table/fence/link preservation passed; all five layers and 24 sub-layer groups retain substantive responsibilities, inputs/outputs, examples and boundaries. Four frontmatters, 20 local and 39 pinned component references passed. Three model/PNG integrity checks passed (72/47/99 cells), all 12 bundle hashes are unchanged and the component remains clean at its pin with 9 production / 5 test references. The captured positional-translation defect is rejected by the same gate that accepts the corrected guide; the delivery checklist and lesson record the prevention. No runtime build/tests are needed for this documentation-only change.
+
+## e-commerce: Explain every code layer and sub-layer
+
+Status: Content and verification complete; scoped follow-up publication package prepared after owner review. Ittikorn requested that the guide's meaning/scope cover every layer, then explicitly included sub-layers. PR75 is already merged, so deliver a separate follow-up PR under the existing documentation delivery authorization. Preserve the pre-existing table formatting and the other task's unpublished commit on its branch; read the component and diagrams without changing them. Actual base integration and remote PR state are reported from Git/GitHub at delivery.
+
+1. [x] Inspect the owner's scope correction, current guide, pinned source, diagram responsibilities, Git/PR state and applicable writing/delivery guidance.
+2. [x] Rewrite the introduction around all five layers and explain each layer's sub-responsibilities, inputs/outputs, boundaries, interactions and concrete source examples; retain Service = Domain and current/proposed status.
+3. [x] Update the lesson and delivery checklist with a substantive coverage gate; verify all requested layers/sub-layers against source, Markdown/links and unchanged diagram/component evidence.
+4. [x] Prepare the scoped follow-up publication package and required current-main integration/check commands; report the actual integrated base and remote PR state from Git/GitHub without merging the PR.
+
+Coverage target: API (controllers, contracts, HTTP results, composition/authentication); Application (commands/queries, validators, handlers, mapping/responses, ports/common); Domain (entities/aggregates, value objects, business Domain, repository contracts, primitives/errors/status); Infrastructure (repository adapters, DbSession/UnitOfWork, security, email, options/DI, explicitly proposed adapters); Shared (messaging, dispatch/registration, results/errors). Cross-layer explanations must trace validation, transactions, security and error mapping without implying every request traverses every sub-layer.
+
+Verification: The pre-review guide fails the new coverage audit on nine missing intro/detail requirements; the revised guide passes for all five layers and 24 sub-layer groups, plus cross-layer responsibilities and both test projects. Four Markdown frontmatters, 20 local references, 39 pinned component references, table/fence/whitespace structure and seven project-reference counts passed. All three model/PNG integrity checks passed; hashes of 12 diagram bundle files and section 3–9 user formatting are unchanged. The component is clean at the manifest revision. The preventive delivery-checklist gate was reviewed against the original omission and the correction; no backend/API/schema/diagram edits or runtime tests were required.
+
+## repository-wide: Improve the delivery skill after every error
+
+Status: Guidance and publication package complete. Ittikorn requested that every error encountered with `commit-and-pr` lead to a preventive skill improvement as well as correction of the immediate failure. The existing skill now includes the loop in its procedure, completion and report criteria, preserving delivery authority, scope and protected-branch rules. PR72 is merged; this is an independent follow-up PR. Actual base integration and publication state are reported from Git/GitHub.
+
+1. [x] Read applicable rules, lessons and the current skill; confirm PR72 is merged and start a separate branch from current origin/main.
+2. [x] Add the root-cause, preventive skill update, verification and lesson loop; record the correction.
+3. [x] Verify metadata, links, diff and failure-scenario coverage; prepare the scoped package and required main-integration/check commands for publication. Report actual integration and PR state from Git/GitHub.
+
+Verification: YAML parsing passed for all three changed Markdown files; direct skill checks passed allowed metadata, name/description constraints, unfinished-placeholder checks and Markdown targets/anchors. Scoped preflight reports three task files and no blockers, and `git diff --check` passed. The loop was exercised when `quick_validate.py` could not start (`ModuleNotFoundError: No module named 'yaml'`): a preventive instruction now distinguishes startup failures from validation findings and requires explicit coverage/gaps for equivalent checks. Ruby YAML parsing and direct metadata/reference checks cover the relevant skill validation properties; no original-validator success is claimed. Review also confirms errors must produce an actual skill/resource change, lesson and evidence before completion, with integration/publication gates retained. No helper, API contract, schema or diagram changed, so runtime/database/generator tests and rendering were not run.
+
+Scope correction during publication: A temporary verification script rejected an unrelated concurrent edit to `e-commerce/doc/code-structure.md` because it demanded a globally clean working tree. The check was corrected to validate task paths and the three-file PR diff while preserving the other task's file; the skill's merged-result step and the lesson were improved accordingly. The unrelated edit is excluded from publication.
+
+## e-commerce: Code structure guide with existing diagrams
+
+Status: Documentation complete; PR delivery directly authorized by Ittikorn's “เปิด pr มา”. Ittikorn requested `e-commerce/doc/code-structure.md` with diagrams reused from `e-commerce/diagram/`, following the clarification that Service = Domain means reusable business logic and the owner-selected path is `Ecommerce.Domain/Authen/Domain/`. The original writing phase read the pinned component and reused diagram bundles without changing them. The initial guide and lesson clarification are already in main at `ec4645e` through the separate handoff commit; this PR finalizes the guide's verification record and task completion rather than claiming to introduce that existing content.
+
+1. [x] Read applicable rules, lessons, component manifest, current backend conventions and diagram-creator; inspect the three selected renders and their source/companion evidence.
+2. [x] Write the Thai guide with runtime/repository/identity diagrams, layer and feature responsibilities, Service = Domain terminology, current versus owner-directed structure, CQRS flows and source links.
+3. [x] Record the terminology correction in lessons; verify Markdown/frontmatter/links, model/PNG integrity, component evidence and unchanged diagram/component hashes; record actual results.
+
+Selected views: runtime architecture explains collaboration and the proposed reusable Domain child; repository architecture explains source ownership and compile references; identity domain explains business concepts derived from schema without implying implemented classes or aggregate ownership. Existing pictures are embedded and linked to editable sources; no new rendering or diagram redesign is requested.
+
+Verification: The Thai guide has 11 main sections, three existing PNG embeds, 20 local references and 15 pinned component references. YAML/frontmatter, fences, table widths, links and all seven project-reference counts passed; production/test references total 9/5. All three existing editable model/PNG bundles passed integrity and native nesting checks, and their PNGs were opened for visual inspection. Hashes of all 12 selected bundle files are unchanged; the component remains clean at the pinned revision. The existing Domain-convention lesson was extended rather than duplicated. No backend/API/schema/diagram changes, runtime tests, new diagram rendering or native-editor interaction were performed for this documentation-only task.
+
+Delivery plan: use a two-file documentation commit (`code-structure.md` verification subsection and this task section), fetch and merge latest origin/main into the task branch, resolve any overlaps while preserving both sides, rerun document/diagram checks and publish a Showcase PR without merging it. Integration SHA and actual PR state are reported from Git/GitHub at delivery.
+
+## repository-wide: Improve the API skill after every error
+
+Status: Guidance and follow-up PR package complete. Ittikorn requested that every error lead to an improvement of `api-contract-design`, in addition to correcting the work. The existing skill now requires a root-cause, preventive skill-improvement and verification loop while preserving specification approvals. Follow-up publication continues under the existing direct delivery instruction for this skill work; actual PR state is reported from GitHub.
+
+1. [x] Review the skill's procedure/completion criteria, relevant lessons and applicable authoring rules.
+2. [x] Add the improvement loop and record the owner's correction, with explicit coverage of self-discovered failures and review feedback.
+3. [x] Verify Markdown metadata, references, scope and diff; prepare the follow-up PR under the existing delivery instruction for this skill work.
+
+Verification: YAML parsing passed for all three changed Markdown files; skill name/description constraints, Markdown links/anchors and `git diff --check` passed. Review against the prior missing-example failure confirms owner corrections now trigger an actual preventive skill change, not only an artifact fix; command/check/render failures and self-discovered errors are explicit triggers too. Completion criteria and the report require the improvement and its evidence. Scoped delivery preflight reports three task files and no blockers. No examples, helpers, checkers, API contracts or database artifacts changed, so runtime/database/generator tests and rendering were not repeated. The Python skill validator's missing PyYAML dependency remains covered by YAML and direct metadata/structure validation without installing dependencies. The three unrelated untracked handoff documents are excluded.
+
+Loop exercised during delivery: Rebasing onto current main stopped at overlapping task-plan insertions. The resolved plan retains both independent sections and preserves all upstream content byte-for-byte; the skill's correction step was strengthened to require that preservation check, and the lesson records the cause and evidence.
+## repository-wide: Integrate main before opening a PR
+
+Status: Guidance, verification and publication package complete. Ittikorn requested that `commit-and-pr` merge the latest main into the task branch, resolve conflicts and verify the result before opening the PR. Update the existing skill, checklist, formats and PR template; clarify the named-workspace rule's merge wording to match the approved design's prohibition on merging PRs into main. Preserve protected-main and no-force-push boundaries. Keep the prior API skill PR separate. The final integrated SHA and actual PR state are reported from Git/GitHub after publication.
+
+1. [x] Read the delivery skill, preflight behavior, applicable rules and lessons; start an independent task branch from current origin/main.
+2. [x] Define the mandatory main-to-task merge, conflict resolution, post-merge checks and publication evidence consistently across the existing resources.
+3. [x] Exercise clean and conflicting merges in isolated temporary repositories; verify metadata, links and the scoped diff.
+4. [x] Prepare the scoped delivery package and integration/check commands; report actual base integration and publication evidence from Git/GitHub.
+
+Verification: Isolated local Git repositories exercised a real clean merge, a real same-position task-plan conflict, an already-up-to-date result and an ordinary push after integrating main into a previously published task branch. Both sides' content survived, the integrated base was an ancestor of HEAD, no unmerged entries remained, final PR diffs contained only task changes and integration did not change remote main. YAML, skill metadata/link/anchor checks and `git diff --check` passed. The preflight script is unchanged and its limited uncommitted-file coverage is now explicit; integration evidence is a separate required gate. The named-workspace clarification follows the approved design's explicit no-PR-merge safety boundary; no registry capability or lifecycle operation changed.
+
+Delivery readiness: Named-workspace regression tests passed 15/15, scoped preflight reports seven task files and no blockers, and the task commit/PR messages are prepared. The three untracked handoff documents remain excluded. No API, schema, backend or production diagram changes require project runtime/database tests. The Python skill validator's missing PyYAML dependency is covered by Ruby YAML parsing and direct metadata/reference validation without installing dependencies.
+
+## repository-wide: Operational diagram-creator and script separation
+
+Status: Implementation and verification complete on `chore/jinny-diagram-creator-skill`. Direct owner request: adapt Jinny's verified diagram work into the existing `.agents/skills/diagram-creator` and move reusable Python out of `e-commerce/diagram`. Scope includes that skill, its registry/role pointer, task plan, diagram references and `e-commerce/scripts/diagrams`; delivery none. Named workspace prepared from current main; both existing diagram generator checks passed before changes.
+
+Use skill-creator for the existing skill, writing-for-agents for concise instructions, and agent-workspace for isolation. Keep diagram-creator as the repository evidence/packaging/verification workflow and diagram-design as an optional available visual-design companion. Promote real lessons on diagram meaning, native hierarchy, source status, database cardinality, artifact folders and visual review; preserve project-specific choices as examples rather than global mandates. Extract reusable native draw.io/PNG and geometry helpers into skill scripts; retain e-commerce content/generators in project scripts. No schema, API, backend or rendered-diagram redesign is authorized.
+
+- [x] Inspect current resources, lessons, latest artifact layout and Python dependencies; prepare a bounded managed assignment and record baselines.
+- [x] Replace the existing placeholder with an actionable skill and focused references/template; connect its registry and role discovery without changing agent authority.
+- [x] Extract reusable helpers/checker with meaningful invalid-artifact tests; move all 13 project Python files outside diagram outputs and update imports/path resolution/source links/commands.
+- [x] Verify generators, table/FK evidence, script behavior, Markdown and artifact parity; forward-test realistic skill behavior in isolated temporary output when available.
+- [x] Review the resulting diff, mark only verified work ready and record limitations. Retain the uncommitted task branch; release the editing-session lock as the final session operation. No commit/push/PR is included.
+
+Progress: The existing placeholder now has an evidence-first entrypoint, three focused references and an explanation template; registry and Jinny role point to the ready skill. Extracted native cell/geometry/PNG helpers are used by the relocated e-commerce generators. All 13 project Python files now live outside `diagram/`; imports, output routing and Markdown source/reproduction paths were updated. The nine content/render modules needing no path/helper edit remain byte-identical.
+
+Verification: Both relocated generator families pass `--check` and `--finalize-pngs`; the new CLI verifies all 19 bundles with native nesting required. SHA-256 confirms all 19 draw.io sources, 19 PNGs, 19 HTML files and the frozen SQL inventory are unchanged. Domain accounting remains 53/53 tables and 75/75 FK columns with zero schema-doc findings. Eleven artifact regression tests pass. Python syntax, 19 changed/new Markdown frontmatters/links/fences, CWD-independent compatibility entrypoints and `git diff --check` pass. `quick_validate.py` cannot start because PyYAML is absent in both installed Python interpreters; Ruby YAML parsing and direct metadata/structure checks substitute without installing dependencies. No new render/browser/native-editor session is needed for unchanged artifacts, and none is claimed. Independent forward-testing completed in `/private/tmp/jinny-diagram-forward-VczY7U`: generated a four-concept/four-association domain model, editable PNG and detailed companion from raw SQL. Partial uniqueness, nullable shipment order and unenforced shop consistency were represented correctly; source/cardinality checks and local relational witnesses passed. Native draw.io 32.6.10 export and shared PNG verification passed (one page, 30 cells, 1659 × 1430), and the evaluator and primary visually inspected the sample. No substantive skill gap was observed. Interactive editor drag/re-save/re-export was not performed in the evaluation; its companion records that limit. No evaluation artifact entered the repository.
+
+Delivery authorization (2026-11-08): Ittikorn requested the PR with “pr มายัง”, authorizing commit, task-branch push and PR against `main` for the completed skill/script-separation package. This supersedes the earlier delivery-none boundary for the same task only. The current origin/main registry, managed clone identity, original task/branch/scope and authorized user were validated before recording `open-pr`; no task or scope was expanded.
+
+- [x] Run delivery preflight, verify the exact staged package and create the fixed-format commit.
+- [x] Reconcile the commit with latest `origin/main`, repeat affected checks and prepare the authorized task-branch/PR publication. Report actual remote URL/status in the handoff after publication; release the session lock as the final session operation.
+
+Delivery verification: Reconciled with `origin/main` at `c69dc19`. The only rebase conflict was the shared task plan; preserved upstream task records byte-for-byte and inserted this task section separately. The final package has 36 changed files including 13 detected renames. Eleven tests and both generator families pass after reconciliation; all 19 native bundles pass the shared verifier and all model/PNG/HTML/inventory hashes remain unchanged. Named-agent delivery preflight reports `no blockers found`. Publication is authorized; the final PR URL and remote state are derived from GitHub in the handoff rather than presumed here.
+
+## repository-wide: Make sequence guidance self-contained
+
+Status: Guidance correction and publication package complete under Ittikorn's existing “ส่ง pr มา” instruction for this skill change and subsequent direction to continue the correction. The example and presentation rules now live in the skill's existing reference and remain available if the original project example is moved or deleted. The agreed complete-flow and exact-SQL requirements are preserved. Actual remote publication is reported from GitHub in the handoff.
+
+1. [x] Inspect the current guidance, generator and original visual conventions; identify mandatory references to the external example.
+2. [x] Replace those references with explicit presentation rules and an embedded, complete spec/sequence example in the skill's existing reference.
+3. [x] Record the correction and verify metadata, links, example SQL parity, rendered output and independence from the original file.
+4. [x] Prepare the four-file follow-up commit and PR package, preserving the three unrelated handoffs; report the actual PR URL and state from GitHub.
+
+Verification: YAML parsing passed for the skill, reference and both task records. Markdown links/anchors resolve, and neither skill document retains a login-file dependency. The embedded sample's SQL matches its sample spec character-for-character; database lifecycle, structure, request-heading and public response checks pass. Copying only the generator and sample spec to an isolated temporary directory with no project/login files successfully generated the matching scaffold. PlantUML rendered the embedded complete example to PNG/SVG; visual inspection passed and occurrence counting found all 6 SQL lines visible. `api-sequence-spec` passed all 83 current specs; `git diff --check` passed. No generator, checker, endpoint contract or production diagram was changed.
+
+Delivery readiness: `codex/self-contained-api-sequence` targets `main`; scoped preflight reports 4 task files and no blockers. The three untracked handoff documents stay outside this package. The commit message and six-section PR body are prepared; the actual PR link and status are determined after publication.
+
+## repository-wide: Complete API sequence authoring guidance
+
+Status: Complete. Guidance confirmed by Ittikorn on 2026-11-08 with “ใช่” in response to the concrete proposal: complete flow in the login presentation style, strict SQL equality allowing only note indentation and leading-apostrophe escaping, and documentation-only changes. Scope is the API contract skill and its existing sequence reference, with task bookkeeping. The login sequence is the presentation prototype; each endpoint's spec remains the source of behavior and SQL.
+
+1. [x] Read global and Markdown rules, relevant lessons, the requested skills, the existing API skill, login prototype, generator and parity checker; preserve unrelated working-tree changes.
+2. [x] Confirm the concrete sequence guidance, including the meaning of exact SQL parity and the documentation-only change boundary, with the owner before editing the skill.
+3. [x] Update the existing skill and sequence reference to require complete endpoint-specific flows in the login format, with explicit SQL parity and rendered verification criteria.
+4. [x] Validate skill metadata, reference links, consistency with the prototype and tooling, and the scoped diff; report existing checker failures separately.
+
+Discovery evidence: The current sequence reference already copies SQL through a skeleton but does not fully describe the login narrative or require rendering every completed diagram. The SQL checker decodes a leading `&#39;` and normalizes whitespace, so its success alone does not establish character-for-character SQL equality. No endpoint, generator, checker, or backend change is planned.
+
+Verification: Ruby YAML parsing passed for all three changed Markdown files; skill name/description constraints, reference links/anchor, fence balance and `git diff --check` passed. A separate strict comparison of the login prototype passed all 15 SQL occurrences without whitespace normalization; `check_docs.py login-flow` passed all 7 outcome paths. `quick_validate.py` could not start because both installed Python interpreters lack PyYAML; the metadata and structural checks above were used instead, without installing dependencies. `api-sequence-spec` retains the pre-existing failure at `authen-and-author/08-inquiry-user-profile/sequence.wsd`: it already has token/timeout answers but remains in `LEGACY_TOKEN_SEQUENCES`. That unrelated checker issue was not changed. No API spec, sequence, generator, checker or backend was modified; runtime/database tests, generator mutation tests and diagram rendering were not required for this documentation-only change.
+
+Delivery authorization (2026-11-08): Ittikorn requested “ส่ง pr มา”, directly authorizing a commit, task-branch push and PR against `main` for these two skill documents and this task record. The existing checkout sequence diagram edits and three untracked handoff documents belong to other work and are excluded.
+
+- [x] Create the task branch, run scoped delivery preflight and inspect the exact staged files.
+- [x] Commit the three-file package, reconcile with current `origin/main` and verify the final PR diff.
+- [x] Prepare the authorized task-branch push and PR body with verification, approved decisions and exclusions; derive the final publication URL/status from GitHub for the handoff.
+
+Delivery verification: The task commit was rebased onto `origin/main` at `def2eb2`; all five excluded files were restored byte-for-byte, and the PR diff contains only the two skill documents and this task record. Scoped preflight has no blockers. The previously observed legacy-list failure was fixed upstream: `api-sequence-spec` now passes all 83 specs, and `login-flow` passes all 7 outcome paths. No API checker change belongs to this task. The committed checklist records publication readiness; the actual PR URL and remote state are reported from GitHub after publication.
+
 ## e-commerce: Migrate backend to a Component Repository
 
 Status: Implementation and verification complete; approved Showcase PR package prepared. Ittikorn explicitly approved M1–M8 in `docs/superpowers/specs/2026-11-07-e-commerce-component-migration.md` with “อนุมัติตามแผน ใช้ repository แบบ Public”. Approval was persisted at 2026-11-07T14:00:23Z before export/publication/moves. Continue as ordinary Codex in the current checkout under the earlier selected backend-developer perspective. The scope includes public `ittikornsopawan/e-commerce-backend`, filtered backend history, backup, manifest-managed checkout and a separate Showcase migration PR without merging. Actual remote PR delivery is verified through GitHub; PR #33 is merged.
@@ -127,6 +314,76 @@ Status: Verified and ready for commit/push/PR; actual delivery state is derived 
 - [ ] Release the editing-session lock and hand off the PR; additional views wait for this PR's reconciliation under the named-agent lifecycle.
 
 PR preparation verification (2026-11-07): delivery-check recognizes the direct owner authorization and all 23 paths remain in scope (21 diagram package files plus tasks/todo.md and tasks/lessons.md). Preflight reports no blockers. Refreshed origin/main revealed merged WP3b; the lifecycle/runtime note/research/explanation now include guarded seven-day completion instead of the superseded no-job rule. Native exports use scale 1.5 (2378 x 1682) and compressed compatible mxfile metadata; final PNG sizes are 1014302, 824217 and 829340 bytes, all below 1 MiB. Every final image was visually reviewed; packaged extraction equals source and native PNG reopening/re-export preserves exact IDAT data. Three HTML self-checks and all 12 authored Markdown frontmatters/local links pass. Geometry/evidence checks pass. Backend/API/database checks are outside this diagram-only change. Additional architecture-package views are unstarted and excluded from this delivery.
+
+## e-commerce: Supporting architecture and operational diagrams
+
+Status: Complete. Editing session closed after GitHub verified PR 48 merged and agent-workspace parked the clean previous branch. New branch `docs/jinny-architecture-details`; owner requested all previously identified gaps, in the same editable PNG plus detailed Markdown format. Scope remains `e-commerce/diagram`, `tasks/todo.md`, `tasks/lessons.md`; delivery none. No repository baseline command is declared for this diagram-only scope.
+
+Replanned 2026-11-08 after the owner's correction: revise all 15 views (the original three plus twelve supporting views). The initial supporting HTML/drawio drafts are superseded; no supporting PNG has been delivered. First research meanings, then model ownership/decomposition, then choose layout. Preserve current in-review policy and implementation boundaries.
+
+- [x] Record the correction/root cause and inspect all existing drafts without discarding unrelated work.
+- [x] Define a per-diagram semantics matrix backed by primary sources; distinguish structural, temporal, lifecycle, deployment, data and recovery viewpoints.
+- [x] Rebuild architecture with nested Presentation/Application/Domain/Infrastructure/Shared layers and explicit Command/Query, Validator, Handler and ports; rebuild repository as nested packages and system as guarded lifecycle regions.
+- [x] Rebuild supporting structural views with meaningful native parent/child boxes; revise sequence grouping/activation, collection field compartments and recovery lanes/gates using their own notation.
+- [x] Synchronize all explanations and the index, render all 15 PNGs, inspect nesting/content/readability, validate native parent-child relationships, geometry and round trips, then hand off only verified results.
+
+- [x] Verify and park PR 48, prepare the new managed assignment, read applicable rules/lessons and retain the owner's light/orange style.
+- [x] Record the complete plan and per-view purpose before drawing; use A3 landscape 1584 x 1120. The correction supersedes the initial flat nine-node target: use zoned faithful decomposition (up to 24 responsibility leaves) and no more than five sequence lifelines/twelve messages per image. Split start-payment from checkout to keep uncertainty/recovery readable.
+- [x] Research current local specifications and primary provider/data/operations sources; capture current-contract gaps separately from proposed recovery behavior.
+- [x] Build commerce overview, checkout, start-payment, webhook, refund, outbox-delivery and config-publication views.
+- [x] Build outbox lifecycle/contracts, MongoDB logical model, deployment/security, observability/SLO/capacity and backup/recovery views.
+- [x] Write a detailed Thai Markdown companion per image with rationale, trade-offs, sources, acceptance scenarios and approval boundaries; link them through the readiness plan/README.
+- [x] Render and visually inspect every final PNG; check geometry/text bounds, HTML, source parity, PNG metadata/editability and native round trips; keep final PNGs below 1 MiB.
+- [x] Reconcile source baseline, review the full package, record verification/limitations and release the editing-session lock. No backend/API/schema implementation or PR is included in this authorization.
+
+Verification (2026-11-08): All 15 views and companions are rebuilt using meaning-specific notation and native parent/child containment. Source/geometry, skill HTML checks, SVG export, 390px browser bounds, PNG CRC/extraction and native reopening/re-export checks pass. All PNGs are 2378 x 1682, below 1 MiB, visually reviewed, with exact source metadata and identical round-trip IDAT. Backend facts use manifest-pinned Component Repository d825518; no checkout migration or implementation was performed. Detailed evidence and unperformed runtime/load/restore tests are recorded in `e-commerce/diagram/verification.md`. No commit, push or PR is included.
+
+### Owner refinement — reusable business logic in `Domain` (2026-11-08)
+
+Resume the same assignment/branch; delivery remains none. Update only the architecture/repository views and their related documentation. Architecture remains logical layer decomposition, repository remains native package ownership; A3 landscape/light-orange style/faithful detail remain. Add one child per affected view, keeping 24 or fewer responsibility leaves. No backend files, tax formula, API or schema implementation is included.
+
+- [x] Inspect the owner's naming/path, pinned source and existing diagrams; reacquire the existing assignment's editing-session lock without replacing its dirty files.
+- [x] Add native `Domain` child for reusable business logic and `Authen/Domain/` path summary; preserve entity invariants, Application orchestration and all existing responsibilities.
+- [x] Update explanations, semantic contract, index/readiness/verification and correction lesson with ownership, examples, dependencies and source status.
+- [x] Generate/export both affected PNGs, review them, check HTML/bounds/editability/round trips, verify the other13 views remain unchanged, and release the session lock.
+
+Refinement verification: two PNGs visually reviewed; native parent/source/IR and pixel-identical draw.io round trips pass. All15 source checks, two HTML/SVG checks, 390px text bounds, 27 Markdown frontmatters, 276 local links and scope/diff checks pass. Exactly15 paths refined; the other13 views (52 artifact files) are unchanged. Backend tests are not applicable to this diagram-only refinement.
+
+### Deliver the completed 15-view package — direct owner grant
+
+Ittikorn's current instruction, "เปิด pr มา", authorizes commit, push and one PR for this completed diagram package, including the Domain refinement. This supersedes delivery none for the same assignment, scope and branch only. The direct grant is persisted in ignored assignment metadata after registry/identity/scope validation. No implementation/design-policy approval or merge authority is inferred.
+
+- [x] Load commit-and-pr formats/checklist, verify the same managed workspace and current origin/main registry, record the direct grant and acquire an editing-session lock.
+- [x] Verify the 15-view artifacts/Markdown, select all80 task paths, run delivery preflight and inspect the staged diff.
+- [ ] Commit once with the fixed format, verify merge compatibility, push the existing branch and open a PR against main.
+- [ ] Inspect the PR status once, release the editing-session lock and hand off the PR for owner review.
+
+PR preflight (2026-11-08): 80 paths (78 diagram files +2 task records), no deletions, managed delivery authorized, no blockers. All15 source/geometry checks and HTML checks pass; PNG dimensions/sizes/CRC/extraction/source XML and saved native round trips pass15/15. All27 Markdown frontmatters and276 local links pass. No backend/API/schema paths changed; runtime/provider/load/restore tests are outside this documentation-only delivery.
+
+## e-commerce: Database-grounded domain model diagrams
+
+Status: Complete on `docs/jinny-domain-model` after GitHub verified PR61 merged and agent-workspace parked the previous assignment. Scope: `e-commerce/diagram`, `tasks/todo.md`, `tasks/lessons.md`; delivery none. Existing diagram source checks passed as the prepare baseline; no repository-wide baseline is declared specifically for new diagram artifacts.
+
+Purpose: model business concepts and evidenced relationships from all53 SQL tables in11schemas, rather than software layers, deployment or a copy of the physical ER diagram. Use diagram-design, the owner's light/orange style, A3 landscape and faithful nested detail. Split into `domain-model` overview plus `domain-identity-model` (21 tables), `domain-merchandising-model` (19) and `domain-commerce-model` (13). Detail pages use conceptual ER notation, business names, selected fields and cardinalities; grouping expresses schema/responsibility only, not approved DDD aggregate/transaction boundaries. Omit universal audit fields and secondary relationship lines from images but retain full table/FK traceability in Markdown/inventory. No schema, canonical ER, API or backend implementation changes.
+
+- [x] Reconcile PR61, prepare a fresh scoped Jinny branch/lock, load applicable skills/rules/lessons and inspect the DB/schema inventory.
+- [x] Read every migration/schema explanation and meaningful constraint; generate a source inventory and research the conceptual notation using primary sources.
+- [x] Model the overview and three focused domain diagrams with native parent/child boxes, explicit selected associations and correct cardinality, separating evidence from inferred business ownership/rule candidates.
+- [x] Produce editable PNG/drawio/HTML and detailed Thai companions; map all53 tables and foreign keys and link the index.
+- [x] Verify source coverage, geometry/text/routes, HTML, Markdown, visual output and editable PNG/native round trips; record results and release the editing-session lock.
+
+Verification (2026-11-08): four conceptual domain diagrams and detailed companions cover53SQLtables in11schemas and75FKcolumns. Detail drawings select35entity associations; overview selects7cross-schema references. SQL/schemaaudit reports53tables audited,0findings. Source/model/geometry, packagedHTML/SVG,390pxbrowserbounds, exact editablePNG extraction/nativeXML and pixel-identicalnative round trips pass; PNGs2378x1682 and below1MiB. All7Markdown frontmatters,311local links,23-pathscope andwhitespace checks pass. Prior45image/source/HTML artifacts remain unchanged. Full evidence and limits are in e-commerce/diagram/domain/domain-model-verification.md. No SQL/API/backend implementation or PR is included.
+
+### Separate the Domain package and deliver its PR
+
+The owner's current instruction "แยก folder แล้วเปิด pr ให้หน่อย" authorizes reorganizing this existing package into `e-commerce/diagram/domain/`, updating references/generator paths, committing, pushing the existing task branch and opening one PR against main. This supersedes delivery none for the same task/scope only; it does not authorize merging or backend/schema changes. The grant is persisted after registry/identity validation.
+
+- [x] Verify the existing workspace/branch/assignment, record the direct delivery grant, reacquire the editing-session lock and snapshot the21Domain files before moving.
+- [x] Move the complete Domain package into its own folder, add a local index and update generators/links/commands without changing diagram pixels or database evidence.
+- [x] Recheck53-table/75-FK coverage, source/HTML/Markdown/PNG parity, old diagram preservation and delivery preflight; inspect the exact staged files.
+- [ ] Commit one reviewed package, verify merge compatibility, push the existing branch, open/attach the PR and inspect its status once. Release the session lock after delivery; actual state is derived from Git/GitHub.
+
+Delivery preparation:25files (22dedicatedDomain files, parentREADME, sharedPNGhelper andtaskrecord). Preflight hasno blockers; all4PNG/draw.io pairs andsourceinventory match pre-move SHA-256. All53tables/75FKs,4HTML/SVG checks,PNGIR/native roundtrips,8Markdown frontmatters,328local links andprior45artifact preservation pass. No backend/API/schema implementation; no excluded task files.
 
 ## repository-wide: Make agent instructions operational
 
@@ -624,7 +881,7 @@ Scope: authen-and-author/07-upsert-user-profile with its checker/task evidence. 
 - [x] Revise spec and generated-then-completed sequence together: verified own user, post-lock credential check, per-field presence masks/null clearing, separate information insert/update and 17 complete terminal traces.
 - [x] Add exact SQL/path/semantic/render checks; 64/64 mutations caught; synchronized semantic faults, pre-lock credential read, original sequential INSERT/UPDATE and real renderer omission rejected. Six exact PostgreSQL statements passed typed presence/null/date/bytea, ownership, preserved lifecycle/audit, rollback and concurrent first/disjoint writes plus revocation/expiry wait fixtures. PlantUML inspected with nine participants and 58/58 visible SQL lines; no backend/encryption-runtime certification.
 - [x] Run all current checker commands (49/49), SQL audit (53 tables/0 findings), database suite (ALL PASSED), skeleton tests (12/12) and authorized preflight (four paths/no blockers).
-- [ ] Open one profile-upsert API PR, preserve branch/history and continue from main.
+- [x] Open one profile-upsert API PR, preserve branch/history and continue from main.
 ## e-commerce: Peter API review — reset-password (API 10, 2026-11-08)
 
 Scope: authen-and-author/03-reset-password and its checker/task evidence. Existing WP4 U11/U12/U23 controls public uniform responses, three issuances per rolling hour, one ACTIVE reset and user-first serialization. Owner Q15 permits one editing branch at a time and continuation without a merge gate. No backend, email transport, outbox, schema or published API implementation.
@@ -634,7 +891,7 @@ Scope: authen-and-author/03-reset-password and its checker/task evidence. Existi
 - [x] Update spec and generated-then-completed sequence together: fresh post-lock throttle/creation/expiry time, atomic replacement, ten terminal traces, mappings and post-commit email boundary.
 - [x] Add exact SQL/semantic/path/render checks; mutations 49/49 after tightening database/Application result mapping (initial run 48/49); synchronized semantic faults and real rendered omission rejected. Exact PostgreSQL issuance/quota/completion races and rollback passed; PlantUML inspected with eight participants and 39/39 visible SQL lines. Email transport and real HTTP timing remain outside verification.
 - [x] Run every current checker (49/49), audit (53 tables/0 findings), database suite (ALL PASSED), skeleton tests (12/12) and authorized delivery preflight (four paths/no blockers).
-- [ ] Open one reset-password API PR, preserve its branch/assignment history and continue from main.
+- [x] Open one reset-password API PR, preserve its branch/assignment history and continue from main.
 
 ## Peter — API 9: create-new-password paired contract review (2026-11-07)
 
@@ -654,6 +911,50 @@ Delivery correction: the first integration preflight compared against stale loca
 
 Follow-up: PR #53 was merged externally at head 5635a53 while its final integration correction was being pushed. The local correction is preserved. Main still lists the completed reset in LEGACY_TOKEN_SEQUENCES, which the checker rejects. Deliver a checker/task-only follow-up under this same bounded assignment; the API spec and sequence remain byte-identical to main. Do not overwrite external branch history.
 
+## e-commerce: Peter API review — own-user profile inquiry (API 12, 2026-11-08)
+
+Scope: authen-and-author/08-inquiry-user-profile with checker/task evidence. Owner Q13 requires current token/user checks; existing profile inquiry returns the caller's ten keys and non-DELETED information. Q15 permits immediate fresh main-based branch after PR #57, without waiting for merge. Q20 approved by Ittikorn on 2026-11-08: “คืน null สำหรับค่าว่างเดิม (แนะนำ)”. Normalize legacy empty gender to response null with NULLIF and preserve stored history; detailed endpoint revision remains in-review. No backend/schema implementation.
+
+- [x] Preserve profile-upsert PR #57/history, return to clean main and prepare an authorized fresh inquiry branch with all baselines.
+- [x] Read both profile contracts and actual nullable/lifecycle schema. Identify missing current credential checks, missing explicit outcomes, and multi-read consistency; ask Q20 and persist the explicit owner response.
+- [x] Update spec and generated-then-completed sequence together: verified caller, joined current token/user projection, consistent read-only snapshot, all ten keys/null mappings and eight terminal traces; owner Q20 projects legacy empty gender to null without rewriting history.
+- [x] Add exact SQL/semantic/path/render checks; 39/39 mutations caught after tightening the unique snapshot-rule needle (initially 38/39); synchronized credential/projection/Q20 faults, early information query, SQL whitespace and real renderer omission rejected. Exact PostgreSQL SELECTs passed own-user/current token, strict expiry, non-DELETED visibility, immutable Q20 normalization, READ ONLY rejection and two-connection snapshot consistency. PlantUML inspected with eight participants and 23/23 visible SQL lines; no backend/decryption-runtime claim.
+- [x] Run pre-integration checkers (49/49), audit (53 tables/0 findings), database suite (ALL PASSED), skeleton tests (12/12), and authorized preflight (four paths/no blockers).
+- [x] Preserve latest main, remove restored stale exemptions for #56/#57, pass all 51 integrated checker commands/audit/database tests and deliver inquiry PR #60. Preserve branch/history and continue from main under Q15.
+
+Integration finding: current main restored stale transaction/token-timeout exemptions for already-complete API #56 (reset request) and #57 (profile upsert). The full merged check catches this. Remove only those four stale checker entries, preserve their API artifacts byte-for-byte and keep every registered function; rerun all commands before push. This is checker reconciliation within the existing assignment scope, not another API revision.
+
+## e-commerce: Peter API review — own-user address upsert (API 13, 2026-11-08)
+
+Scope: authen-and-author/09-upsert-user-address plus checker, shared confirmed-decision log and task evidence. WP4 U19/U23 and owner Q13 govern ownership/current credentials, quota and default invariant. Q21 explicitly rejects DELETED plus isDefault=true with 400. Q20 is recorded in the shared decision log from its already-delivered profile inquiry. No backend/schema implementation. Q15 permits independent PRs without a merge gate.
+
+- [x] Preserve inquiry PR #60/history and return to main. Its checker repair merged before successful fresh address branch preparation; no baseline failure was bypassed.
+- [x] Read spec/sequence, address schema/unique index, inquiry rules and existing checker. Ask Q21 about the contradictory Delete example/checker and persist the owner's explicit answer.
+- [x] Revise spec and generated-then-completed sequence together: full-body/Q21 validation, post-lock current credential, owned/non-DELETED target, serialized quota, nullable insert id, computed default and 14 atomic insert/update/delete/promotion traces.
+- [x] Add exact SQL/path/semantic/render checks: 66/66 mutations caught, including old checker Delete exception; synchronized wrong guards, clear-after-insert and Q21-after-BEGIN ordering, original sequence, whitespace and real renderer omission rejected. Nine exact SQL definitions passed UTC PostgreSQL reference Application/default logic, quota and credential lock waits confirmed via pg_stat_activity, rollback/default promotion/soft-history/ownership fixtures. Diagram inspected with nine participants and 136/136 visible SQL lines including reused blocks; no backend/encryption-runtime claim.
+- [x] Run pre-integration checkers (51/51), audit (53 tables/0 findings), database suite (ALL PASSED), skeleton tests (12/12), and authorized preflight (five paths/no blockers).
+- [x] Integrate latest main including inquiry #60 and architecture #61, rerun all combined checks, deliver address API PR #62 and continue from main; #62 is now verified merged.
+
+
+Integration finding: GitHub merge commit 87162eb for inquiry #60 re-added its completed API 08 token/timeout exemption (verified against its first parent b1c5c90). The full merged check rejects it. Remove only that stale checker entry; preserve the API 08 artifacts and every imported checker/function. This is the cause of the main baseline regression, not permission to weaken the legacy check or modify another endpoint.
+
+## e-commerce: Peter API review — own-user address inquiry (API 14, 2026-11-08)
+
+Authority: original API review, owner Q13 credentials and Q15 immediate main-based continuation without a merge gate; every checker must pass before push. One API pair per PR. Assignment includes the shared checker and tasks. No backend/schema implementation.
+
+- [x] Preserve PR #62/history and return to clean main. Reproduce list/count snapshot mismatch in isolated PostgreSQL during read-only analysis.
+- [x] Run every baseline command plus audit/database tests; record the exact known main API08 stale exemption failure honestly in /private/tmp/peter_address_inquiry_red_baseline.log. No other failing command is accepted.
+- [x] Apply the same one-line shared-checker repair already delivered in #62 on this fresh main-based branch, without changing the API08 pair; all 51 documentation checks plus audit/database baselines passed before API10 edits. This bounded repair honors Q15 rather than waiting for #62 to merge; it is not a checker suppression or a general failed-baseline waiver.
+- [x] Revise API10 spec/complete generated sequence together: current credential gate, identical typed filters, consistent count/page snapshot, bounds and complete mapping/outcomes.
+- [x] Add exact SQL/semantic/path/render checks; mutation-test and execute pagination/ownership/snapshot SQL fixtures; inspect the diagram.
+- [x] Run all checkers/audit/database tests and authorized delivery preflight; open API10 PR #65 and continue from main. Main merged #62 during delivery; resume #65 to reconcile shared checker/tasks and verify the combined tree before returning to main again.
+
+Verification before main integration: three character-identical SQL operations, nine terminal traces, 56/56 mutations caught after closing the late-JWT-expiry branch gap; eight synchronized semantic SQL faults and intact pre-credential count/whitespace/old-diagram/render-omission faults rejected. Rendered SQL is 35/35 visible lines; SVG/PNG inspected, eight participants. Isolated PostgreSQL executes actual credential/count/page SQL: typed null filters, wildcard/apostrophe/Thai search, owner/deleted/missing id, status visibility, deterministic ties and four pages/beyond-range, expiry equality/inactive credentials, read-only write rejection and concurrent committed insert/delete between count/page with a consistent snapshot. Reference pagination bounds cover signed Int64 and checked offset; no backend implementation/conformance claim. All 52 documentation commands, audit 53 tables / 0 findings, database ALL PASSED and 12 skeleton tests passed. The initial main API08 exemption failure and its bounded checker-only repair are recorded above.
+
+Integration with origin/main 5dda686 preserves the domain diagram package byte-for-byte; only the five authorized paths differ from that base. API10 pair and checker bytes equal the verified task commit. On the integrated tree all 52 documentation commands, audit 53/0, database ALL PASSED, 12 skeleton tests and 35/35 rendered SQL lines passed again. Authorized preflight passed before the task commit; final committed delivery scope is checked before push.
+
+PR #65 base reconciliation: preserve both completed API09/API10 exemption removals and complete flow-checker functions after #62 merged. The API09 pair/owner decision log remain byte-identical to main; only the five owned API10 paths differ. No PR merge is performed.
+
 ## e-commerce: Peter API review — logout (API 8)
 
 Status: Author/me delivered as PR #37 (four files; MERGEABLE when opened), branch/history preserved. Clean main-based logout assignment passed baselines under Q15. Q13 keeps immediate credential revocation; WP4 U9/U23 requires the user lock and atomic closure of every token in the caller's session. Management-consent Q18/Q19 remains pending; independent authorized work continues.
@@ -663,8 +964,8 @@ Status: Author/me delivered as PR #37 (four files; MERGEABLE when opened), branc
 - [x] Correct spec with user-first lock, fresh post-lock token/session/expiry validation, server-derived ids, complete atomic revocation and error/retry semantics.
 - [x] Regenerate then finish sequence with actual execution order, every SQL request/result and success/invalid/revoked/rollback/timeout paths; remove its legacy exemption only when the new standard passes.
 - [x] Add logout-flow checks, reject original/synchronized faults and mutation-test ordering, scope, transaction and rendered SQL.
-- [ ] Execute exact SQL for session-wide closure, rollback, concurrent refresh/logout and expiry/revocation while waiting; render/inspect SVG/PNG and pass all current delivery checks.
-- [ ] Open one logout PR through commit-and-pr, preserve its review record and continue from main under Q15.
+- [x] Execute exact SQL for session-wide closure, rollback, concurrent refresh/logout and expiry/revocation while waiting; render/inspect SVG/PNG and pass all current delivery checks.
+- [x] Open one logout PR through commit-and-pr, preserve its review record and continue from main under Q15.
 
 Logout verification: four identical SQL operations in user-lock -> fresh session -> access closure -> refresh closure order; eight terminal paths. Regenerated via the ready skeleton tool, completed all markers/branches/mappings and removed the now-complete legacy exemption. Original pair rejected; mutations caught 36/36 (durable temporary log retained). Four additional synchronized faults, including moving the complete access UPDATE before the user lock while preserving SQL parity/participant first use, are rejected by logout-flow. Real rendered omission rejected independently; final PlantUML has nine participants, inspected SVG/PNG and 29/29 visible SQL lines. Temporary PostgreSQL executed exact logout and refresh credential statements: full closure includes older/expired ACTIVE access rows, preserves other devices/users even with a shared session id and inactive history, actual mid-transaction error rolls back, zero refresh closure is valid, zero access closure is detected, repeated/concurrent logout sees revocation, both refresh/logout races leave no new usable pair, and post-lock time rejects expiry while waiting. These are design/SQL checks, not backend conformance.
 
@@ -793,3 +1094,236 @@ Status: Complete in the branch, waiting for review. Assignment: agent `tommy`, d
 - [x] (D) `FOR UPDATE` and `ORDER BY` for the lock order cart lines, order row, lots by id, budgets by id: `sales/02` locks the cart lines, `sales/05` locks the order row and sorts the items by `lot_id`, `payment/05` and the webhook sort the items by `lot_id`; the webhook writes `system` in the ledger and the budget.
 - [x] Move the matching diagrams, add the needles to `payment-spec` and `order-spec`, run every checker and the mutation tests.
 - [x] Open the PR with `commit-and-pr`; do not merge. T2 (shipping and campaign) follows after T1 is merged.
+
+- [x] Merge `main`, preflight, push, open the pull request #58, tell the lead at once.
+- [x] Follow-up decided by the lead after the review (the owner merged #58 before it was pushed, so it is a second pull request): the transaction of `cart/01` and `cart/02` starts with `QUERY - Lock the user` (`authen.m_user`, `WHERE u.id = <verified userId> AND u.row_status = 'ACTIVE' FOR UPDATE`, as every authen API does) so that the merge, the stock rule and the 100-line count are exact for two requests of the same user; a missing or inactive user answers 401 (E10002) after a ROLLBACK. Spec and diagram change together; needles guard the query, its `FOR UPDATE` line and the rule; 10 of 10 mutations caught and BEGIN moved after the lock is rejected; proved on PostgreSQL 17 (the lock returns the row of an ACTIVE user, no row for a missing one, and a second transaction of the same user waits for the first).
+- [x] Repair of `main` found while checking M1 (`api-sequence-spec` was red at 31327ab): `authen-and-author/03-reset-password` and `07-upsert-user-profile` pass the checks since PR #56 and #57, so they leave `LEGACY_SEQUENCES` and `LEGACY_TOKEN_SEQUENCES` (decision of the lead).
+- [x] Found while rendering the changed diagrams: the INSERT of `cart/01` and `cart/02` merged in #58 had its value lines (`'<sequence.userId>',`) written with a bare leading quote, which PlantUML draws as a comment, so six lines were missing from the picture while the checker (which reads raw text) passed. They are written `&#39;` now, as the skeleton script does; every SQL line shows at least as often as in the spec. The same defect is in four older diagrams outside this assignment (`authen-and-author/09` 10 lines, `consent/02` 11, `consent/06` 5, `consent/07` 5), reported to the lead.
+- [ ] Merge `main`, preflight, push, open the follow-up pull request, tell the lead at once; hold the lock until the merge, then release and park.
+
+## e-commerce: Curate four presentation diagrams from the owner handoff
+
+Assignment: Codex executing with the Diagram Designer perspective; delivery `none`; authorized by `ittikorn`. The owner explicitly requested a separate workspace after Jinny's managed clone was found locked by an active domain-model task. This task uses the app-managed `diagram-handoff` worktree on `codex/diagram-handoff`; it does not acquire, release or modify Jinny's workspace or assignment. Scope: `e-commerce/diagram/` and required task records. Governing content: owner handoff in this chat, existing diagram companions and API-source references. Outbox remains proposed; no backend/API/schema implementation or approval is included.
+
+- [x] Inspect sources, task isolation, existing changes and baseline checks for the four diagrams.
+- [x] Add the Controller → Dispatcher → Handler → Domain/ports → Infrastructure call paths, preserving real layer containment and CODE/SPEC/PROPOSED distinctions.
+- [x] Show checkout's atomic source transaction before READY and mandatory operator review before controlled quarantine replay.
+- [x] Retain and clarify outbox sequence claim transaction, destination transaction, fenced ACK, replay and lease expiry.
+- [x] Rename system-design to order-lifecycle and remove Redis/MongoDB detail from its image and companion.
+- [x] Curate the four primary images and topic-based references; synchronize source generators, companions and links.
+- [x] Regenerate only the four selected views; export editable PNGs and verify source parity, geometry, HTML accessibility, links and final visual renders.
+- [x] Record final results and hand off the separate workspace without committing or opening a PR.
+
+## e-commerce: Organize diagram folders and deliver the handoff PR
+
+Authority: direct request from Ittikorn in this chat to separate folders and open a PR; delivery is now `open-pr` for this task's existing Codex worktree/branch. The prior Jinny workspace remains untouched. Scope: `e-commerce/diagram/` plus required task records. The owner handoff still governs content; proposed outbox design remains unapproved for implementation.
+
+- [x] Inspect delivery rules, baseline, existing files and generator/link dependencies.
+- [x] Group four primary bundles under main/, eleven reference bundles by topic under reference/, supporting design records under design/, and generators under scripts/.
+- [x] Adapt generator output resolution and update all affected Markdown links, HTML navigation and reproduction commands.
+- [x] Verify all fifteen generated views, editable PNG/source parity, folder membership, Markdown links/frontmatter, HTML checks and preservation of reference diagram content.
+- [x] Update final verification and task records; run delivery preflight and inspect the staged diff.
+- [x] Commit the scoped work, push codex/diagram-handoff and open a PR targeting main; report checks and remaining limitations. PR #64 is open at cfd6f72.
+
+Delivery state in this checklist is the pre-send snapshot captured by the commit. Confirm the actual commit, branch push and PR outcome from Git/GitHub; do not infer an open or merged PR from a checkbox.
+
+## e-commerce: Resolve PR #64 conflicts with the Domain diagram package
+
+Authority: Ittikorn requested resolving branch conflicts in this chat, specifically the shared `e-commerce/diagram/generate_diagrams.py` renderer (renamed to `scripts/generate_diagrams.py` here). Integrate `origin/main` into `codex/diagram-handoff`; this does not authorize merging PR #64 into main. Main now contains PR #63's dedicated domain/ package. The worktree was clean before integration; Git reported one content conflict in the renamed renderer.
+
+- [x] Refresh main/PR state and identify the incoming Domain package and exact renderer conflict.
+- [x] Preserve output_dir support and new artifact routing in the shared PNG finalizer.
+- [x] Adapt Domain imports/HTML navigation to the scripts/ layout; preserve all incoming domain models and PNGs, and retain Domain entries in the guide.
+- [x] Verify the original fifteen diagrams plus four Domain diagrams, source/editable PNG parity, local links and Markdown frontmatter; resolve all index conflicts.
+- [ ] Run preflight, inspect the merge diff and record verification; commit the resolved merge and push to PR #64, then confirm its mergeability.
+
+## e-commerce: Peter API review — role batch upsert (API 16, 2026-11-08)
+
+Authority: owner Q2/Q4/Q10/Q13/Q15, one paired API per PR; author/01 was delivered as PR67 (four files, MERGEABLE, 54 checks/80 mutations/85 visible SQL lines) and preserved without a merge gate. Main-based batch baseline is green. Scope: author/02 pair, shared checker and tasks; no schema/backend implementation.
+
+- [x] Deliver PR67, archive assignment/history, return to main and prepare a fresh authorized batch branch with complete baselines. Read the full batch pair, role schema and single-role review.
+- [x] Reconcile whole-request 400/existence-before-permission with ordered per-item checks/writes; preserve earlier-item visibility, indexed errors, all-or-nothing response and delete/name-reuse behavior.
+- [x] Update spec/complete sequence together: verified claims and current credentials, caller-first/sorted target locks, null-safe conflict checks, immutable system role, guarded writes and exact ordered result mapping.
+- [x] Add strict SQL/path/loop/semantic/render checks; execute exact PostgreSQL mixed-batch, ordering, rollback and concurrency fixtures; mutation-test and inspect the finished diagram.
+- [x] Deliver batch PR69 after full verification, preserve its history and continue from main; GitHub now verifies #69 merged at c35aaa5.
+
+Verification: nine exact SQL definitions across ten note occurrences; one request-order loop, one claims permission and one final commit. The checker expands 19 representative single-iteration terminal traces; actual multi-item semantics are verified by PostgreSQL fixtures, not inferred from one unrolled iteration. Mutations caught 87/87 faults after closing initial repeated-rule/lock-description gaps (83/85 first pass), including explicit caller/target SQL lock-strength faults. Eight synchronized SQL semantic faults, early permission, COMMIT moved into the loop, SQL whitespace drift, the original diagram and a real rendered VALUES omission are rejected. Final SVG/PNG inspected with 11 participants and 75/75 visible SQL lines including the repeated duplicate query.
+
+Actual PostgreSQL fixtures passed mixed four-action and all-delete batches, insert-ARCHIVED action, canonical duplicate ids, whole-target 404 precedence, one exact claims permission, delete/rename-then-name-reuse and reversed-order failure, later conflict/system/binding rollback, real SQL error and zero guarded update rollback, concurrent unique-index collision at item 1 undoing its earlier insert, opposite input orders over sorted role locks, caller revocation/expiry lock waits, inactive caller, and all 100 returned indexed results at the maximum. These are exact SQL with reference Application orchestration; backend/JWT crypto and unmigrated cross-API reference writers remain outside certification. All 54 documentation commands, audit 53/0, database ALL PASSED, 12 skeleton tests and authorized dirty-tree preflight are required before delivery.
+
+## e-commerce: Peter API review — single role upsert (API 15, 2026-11-08)
+
+Authority: owner Q2/Q4/Q10/Q13/Q15; one API pair per PR, claims authorize until access expiry but current credentials still revoke immediately. Main-based branch passed 52 documentation baseline commands plus audit/database tests after PR #62 merged. PR #65 was delivered and its conflicting base reconciled with 53 passing commands; preserve its branch/revision history without a merge gate. Scope: author/01 pair, shared checker, tasks; no backend/schema implementation.
+
+- [x] Preserve PR65 and prepare a fresh main-based assignment with complete green baselines. Read role spec/sequence/schema, system-role/in-use/name uniqueness rules and neighboring assignment locking.
+- [x] Reproduce current null-exclusion duplicate behavior and unguarded update; define current credentials versus JWT-only caller authorization without changing the approved 400/404/403/409 order.
+- [x] Update spec and generated-then-finished sequence together, with exact SQL, complete branches, mapped write ids, current credentials, system role protection and atomic conflict outcomes.
+- [x] Add focused semantic/path/SQL/render checks, mutation-test them, execute exact PostgreSQL concurrency/rollback/ownership fixtures and inspect the diagram.
+- [x] Integrate latest main preserving all other APIs, run every checker/audit/database/skeleton/preflight, deliver one PR and continue from main under Q15.
+
+Verification: nine SQL definitions copied character-for-character across eleven executed note occurrences; 21 terminal paths. Focused mutation tests caught 80/80 faults (initial 75/78 exposed missing per-branch UPDATE-result/guard checks, now fixed), eight synchronized SQL faults still pass normalized parity but fail semantics; authorization moved before existence, exact SQL whitespace drift, the old live-grant diagram and a real rendered VALUES omission are rejected. The final narrative includes every API/frontend/caller outcome, user-first and target locks, explicit activations and full rollback/commit effects. Actual PostgreSQL reproduced baseline NULL-exclusion and deleted-row resurrection risks, then passed lifecycle/system-role/binding status/name reuse, bound apostrophe/Thai/audit, actual error rollback, two-caller unique-index race, deletion lock wait, revocation/expiry wait and inactive-user checks. Reference Application driver only; unmigrated binding writers and backend/JWT/encryption implementation are not certified.
+
+Pre-integration: all 53 documentation commands, audit 53/0, database ALL PASSED, 12 skeleton tests, 85/85 rendered SQL lines. The skeleton initially counted a repeated BEGIN token inside its copied execution hint; rephrase the hint without changing SQL, and the unchanged generator tests pass. PR65 is now verified merged; integrate its checker plus the new sequence guidance and diagram package, preserving every unrelated artifact.
+
+Integrated origin/main aab155b: API10 review, updated sequence guidance and diagram organization retained exactly, with no off-scope changes relative to main. Final 54/54 documentation commands, audit 53/0, database ALL PASSED, 12 skeleton tests, 80/80 mutations and eight synchronized semantic SQL faults passed/rejected as expected; all 85/85 SQL lines visible, including repeated blocks. Four owned files differ from main. Recovered SQL preserves note prefixes and original whitespace exactly.
+
+## e-commerce: Peter priority review — reconcile PR67 with merged role batch (2026-11-08)
+
+Owner requested checking check_docs.py in PR67 before any other work and opening a fresh PR. Live GitHub evidence: PR67 is OPEN/CONFLICTING, not merged; PR69 is MERGED at c35aaa5. Main correctly contains role-batch-flow; PR67 correctly contains role-upsert-flow. Their author_needles branches and adjacent function insertions conflict when combined. The absence of an unmerged PR's function on main is not a lost-function regression. Inquiry remains clean/pushed at 2a85351 on its preserved branch, with its assignment and Q22/Q23 answers suspended locally.
+
+- [x] Verify actual PR states/head identities; reproduce checker/task conflicts with merge-tree without changing the working tree. Preserve inquiry and prepare a fresh main-based reconciliation assignment with all 54 checker/audit/database baselines green.
+- [x] Carry the exact reviewed API01 spec/sequence from PR67; start checker from current main and add only its role-upsert flow and API01 compatibility, retaining merged batch behavior and every other function/registration.
+- [x] Prove all pre-existing main functions unchanged except author_needles; compare each API's expected needles against its correct source. Run both flow/mutation/render suites and every registered checker, audit, database/skeleton tests and authorized preflight.
+- [x] Open a verified replacement PR with one API pair, preserve PR67 history and report the new link before resuming inquiry.
+
+Verified combined checker: all 159 pre-existing main functions retained; only author_needles changes, preserving API02..09 expectations exactly. API01 expectations and its full check_role_upsert_flow source equal PR67. COMMANDS is exactly main's 54-command set plus role-upsert-flow (55). Both API01 files equal PR67 byte-for-byte; the API02 pair equals main. Mutation runs passed 6/6 integration/registration-loss faults, 80/80 single-role faults and 87/87 batch faults (173/173 total). All 55 documentation commands, audit 53/0, database ALL PASSED, 12 skeleton tests, both actual PostgreSQL fixture drivers, and counted render checks (85/85 single, 75/75 batch) passed on the combined tree. Backend/JWT implementation and unmigrated cross-API binding writers are not certified.
+
+## e-commerce: Peter API review — role inquiry (API 17, 2026-11-08)
+
+Authority: owner Q2/Q4/Q10/Q13/Q15; one API spec/sequence pair per PR. Role single PR67 and batch PR69 are open and MERGEABLE as delivered, with preserved branch/assignment histories. A fresh main-based inquiry branch passed 53 documentation baselines plus audit/database tests. Scope: author/03 pair, shared checker and tasks; no backend/schema implementation.
+
+- [x] Deliver role-batch PR69, verify its actual returned URL/branch/head, archive the matching history and prepare the next authorized branch without a merge gate. Read the entire role inquiry pair and governing nullable/filter/schema/security rules.
+- [x] Update inquiry spec/sequence together: verified JWT platform-admin claim, current credentials, read-only consistent count/page, bound nullable filters/checked paging, exact projection and every response.
+- [x] Add strict SQL/flow/result/render checks, mutation and synchronized semantic faults; execute exact PostgreSQL filter/credential/pagination/snapshot fixtures; inspect the diagram.
+- [x] Preserve latest main, run every checker/audit/database/skeleton/preflight and deliver one inquiry PR; continue from main immediately.
+
+Verification: three SQL definitions match every character, including comments/indentation; 10 terminal traces cover 400, three 401 cases, claims-only 403 before role reads, three pagination successes, timeout and unexpected failure. Mutations caught 64/64; eight synchronized SQL semantic faults pass normalized parity but fail the focused checker; permission before current credentials, count before permission, whitespace drift, old diagram and actual rendered omission also fail. SVG/PNG inspected with eight participants and 28/28 visible SQL lines. Actual PostgreSQL verified four-field projection, all non-DELETED statuses, every nullable/combined filter, name OR description search with case/apostrophe/Thai/wildcards, paging/beyond/missing id, current credential expiry equality/owner/status, read-only rejection/audit preservation and concurrent insert/delete snapshot isolation. Reference claims orchestration rejects before role queries despite a live grant, and permits a current old admin claim without one. HTTP/JWT cryptography/backend conformance is excluded. All 54 documentation commands, audit 53/0, database ALL PASSED and 12 skeleton tests pass. Latest fetched main remains aab155b; only the five authorized inquiry/checker/task/lesson paths differ.
+
+Integration: origin/main c69dc19 adds the self-contained sequence example/guidance; its skill files match main byte-for-byte. API17 pair and complete checker match the verified task commit unchanged, and exactly five owned paths differ from main. All 54 documentation checks, audit 53/0, database ALL PASSED, 12 skeleton tests and 28/28 rendered SQL lines passed again on the integrated tree. Owner Q22/Q23 were subsequently answered: reject a scoped-to-unscoped transition with surviving non-DELETED role/user grants (409 E10006), and allow unlinking an existing closed scope while retaining ownership/immutable-id/in-use checks. These decisions are preserved for the separate permission API review, not implemented in inquiry.
+
+Resume: owner explicitly requested continuing the pending work. Restore the original inquiry assignment/branch and merge current main f5580ed087c8ffcc6a740b256fcb6aacd36ec5ae. Preserve all single/batch checker bodies and registrations from merged PR73/69; modify only API03 expectations and add its exact previously-tested checker. Q22 quote: “ใช่ ปฏิเสธจนถอน grant เดิมครบ”; Q23 quote: “ใช่ อนุญาตถอน link ของ scope ที่ปิดแล้ว”. Do not close PR67 without explicit owner approval; the earlier closure attempt was rejected and no closure was performed.
+
+API17 resumed integration verification: main f5580ed087c8ffcc6a740b256fcb6aacd36ec5ae retained byte-for-byte outside the five owned paths, including both completed role API pairs. Main functions/registrations are preserved, adding only role-inquiry-flow (55 -> 56 commands). On the combined tree 56/56 documentation checks, audit 53 tables / 0 findings, database ALL PASSED, 12 skeleton tests, 64/64 mutations, synchronized semantic faults, actual PostgreSQL inquiry fixtures and 28/28 rendered SQL lines passed. The saved inquiry API pair/checker remain unchanged; resolve checker/task conflicts by preserving the whole current-main definitions and the exact inquiry additions.
+
+## e-commerce: Peter API review — permission upsert and scope links (API 18, 2026-11-09)
+
+Authority: original review plus Q2/Q4/Q10/Q13/Q15, owner Q22/Q23 confirmed 2026-11-08. Inquiry PR74 delivered with spec/sequence, 56 checks, 64 mutations and 28 visible SQL lines; its history is preserved and main now includes it. New permission branch passed 56 documentation baselines plus audit/database tests. Scope: author/04 pair, shared checker, confirmed-decision log and tasks; no backend/schema implementation.
+
+- [x] Deliver/archive PR74 and prepare a clean main-based permission assignment with complete green baselines. Read the full permission pair, master/link schema, current claim resolver and generic author checks.
+- [x] Persist Q22/Q23 verbatim and revise the contract: claims-only caller authorization plus current credentials; owned immutable scope links; ACTIVE-master validation only when retaining/adding; final scoped-to-unscoped guard; guarded writes and complete response mapping.
+- [x] Finish the generated sequence with every SQL at its actual phase, scope loops, explicit result mapping, all rejection/rollback/commit outcomes and no incomplete scaffold.
+- [x] Add strict SQL/phase/transaction/render checks; mutation-test them and execute actual PostgreSQL parent/child/Q22/Q23/rollback/concurrency fixtures. Inspect the rendered diagram.
+- [x] Integrate newest main, preserve every other checker/API, run all required suites/preflight, open one paired API PR and continue from main without a merge gate.
+
+Preserve the existing single-permission precheck semantics: child duplicate/in-use validation occurs before any parent/child mutation; delete-and-readd of an already-defined scope in the same array still conflicts until the old link is removed in a prior request. No new child count limit, schema field, grant writer or response child-id array is added. Q22 checks a real transition (before non-DELETED definition count > 0, final count = 0), not ordinary updates to already-unscoped permissions.
+
+Verification before base integration: 57/57 documentation commands, audit 53 tables / 0 findings, database ALL PASSED, 12 skeleton tests and authorized dirty-file preflight passed. The 16 unique SQL definitions occupy 19 actual sequence occurrences; counted SVG contains all 139/139 SQL lines. Mutation testing caught 66/66 isolated faults plus 10 synchronized SQL semantic faults that still pass generic spec/sequence parity (76 total). Actual PostgreSQL reference orchestration verified derived parent ids, typed nullable exclusions, owned immutable links, pre-write conflict semantics, Q22 final-state rollback for non-DELETED role/direct grants, Q23 closed-master cleanup, already-unscoped updates, actual unique races, fault rollback and caller-lock revocation/expiry. Structural traversal is one representative pass through each of three loops, not proof of all concrete multi-item requests; real SQL fixtures cover concrete requests. Backend/JWT cryptography and unmigrated reference writers remain outside this review.
+
+API18 integration: fetched origin/main d1ad5d97dcf738421a3c66bb9ca350b3300ada9e into this task branch without conflicts; incoming delivery-skill and code-structure changes are preserved. All 161 pre-existing checker functions remain identical except the bounded API04 author_needles update, with exactly one new permission-upsert function/registration. Only the six authorized API04/checker/decision/task/lesson paths differ from the fetched base. Post-integration 57/57 documentation commands, audit 53/0, database ALL PASSED, 12 skeleton tests, 66/66 mutations plus 10/10 synchronized faults, actual PostgreSQL fixtures and 139/139 counted rendered SQL lines passed again. No backend implementation is certified.
+
+Delivery: PR77 https://github.com/ittikornsopawan/system-analysis-and-design/pull/77 opened on the verified API18 branch. Initial GitHub mergeability is UNKNOWN (not yet computed), not a reported conflict. Preserve this open PR and its branch; continue under owner Q15 without merging or waiting.
+
+## e-commerce review: reusable verification guidance (2026-11-09)
+
+Required follow-up to the repository error-improvement rules. API18 PR77 and API19 PR79 each contain only their own API pair and scoped verification work; preserve both histories and avoid adding skill files to the API19 assignment after the fact. This fresh assignment changes only existing checker/delivery references and task/lesson records.
+
+- [x] Deliver/report PR79 with five files, preserve its verified head/history and return to main without a merge gate. Prepare a separately scoped guidance branch after green baselines.
+- [x] Strengthen existing guidance for phase-specific guard mutations, fixture lifecycle/ownership preconditions, supported comparison domains and recovery of required command inputs.
+- [x] Verify the guidance against the corrected permission single/batch scenarios and registry comparisons; retain scope/approval safeguards and inspect the complete prose diff.
+- [x] Integrate current main, run required preflight/format checks and publish the preventive guidance separately.
+
+API19 delivery evidence: https://github.com/ittikornsopawan/system-analysis-and-design/pull/79 at head 8d0d80ad5f1534803a6f1c8fb03b0836bd4a37e6; integrated main 878d11229c8d78f385741da2fc6397d103ac7bda, 58/58 checks, audit 53/0, database ALL PASSED, 12 skeleton tests, 107 negative cases, real PostgreSQL batch fixtures and 141/141 visible SQL lines. Initial remote mergeability UNKNOWN was not a reported conflict. No PR was merged by Peter.
+
+Guidance verification: the phase-specific mutation fails with the unrelated phrase still present, both delivered flow checkers pass on their unchanged published pairs, helper-supported-family/registry comparisons pass, recreated readable commit input matches the successful merge subject, and the corrected entire PostgreSQL batch driver passes again against exact PR79 SQL. Review distinguishes setup defects from defects in the artifact under test; approved contract expectations and delivery authorization remain unchanged. Four owned Markdown files only; preflight and diff whitespace checks pass.
+## e-commerce: Peter API review — permission batch (API 19, 2026-11-09)
+
+Authority: owner Q2/Q4/Q10/Q13/Q15/Q22/Q23; API18 PR77 is delivered/open and its branch/history preserved. Start from main without requiring merge. Scope: author/05 pair, checker, approved-decision log and task/lesson records; no backend/schema implementation.
+
+- [x] Open PR77, report its actual URL immediately, preserve assignment history and return to main; prepare API19 after all baseline checks pass. Read the entire existing batch pair and relevant single/batch contracts.
+- [x] Persist Q22/Q23 and revise batch rules/SQL: current credentials, one claims guard, deterministic bulk locks, indexed errors, request-order processing and derived parent ids; apply final scoping and closed-master rules per distinct permission.
+- [x] Complete paired sequence with every SQL at the actual phase, nested input/child loops, full rollback on any item failure and one ordered 200 result after all mapping/commit.
+- [x] Add focused checker and mutation/render verification; execute real PostgreSQL mixed/100-item/Q22/Q23/order/rollback/concurrency fixtures. Run every registered checker, audit/database and skeleton tests.
+- [x] Integrate newest main, preserve all other API/checker work and publish this API alone; continue under owner Q15.
+
+Preserve the existing response schema exactly: each result contains index, permissionId and action (no rowStatus or scope ids). All parent/child input validation completes before SQL; repeated parent ids are rejected. Before mutation lock all target parents by id, then all ACTIVE referenced masters by id, then requested owned child definitions by id. Check all parent existence before the one caller-permission guard, as in the completed role batch. Within each permission all child prechecks precede its writes; prior permission writes remain visible for later name checks. Because a permission appears only once, its post-child Q22 check is its final state for the whole batch.
+
+API19 verification before integration: 57/57 documentation commands, audit 53 tables / 0 findings, database ALL PASSED, 12 skeleton tests and authorized preflight passed. All 16 unique SQL definitions match exactly at 19 sequence occurrences; SVG/PNG inspected and 141/141 SQL lines are visible. Isolated mutations caught 93/93, synchronized SQL semantic faults caught 10/10 despite generic parity passing, and four genuine phase reorderings (existence/permission, early loop commit, mapping before final Q22) were rejected despite generic parity passing: 107 negative cases total. Exact PostgreSQL reference orchestration passes mixed/all-delete/insert-ARCHIVED/100-item results, parent-derived child ids, closed-master cleanup, all non-DELETED grant statuses, later-item Q22 rollback of all earlier rows/audits, pre-write child conflicts, ownership/immutable scopes, delete/reuse order, real SQL/unique/zero-row faults, opposite-order concurrent locks and actual master/token/expiry waits. Backend/JWT implementation and unmigrated reference writers remain unverified.
+
+API19 integration: fetched origin/main 878d11229c8d78f385741da2fc6397d103ac7bda (including API18 PR77). Resolve checker/lesson/task conflicts from whole current-main content plus only the batch function, API05 expectations and API19 records. All 162 existing function bodies remain byte-identical except author_needles; every other master API expectation (01..09) is identical, and COMMANDS is exactly main 57 plus permission-batch-flow (58). API18 pair and confirmed-decision log remain byte-identical to main, leaving five owned changed files. Post-integration 58/58 documentation commands, audit 53/0, database ALL PASSED, 12 skeleton tests, 107 negative checks, actual PostgreSQL batch fixtures and counted 141/141 rendered SQL lines pass.
+
+## e-commerce: Peter API review — permission inquiry (API 20, 2026-11-09)
+
+Authority: owner Q2/Q4/Q7/Q10/Q12/Q13/Q15 and direct instruction to proceed. Permission single PR77, batch PR79 and verification-guidance PR80 are merged; preserve their complete contracts/checkers. Start from updated main with all 58 documentation baselines plus audit/database green. Scope is the author/06 pair, its checker/task evidence and only necessary preventive reference changes. No schema/backend implementation.
+
+- [x] Prepare a clean main-based assignment and read the complete inquiry pair, role inquiry prototype, permission/link/scope schema and governing owner decisions.
+- [x] Reconcile the complete permission inquiry contract: current credentials and verified JWT administration, nullable bound filters/checked paging, one read-only snapshot for count/page/definitions/masters, exact nested mapping and every outcome.
+- [x] Generate and finish sequence.wsd alongside spec.md, placing every SQL at its real branch and mapping input/result sets, empty-page/link cases, commit/rollback, timeout and unexpected failure.
+- [x] Add strict SQL/flow/projection/render checks; mutation-test semantic/phase faults; execute exact PostgreSQL filter/page/link/master/status/snapshot fixtures and inspect the render.
+- [x] Reconcile stale Peter delivery checkboxes against confirmed merged evidence; integrate latest main preserving all other API/checker work, run complete verification/preflight and deliver one API PR. Return to main without a merge gate.
+
+Preserve the existing management inquiry behavior: non-DELETED permission definitions are returned even when their referenced master is INACTIVE/LOCKED/ARCHIVED/DELETED; metadata still comes from that exact master id. This is an administrative catalog, not the ACTIVE-only login/refresh claim resolver. Preserve the five-field permission object (including scopes) and five-field scope object, database collation for name/code order, all pagination metadata and empty-list HTTP 200. Use page-derived typed UUID arrays, no interpolated IN list or per-item queries. Scope rowStatus describes the definition, not its master.
+
+API20 verification before integration: all 59 documentation commands, audit 53 tables / 0 findings, database ALL PASSED and 12 skeleton tests pass. Five SQL definitions equal the sequence character-for-character at their five actual phases. The 11 terminal structural traces cover 400, three credential/JWT 401 branches, claims-only 403, four populated/empty success modes, 408 and generic 500; two mapping loops have no SQL/commit/response. Isolated mutations caught 81/81, synchronized semantic SQL faults 12/12 (including wrong schema and hidden extra predicate) and flow/strict/legacy/render faults 9/9: 102 negative cases. SVG/PNG inspected; counted SQL is 44/44 visible lines and removing one repeated WHERE line is rejected. Exact PostgreSQL fixtures verify bound null/filter/page/ILIKE/bounds, parent-only page ids, no N+1 SQL, all definition/master statuses, reused-code identity, exact five-field nested mapping, read-only preservation, malformed result handling and concurrent parent/link/master snapshot isolation. Reference mapper/JWT-verified orchestration only; no HTTP/JWT cryptographic/backend conformance claim.
+
+Delivery-record reconciliation: live GitHub confirmed PR23/24/32/34/35/36/37/44/53/55/56/57/60/62/65/69/73/74/77/79/80 MERGED. Nine stale Peter checkboxes were reconciled, including logout SQL/render evidence already recorded in its own section, single-role replacement PR73, role inquiry PR74, permission batch PR79 and guidance PR80. Unrelated task checkboxes and old historical narratives are preserved.
+
+## e-commerce: Peter API review — scope upsert (API 21, 2026-11-09)
+
+Authority: owner Q2/Q4/Q7/Q10/Q13/Q15 and direct instruction to proceed. API20 permission inquiry delivered as PR82 (6f6eecc), six files, 59 checks, 102 negative cases and 44/44 rendered SQL lines; preserve its branch/history without a merge gate. This branch starts from current main after complete baselines. Scope: author/07 pair, checker/task evidence and only required preventive references. No backend/schema implementation.
+
+- [x] Report/preserve PR82, return to main and prepare the next scoped assignment. Read the entire scope pair, migration/schema, approved A8/A12/A14/A15 and the owner claim/revocation decisions.
+- [x] Revise scope spec/SQL with verified JWT administration/current credentials, caller-first and target locking, nullable duplicate exclusion, all non-DELETED reference checks and guarded audited writes. Preserve existing scope-code editability, status lifecycle and exact messages/response shape.
+- [x] Finish paired sequence with actual SQL branches/results, complete validation/credential/permission/conflict/write/rollback/commit and delete/archive/insert-ARCHIVED outcomes.
+- [x] Add exact SQL/phase/response/render checking, mutation-test it and execute actual PostgreSQL lifecycle/usage/rollback/unique and credential/reference-writer lock races; inspect SVG/PNG.
+- [ ] Integrate newest main, preserve all unrelated API/checker work, run all required checks/preflight and publish one API PR; continue from main without waiting for merge.
+
+Lock protocol: caller user -> target scope -> reference reads/write. Active definition writers already lock their permission parents, then ACTIVE referenced scope masters; verify these shared statements when testing the scope deletion race. Q23 removal may skip a closed master and can only reduce usage. A definition with non-DELETED status blocks master delete/archive even if its permission parent is closed/deleted; no JOIN may hide usage. INACTIVE/LOCKED and ordinary code/name/description updates keep links unchanged. No reserved-scope rule or code immutability is introduced.
+
+API21 verification before integration: seven SQL definitions across nine exact executed-note occurrences; 20 terminal structural traces. Isolated mutations caught 72/72; synchronized SQL semantic faults 11/11; reordered flow/native whitespace/legacy/render faults 8/8 (including a real PlantUML leading-quote omission and one missing repeated SQL line): 91 negative cases. SVG/PNG inspected with 76/76 SQL lines visible. Exact PostgreSQL scope lifecycle/code uniqueness/editability/audit/rollback/result guards and user/token/target lock waits pass. Actual delivered permission-writer parent/master/duplicate/INSERT SQL serializes both new-link/master-delete race orders correctly. Backend/HTTP/JWT cryptographic conformance and unmigrated writers are excluded.
+
+Initial full suite passed all 59 documentation commands, audit 53/0 and database tests but failed the skeleton suite on the copied execution-hint BEGIN count. Root cause was reproduced; only prose was rephrased, all SQL and the completed sequence remain unchanged, and both the unchanged skeleton suite (12 tests) and the entire 59-command/audit/database/preflight suite now pass. The expired old runtime process id is separately explained in lessons; its durable SQL log already contained complete passing evidence.
+
+Pending owner Q24: permission 04/05 currently permit a DELETED parent to retain non-DELETED scope definitions, while the parent can no longer be edited and those definitions still block scope delete/archive under A14. Ask whether final parent deletion must require all definitions withdrawn (409 E10006 otherwise, same-request complete withdrawal allowed). This is not yet approved and would require separate API04/API05 PRs. Scope API21 preserves the already-approved non-DELETED usage guard; no parent-status bypass or cascade is introduced. Consent-management Q18/Q19 also remain pending.
+
+API21 integration: fetched origin/main 014380a906c7b2f571cfddf5f19e049e2b669642, which includes merged inquiry PR82. Resolve checker/task/lesson conflicts from whole current-main content plus only scope-upsert-flow, API07 expectations and API21 records; retain incoming reference improvements. All 164 existing function bodies are identical except bounded author_needles changes, all author_counted outputs and unaffected master expectations are identical, and COMMANDS is exactly 59 -> 60. API06 pair is byte-identical to main; API07 pair equals the verified task commit. Seven owned files differ. On the combined tree all 60 documentation commands, audit 53/0, database ALL PASSED, 12 skeleton tests, 72 isolated + 11 synchronized + 8 flow/strict/legacy/render faults, actual scope/reference-writer SQL fixtures and 76/76 visible SQL lines pass. API20 delivery checkbox is reconciled using verified 6f6eecc ancestry in main. Q18/Q19/Q24 remain unanswered and no dependent business behavior is implemented.
+
+## e-commerce: Peter Q24 follow-up — batch permission delete (2026-11-09)
+
+Authority: Q24 owner answer “ต้องถอน links ให้ครบก่อนลบ permission (แนะนำ)”. Single API04 is delivered in open PR85; its branch/history are preserved under Q15 and this independent author/05 task starts from current main after 60 documentation baselines plus audit/database. Preserve Q22/Q23, indexed error precedence, HTTP 200 ordered results and full batch atomicity. No schema/backend work.
+
+- [x] Prepare the bounded main-based assignment and persist Q24 approval identically to the single-API PR.
+- [x] Reproduce the old batch gap and make the Q24-aware focused checker reject the old pair before artifact edits.
+- [x] Update spec/sequence together: final current-permission count, indexed 409, whole-batch rollback, complete withdrawal examples and unchanged SQL.
+- [x] Execute exact SQL fixtures for final-state cases, earlier-item/audit rollback, request-order behavior and parent-lock races; mutation-test and render/count visible SQL.
+- [ ] Integrate latest main, preserve unrelated functions/APIs, run full verification/preflight and open one batch-API PR without merging.
+
+Batch Q24 evidence: the Q24-aware checker rejected the old pair before editing. Exact-SQL reference execution reproduced the old retained-definition deletion and indexed 404 on later cleanup. The new rule rejects omitted/empty/partial withdrawal, a newly added surviving link and every non-DELETED definition/closed-master state. Later-item failure returns no result and restores earlier inserted/updated parents, child links and all audit columns. Complete same-request withdrawal, zero definitions and DELETED-only history return ordered 200 DELETE actions; archive retention and Q22/Q23 remain valid. Actual parent-lock races pass in both orders; existing mixed/all-delete/100-item, credential wait, owner/immutable/reference, unique and SQL-failure fixtures remain green.
+
+Negative verification: 94 isolated mutations, 10 synchronized SQL semantic faults, 4 phase reorderings and 22 Q24 guard/index/example faults all rejected (130 total). The initial 93/94 miss was corrected by anchoring the entire Q22 finality clause; skill guidance and lessons record its prevention. Q24 SQL-only definition parity stays exact; the combined generic CLI additionally rejects transaction-closure faults. All 16 SQL definitions and 19 occurrences are unchanged. Rendered SVG/PNG inspected, with SQL 141/141 visible lines. Backend/HTTP/JWT implementation conformance and unmigrated writers are outside this reference verification.
+## e-commerce: Peter Q24 follow-up — single permission delete (2026-11-09)
+
+Authority: owner answered Q24 “ต้องถอน links ให้ครบก่อนลบ permission (แนะนำ)”; preserve Q22/Q23 and one API pair per PR. Scope PR83 is merged and the managed clone was returned to main with its branch/history retained. New main-based assignment passed all 60 documentation baselines plus audit/database. This task updates only author/04, its checker/approval/task evidence and required preventive guidance; author/05 is the next independent PR. No schema/backend implementation.
+
+- [x] Prepare the clean assignment and persist the exact Q24 approval, final-state semantics, no-cascade rule and separate batch delivery scope.
+- [x] Reproduce rejection of the old contract with a Q24-aware checker before changing the endpoint pair; record the legacy allowed delete/retained-link behavior.
+- [x] Update spec/sequence together: after all child writes reuse the final definition count; reject a DELETED parent with a positive count, roll back everything and preserve same-request complete withdrawal. Retain all existing SQL definitions unchanged.
+- [x] Verify concrete zero/one/many and closed/legacy definition cases, partial/full withdrawal, archive, grant/reference guards, audit rollback and deletion-vs-writer ordering; mutation-test the final guard and inspect the rendered diagram.
+- [ ] Integrate current main preserving every unrelated API/checker, run all required checks/preflight and publish one single-API PR; proceed immediately to the batch Q24 PR under Q15.
+
+Single Q24 evidence: approved-policy checker rejected the old pair before artifact edits. The unchanged SQL with legacy reference orchestration reproduced a deleted parent retaining a live definition and a later 404 cleanup attempt. New reference execution rejects every non-DELETED definition state, closed master, omitted/empty/partial withdrawal and newly inserted link on delete; all failures restore parent, children and audit. Complete same-request withdrawal and DELETED-only history permit 204; archive retention stays valid. Actual parent-lock races serialize definition creation versus deletion in both orders. Existing Q22/Q23/ref/unique/current-credential fixtures remain green.
+
+All 60 documentation commands, audit 53 tables / 0 findings, database ALL PASSED and 12 skeleton tests pass. Mutations reject 67 regressions, 10 synchronized SQL semantic faults and 16 Q24 guard/phase/example faults (93 total). Q24 cases preserve exact SQL definition coverage; the combined generic checker additionally rejects missing rollback, as correctly reported by layer. All 16 SQL definitions and 19 diagram occurrences are unchanged from the pre-Q24 contract. SVG/PNG inspected and counted SQL is 139/139 visible lines. Batch API05 remains explicitly outstanding for its separate Q24 PR.
+
+## e-commerce: Peter permission and Allow Scope matrix (2026-11-09)
+
+Authority: owner requested `permission-scope.md`, API allowlists with spec links, then clarified “เพิ่ม section ขึ้นมา ประมาณว่า Allow Scope แล้วใส่ชื่อ scope มา”. Produce the reviewable cross-API design before individual endpoint rollout. Persist the already-answered Q18/Q19. Owner subsequently requested `<scope-name>:<allow, deny, อื่นๆ>` and approved same-permission/same-resource deny precedence with “ใช่ deny ชนะเมื่อครอบคลุมข้อมูลเดียวกัน (แนะนำ)”. Use ALL/SHOP/OWN with lowercase allow/deny; other effects remain undefined. New permission pairings remain in-review; this task does not approve delegated grants, seed changes, backend enforcement or WP5b implementation. API spec/sequence changes continue one API per PR under Q15.
+
+- [x] Prepare the bounded documentation assignment from clean current main and run the 60 documentation, audit and DB baselines.
+- [x] Inventory all 83 endpoint specs, existing ALL/SHOP/OWN scope codes and seven seeded permissions; identify the 40 queued endpoints and special authorization branches.
+- [x] Write permission-scope.md with Allow Scope, reverse API allowlists and direct spec links; distinguish existing gates, seed definitions, proposed pairings and rollout status.
+- [x] Persist Q18/Q19 and the requested per-API Allow Scope section format, preserving owner/shop/public/webhook exceptions.
+- [ ] Verify complete endpoint coverage, links, exact route names, permission-specific pairs, seed parity, special cases and unchanged API pairs; integrate latest main and publish the documentation PR.
+
+Matrix verification: all 83 route headings and forward matrix entries are unique and agree with the real API methods/paths; every local spec/source link resolves. The 40 queued endpoints and all special operation/field exceptions match the reviewed inventory. Seed is unchanged at 3 scope codes, 7 permissions and 12 definitions. The proposal groups 11 permissions (4 new) and flags missing definitions; it does not claim grants or effect storage already exist. Eight in-memory document faults are rejected; eight reference deny-overlap cases pass, including cross-permission isolation and nonmatching SHOP denies. Metadata-bearing and legacy specs both parse. All 5 authored Markdown frontmatters parse via Ruby YAML. All 60 documentation commands, audit 53/0, database ALL PASSED and 12 skeleton tests pass. Every API spec/sequence, checker function, SQL and seed remains unchanged. No backend/HTTP/JWT effect enforcement is implemented or certified.
+
+Two authoring-tool failures were corrected before delivery: the route parser initially assumed line 1 and the mutation harness initially chose a public row for a scope effect edit. Both corrected scenarios were rerun across the full inventory; reusable prevention is in the API reference and incident records in lessons. Q18/Q19 and the approved notation/deny decision are now persisted in the governing review document. The API section format is recorded for subsequent one-API paired revisions; this cross-API document does not claim all 83 endpoint sections were already changed.
+
+### PR88 review revision — four-part Allow Scope
+
+Owner request: management:user:read:allow and management:user:crud:deny. Resume the same assignment/PR without force-push; replace the active two-part display throughout the matrix, examples, section guide and traceable decision record. Keep endpoint/seed/JWT behavior unchanged and preserve all 83 links and 40 queue markers.
+
+- [x] Verify PR88 is OPEN at the published head and resume its original scoped assignment with full fresh baselines.
+- [x] Rewrite forward/reverse mappings with module:resource:action:effect; separate ALL/SHOP/OWN boundaries and explain CRUD includes read under deny precedence.
+- [x] Verify every route/rule/link and action-group example, update preventive guidance/lessons, integrate latest main and update the same PR with an ordinary push.
+
+Four-part revision verification: 83 API entries, 40 queued markers and 33 exact module:resource:action:effect allow-rule groups agree in both mapping directions. All local links and five YAML frontmatters pass. Nine in-memory document faults, 13 CRUD/action/namespace/boundary reference cases and five malformed/unknown rule cases pass; the user's read:allow + crud:deny example returns deny. The old two-part notation is marked historical in the owner-decision record and removed from the active matrix. All 60 documentation commands, audit 53/0, database ALL PASSED and 12 skeleton tests pass. API pairs, checkers, SQL, seed and schema are unchanged. This proves the document/reference semantics only, not backend/JWT storage or enforcement.

@@ -1,96 +1,142 @@
 ---
-name: E-commerce Architecture Diagrams
-description: Explains the three researched diagram views, project evidence, editable sources, fidelity decisions, reproduction and verification; read when reviewing or updating the diagrams.
+name: E-commerce Diagram Set and Reading Guide
+description: สารบัญและวิธีอ่าน diagram ชุดหลัก15มุมมองและdomain modelจากDBอีก4ภาพ พร้อม native containment แหล่งหลักฐาน วิธีสร้างและเกณฑ์ตรวจ ใช้เมื่ออ่านหรือแก้ไขภาพระบบชุดนี้
 ---
 
-# E-commerce Architecture Diagrams
+# E-commerce diagrams
 
-The three files answer different questions. The 2026-11-07 revision adds concrete project detail and replaces the earlier uniform component-card treatment. They distinguish existing code, specified commerce behavior and the owner-requested Redis/MongoDB architecture proposal. Proposed policies remain in review; no backend, API contract or database implementation is changed.
+ชุดนี้แยก **คำถามและ notation ของแต่ละภาพ** ก่อนจัด layout ตามข้อทักท้วงวันที่2026-11-08 อ่าน [ความหมายและขอบเขตทั้ง15ภาพ](design/diagram-semantics.md) และ [แผน/approval boundary](design/implementation-readiness-plan.md) ก่อนใช้ภาพประกอบการพัฒนา
 
-| File | Question and visual grammar | Added detail |
-| --- | --- | --- |
-| [architecture-design.drawio.png](architecture-design.drawio.png) | **What collaborates at runtime?** Architecture with nested system/application boundaries and integration paths. | Client roles, one HTTP/CQRS host, core interfaces, infrastructure, authoritative PostgreSQL, Stripe paths and proposed MongoDB plus isolated Redis cache/rate stores. Nine functional nodes and eleven connectors. Config ownership, asynchronous transaction copies, cache invalidation and quota outage behavior are explicit. |
-| [repository-architecture.drawio.png](repository-architecture.drawio.png) | **Where does each responsibility live?** A three-level source Tree. | Solution/build settings, source/test folders, five production projects, representative filenames, core-owned interfaces, exact nine production and five test references, two existing xUnit suites, adjacent specification/database artefacts and proposed cache/rate/config/projection ports and adapters. Nine nodes and eight containment connectors. |
-| [system-design.drawio.png](system-design.drawio.png) | **How does an order progress or recover?** State Machine using the Lifecycle phase map pattern. | Four primary order phases, two alternate terminal outcomes, payment retry, guarded return from fulfilment, actor ownership, cancellation/expiry guards, split parcels, full refunds, stock/budget reservation and release, transaction scope, lock order, late-event behavior and proposed Redis admission/cache plus PostgreSQL-outbox-to-MongoDB publication. Six persisted order states, an initial marker and eight transitions. |
+Architecture มี Presentation/Application/Domain/Infrastructure/Shared เป็น parent layers และ Command/Query, Validator, Handler, Mapping, Ports เป็น child boxes จริง Repository ใช้ project/feature ownership; State ใช้ guard/effect compartments; Sequence ใช้เวลา/lifelines/activation/OPT/ALT; Document model ใช้ fields/cardinality; Deployment ใช้ zones/hosts/artifacts; Observability ใช้ signal pipelines; Recovery ใช้ owner lanes/actions/decision gates
 
-Open any PNG directly in draw.io to edit it. Matching `.drawio` sources are also supplied. Matching `.html` files contain accessible inline SVG and support local horizontal scrolling at narrow widths.
+กล่องซ้อนทุกกลุ่มเป็น native draw.io parents ไม่ใช่เส้นกรอบตกแต่ง ตัวเลข child boxes ไม่ใช่จำนวน microservices, tables หรือ persisted states ภาพที่ต้องแสดง decomposition ใช้รายละเอียดตาม hierarchy ที่เจ้าของงานขอ แทนการตัดให้เหลือเก้ากล่องใหญ่
 
-## Detailed Thai Explanations
+## โครงสร้างโฟลเดอร์
 
-Read each companion document beside its matching image. These explanations record the existing diagram decisions and their rationale; they do not approve proposed policies or change the source specifications.
-
-| Explanation | Coverage |
-| --- | --- |
-| [architecture-design.md](architecture-design.md) | All 9 runtime components and 11 relationships; CODE/SPEC/PROPOSED labels; PostgreSQL/Redis/MongoDB authority; cache, quota, config and outbox flows; rationale, trade-offs and operational limits. |
-| [repository-architecture.md](repository-architecture.md) | All 9 tree nodes/8 containment relationships; five production projects, nine production and five test references; responsibility placement, dependency inversion, proposed adapters and test boundaries. |
-| [system-design.md](system-design.md) | All 6 persisted order states and 8 transitions; actors/guards/actions, payment/parcel separation, stock/budget invariants, late payment/refund/recovery examples and Redis/MongoDB failure boundaries. |
-
-## Research and Presentation Decisions
-
-[research.md](research.md) records official sources and project evidence. C4 separates runtime context/container/component/code perspectives; it does not prescribe these filenames. Microsoft distinguishes compile references from runtime dependency injection and documents CQRS without requiring separate databases or a broker. W3C describes transitions with events, guards and actions. These inform the editorial choices here. [C4 containers](https://c4model.com/diagrams/container), [Microsoft architecture](https://learn.microsoft.com/en-us/dotnet/architecture/modern-web-apps-azure/common-web-application-architectures), [Microsoft CQRS](https://learn.microsoft.com/en-us/azure/architecture/patterns/cqrs), [W3C transitions](https://www.w3.org/TR/scxml/#transition).
-
-The architecture view is an explicitly scoped runtime/context hybrid rather than a strict single-level C4 rendering. Its API, domain and adapter boxes are parts of one backend application. The outer dashed region scopes backend/primary data; the separate MongoDB and Redis boxes express data-service responsibilities without asserting deployment ownership or replica topology. Solid code-backed components and explicit SPEC labels separate implemented Authen from broader specified commerce behavior. The actor grouping represents client responsibilities, not three implemented frontends. No gateway, cloud platform, broker, carrier API or deployment topology is invented.
-
-The repository view uses containment arrows only. `REF` lines reproduce direct `.csproj` references; they are not runtime arrows. This prevents the old request pipeline from being mistaken for repository structure. The two test projects use existing entities/value-object tests and handler tests with in-memory fakes; no C# database integration suite is claimed.
-
-The system view uses one dominant State Machine grammar rather than mixing actor lifelines into the lifecycle. The primary rail is `WAIT_PAYMENT → PAYMENT_CONFIRMED → PROCESSING → COMPLETED`. `CANCELLED` and `REFUNDED` are separate alternate terminal outcomes. Payment and parcel statuses are explicitly different entities. Detailed SQL remains in API specs and their sequence files.
-
-## Evidence and Fidelity Ledger
-
-- Runtime evidence: `../repository/src/Ecommerce.Api/Program.cs`, `Controllers/AuthenController.cs`, `../repository/src/Ecommerce.Shared/Cqrs/Dispatcher.cs`, `../repository/src/Ecommerce.Application/Features/Authen/`, `../repository/src/Ecommerce.Infrastructure/DependencyInjection.cs`, and `Persistence/Authen/`. Email remains `LoggingEmailSender`, an in-process development stub.
-- Repository evidence: `../repository/project-structure.md`, `../repository/Directory.Build.props`, every `src/*/*.csproj` and `tests/*/*.csproj`, and the representative source/test filenames. The Component Repository migration is still pending; this task does not move code or create nested Git metadata.
-- Lifecycle evidence: `../doc/api/sales/02-create-order/spec.md`, `sales/05-cancel-order/spec.md`, `payment/01-start-payment/spec.md`, `payment/02-stripe-webhook/spec.md`, `payment/05-refund-payment/spec.md`, `shipping/01-create-shipping/spec.md`, `shipping/02-update-shipping-status/spec.md`, `shipping/06-confirm-delivery/spec.md`, campaign rules C2–C9, and the current migrations/schema documents.
-- The original architecture and system PNGs were empty. The initial repository PNG contained an Authen request pipeline. That pipeline's responsibilities now live inside the runtime architecture view, with validation order and interface ownership retained. The repository file is replaced by the source/dependency tree.
-- The previous compact code-reference picture is expanded into the source tree; no production reference is omitted. The old nine-capability system map is replaced by the order lifecycle. Catalog taxonomy, campaign configuration and individual table structures remain in their specifications rather than being misrepresented as order states.
-- Success, failure, retry, cancellation, late payment, partial parcels, guarded seven-day completion and refund effects are summarised at lifecycle level. Payloads, exact SQL, exhaustive HTTP errors and full provider event tables remain in the linked API specifications.
-- The HTTP pipeline and CQRS use cases are merged into one runtime host to keep the nine-node budget; their actual five-project split remains explicit in the repository view. Expiry and guarded seven-day automatic completion are specified responsibilities; their worker implementation/hosting is unresolved. Shipping stops remain shop-entered data. A payment failure does not create a new order failure state, and a late refund does not release cancelled stock twice.
-
-## Style, Sources and Reproduction
-
-The owner approved the diagram-design default light style: paper `#f5f5f5`, ink `#2d3142`, accent `#bf4520`. Each view uses `print-a3-landscape` 1584 × 1120, the print type ramp, one focal node, orthogonal rounded routing and a bottom legend. Rich detail rows keep technical paths/types in mono and explanatory prose in sans.
-
-`diagram_content.py` owns the semantic content and explicit geometry. `generate_diagrams.py` produces the HTML and editable draw.io sources, checks code evidence and geometry, and finalises PNG metadata. Run from the repository root containing this directory:
-
-```sh
-python3 -B e-commerce/diagram/generate_diagrams.py
-
-for name in architecture-design repository-architecture system-design; do
-  /Applications/draw.io.app/Contents/MacOS/draw.io \
-    -x -f png --embed-diagram --size page -s 1.5 --theme light \
-    --disable-update --timeout 45 \
-    -o "e-commerce/diagram/$name.drawio.png" \
-    "e-commerce/diagram/$name.drawio"
-done
-
-python3 -B e-commerce/diagram/generate_diagrams.py --finalize-pngs
+```text
+diagram/
+├── README.md
+├── main/                  # 4 ภาพหลัก พร้อม PNG/draw.io/HTML/คำอธิบาย
+├── reference/             # ภาพเพิ่มเติม เก็บเป็น reference ตามเรื่อง
+│   ├── business/          # Commerce overview และ checkout
+│   ├── payment/           # Start payment, webhook และ refund
+│   ├── data/              # MongoDB documents และ configuration
+│   ├── operations/        # Deployment, observability และ recovery
+│   └── repository/        # Source code และ tests
+├── domain/                # Domain model 4 ภาพ และ SQL inventory
+└── design/                # Design proposals, research, semantics และผลตรวจ
 ```
 
-draw.io Desktop 32.6.10 includes a one-pixel page frame before scaling. The PR exports use scale 1.5, producing 2378 × 1682 PNGs without cropping or post-export raster resampling. Matching HTML/draw.io sources retain the full 1584 × 1120 vector canvas. Compressed compatibility metadata keeps every final PNG below the repository limit of 1 MiB. PR delivery was directly authorized by the owner on 2026-11-07.
+ไฟล์ทั้งสี่รูปแบบของแต่ละภาพอยู่โฟลเดอร์เดียวกัน เปิด PNG เพื่อนำเสนอหรือเปิดแก้ใน draw.io; อ่าน `.md` สำหรับขอบเขตและแหล่งอ้างอิง ส่วน [`../scripts/diagrams/diagram_paths.py`](../scripts/diagrams/diagram_paths.py) กำหนดตำแหน่ง output ของตัวสร้างภาพ
 
-The native PNG key is `mxGraphModel` in a compressed `zTXt` chunk. The installed skill extractor recognises the older `mxfile` key. Finalisation verifies the native model is exactly the `.drawio` source, retains that native metadata and adds the compatible key as a compressed `zTXt` chunk with the same decoded content. PNG CRCs are checked, and every `IDAT` image-data byte is preserved.
+Python ของโครงการอยู่ที่ `e-commerce/scripts/diagrams/`; helper ที่ไม่ผูกกับโครงการอยู่ใน [diagram-creator](../../.agents/skills/diagram-creator/SKILL.md) ส่วนโฟลเดอร์นี้เก็บภาพ เอกสารประกอบ และหลักฐานต้นทาง
 
-The skill's Python PNG helper remains unavailable because Python has no Playwright; the installed draw.io renderer is used instead. The skill's SVG export helper was exercised in a temporary QA location. No dependencies or fonts were installed. HTML retains the default web-font stacks; reviewed native output uses supplied Georgia, Arial and Courier New fallbacks when Instrument Serif, Geist and Geist Mono are unavailable.
+## ชุดนำเสนอหลัก — 4 ภาพ
 
-## Proposed Redis and MongoDB Responsibilities
+| ภาพ PNG ที่เปิดแก้ไขได้ | คำอธิบาย | คำถามที่รับผิดชอบ |
+| --- | --- | --- |
+| [architecture-design.drawio.png](main/architecture-design.drawio.png) | [architecture-design.md](main/architecture-design.md) | Backend ร่วมงานกันอย่างไร: Controller → Dispatcher → Handler (Application use case) → Domain/ports → Infrastructure |
+| [event-outbox-design.drawio.png](main/event-outbox-design.drawio.png) | [event-outbox-design.md](main/event-outbox-design.md) | Publication lifecycle เริ่มจาก checkout transaction; quarantine ต้องผ่าน operator review ก่อน controlled replay |
+| [outbox-delivery-sequence.drawio.png](main/outbox-delivery-sequence.drawio.png) | [outbox-delivery-sequence.md](main/outbox-delivery-sequence.md) | Relay, PostgreSQL และ MongoDB ประสาน claim transaction → destination transaction → guarded ACK รวม replay/lease expiry |
+| [order-lifecycle.drawio.png](main/order-lifecycle.drawio.png) | [order-lifecycle.md](main/order-lifecycle.md) | สถานะธุรกิจของ Order และ transition guards; เปลี่ยนชื่อจาก `system-design` และแยกจาก publication states |
 
-The owner selected MongoDB for non-secret feature flags/general configuration (including cache/rate policies), audit/integration events and transaction copies for historical search. PostgreSQL retains authoritative order/payment/refund/stock/campaign and account/permission state.
+Checkout สร้าง `WAIT_PAYMENT`, จอง stock/budget, บันทึกข้อมูลที่เกี่ยวข้องและ proposed outbox intent ใน PostgreSQL transaction เดียว เมื่อ commit จึงมี event `READY` ให้ relay ส่ง Payment success เป็นอีก event ภายหลัง การ replay ไม่เรียก checkout หรือจอง stock/budget ซ้ำ ทั้งหมดที่เป็น outbox ยังคง **PROPOSED / in-review** ต้องออกแบบและอนุมัติก่อน implementation
 
-- [Redis design](redis-design.md) and [research](redis-research.md): cache only public metadata, check live visibility/prices/stock in PostgreSQL, invalidate after commit, guard stale fills and separate rebuildable cache eviction from shared token-bucket memory. True quota denial is proposed as 429; protected-route store outages as 503; signed webhooks and SQL expiry must remain independent of Redis readiness. TTLs, quotas and fallback settings are candidates for approval.
-- [MongoDB design](mongodb-design.md) and [research](mongodb-research.md): validated, versioned configuration with local snapshots; configuration publication and its audit evidence use MongoDB-local consistency. PostgreSQL business updates and outbox intent commit together, then a proposed relay delivers idempotent audit/integration events and versioned transaction projections. There is no shared PostgreSQL/MongoDB transaction. MongoDB failure must not repeat a payment or business write. Automatic retention/TTL is not selected.
-- [Redis design review](redis-review.md): records independent source-based findings and clearly separated primary-agent remediation. Clock/failover conditions, cardinality budgets, script execution bounds and outage handling still require implementation and operational proof. MongoDB projection lag, retention/capacity and configuration activation also require downstream approval and validation.
+## Reference ตามเรื่อง
 
-Both design documents remain `in-review` with no implementation approval. Proposed middleware, interfaces, adapters, outbox, collections and tests are diagram/design content only. This task creates none of those backend files or database structures.
+เก็บทุกภาพด้านล่างไว้เป็น reference ไม่ลบทิ้ง `repository-architecture` พักจากชุดนำเสนอ เพราะคำถามเรื่องตำแหน่ง source/tests ใช้ [project-structure.md](https://github.com/ittikornsopawan/e-commerce-backend/blob/d8255183cba54d0c2b218607456b895a70df32f0/project-structure.md) เป็นคู่มือหลักได้ ส่วน architecture หลักรับผิดชอบการทำงานร่วมกัน
 
-## Verification of the Combined Data-Service Revision
+| กลุ่ม | ภาพ / คำอธิบาย |
+| --- | --- |
+| Source และ tests | [repository-architecture PNG](reference/repository/repository-architecture.drawio.png) · [คำอธิบาย](reference/repository/repository-architecture.md) |
+| ธุรกิจและ checkout | [commerce-overview PNG](reference/business/commerce-overview.drawio.png) · [คำอธิบาย](reference/business/commerce-overview.md); [checkout-sequence PNG](reference/business/checkout-sequence.drawio.png) · [คำอธิบาย](reference/business/checkout-sequence.md) |
+| Payment recovery | [start-payment-sequence PNG](reference/payment/start-payment-sequence.drawio.png) · [คำอธิบาย](reference/payment/start-payment-sequence.md); [payment-webhook-sequence PNG](reference/payment/payment-webhook-sequence.drawio.png) · [คำอธิบาย](reference/payment/payment-webhook-sequence.md); [refund-sequence PNG](reference/payment/refund-sequence.drawio.png) · [คำอธิบาย](reference/payment/refund-sequence.md) |
+| MongoDB และ configuration | [mongodb-document-model PNG](reference/data/mongodb-document-model.drawio.png) · [คำอธิบาย](reference/data/mongodb-document-model.md); [config-publication-sequence PNG](reference/data/config-publication-sequence.drawio.png) · [คำอธิบาย](reference/data/config-publication-sequence.md) |
+| Operations | [deployment-security PNG](reference/operations/deployment-security.drawio.png) · [คำอธิบาย](reference/operations/deployment-security.md); [observability-design PNG](reference/operations/observability-design.drawio.png) · [คำอธิบาย](reference/operations/observability-design.md); [recovery-design PNG](reference/operations/recovery-design.drawio.png) · [คำอธิบาย](reference/operations/recovery-design.md) |
 
-- Source evidence: all nine production references, all five test references and all six displayed persisted order states match current files. Runtime now has 9 nodes/11 connectors, repository 9/8, and lifecycle 6 persisted states plus initial marker/8 transitions.
-- Geometry: node budgets/grid, readable row capacity, perimeter ports, orthogonal paths with 6–8px corner radii, 6–10px label gaps, label/node separation, no stacked/crossing connectors, no transit through unrelated boxes and no connector passing through an annotation.
-- Skill: all three `self_check.py` runs pass; accessible title/description IDs, complete HTML, embedded-content safety and viewBox bounds are checked. The installed package lacks its separate repository-only `verify-geometry.py`; explicit model checks and render review cover geometry here.
-- Browser: all three final Redis/MongoDB HTML previews at 390px retain a local scroller, a 1584px minimum SVG width, no page overflow and no node text overflow. Print CSS releases the minimum width for paper output.
-- Visual: all three final Redis/MongoDB PNGs were inspected, including data-store ownership, the webhook path and lifecycle annotations clear of transition routes. Their silhouettes and content responsibilities were compared across the set.
-- Editability: each PNG produces the same extracted model as its `.drawio` source, excluding the input filename. Each final PNG was opened directly by draw.io and exported again at scale 1.5, preserving identical `IDAT` data.
-- `git diff --check` passes. Backend builds, API/database tests and real Stripe/carrier calls were not run because this revision changes diagrams and documentation only. The diagrams do not imply that specification-only behavior has been implemented.
+ทุกภาพมี `.drawio` และ self-contained `.html` ชื่อเดียวกัน PNGฝังmodelที่เปิดแก้ไขได้ HTMLมีinlineSVG, accessible title/description และlocal horizontal scrollingเมื่อหน้าจอแคบ
 
-## PR Baseline Reconciliation
+เพิ่มตาม convention ของเจ้าของงาน: Domain Layer มีกล่องย่อย **`Domain`** สำหรับ business logic ที่ใช้ซ้ำ และ repository view แสดง **`src/Ecommerce.Domain/Authen/Domain/`** ใต้ Domain project กล่องใหม่เป็น `PROPOSED · OWNER REQUEST` เพราะยังไม่อยู่ใน pinned code ตัวอย่างคำนวณภาษีอธิบายชนิดงาน ไม่ใช่ความสามารถ Authen ที่ implement แล้ว อ่านหน้าที่และเหตุผลใน [Architecture](main/architecture-design.md) และ [Repository](reference/repository/repository-architecture.md)
 
-Before delivery, the branch was compared with current `origin/main`. Merged WP3b adds guarded seven-day system completion in `shipping/06`; the lifecycle diagram, runtime worker note, research and Thai explanation now include it. Candidate scanning filters complete eligibility, each order is rechecked under its lock, partial/unshipped orders do not qualify, and system confirmation does not release campaign budget. Hosting remains unresolved. This is specification alignment, not a new backend job implementation. The additional overview/sequence/data/operations diagrams requested later have not started and are outside this PR.
+## Domain model จากฐานข้อมูล
+
+ไฟล์ภาพ คำอธิบาย source และinventoryอยู่ในโฟลเดอร์ [domain/](domain/README.md) แยกจากชุดarchitecture/operationsเดิม
+
+ชุดใหม่อ่านจาก migrations/schema docsครบ **53ตาราง /11schemas /75FK** แสดงภาพรวมและconceptual ERแยกรายละเอียด พร้อมกล่องย่อยจริง ชื่อธุรกิจ attributes และall-row cardinality ไม่ประกาศschemaให้เป็นDDDaggregateหรือmicroserviceโดยอัตโนมัติ
+
+| ภาพแก้ไขได้ | คำอธิบายและsource traceability | ขอบเขต |
+| --- | --- | --- |
+| [domain-model.drawio.png](domain/domain-model.drawio.png) | [domain-model.md](domain/domain-model.md) | ภาพรวม11กลุ่มแนวคิด พร้อมแผนที่53ตาราง |
+| [domain-identity-model.drawio.png](domain/domain-identity-model.drawio.png) | [domain-identity-model.md](domain/domain-identity-model.md) | Identity / Authorization / Consent / Key material:21ตาราง,23FK |
+| [domain-merchandising-model.drawio.png](domain/domain-merchandising-model.drawio.png) | [domain-merchandising-model.md](domain/domain-merchandising-model.md) | Catalog / Merchant offer / Stock:19ตาราง,25FK |
+| [domain-commerce-model.drawio.png](domain/domain-commerce-model.drawio.png) | [domain-commerce-model.md](domain/domain-commerce-model.md) | Cart / Order / Payment / Shipping / Campaign:13ตาราง,27FK |
+
+เส้นในภาพรายละเอียดเลือก35associationsเพื่ออ่านง่าย ส่วนFKcatalogueในMarkdownเก็บครบ75 การอธิบายpartialuniquenessและข้อจำกัดFKแยกจากbusinesslogic candidatesใน `<Feature>/Domain/` ไม่มีการแก้DB/API/backend
+
+Source: [domain_model_content.py](../scripts/diagrams/domain_model_content.py), [domain_model_notes.py](../scripts/diagrams/domain_model_notes.py), [domain-source-inventory.json](domain/domain-source-inventory.json); [ผลตรวจ](domain/domain-model-verification.md)
+
+```sh
+python3 -B e-commerce/scripts/diagrams/generate_domain_diagrams.py
+python3 -B e-commerce/scripts/diagrams/generate_domain_diagrams.py --check
+# Native export each slug at scale1.5 using the draw.io command below
+python3 -B e-commerce/scripts/diagrams/generate_domain_diagrams.py --finalize-pngs
+```
+
+## แหล่งหลักฐานและสถานะ
+
+Backend baseline ถูกย้ายไป [e-commerce-backend](https://github.com/ittikornsopawan/e-commerce-backend/tree/d8255183cba54d0c2b218607456b895a70df32f0) ตาม [Project manifest บน main](https://github.com/ittikornsopawan/system-analysis-and-design/blob/main/e-commerce/REPOS.md) โดย pin `d8255183cba54d0c2b218607456b895a70df32f0` มีห้าproduction projects, สองtest projects, direct refs9+5, สี่command validatorsและห้าhandlers ส่วนGetCurrentUserไม่มีvalidator ภาพไม่อ้างว่าความสามารถcommerceหรือAuthen specใหม่ถูกimplementครบแล้ว
+
+การทำงานครั้งนี้คง checkoutเดิมของbranchที่มีงานค้าง ไม่ย้าย/cloneทับโค้ดเก่า ใช้read-only remote tree/contentsเทียบpinned Component Repositoryและเปลี่ยนCODE source linksเป็นimmutableblob links จึงไม่ผูกdiagramกับlegacy source pathที่ถูกลบออกจากShowcaseบนmainใหม่
+
+- `CODE`: ตรวจพบในcomponent baseline ไม่ใช่ผลbuild/runtimeของงานภาพนี้
+- `SPEC`: พฤติกรรมcommerceอ้างอิง [API specs](../doc/api/) และSQL/schemaของโครงการ
+- `PROPOSED`: Redis, MongoDB, operation intents/receipts, outbox, deploymentและoperating controlsที่ยังรอreview/approval
+
+PostgreSQLยังเป็นbusiness/financial authority Redisเป็นpublic metadata cache/shared admission MongoDBเป็นnon-secret config sourceและaudit/event/derived status store ไม่มีtransactionร่วมPostgreSQL/MongoDB/Stripe และไม่มีcross-store exactly-once guarantee
+
+Provider researchพบว่าSQLrollbackไม่ย้อนprovider success, unknown eventอาจต้องreconcile และaccepted/pending/partial refundไม่เท่ากับfull settled refund ภาพเสริมระบุsafe recoveryเป็นข้อเสนอ ไม่แก้canonical API/schemaหรือสร้างstateใหม่เงียบ ๆ
+
+## Research และ policy records
+
+- [Diagram semantics](design/diagram-semantics.md): ความหมาย, viewpoints, parent/child และสิ่งที่ห้ามสับสน
+- [Diagram research เดิม](design/research.md): C4/Microsoft/W3C และbusiness lifecycle evidence; การจัดรูปแบบเดิมถูกแทนด้วยฉบับhierarchyนี้
+- [Redis design](design/redis-design.md), [research](design/redis-research.md), [review](design/redis-review.md)
+- [MongoDB design](design/mongodb-design.md), [research](design/mongodb-research.md)
+- [Payment evidence](design/supporting-payments-research.md), [data/operations evidence](design/supporting-data-operations-research.md)
+
+ค่าSLO/load/RPO/RTO/lease/retry/retentionและreplica countsเป็นcandidateที่อธิบายเหตุผล/ข้อแลกเปลี่ยนไว้ในcompanion ยังไม่ใช่production capacity, SLA, compliance certification หรือผลทดสอบสำเร็จ
+
+## Source และการสร้างซ้ำ
+
+`layered_core_content.py` กำหนดsoftware layers/package ownership; `layered_lifecycle_content.py` กำหนดguard/effect compartments; `layered_operations_content.py` กำหนดcapability/data/deployment/telemetry/activity views; `layered_sequence_content.py` จัดtime/activation/OPT/ALTและheader ownershipโดยใช้message contractsจาก `supporting_content.py`
+
+`generate_layered_diagrams.py` เป็นentrypointปัจจุบัน ใช้paper `#f5f5f5`, ink `#2d3142`, accent `#bf4520` ตามที่เจ้าของงานเลือก Canvas A3แนวนอน1584×1120 พร้อมprinttype ramp ไม่ติดตั้งdependenciesหรือfontsเพิ่ม
+
+```sh
+python3 -B e-commerce/scripts/diagrams/generate_layered_diagrams.py
+python3 -B e-commerce/scripts/diagrams/generate_layered_diagrams.py --check
+```
+
+ส่งออกด้วยdraw.io Desktopที่ติดตั้งอยู่ ตัวอย่างหนึ่งไฟล์ (ทำกับทุกslugในสารบัญ):
+
+```sh
+/Applications/draw.io.app/Contents/MacOS/draw.io \
+  -x -f png --embed-diagram --size page -s 1.5 --theme light \
+  --disable-update --timeout 45 \
+  -o e-commerce/diagram/main/architecture-design.drawio.png \
+  e-commerce/diagram/main/architecture-design.drawio
+
+python3 -B e-commerce/scripts/diagrams/generate_layered_diagrams.py --finalize-pngs
+```
+
+draw.io Desktop32.6.10มีpage frameหนึ่งpixelก่อนscale ผลscale1.5คือ2378×1682 Native PNGเก็บcompressed `mxGraphModel` metadata; finalizerตรวจว่าตรงXMLsourceและเพิ่มcompressed compatible `mxfile` key โดยไม่เปลี่ยนIDAT pixels ไม่cropหรือraster-resampleหลังexport Native outputใช้Georgia/Arial/Courier New fallbacks; HTMLยังประกาศInstrument Serif/Geist/Geist Mono web stacks Python PNGhelperของskillไม่มีPlaywright จึงใช้native rendererและตรวจผลจริง
+
+ดู [ผลตรวจ handoff ชุดหลัก 4 ภาพ](design/handoff-verification.md) และ [ผลตรวจเดิมทั้ง15ภาพ](design/verification.md) สำหรับผลที่รันจริง, native hierarchy counts, PNG sizes และข้อจำกัด
+
+## เกณฑ์ตรวจฉบับ hierarchy
+
+ตรวจsource/geometry/text capacity, nativecellIDsไม่ซ้ำ, parent references/child relative coordinates, intended Application sublayers, source/XML parity และPNG extraction ตรวจภาพจริงทุกไฟล์และเปิดPNG/exportซ้ำเทียบIDAT อีกครั้ง HTMLต้องผ่านpackaged self-checkและทดสอบ390pxโดยไม่ทำให้ทั้งหน้าoverflow
+
+State compartmentsไม่ถูกนับเป็นpersisted states; participant-header decompositionไม่ถูกนับเป็นservices/lifelinesเพิ่ม; document referencesไม่ถูกนับเป็นSQLforeign keys; recovery checkpointsไม่ใช่order states ขนาดไฟล์PNGเป็นประเด็นpackaging แก้จากexport/sourceได้โดยไม่ตัดองค์ประกอบสำคัญ
+
+งานนี้ไม่มีbackend/API/schema implementation, package installation, provider calls หรือruntime/load/failover/restore tests การอนุมัติdesignและdownstream verificationยังต้องทำตามSDDก่อนimplementation เจ้าของงานสั่งเปิดPRสำหรับชุดที่เสร็จแล้วภายหลัง ใช้สถานะGit/GitHubสำหรับการส่งงาน; คำสั่งส่งPRไม่เปลี่ยนสถานะอนุมัตินโยบาย

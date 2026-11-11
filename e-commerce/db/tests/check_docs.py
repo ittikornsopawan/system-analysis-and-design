@@ -1043,12 +1043,16 @@ def check_cart_spec() -> int:
                "\nON CONFLICT (user_id, shop_id, product_id, sku_id) WHERE row_status <> 'DELETED' -- the partial unique index uq_t_cart_user_id_shop_id_product_id_sku_id\nDO UPDATE SET",
                "WHERE cart.t_cart.quantity + EXCLUDED.quantity <= '<sequence.maxOrderQuantity>'", "(xmax = 0) as is_insert",
                "#### UPDATE - Update or delete a line", "more than 100 lines",
+               "#### QUERY - Lock the user", "AND u.row_status = 'ACTIVE'\nFOR UPDATE -- every authen API locks the user row first",
+               "locking the ACTIVE row of the user",
                "#### QUERY - Count the lines of the user", "HTTP/1.1 204 No Content",
                "must be ACTIVE, otherwise the request is rejected with 404 (E10005)"],
         "02": ["#### Cart Item Object", "always HTTP 200", "items[1]: Shop Product SKU Id is duplicated with items[0].", "MERGE",
                "\nON CONFLICT (user_id, shop_id, product_id, sku_id) WHERE row_status <> 'DELETED' -- the partial unique index uq_t_cart_user_id_shop_id_product_id_sku_id\nDO UPDATE SET",
                "WHERE cart.t_cart.quantity + EXCLUDED.quantity <= '<sequence.items.maxOrderQuantity>'", "(xmax = 0) as is_insert",
                "#### UPDATE - Update or delete a line", "more than 100 lines",
+               "#### QUERY - Lock the user", "AND u.row_status = 'ACTIVE'\nFOR UPDATE -- every authen API locks the user row first",
+               "locking the ACTIVE row of the user",
                "must be ACTIVE, otherwise the request is rejected with 404 (E10005)"],
         "03": ["### Availability Rules", "QUANTITY_EXCEEDS_STOCK", "#### QUERY - Get the lot that is on sale of each shop product SKU", "no paging"],
     }
@@ -3551,8 +3555,9 @@ AUTHEN_NEEDLES = {
            "Row status must be one of ACTIVE, INACTIVE.", "Page Index and Page Size must be greater than 0", "Request: `GET v1/user/address?id=%s`" % AUTHEN_ADDRESS_ID],
 }
 AUTHEN_COUNTED = {
-    "10": [("WHERE ua.user_id = '<sequence.userId>'\nAND ua.row_status <> 'DELETED'", 2), ("AND ua.title ILIKE '%<sequence.search>%' -- only when search is specified", 2),
-           ("AND ua.row_status = '<sequence.rowStatus>' -- only when rowStatus is specified", 2)],
+    "10": [("WHERE ua.user_id = '<sequence.userId>'\nAND ua.row_status <> 'DELETED'", 2), ("AND ('<sequence.searchPattern>' IS NULL OR ua.title ILIKE '<sequence.searchPattern>') -- only when search is specified", 2),
+           ("AND ('<sequence.rowStatus>' IS NULL OR ua.row_status = '<sequence.rowStatus>') -- only when rowStatus is specified", 2),
+           ("AND ('<sequence.id>' IS NULL OR ua.id = '<sequence.id>') -- only when id is specified", 2)],
     "05": [("INSERT INTO authen.t_user_access_token (", 1), ("INSERT INTO authen.t_user_refresh_token (", 1),
            ("AND row_status = 'ACTIVE' -- only on replay outside the 10-second grace window", 2)],
     "06": [("WHERE session_id = '<sequence.sessionId>'\nAND user_id = '<sequence.userId>'\nAND row_status = 'ACTIVE'", 2)],
@@ -3651,7 +3656,7 @@ def authen_example_errors(key: str, md: str) -> list[str]:
         if bodies["Delete"].get("rowStatus") != "DELETED" or bodies["Update"].get("rowStatus") != "ACTIVE":
             errors.append("Update must be ACTIVE and Delete must be DELETED")
         for label, body in bodies.items():
-            if body.get("isDefault") and body.get("rowStatus") != "ACTIVE" and label != "Delete":
+            if body.get("isDefault") and body.get("rowStatus") != "ACTIVE":
                 errors.append(f"the {label} example sets a default on a row that is not ACTIVE")
         codes = success_codes(md)
         if codes != {"Success - Insert": 201, "Success - Update": 200, "Success - Delete": 204}:
@@ -3862,9 +3867,6 @@ REQUIRED_GROUPS = ("authen-and-author", "consent")
 # check fails when a listed diagram already passes (remove it) or no longer has a write.
 LEGACY_SEQUENCES = (
     # authen-and-author: waiting for a retrofit to the login standard
-    "authen-and-author/03-reset-password",
-    "authen-and-author/07-upsert-user-profile",
-    "authen-and-author/09-upsert-user-address",
     # consent: waiting for a retrofit to the login standard
     "consent/02-upsert-consent",
     "consent/06-upsert-consent-type",
@@ -3875,11 +3877,6 @@ LEGACY_SEQUENCES = (
 # must still fail at least one of them: a file that passes both has to leave this list. Remove an entry in the same
 # change that adds the missing answers to the diagram.
 LEGACY_TOKEN_SEQUENCES = (
-    "authen-and-author/03-reset-password",          # no 408
-    "authen-and-author/07-upsert-user-profile",     # no Verify JWT / 401 step, no 408
-    "authen-and-author/08-inquiry-user-profile",    # no Verify JWT / 401 step, no 408
-    "authen-and-author/09-upsert-user-address",     # no Verify JWT / 401 step, no 408
-    "authen-and-author/10-inquiry-user-address",    # no Verify JWT / 401 step, no 408
     "consent/02-upsert-consent",                    # no Verify JWT / 401 step, no 408
     "consent/03-inquiry-consent",                   # no Verify JWT / 401 step, no 408
     "consent/06-upsert-consent-type",               # no Verify JWT / 401 step, no 408
@@ -4702,7 +4699,13 @@ def author_needles(key: str):
     m = next(v for v in AUTHOR_MASTERS.values() if key in v[:3])
     _, _, _, path, title, lower, camel, alias, ucol, idname, _, use_msg = m
     base = [*AUTHOR_ADMIN, "E10009", "#### Fail - Forbidden", f"You do not have permission to {'read' if kind == 'inquiry' else 'manage'} {lower}s."]
-    if kind in ("upsert", "batch"):
+    if key in ("01", "02", "05", "07"):
+        base = ["Permission: only a platform administrator from the verified JWT roles claim", "Approved by the product owner", "E10009", "#### Fail - Forbidden", f"You do not have permission to manage {lower}s."]
+    if key in ("03", "06"):
+        base = ["use exact PLATFORM_ADMIN in verified JWT role claims", "Approved by the product owner", "E10009", "#### Fail - Forbidden", f"You do not have permission to read {lower}s."]
+    if key == "04":
+        base = ["Permission: only a platform administrator from verified JWT roles", "Approved by the product owner", "E10009", "#### Fail - Forbidden", "You do not have permission to manage permissions."]
+    if kind in ("upsert", "batch") and key not in ("01", "02", "04", "05", "07"):
         base.append("Permission: only a platform administrator (a user with an ACTIVE `author.t_user_role` row for the ACTIVE role `PLATFORM_ADMIN`) can call this API")
     if kind == "upsert":
         need = [f"# [POST]: v1/author/{path}/upsert", f"### {title} Rules", "-> permission (403, E10009) ->", f"{title} not found.", use_msg, f"{title} {ucol} already exists.",
@@ -4714,6 +4717,12 @@ def author_needles(key: str):
         if lower == "permission":
             need += ["#### Scope Object", "#### QUERY - Check scope", "#### QUERY - Check role permission scope in use", "#### QUERY - Check user permission scope in use", "Scope is used by roles or users.",
                      "#### Fail - Not Found Scope", "Scopes that are not listed are kept."]
+        if key == "01":
+            need = [x.replace("AND r.id <> '<sequence.id>'", "AND ('<sequence.id>' IS NULL OR r.id <> '<sequence.id>')") for x in need]
+        if key == "04":
+            need = [x.replace("AND p.id <> '<sequence.id>'", "AND ('<sequence.id>' IS NULL OR p.id <> '<sequence.id>')") for x in need]
+        if key == "07":
+            need = [x.replace("AND s.id <> '<sequence.id>'", "AND ('<sequence.id>' IS NULL OR s.id <> '<sequence.id>')") for x in need]
         return base + need
     if kind == "batch":
         need = [f"# [POST]: v1/author/{path}/upsert/batch", f"### {title} Rules (same as the single upsert, applied per {lower})", f"{camel}s[2]: Id is duplicated with {camel}s[1].", f"{camel}s[2]: {ucol.capitalize()} is duplicated with {camel}s[0].",
@@ -4733,6 +4742,14 @@ def author_needles(key: str):
 
 def author_counted(key: str):
     m = next((v for v in AUTHOR_MASTERS.values() if key in v[:3]), None)
+    if key == "03":
+        return [("AND ('<sequence.id>' IS NULL OR r.id = '<sequence.id>') -- only when id is specified", 2),
+                ("AND ('<sequence.searchPattern>' IS NULL OR r.name ILIKE '<sequence.searchPattern>' OR r.description ILIKE '<sequence.searchPattern>') -- only when search is specified", 2),
+                ("AND ('<sequence.rowStatus>' IS NULL OR r.row_status = '<sequence.rowStatus>') -- only when rowStatus is specified", 2)]
+    if key == "06":
+        return [("AND ('<sequence.id>' IS NULL OR p.id = '<sequence.id>') -- only when id is specified", 2),
+                ("AND ('<sequence.searchPattern>' IS NULL OR p.name ILIKE '<sequence.searchPattern>' OR p.description ILIKE '<sequence.searchPattern>') -- only when search is specified", 2),
+                ("AND ('<sequence.rowStatus>' IS NULL OR p.row_status = '<sequence.rowStatus>') -- only when rowStatus is specified", 2)]
     if m and key == m[2]:
         alias, ucol = m[7], m[8]
         return [(f"AND ({alias}.{ucol} ILIKE '%<sequence.search>%' OR {alias}.description ILIKE '%<sequence.search>%') -- only when search is specified", 2),
@@ -6018,6 +6035,216 @@ def check_active_consent_flow() -> int:
 COMMANDS['active-consent-flow'] = check_active_consent_flow
 
 
+def check_address_inquiry_flow() -> int:
+    """Check current-caller address count/page consistency and safe bound filters."""
+    path=AUTHEN_SPECS['10'];md=read(path);wsd=read(str(Path(path).with_name('sequence.wsd')));errors=[]
+    for needle in ('status: in-review','approved_by: null','approved_at: null','2026-11-07-api-review-design.md',
+                   'Count and page share the same repeatable-read snapshot','exact same userId/non-DELETED/id/searchPattern/rowStatus predicates',
+                   'offset outside nonnegative BIGINT','entire pattern as text','existing case-insensitive ILIKE wildcard semantics',
+                   'other user\'s address returns an empty list','An id filter is still paginated',
+                   'skip the list query','items=[] while totalItems/totalPages remain positive',
+                   'exactly five data keys','Require the returned page row count','COMMIT only after complete decryption/mapping succeeds',
+                   'Scenario correspondence with sequence.wsd'):
+        if needle not in md:errors.append(f'address-inquiry spec missing {needle!r}')
+    operations=spec_database_operations(md);expected=('QUERY - Check current credential and user','QUERY - Get total items','QUERY - Get user addresses')
+    if tuple(h for _,h,_ in operations)!=expected:errors.append('inquiry needs current credential, identical-filter count and optional page in execution order')
+    sql={h:re.sub(r'--[^\n]*','',s) for _,h,s in operations}
+    required={expected[0]:['JOIN authen.m_user u ON u.id = at.user_id',"at.token = '<sequence.accessTokenHash>'","at.user_id = '<sequence.userId>'","at.row_status = 'ACTIVE'","at.expired_at > '<sequence.now>'","u.row_status = 'ACTIVE'"]}
+    filters=["WHERE ua.user_id = '<sequence.userId>'","AND ua.row_status <> 'DELETED'","AND ('<sequence.id>' IS NULL OR ua.id = '<sequence.id>')","AND ('<sequence.searchPattern>' IS NULL OR ua.title ILIKE '<sequence.searchPattern>')","AND ('<sequence.rowStatus>' IS NULL OR ua.row_status = '<sequence.rowStatus>')"]
+    for h in expected[1:]:required[h]=filters
+    required[expected[1]]=filters+['COUNT(ua.id) as total_items']
+    required[expected[2]]=filters+["LIMIT '<sequence.pageSize>' OFFSET '<sequence.offset>'"]
+    for h,needles in required.items():
+        for needle in needles:
+            if needle not in sql.get(h,''):errors.append(f'{h} missing {needle}')
+    def where(h):
+        match=re.search(r'\bWHERE\b(.*?)(?:\bORDER BY\b|\bLIMIT\b|$)',sql.get(h,''),re.S)
+        return normalize(match[1]) if match else None
+    if where(expected[1])!=where(expected[2]):errors.append('count/list WHERE predicates must be identical')
+    projection=re.search(r'SELECT\s+(.*?)\s+FROM\s',sql.get(expected[2],''),re.S)
+    columns=['ua.id as user_address_id','ua.title','ua.is_default','ua.address','ua.city','ua.state','ua.postal_code','ua.country','ua.row_status']
+    if not projection or normalize(projection[1])!=normalize(',\n'.join(columns)):errors.append('page must return only nine address fields, no user/token/audit data')
+    if not re.search(r"ORDER BY ua\.is_default DESC, ua\.created_at DESC, ua\.id(?: ASC)?\s+LIMIT",sql.get(expected[2],'')):errors.append('page sort must end with ascending unique id after default/newest')
+    if 'NOW()' in '\n'.join(sql.values()) or SEQUENCE_LOCK.search('\n'.join(sql.values())) or any(not s.lstrip().startswith('SELECT') for s in sql.values()):errors.append('inquiry must be SELECT-only without locks and use freshly bound now')
+    actual,lifecycle=sequence_database_operations(wsd);errors+=lifecycle
+    if [(t.split('.')[-1],h,s) for t,h,s in operations]!=actual:errors.append('address-inquiry spec/sequence SQL differs character-for-character or order')
+    for _,heading,_ in operations:
+        if f'app -> infra: {heading}' not in wsd:errors.append(f'{heading} needs Application request')
+        mapping=re.search(rf'infra -> (\w+): {re.escape(heading)}\n.*?\1 -> infra: Return ([^\n]+)\n.*?deactivate \1\n\s*infra -> app: Return ([^\n]+)',wsd,re.S)
+        if not mapping or mapping[2]!=mapping[3]:errors.append(f'{heading} database/Application result mapping differs')
+    for needle in ('Verify JWT signature/issuer/audience/expiry/UUID sub','userId = verified sub; accessTokenHash = SHA-256 exact JWT',
+                   'checked offset = (pageIndex - 1) * pageSize; reject BIGINT overflow',
+                   'Bind omitted id/rowStatus/searchPattern as typed SQL NULL; searchPattern = percent + supplied search + percent, preserve ILIKE wildcards',
+                   'Capture fresh server UTC now immediately before credential read; recheck JWT exp',
+                   'alt JWT still unexpired at fresh now',
+                   'alt totalItems = 0','items = []; skip page query',
+                   'Require returned row count = min(pageSize, max(0, totalItems - offset)); mismatch is internal failure',
+                   'Map each row to exactly userAddressId/title/isDefault/address/city/state/postalCode/country/rowStatus; decrypt five sensitive fields',
+                   'items = []; preserve positive totalItems/totalPages; do not return 404',
+                   'data = items/pageIndex/pageSize/totalItems/totalPages; explicit empty array; exclude userId/token/hash/audit'):
+        if needle not in wsd:errors.append(f'address inquiry sequence missing {needle!r}')
+    traces,structure=login_sequence_paths(wsd);errors+=structure
+    from collections import Counter
+    outcomes=[];modes=Counter();unauthorized=[]
+    for trace in traces:
+        response=[e for e in trace if e.startswith('app -> api: HTTP ')]
+        if len(response)!=1:errors.append('address inquiry trace needs one terminal outcome');continue
+        code=int(response[0].split('HTTP ')[1].split()[0]);outcomes.append(code)
+        def ordered(*parts):
+            pos=[next((i for i,e in enumerate(trace) if part in e),-1) for part in parts]
+            return -1 not in pos and pos==sorted(set(pos))
+        queries=[e for e in trace if e.startswith('infra -> ')];begun=any(e.startswith('app -> infra: BEGIN') for e in trace)
+        if queries and not ordered('checked offset = (pageIndex - 1) * pageSize','Verify JWT','userId = verified sub','Bind omitted id/rowStatus/searchPattern','BEGIN REPEATABLE READ READ ONLY','Capture fresh server UTC now',expected[0]):errors.append('address read needs verified caller, typed filters and fresh credential snapshot')
+        if any(expected[1] in e for e in trace) and not ordered(expected[0],expected[1]):errors.append('count must follow current token/user gate')
+        if any(expected[2] in e for e in trace) and not ordered(expected[1],expected[2]):errors.append('page must follow its same-snapshot total count')
+        if any(': QUERY' not in e for e in queries):errors.append('address inquiry may never write')
+        if code==200:
+            if any('items = []; skip page query' in e for e in trace):mode='zero'
+            elif any('preserve positive totalItems/totalPages' in e for e in trace):mode='beyond'
+            else:mode='rows'
+            modes[mode]+=1
+            if len(queries)!=(2 if mode=='zero' else 3):errors.append('zero count skips page; positive count must query page')
+            if not ordered(expected[1],'data = items/pageIndex','app -> infra: COMMIT','HTTP 200') or any('ROLLBACK' in e for e in trace):errors.append('success requires complete mapping/commit before 200')
+            if mode!='zero' and not any('Require returned row count =' in e for e in trace):errors.append('positive count must validate page cardinality')
+            if 'all five pagination keys' not in response[0]:errors.append('address list response must have complete metadata')
+        elif begun:
+            if not ordered('BEGIN','ROLLBACK',f'HTTP {code}') or any(e=='app -> infra: COMMIT' for e in trace):errors.append('read/mapping failure rolls back before error')
+            if code==401 and len(queries)>1:errors.append('invalid current credential must not query addresses')
+        elif code not in (400,401) or queries:errors.append('invalid input/JWT must execute no SQL')
+        if code==401:unauthorized.append(len(queries))
+    if Counter(outcomes)!=Counter({200:3,400:1,401:3,408:1,500:1}) or modes!=Counter({'zero':1,'rows':1,'beyond':1}) or sorted(unauthorized)!=[0,0,1]:errors.append(f'incomplete address inquiry paths: {dict(Counter(outcomes))}; modes={dict(modes)}; 401 SQL={unauthorized}')
+    item_keys={'userAddressId','title','isDefault','address','city','state','postalCode','country','rowStatus'}
+    for title,code in {'Success':200,'Success - By Id':200,'Success - Not Found':200,'Success - Page Beyond Range':200,'Fail - Bad Request':400,'Fail - Unauthorized':401,'Fail - Request Timeout':408,'Fail - Internal Server Error':500}.items():
+        try:
+            obj=authen_json(md,title);status=obj['status']
+            if status['code']!=code or code==500 and 'bizCode' in status:errors.append(f'incorrect address inquiry {title} envelope')
+            if code==200:
+                data=obj['data']
+                if set(data)!={'items','pageIndex','pageSize','totalItems','totalPages'}:errors.append(f'{title} needs exactly five data keys');continue
+                if any(type(data[k]) is not int for k in ('pageIndex','pageSize','totalItems','totalPages')) or data['pageIndex']<1 or not 1<=data['pageSize']<=100 or data['totalItems']<0:errors.append(f'{title} pagination must use valid integer bounds');continue
+                total=data['totalItems'];size=data['pageSize'];offset=(data['pageIndex']-1)*size
+                if data['totalPages']!=(0 if total==0 else (total+size-1)//size) or len(data['items'])!=min(size,max(0,total-offset)):errors.append(f'{title} totals/page cardinality incorrect')
+                for item in data['items']:
+                    if set(item)!=item_keys or item['rowStatus']=='DELETED':errors.append(f'{title} leaks/misses fields or lists DELETED')
+                ids=[x['userAddressId'] for x in data['items']]
+                if len(ids)!=len(set(ids)):errors.append(f'{title} duplicates address ids')
+                flags=[x['isDefault'] for x in data['items']]
+                if any(type(x) is not bool for x in flags) or sum(flags)>1 or flags!=sorted(flags,reverse=True):errors.append(f'{title} default flag/order incorrect')
+                if title=='Success - Page Beyond Range' and (data['items'] or total==0 or data['pageIndex']<=data['totalPages']):errors.append('beyond-range example needs empty page with positive totals')
+        except (TypeError,KeyError,ValueError):errors.append(f'missing/malformed address inquiry {title} example')
+    errors+=json_blocks_parse(md);errors+=table_lines_aligned(md)
+    if '--rendered-svg' in sys.argv:
+        import xml.etree.ElementTree as ET
+        try:
+            root=ET.parse(sys.argv[sys.argv.index('--rendered-svg')+1]).getroot()
+            expected_lines=Counter(' '.join(l.split()) for _,_,s in operations for l in s.splitlines() if l.strip())
+            visible=Counter(' '.join(''.join(e.itertext()).split()) for e in root.iter() if e.tag.endswith('}text'))
+            missing=expected_lines-visible
+            if missing:errors.append(f'rendered address-inquiry SQL missing {sum(missing.values())} lines')
+            else:print(f'OK: rendered address-inquiry SQL ({sum(expected_lines.values())}/{sum(expected_lines.values())} visible lines)')
+        except (IndexError,OSError,ET.ParseError) as exc:errors.append(f'cannot verify address inquiry SVG: {exc}')
+    if errors:return fail('; '.join(errors))
+    print('OK: address-inquiry-flow (9 terminal traces; exact SQL, current credential gate and consistent filtered pagination)')
+    return 0
+
+
+COMMANDS['address-inquiry-flow'] = check_address_inquiry_flow
+
+
+def check_profile_inquiry_flow() -> int:
+    """Check own-profile live credential projection, read consistency and complete nullable output."""
+    path=AUTHEN_SPECS['08'];md=read(path);wsd=read(str(Path(path).with_name('sequence.wsd')));errors=[]
+    for needle in ('status: in-review','approved_by: null','approved_at: null','2026-11-07-api-review-design.md',
+                   'Q20 is approved by the product owner','คืน null สำหรับค่าว่างเดิม (แนะนำ)',
+                   'Read user and information from the same repeatable-read snapshot','No id/userId/query filters or body are accepted',
+                   'all ten data keys every time','explicit JSON null, never an omitted key',
+                   'response normalization only','No information row is a normal state, not 404',
+                   'No user/credential lock','COMMIT the read-only transaction only after mapping succeeds',
+                   'Unexpected mapping/decryption failure','Scenario correspondence with sequence.wsd'):
+        if needle not in md:errors.append(f'profile-inquiry spec missing {needle!r}')
+    operations=spec_database_operations(md);expected=('QUERY - Get user','QUERY - Get information')
+    if tuple(h for _,h,_ in operations)!=expected:errors.append('inquiry needs exactly the joined user/credential query then own information query')
+    sql={h:re.sub(r'--[^\n]*','',s) for _,h,s in operations}
+    required={expected[0]:['JOIN authen.t_user_access_token at ON at.user_id = u.id',"WHERE u.id = '<sequence.userId>'","AND u.row_status = 'ACTIVE'","AND at.token = '<sequence.accessTokenHash>'","AND at.user_id = '<sequence.userId>'","AND at.row_status = 'ACTIVE'","AND at.expired_at > '<sequence.now>'"],
+              expected[1]:["WHERE ui.user_id = '<sequence.userId>'","AND ui.row_status <> 'DELETED'"]}
+    projections={expected[0]:['u.id as user_id','u.email_address','u.first_name','u.last_name','u.display_name','u.profile_picture_path'],expected[1]:['ui.phone_number','ui.address','ui.date_of_birth',"NULLIF(ui.gender, '') as gender"]}
+    for h,needles in required.items():
+        for needle in needles:
+            if needle not in sql.get(h,''):errors.append(f'{h} missing {needle}')
+        match=re.search(r'SELECT\s+(.*?)\s+FROM\s',sql.get(h,''),re.S)
+        if not match or normalize(match[1])!=normalize(',\n'.join(projections[h])):errors.append(f'{h} must project only its exact profile fields with Q20 NULLIF')
+    if 'NOW()' in '\n'.join(sql.values()) or SEQUENCE_LOCK.search('\n'.join(sql.values())) or any(not s.lstrip().startswith('SELECT') for s in sql.values()):errors.append('inquiry must be SELECT-only without locks and use freshly bound now')
+    actual,lifecycle=sequence_database_operations(wsd);errors+=lifecycle
+    if [(t.split('.')[-1],h,s) for t,h,s in operations]!=actual:errors.append('profile-inquiry spec/sequence SQL differs character-for-character or order')
+    for _,heading,_ in operations:
+        if f'app -> infra: {heading}' not in wsd:errors.append(f'{heading} needs Application request')
+        mapping=re.search(rf'infra -> (\w+): {re.escape(heading)}\n.*?\1 -> infra: Return ([^\n]+)\n.*?deactivate \1\n\s*infra -> app: Return ([^\n]+)',wsd,re.S)
+        if not mapping or mapping[2]!=mapping[3]:errors.append(f'{heading} database/Application result mapping differs')
+    for needle in ('Verify JWT signature/issuer/audience/expiry/UUID sub','userId = verified sub; accessTokenHash = SHA-256 exact JWT',
+                   'Capture fresh server UTC now immediately before joined read; recheck JWT exp','alt JWT still unexpired at fresh now',
+                   'data.userId = verified sub; data.emailAddress = decrypt stored email',
+                   'data.firstName/lastName = decrypt non-null stored values; data.displayName/profilePicturePath = stored values or null',
+                   'data.phoneNumber/address = decrypt non-null stored values; data.dateOfBirth = YYYY-MM-DD or null; data.gender = SQL normalized gender',
+                   'data.phoneNumber/address/dateOfBirth/gender = null; do not create a row',
+                   'Emit exactly ten profile keys including explicit nulls; exclude username/password/token/hash/salt/session/audit/roles'):
+        if needle not in wsd:errors.append(f'profile inquiry sequence missing {needle!r}')
+    traces,structure=login_sequence_paths(wsd);errors+=structure
+    from collections import Counter
+    outcomes=[];modes=Counter();unauthorized=[]
+    for trace in traces:
+        response=[e for e in trace if e.startswith('app -> api: HTTP ')]
+        if len(response)!=1:errors.append('profile inquiry trace needs one outcome');continue
+        code=int(response[0].split('HTTP ')[1].split()[0]);outcomes.append(code)
+        def ordered(*parts):
+            pos=[next((i for i,e in enumerate(trace) if part in e),-1) for part in parts]
+            return -1 not in pos and pos==sorted(set(pos))
+        queries=[e for e in trace if e.startswith('infra -> ')];begun=any(e.startswith('app -> infra: BEGIN') for e in trace)
+        if queries and not ordered('Verify JWT','userId = verified sub','BEGIN REPEATABLE READ READ ONLY','Capture fresh server UTC now',expected[0]):errors.append('profile read must follow verified identity, read-only snapshot and fresh time')
+        if any(expected[1] in e for e in trace) and not ordered(expected[0],expected[1]):errors.append('information query must follow eligible joined profile')
+        if any(': QUERY' not in e for e in queries):errors.append('profile inquiry must never write')
+        if code==200:
+            mode='missing' if any('data.phoneNumber/address/dateOfBirth/gender = null' in e for e in trace) else 'present';modes[mode]+=1
+            if len(queries)!=2 or not ordered(expected[0],expected[1],'data.userId = verified sub','Emit exactly ten','app -> infra: COMMIT','HTTP 200') or any('ROLLBACK' in e for e in trace):errors.append('success requires both consistent reads and complete mapping before commit/response')
+            if 'all ten data keys' not in response[0]:errors.append('profile success must return complete data')
+        elif begun:
+            if not ordered('BEGIN','ROLLBACK',f'HTTP {code}') or any(e=='app -> infra: COMMIT' for e in trace):errors.append('read failure must roll back before error without commit')
+            if code==401 and len(queries)>1:errors.append('invalid current credential must not read information')
+        elif code not in (400,401) or queries:errors.append('invalid input/JWT must execute no SQL')
+        if code==401:unauthorized.append(len(queries))
+    if Counter(outcomes)!=Counter({200:2,400:1,401:3,408:1,500:1}) or modes!=Counter({'present':1,'missing':1}) or sorted(unauthorized)!=[0,0,1]:errors.append(f'incomplete profile inquiry paths: {dict(Counter(outcomes))}; modes={dict(modes)}; 401 SQL={unauthorized}')
+    keys={'userId','emailAddress','firstName','lastName','displayName','profilePicturePath','phoneNumber','address','dateOfBirth','gender'}
+    data_table=md.split('### Data Object',1)[-1].split('### Example Response Parameters',1)[0]
+    required_keys={cells[2].strip() for line in data_table.splitlines() if line.startswith('|') and len(cells:=line.split('|'))>5 and cells[4].strip()=='MANDATORY'}
+    if required_keys!=keys:errors.append('response table must require all ten keys; nullable does not mean omitted')
+    for title,code in {'Success':200,'Success - No Information':200,'Success - Unset Gender':200,'Fail - Bad Request':400,'Fail - Unauthorized':401,'Fail - Request Timeout':408,'Fail - Internal Server Error':500}.items():
+        try:
+            obj=authen_json(md,title);status=obj['status']
+            if status['code']!=code or code==500 and 'bizCode' in status:errors.append(f'incorrect inquiry {title} envelope')
+            if code==200:
+                data=obj['data']
+                if set(data)!=keys or data['gender'] not in (None,'MALE','FEMALE','OTHER'):errors.append(f'{title} must have ten keys and normalized gender')
+                if title=='Success - No Information' and any(data[k] is not None for k in ('phoneNumber','address','dateOfBirth','gender')):errors.append('missing information example requires four null keys')
+                if title=='Success - Unset Gender' and data['gender'] is not None:errors.append('Q20 unset gender example must be null')
+        except (TypeError,KeyError,ValueError):errors.append(f'missing profile inquiry {title} example')
+    errors+=json_blocks_parse(md);errors+=table_lines_aligned(md)
+    if '--rendered-svg' in sys.argv:
+        import xml.etree.ElementTree as ET
+        try:
+            root=ET.parse(sys.argv[sys.argv.index('--rendered-svg')+1]).getroot()
+            expected_lines=Counter(' '.join(l.split()) for _,_,s in operations for l in s.splitlines() if l.strip())
+            visible=Counter(' '.join(''.join(e.itertext()).split()) for e in root.iter() if e.tag.endswith('}text'))
+            missing=expected_lines-visible
+            if missing:errors.append(f'rendered profile-inquiry SQL missing {sum(missing.values())} lines')
+            else:print(f'OK: rendered profile-inquiry SQL ({sum(expected_lines.values())}/{sum(expected_lines.values())} visible lines)')
+        except (IndexError,OSError,ET.ParseError) as exc:errors.append(f'cannot verify inquiry SVG: {exc}')
+    if errors:return fail('; '.join(errors))
+    print('OK: profile-inquiry-flow (8 terminal traces; exact SQL, current credential snapshot and Q20 nullable mapping)')
+    return 0
+
+
+COMMANDS['profile-inquiry-flow'] = check_profile_inquiry_flow
+
+
 def check_author_me_flow() -> int:
     """Check the calling-token role snapshot while preserving live credential/user revocation."""
     path='e-commerce/doc/api/author/12-me/spec.md'
@@ -6112,6 +6339,963 @@ def check_author_me_flow() -> int:
 
 
 COMMANDS['author-me-flow'] = check_author_me_flow
+
+
+def check_permission_upsert_flow() -> int:
+    """Check scoped permission parent/link phases, owner Q22/Q23 and atomic rollback."""
+    path=f'{AUTHOR_DIR}/{AUTHOR_SPECS["04"]}/spec.md';md=read(path);wsd=read(str(Path(path).with_name('sequence.wsd')));errors=[]
+    for n in ('status: in-review','approved_by: null','approved_at: null','Q22/Q23 approved by the product owner','malformed/missing roles is generic 401','exact PLATFORM_ADMIN','scopes omitted or [] means no link change','duplicate parsed child ids','Lock order: caller user -> existing permission','beforeDefinitionCount > 0 and finalDefinitionCount = 0','already-unscoped permission','all child reference/duplicate/in-use checks precede any parent/child write','Capture beforeDefinitionCount as every non-DELETED definition','After all parent/child writes','final whole-request invariant','Map exactly data.permissionId','uq_m_permission_name','uq_t_permission_scope_permission_id_scope_id','Scenario correspondence with sequence.wsd','ใช่ ปฏิเสธจนถอน grant เดิมครบ','ใช่ อนุญาตถอน link ของ scope ที่ปิดแล้ว'):
+        if n not in md:errors.append(f'permission spec missing {n!r}')
+    for n in ('QUERY - Get the platform administrator role','QUERY - Check platform administrator'):
+        if n in md or n in wsd:errors.append('permission caller authorization may not reload live grants')
+    if 'Q24 approved by the product owner' not in md or 'rowStatus = DELETED and finalDefinitionCount > 0' not in md:errors.append('permission spec must define owner Q24 final deletion guard')
+    q24='alt Parent rowStatus = DELETED and finalDefinitionCount > 0 (Q24)'
+    passed='Q24 passed: parent is not DELETED or finalDefinitionCount = 0'
+    if q24 not in wsd or passed not in wsd:errors.append('permission sequence must enforce Q24 after final count')
+    block=re.search(r'(?m)^( *)'+re.escape(q24)+r'\n(.*?)^\1else Q24 passed\n(.*?)^\1end\n',wsd,re.S)
+    if not block or 'app -> infra: ROLLBACK' not in block[2] or 'HTTP 409 E10006 Permission cannot be deleted while scope definitions remain.' not in block[2] or passed not in block[3]:errors.append('Q24 branch must reject with exact 409 E10006 and rollback, otherwise pass explicitly')
+    ops=spec_database_operations(md);heads=('QUERY - Lock the caller user','QUERY - Check current credential and user','QUERY - Check existing permission','QUERY - Check scope','QUERY - Check existing permission scope','QUERY - Count permission scope definitions','QUERY - Check duplicate name','QUERY - Check role permission in use','QUERY - Check user permission in use','QUERY - Check duplicate permission scope','QUERY - Check role permission scope in use','QUERY - Check user permission scope in use','INSERT - Create permission','UPDATE - Update or delete permission','INSERT - Create permission scope','UPDATE - Update or delete permission scope')
+    if tuple(h for _,h,_ in ops)!=heads:errors.append('permission needs all 16 caller/parent/master/link/count/conflict/write definitions')
+    sql={h:re.sub(r'--[^\n]*','',q) for _,h,q in ops};need={
+        heads[0]:["WHERE u.id = '<sequence.callerUserId>'",'FOR UPDATE'],heads[1]:['JOIN authen.m_user u ON u.id = at.user_id',"at.token = '<sequence.accessTokenHash>'","at.user_id = '<sequence.callerUserId>'","at.row_status = 'ACTIVE'","at.expired_at > '<sequence.now>'","u.row_status = 'ACTIVE'"],
+        heads[2]:["WHERE p.id = '<sequence.id>'","AND p.row_status <> 'DELETED'",'FOR UPDATE'],heads[3]:["WHERE s.id = ANY ('<sequence.activeScopeIds>'::UUID[])","AND s.row_status = 'ACTIVE'",'ORDER BY s.id\nFOR UPDATE'],heads[4]:['ps.scope_id',"WHERE ps.id = ANY ('<sequence.permissionScopeIds>'::UUID[])","AND ps.permission_id = '<sequence.permissionId>'","AND ps.row_status <> 'DELETED'",'ORDER BY ps.id\nFOR UPDATE'],
+        heads[5]:['COUNT(ps.id) as definition_count',"WHERE ps.permission_id = '<sequence.permissionId>'","AND ps.row_status <> 'DELETED'"],heads[6]:["WHERE p.name = '<sequence.name>'","AND p.row_status <> 'DELETED'","AND ('<sequence.id>' IS NULL OR p.id <> '<sequence.id>')"],heads[7]:["WHERE rp.permission_id = '<sequence.permissionId>'","AND rp.row_status <> 'DELETED'"],heads[8]:["WHERE up.permission_id = '<sequence.permissionId>'","AND up.row_status <> 'DELETED'"],
+        heads[9]:["WHERE ps.permission_id = '<sequence.permissionId>'","AND ps.scope_id = '<sequence.scopes.scopeId>'","AND ps.row_status <> 'DELETED'","AND ('<sequence.scopes.id>' IS NULL OR ps.id <> '<sequence.scopes.id>')"],heads[10]:["WHERE rps.permission_scope_id = '<sequence.scopes.id>'","AND rps.row_status <> 'DELETED'"],heads[11]:["WHERE up.permission_scope_id = '<sequence.scopes.id>'","AND up.row_status <> 'DELETED'"],
+        heads[12]:['created_by,\n    created_at,','<sequence.createdBy>','<sequence.now>','<sequence.rowStatus>','<sequence.name>','<sequence.description>','RETURNING id as permission_id'],heads[13]:["updated_by = '<sequence.updatedBy>'","updated_at = '<sequence.now>'","row_status = '<sequence.rowStatus>'","WHERE id = '<sequence.id>'","AND row_status <> 'DELETED'",'RETURNING id as permission_id'],
+        heads[14]:['created_by,\n    created_at,','<sequence.now>','<sequence.permissionId>','<sequence.scopes.scopeId>','<sequence.scopes.rowStatus>','RETURNING id as permission_scope_id'],heads[15]:["updated_by = '<sequence.updatedBy>'","updated_at = '<sequence.now>'","row_status = '<sequence.scopes.rowStatus>'","WHERE id = '<sequence.scopes.id>'","AND permission_id = '<sequence.permissionId>'","AND scope_id = '<sequence.scopes.scopeId>'","AND row_status <> 'DELETED'",'RETURNING id as permission_scope_id']}
+    for h,ns in need.items():
+        for n in ns:
+            if n not in sql.get(h,''):errors.append(f'{h} missing {n!r}')
+    if 'JOIN' in sql.get(heads[5],'') or "row_status = 'ACTIVE'" in sql.get(heads[5],''):errors.append('definition count must not lose closed definitions/masters')
+    if 'NOW()' in '\n'.join(sql.values()) or any('created_at =' in sql.get(h,'') for h in heads[13::2]):errors.append('writes use bound fresh server time and preserve creation audit')
+    actual,lifecycle=sequence_database_operations(wsd);errors+=lifecycle
+    from collections import Counter
+    expected=Counter((t.split('.')[-1],h,q) for t,h,q in ops)
+    for t,h,q in ops:
+        if h in (heads[5],heads[7],heads[8]):expected[(t.split('.')[-1],h,q)]+=1
+    if Counter(actual)!=expected:errors.append('permission SQL differs character-for-character or has missing/excess repeated operations')
+    lines=wsd.splitlines()
+    for i,l in enumerate(lines):
+        req=re.match(r'^( *)infra -> \w+: (?:QUERY|INSERT|UPDATE) - ',l)
+        if not req:continue
+        pad=' '*(len(req[1])+8);j=i+3
+        while j<len(lines) and lines[j].strip()!='end note':
+            if lines[j] and not lines[j].startswith(pad):errors.append('permission SQL must preserve exact added note prefix and native whitespace')
+            j+=1
+    for _,h,_ in ops:
+        if wsd.count('app -> infra: '+h+'\n')!=(2 if h in (heads[5],heads[7],heads[8]) else 1):errors.append(f'{h} Application request count incorrect')
+    for mat in re.finditer(r'(?m)^( *)infra -> (\w+): ((?:QUERY|INSERT|UPDATE) - [^\n]+)\n',wsd):
+        r=re.search(rf'{mat[2]} -> infra: Return ([^\n]+)\n.*?deactivate {mat[2]}\n\s*infra -> app: Return ([^\n]+)',wsd[mat.start():],re.S)
+        if not r or r[1]!=r[2]:errors.append('every permission SQL result must map back identically to Application')
+    for n in ('Verify JWT signature/issuer/audience/expiry/UUID sub and structured unique roleIds/name array','callerUserId = verified sub; accessTokenHash = SHA-256 exact JWT','Capture fresh server UTC now after caller lock; recheck JWT exp','JWT expired while waiting for caller lock','Current token/user missing/inactive/revoked/expired/mismatched','Authorize only exact case-sensitive PLATFORM_ADMIN in verified JWT roles; never reload live caller grants','activeScopeIds = only requested ACTIVE child scopeIds','permissionScopeIds = supplied child ids','Q23 skip master ACTIVE validation for removing an existing definition','Child absent from owned non-DELETED definition map','Requested scopeId differs from stored immutable scopeId','beforeDefinitionCount = definitionCount','Parent UPDATE returned zero rows','Require exactly one returned parent id equal to request id','permissionId = actual parent RETURNING id; bind this server-derived id for all child writes and final queries','Child UPDATE returned zero rows','Require exactly one returned child id equal to input id','finalDefinitionCount = definitionCount','alt beforeDefinitionCount > 0 and finalDefinitionCount = 0 (Q22 transition)','Either fresh non-DELETED role/direct-user grant survives','Q22 does not prohibit existing unscoped grants','data = exactly permissionId from parent RETURNING; no child ids or audit fields','Suppress body/status/data for 204'):
+        if n not in wsd:errors.append(f'permission sequence missing {n!r}')
+    phase=['Authorize only exact',heads[3],heads[4],'loop Validate every supplied','beforeDefinitionCount =',heads[6],'loop Precheck every supplied','alt Parent id omitted (INSERT','permissionId = actual parent RETURNING','loop Apply every supplied','finalDefinitionCount =',q24,passed,'alt beforeDefinitionCount > 0']
+    positions=[wsd.find(x) for x in phase]
+    if -1 in positions or positions!=sorted(set(positions)):errors.append('permission authorization/preflight/count/write/final-guard phases are out of order')
+    q23=re.search(r'(?m)^( *)alt Child rowStatus = ACTIVE\n(.*?)^\1else Child rowStatus = DELETED\n(.*?)^\1end\n',wsd,re.S)
+    if not q23 or 'Requested master absent from ACTIVE master map' not in q23[2] or 'Q23 skip master ACTIVE' not in q23[3] or 'HTTP 404 E10005' in q23[3]:errors.append('ACTIVE master validation belongs only to ACTIVE link branch; deletion must allow closed masters')
+    # Traverse one representative pass through each child phase. Structural paths do not certify concrete multi-item inputs.
+    flat=[];stack=[];note=False;loop_ranges=[];loop_starts=[]
+    for i,l in enumerate(lines):
+        t=l.strip()
+        if t.startswith('note ') and ':' not in t:note=True
+        if note:
+            flat.append(l)
+            if t=='end note':note=False
+            continue
+        if t.startswith('loop '):stack.append('loop');loop_starts.append(i);continue
+        if t.startswith('alt '):stack.append('alt')
+        elif t in ('end','end alt'):
+            if not stack:errors.append('permission loop/alternative unbalanced');continue
+            kind=stack.pop()
+            if kind=='loop':loop_ranges.append((loop_starts.pop(),i));continue
+        flat.append(l)
+    if stack or len(loop_ranges)!=3:errors.append('permission needs three complete scope validation/precheck/mutation loops')
+    for start,end in loop_ranges:
+        if any('app -> infra: COMMIT' in x or 'app -> api: HTTP 20' in x for x in lines[start:end]):errors.append('no scope phase can commit/answer partial success')
+    for response in re.finditer(r'(?m)^( *)app -> api: HTTP [^\n]+\n',wsd):
+        following=wsd[response.end():].splitlines()[:2]
+        if len(following)!=2 or not following[0].strip().startswith('api -> page:') or not following[1].strip().startswith('page -> user:'):errors.append('every permission response must reach frontend/caller')
+    traces,structure=login_sequence_paths('\n'.join(flat));errors+=structure;codes=set()
+    for tr in traces:
+        response=[e for e in tr if e.startswith('app -> api: HTTP ')];joined='\n'.join(tr)
+        if len(response)!=1:errors.append('permission structural trace must terminate exactly once');continue
+        code=int(response[0].split('HTTP ')[1].split()[0]);codes.add(code);db=[e for e in tr if e.startswith('infra -> ')];begun=any(e.startswith('app -> infra: BEGIN') for e in tr)
+        def ordered(*parts):
+            pos=[next((i for i,e in enumerate(tr) if p in e),-1) for p in parts]
+            return -1 not in pos and pos==sorted(set(pos))
+        def hasop(h):return any(e.endswith(': '+h) for e in db)
+        if db and not ordered('Verify JWT','callerUserId = verified sub','BEGIN READ COMMITTED',heads[0]):errors.append('permission SQL requires verified caller and user-first transaction')
+        if heads[1] in joined and not ordered(heads[0],'Capture fresh server UTC now',heads[1]):errors.append('current credential query must follow caller lock and fresh time')
+        if hasop(heads[2]) and not ordered(heads[1],heads[2]):errors.append('parent existence requires current credentials first')
+        if 'Authorize only exact' in joined and not ordered(heads[1],*([heads[2]] if hasop(heads[2]) else []),'Authorize only exact'):errors.append('permission claims follow current credential/optional parent existence')
+        if heads[3] in joined and not ordered('Authorize only exact',heads[3],heads[4]):errors.append('no scope query before authorization and declared master/link lock order')
+        parentwrites=[e for e in db if e.endswith('INSERT - Create permission') or e.endswith('UPDATE - Update or delete permission')];childwrites=[e for e in db if ': INSERT - Create permission scope' in e or ': UPDATE - Update or delete permission scope' in e]
+        if parentwrites and not ordered(heads[9],parentwrites[0]):errors.append('all scope duplicate prechecks precede parent mutation')
+        if childwrites and not ordered('permissionId = actual parent RETURNING',childwrites[0]):errors.append('scope writes require the real returned parent id')
+        if code in (200,201,204):
+            if len(parentwrites)!=1 or len(childwrites)!=1 or not ordered('beforeDefinitionCount =',parentwrites[0],childwrites[0],'finalDefinitionCount =',passed,'app -> infra: COMMIT',f'HTTP {code}') or 'ROLLBACK' in joined:errors.append('permission success must complete atomic parent/child/final-count phases then commit')
+            if code==204:
+                if 'Suppress body/status/data for 204' not in joined or 'data = exactly permissionId' in joined:errors.append('permission delete has no response body')
+            elif not ordered('data = exactly permissionId','app -> infra: COMMIT'):errors.append('nondelete success maps only parent permissionId before commit')
+        elif begun:
+            if not ordered('BEGIN','ROLLBACK',f'HTTP {code}') or 'app -> infra: COMMIT' in joined:errors.append('every post-BEGIN permission rejection rolls back the whole request')
+            if code==401 and (hasop(heads[2]) or heads[3] in joined):errors.append('invalid current credentials must not inspect parents/scopes')
+            if code==403 and any(h in joined for h in heads[3:]):errors.append('403 must precede every scope/conflict/write phase')
+        elif code not in (400,401) or db:errors.append('pre-BEGIN permission rejection is validation/JWT only, no SQL')
+        if 'finalDefinitionCount =' in joined and passed in joined and 'Q22 does not prohibit existing unscoped grants' not in joined:
+            final=next(i for i,e in enumerate(tr) if 'finalDefinitionCount =' in e);tail='\n'.join(tr[final:])
+            if heads[7] not in tail or heads[8] not in tail:errors.append('Q22 must freshly read both role/direct-user grants after the final count')
+        if 'HTTP 409 E10006 Permission cannot be deleted while scope definitions remain.' in joined and not ordered('finalDefinitionCount =','ROLLBACK','HTTP 409'):errors.append('Q24 rejection must follow final count and roll back before response')
+    if codes!={200,201,204,400,401,403,404,409,408,500}:errors.append(f'permission outcome coverage incomplete: {codes}')
+    for title,code in {'Success - Insert':201,'Success - Update':200,'Success - Archive':200,'Fail - Bad Request Scope Changed':400,'Fail - Not Found Permission Scope':404,'Fail - Conflict Scope':409,'Fail - Conflict Last Scope':409,'Fail - Conflict Remaining Scopes':409,'Fail - Internal Server Error':500}.items():
+        try:
+            obj=author_json(md,title);status=obj['status']
+            if status['code']!=code or code==500 and 'bizCode' in status:errors.append(f'{title} permission envelope incorrect')
+            if code in (200,201) and set(obj['data'])!={'permissionId'}:errors.append('permission response must not add scope ids/other fields')
+            if title=='Fail - Conflict Remaining Scopes' and (status.get('bizCode')!='E10006' or status['bizMessage']!='Permission cannot be deleted while scope definitions remain.'):errors.append('Q24 error must be 409 E10006 with the documented message')
+            if title=='Fail - Conflict Last Scope' and (status.get('bizCode')!='E10006' or status['bizMessage']!='Permission cannot become unscoped while assigned to roles or users.'):errors.append('Q22 error must be 409 E10006 with the documented message')
+        except (AttributeError,TypeError,KeyError,ValueError):errors.append(f'missing/malformed permission example {title}')
+    delete=re.search(r'^##### Delete\n\n```JSON\n(.*?)```',md,re.M|re.S)
+    try:
+        body=json.loads(delete[1]);assert body.get('rowStatus')=='DELETED' and body.get('scopes') and all(c.get('id') and c.get('rowStatus')=='DELETED' for c in body['scopes'])
+    except (AssertionError,TypeError,KeyError,ValueError):errors.append('Q24 Delete example must explicitly withdraw its remaining definitions')
+    errors+=json_blocks_parse(md);errors+=table_lines_aligned(md)
+    if '--rendered-svg' in sys.argv:
+        import xml.etree.ElementTree as ET
+        try:
+            root=ET.parse(sys.argv[sys.argv.index('--rendered-svg')+1]).getroot();wanted=Counter(' '.join(l.split()) for _,_,q in actual for l in q.splitlines() if l.strip());visible=Counter(' '.join(''.join(e.itertext()).split()) for e in root.iter() if e.tag.endswith('}text'));missing=wanted-visible
+            if missing:errors.append(f'rendered permission-upsert SQL missing {sum(missing.values())} lines')
+            else:print(f'OK: rendered permission-upsert SQL ({sum(wanted.values())}/{sum(wanted.values())} visible lines)')
+        except (IndexError,OSError,ET.ParseError) as exc:errors.append(f'cannot verify permission SVG: {exc}')
+    if errors:return fail('; '.join(dict.fromkeys(errors)))
+    print('OK: permission-upsert-flow (16 exact SQL definitions; scope phase/transaction structure and owner Q22/Q23/Q24 guards)')
+    return 0
+
+
+COMMANDS['permission-upsert-flow'] = check_permission_upsert_flow
+
+
+def check_permission_batch_flow() -> int:
+    """Check scoped permission parent/link phases, owner Q22/Q23/Q24 and atomic rollback."""
+    path=f'{AUTHOR_DIR}/{AUTHOR_SPECS["05"]}/spec.md';md=read(path);wsd=read(str(Path(path).with_name('sequence.wsd')));errors=[]
+    for n in ('status: in-review', 'approved_by: null', 'approved_at: null', 'Q22/Q23 approved by the product owner', 'permissions must be an array of 1..100', 'Reject duplicate parsed canonical parent ids', 'malformed/missing roles is generic 401', 'Lock order: caller user -> all existing target permissions ordered by id', 'Check all supplied target ids in original request order before permission', 'Authorize once from exact PLATFORM_ADMIN', 'activeScopeIds contains only scopeIds requested ACTIVE anywhere', 'Map each returned child id to its stored permission_id and scope_id', 'optional permissions.id, callerUserId and derived permissionId are distinct', 'scopes omitted or [] means no link change', 'Every child precheck precedes the current parent', 'Capture beforeDefinitionCount as every non-DELETED definition', 'beforeDefinitionCount > 0 and finalDefinitionCount = 0', "Because parent ids cannot repeat and child ownership is enforced, this post-item state is that permission's final whole-request state; no later item may alter its definitions.", 'exactly index/permissionId/action', 'one COMMIT after the outer loop', 'Every item-specific 400/404/409 has permissions[i] prefix', 'uq_m_permission_name', 'uq_t_permission_scope_permission_id_scope_id', 'Scenario correspondence with sequence.wsd', 'ใช่ ปฏิเสธจนถอน grant เดิมครบ', 'ใช่ อนุญาตถอน link ของ scope ที่ปิดแล้ว'):
+        if n not in md:errors.append(f'permission batch spec missing {n!r}')
+    for n in ('QUERY - Get the platform administrator role','QUERY - Check platform administrator'):
+        if n in md or n in wsd:errors.append('permission caller authorization may not reload live grants')
+    if 'Q24 approved by the product owner' not in md or 'rowStatus = DELETED and finalDefinitionCount > 0' not in md:errors.append('permission batch spec must define owner Q24 final deletion guard')
+    q24='alt Current permission rowStatus = DELETED and finalDefinitionCount > 0 (Q24)'
+    passed='Q24 passed for permissions[i]: rowStatus is not DELETED or finalDefinitionCount = 0'
+    if q24 not in wsd or passed not in wsd:errors.append('permission batch sequence must enforce Q24 after final count')
+    block=re.search(r'(?m)^( *)'+re.escape(q24)+r'\n(.*?)^\1else Q24 passed\n(.*?)^\1end\n',wsd,re.S)
+    if not block or 'app -> infra: ROLLBACK' not in block[2] or 'HTTP 409 E10006 permissions[i]: Permission cannot be deleted while scope definitions remain.' not in block[2] or passed not in block[3]:errors.append('Q24 batch branch must reject with exact indexed 409 E10006 and full rollback, otherwise pass explicitly')
+    ops=spec_database_operations(md);heads=('QUERY - Lock the caller user','QUERY - Check current credential and user','QUERY - Lock existing permissions','QUERY - Check scope','QUERY - Check existing permission scope','QUERY - Count permission scope definitions','QUERY - Check duplicate name','QUERY - Check role permission in use','QUERY - Check user permission in use','QUERY - Check duplicate permission scope','QUERY - Check role permission scope in use','QUERY - Check user permission scope in use','INSERT - Create permission','UPDATE - Update or delete permission','INSERT - Create permission scope','UPDATE - Update or delete permission scope')
+    if tuple(h for _,h,_ in ops)!=heads:errors.append('permission needs all 16 caller/parent/master/link/count/conflict/write definitions')
+    sql={h:re.sub(r'--[^\n]*','',q) for _,h,q in ops};need={
+        heads[0]:["WHERE u.id = '<sequence.callerUserId>'",'FOR UPDATE'],heads[1]:['JOIN authen.m_user u ON u.id = at.user_id',"at.token = '<sequence.accessTokenHash>'","at.user_id = '<sequence.callerUserId>'","at.row_status = 'ACTIVE'","at.expired_at > '<sequence.now>'","u.row_status = 'ACTIVE'"],
+        heads[2]:["WHERE p.id = ANY ('<sequence.targetPermissionIds>'::UUID[])","AND p.row_status <> 'DELETED'",'ORDER BY p.id\nFOR UPDATE'],heads[3]:["WHERE s.id = ANY ('<sequence.activeScopeIds>'::UUID[])","AND s.row_status = 'ACTIVE'",'ORDER BY s.id\nFOR UPDATE'],heads[4]:['ps.permission_id','ps.scope_id',"WHERE ps.id = ANY ('<sequence.permissionScopeIds>'::UUID[])","AND ps.permission_id = ANY ('<sequence.targetPermissionIds>'::UUID[])","AND ps.row_status <> 'DELETED'",'ORDER BY ps.id\nFOR UPDATE'],
+        heads[5]:['COUNT(ps.id) as definition_count',"WHERE ps.permission_id = '<sequence.permissionId>'","AND ps.row_status <> 'DELETED'"],heads[6]:["WHERE p.name = '<sequence.permissions.name>'","AND p.row_status <> 'DELETED'","AND ('<sequence.permissions.id>' IS NULL OR p.id <> '<sequence.permissions.id>')"],heads[7]:["WHERE rp.permission_id = '<sequence.permissionId>'","AND rp.row_status <> 'DELETED'"],heads[8]:["WHERE up.permission_id = '<sequence.permissionId>'","AND up.row_status <> 'DELETED'"],
+        heads[9]:["WHERE ps.permission_id = '<sequence.permissionId>'","AND ps.scope_id = '<sequence.permissions.scopes.scopeId>'","AND ps.row_status <> 'DELETED'","AND ('<sequence.permissions.scopes.id>' IS NULL OR ps.id <> '<sequence.permissions.scopes.id>')"],heads[10]:["WHERE rps.permission_scope_id = '<sequence.permissions.scopes.id>'","AND rps.row_status <> 'DELETED'"],heads[11]:["WHERE up.permission_scope_id = '<sequence.permissions.scopes.id>'","AND up.row_status <> 'DELETED'"],
+        heads[12]:['created_by,\n    created_at,','<sequence.createdBy>','<sequence.now>','<sequence.permissions.rowStatus>','<sequence.permissions.name>','<sequence.permissions.description>','RETURNING id as permission_id'],heads[13]:["updated_by = '<sequence.updatedBy>'","updated_at = '<sequence.now>'","row_status = '<sequence.permissions.rowStatus>'","WHERE id = '<sequence.permissions.id>'","AND row_status <> 'DELETED'",'RETURNING id as permission_id'],
+        heads[14]:['created_by,\n    created_at,','<sequence.now>','<sequence.permissionId>','<sequence.permissions.scopes.scopeId>','<sequence.permissions.scopes.rowStatus>','RETURNING id as permission_scope_id'],heads[15]:["updated_by = '<sequence.updatedBy>'","updated_at = '<sequence.now>'","row_status = '<sequence.permissions.scopes.rowStatus>'","WHERE id = '<sequence.permissions.scopes.id>'","AND permission_id = '<sequence.permissionId>'","AND scope_id = '<sequence.permissions.scopes.scopeId>'","AND row_status <> 'DELETED'",'RETURNING id as permission_scope_id']}
+    for h,ns in need.items():
+        for n in ns:
+            if n not in sql.get(h,''):errors.append(f'{h} missing {n!r}')
+    if 'JOIN' in sql.get(heads[5],'') or "row_status = 'ACTIVE'" in sql.get(heads[5],''):errors.append('definition count must not lose closed definitions/masters')
+    if 'NOW()' in '\n'.join(sql.values()) or any('created_at =' in sql.get(h,'') for h in heads[13::2]):errors.append('writes use bound fresh server time and preserve creation audit')
+    actual,lifecycle=sequence_database_operations(wsd);errors+=lifecycle
+    from collections import Counter
+    expected=Counter((t.split('.')[-1],h,q) for t,h,q in ops)
+    for t,h,q in ops:
+        if h in (heads[5],heads[7],heads[8]):expected[(t.split('.')[-1],h,q)]+=1
+    if Counter(actual)!=expected:errors.append('permission SQL differs character-for-character or has missing/excess repeated operations')
+    lines=wsd.splitlines()
+    for i,l in enumerate(lines):
+        req=re.match(r'^( *)infra -> \w+: (?:QUERY|INSERT|UPDATE) - ',l)
+        if not req:continue
+        pad=' '*(len(req[1])+8);j=i+3
+        while j<len(lines) and lines[j].strip()!='end note':
+            if lines[j] and not lines[j].startswith(pad):errors.append('permission SQL must preserve exact added note prefix and native whitespace')
+            j+=1
+    for _,h,_ in ops:
+        if wsd.count('app -> infra: '+h+'\n')!=(2 if h in (heads[5],heads[7],heads[8]) else 1):errors.append(f'{h} Application request count incorrect')
+    for mat in re.finditer(r'(?m)^( *)infra -> (\w+): ((?:QUERY|INSERT|UPDATE) - [^\n]+)\n',wsd):
+        r=re.search(rf'{mat[2]} -> infra: Return ([^\n]+)\n.*?deactivate {mat[2]}\n\s*infra -> app: Return ([^\n]+)',wsd[mat.start():],re.S)
+        if not r or r[1]!=r[2]:errors.append('every permission SQL result must map back identically to Application')
+    for n in ('Verify JWT signature/issuer/audience/expiry/UUID sub and structured unique roleIds/name array', 'callerUserId = verified sub; accessTokenHash = SHA-256 exact JWT', 'Capture fresh server UTC now after caller lock; recheck JWT exp', 'JWT expired while waiting for caller lock', 'Current token/user missing/inactive/revoked/expired/mismatched', 'Check every supplied parent id in original input order before permission', 'Authorize once using only exact case-sensitive PLATFORM_ADMIN in verified JWT roles; never reload live caller grants', 'activeScopeIds = all requested ACTIVE child scopeIds', 'permissionScopeIds = all supplied child ids', 'Q23 skip master ACTIVE validation for removing an existing definition', 'Child absent from owned non-DELETED definition map', 'Requested scopeId differs from stored immutable scopeId', 'beforeDefinitionCount = definitionCount', 'Parent UPDATE returned zero rows', 'Require exactly one returned parent id equal to request id', 'permissionId = actual parent RETURNING id; bind this server-derived id for all child writes and final queries', 'Child UPDATE returned zero rows', 'Require exactly one returned child id equal to input id', 'finalDefinitionCount = definitionCount', 'alt beforeDefinitionCount > 0 and finalDefinitionCount = 0 (Q22 transition)', 'Either fresh non-DELETED role/direct-user grant survives', 'Q22 does not prohibit existing unscoped grants', 'Process permissions[i] in original request order, not lock order', 'Map exactly index=i, permissionId=actual parent RETURNING id', 'Require result count = input count, indices 0..n-1 in order, unique returned parent UUIDs and exactly index/permissionId/action per item; data = exactly permissions; finish all mapping', 'one final COMMIT'):
+        if n not in wsd:errors.append(f'permission batch sequence missing {n!r}')
+    phase=[heads[0],heads[1],heads[2],'loop Check every supplied parent id','Authorize once using only exact',heads[3],heads[4],'loop Process permissions[i]','loop Validate every supplied','beforeDefinitionCount =',heads[6],'loop Precheck every supplied','alt Parent id omitted (INSERT','permissionId = actual parent RETURNING','loop Apply every supplied','finalDefinitionCount =',q24,passed,'alt beforeDefinitionCount > 0']
+    positions=[wsd.find(x) for x in phase]
+    if -1 in positions or positions!=sorted(set(positions)):errors.append('permission authorization/preflight/count/write/final-guard phases are out of order')
+    q23=re.search(r'(?m)^( *)alt Child rowStatus = ACTIVE\n(.*?)^\1else Child rowStatus = DELETED\n(.*?)^\1end\n',wsd,re.S)
+    if not q23 or 'Requested master absent from ACTIVE master map' not in q23[2] or 'Q23 skip master ACTIVE' not in q23[3] or 'HTTP 404 E10005' in q23[3]:errors.append('ACTIVE master validation belongs only to ACTIVE link branch; deletion must allow closed masters')
+    # Traverse one representative pass through each loop (not a concrete multi-item proof). Structural paths do not certify concrete multi-item inputs.
+    flat=[];stack=[];note=False;loop_ranges=[];loop_starts=[]
+    for i,l in enumerate(lines):
+        t=l.strip()
+        if t.startswith('note ') and ':' not in t:note=True
+        if note:
+            flat.append(l)
+            if t=='end note':note=False
+            continue
+        if t.startswith('loop '):stack.append('loop');loop_starts.append(i);continue
+        if t.startswith('alt '):stack.append('alt')
+        elif t in ('end','end alt'):
+            if not stack:errors.append('permission loop/alternative unbalanced');continue
+            kind=stack.pop()
+            if kind=='loop':loop_ranges.append((loop_starts.pop(),i));continue
+        flat.append(l)
+    if stack or len(loop_ranges)!=5:errors.append('permission needs five complete target/permission/child loops')
+    for start,end in loop_ranges:
+        if any('app -> infra: COMMIT' in x or 'app -> api: HTTP 20' in x for x in lines[start:end]):errors.append('no scope phase can commit/answer partial success')
+    for response in re.finditer(r'(?m)^( *)app -> api: HTTP [^\n]+\n',wsd):
+        following=wsd[response.end():].splitlines()[:2]
+        if len(following)!=2 or not following[0].strip().startswith('api -> page:') or not following[1].strip().startswith('page -> user:'):errors.append('every permission response must reach frontend/caller')
+    traces,structure=login_sequence_paths('\n'.join(flat));errors+=structure;codes=set()
+    for tr in traces:
+        response=[e for e in tr if e.startswith('app -> api: HTTP ')];joined='\n'.join(tr)
+        if len(response)!=1:errors.append('permission structural trace must terminate exactly once');continue
+        code=int(response[0].split('HTTP ')[1].split()[0]);codes.add(code);db=[e for e in tr if e.startswith('infra -> ')];begun=any(e.startswith('app -> infra: BEGIN') for e in tr)
+        def ordered(*parts):
+            pos=[next((i for i,e in enumerate(tr) if p in e),-1) for p in parts]
+            return -1 not in pos and pos==sorted(set(pos))
+        def hasop(h):return any(e.endswith(': '+h) for e in db)
+        if db and not ordered('Verify JWT','callerUserId = verified sub','BEGIN READ COMMITTED',heads[0]):errors.append('permission SQL requires verified caller and user-first transaction')
+        if heads[1] in joined and not ordered(heads[0],'Capture fresh server UTC now',heads[1]):errors.append('current credential query must follow caller lock and fresh time')
+        if hasop(heads[2]) and not ordered(heads[1],heads[2]):errors.append('parent existence requires current credentials first')
+        if 'Authorize once using only exact' in joined and not ordered(heads[1],*([heads[2]] if hasop(heads[2]) else []),'Authorize once using only exact'):errors.append('permission claims follow current credential/optional parent existence')
+        if heads[3] in joined and not ordered('Authorize once using only exact',heads[3],heads[4]):errors.append('no scope query before authorization and declared master/link lock order')
+        parentwrites=[e for e in db if e.endswith('INSERT - Create permission') or e.endswith('UPDATE - Update or delete permission')];childwrites=[e for e in db if ': INSERT - Create permission scope' in e or ': UPDATE - Update or delete permission scope' in e]
+        if parentwrites and not ordered(heads[9],parentwrites[0]):errors.append('all scope duplicate prechecks precede parent mutation')
+        if childwrites and not ordered('permissionId = actual parent RETURNING',childwrites[0]):errors.append('scope writes require the real returned parent id')
+        if code==200:
+            if len(parentwrites)!=1 or len(childwrites)!=1 or not ordered('beforeDefinitionCount =',parentwrites[0],childwrites[0],'finalDefinitionCount =',passed,'Map exactly index=i','Require result count = input count','app -> infra: COMMIT','HTTP 200') or 'ROLLBACK' in joined:errors.append('batch success must finish all nested writes/final-count/mapping phases before one outer commit')
+            if sum('app -> infra: COMMIT' in e for e in tr)!=1:errors.append('batch commits exactly once')
+        elif begun:
+            if not ordered('BEGIN','ROLLBACK',f'HTTP {code}') or 'app -> infra: COMMIT' in joined:errors.append('every post-BEGIN permission rejection rolls back the whole request')
+            if code==401 and (hasop(heads[2]) or heads[3] in joined):errors.append('invalid current credentials must not inspect parents/scopes')
+            if code==403 and any(h in joined for h in heads[3:]):errors.append('403 must precede every scope/conflict/write phase')
+        elif code not in (400,401) or db:errors.append('pre-BEGIN permission rejection is validation/JWT only, no SQL')
+        if 'finalDefinitionCount =' in joined and passed in joined and 'Q22 does not prohibit existing unscoped grants' not in joined:
+            final=next(i for i,e in enumerate(tr) if 'finalDefinitionCount =' in e);tail='\n'.join(tr[final:])
+            if heads[7] not in tail or heads[8] not in tail:errors.append('Q22 must freshly read both role/direct-user grants after the final count')
+        if 'HTTP 409 E10006 permissions[i]: Permission cannot be deleted while scope definitions remain.' in joined and not ordered('finalDefinitionCount =','ROLLBACK','HTTP 409'):errors.append('Q24 rejection must follow final count and roll back before indexed response')
+    if codes!={200,400,401,403,404,409,408,500}:errors.append(f'permission outcome coverage incomplete: {codes}')
+    for title,code in {'Success':200,'Fail - Forbidden':403,'Fail - Bad Request Scope Changed':400,'Fail - Not Found Permission Scope':404,'Fail - Conflict Scope':409,'Fail - Conflict Last Scope':409,'Fail - Conflict Remaining Scopes':409,'Fail - Internal Server Error':500}.items():
+        try:
+            obj=author_json(md,title);status=obj['status']
+            if status['code']!=code or code==500 and 'bizCode' in status:errors.append(f'{title} permission batch envelope incorrect')
+            if code==200:
+                results=obj['data']['permissions']
+                if set(obj['data'])!={'permissions'} or not results or any(set(r)!={'index','permissionId','action'} or r['index']!=i or r['action'] not in ('INSERT','UPDATE','DELETE','ARCHIVE') for i,r in enumerate(results)):errors.append('batch result must contain ordered index/permissionId/action only')
+            elif code in (400,404,409) and not status['bizMessage'].startswith('permissions['):errors.append('item error requires permissions[i] prefix')
+            elif code==403 and 'permissions[' in status['bizMessage']:errors.append('caller permission error must not have an item index')
+            if title=='Fail - Conflict Remaining Scopes' and (status.get('bizCode')!='E10006' or status['bizMessage']!='permissions[1]: Permission cannot be deleted while scope definitions remain.'):errors.append('Q24 error must be indexed 409 E10006 with documented message')
+            if title=='Fail - Conflict Last Scope' and (status.get('bizCode')!='E10006' or status['bizMessage']!='permissions[1]: Permission cannot become unscoped while assigned to roles or users.'):errors.append('Q22 error must be indexed 409 E10006 with documented message')
+        except (AttributeError,TypeError,KeyError,ValueError):errors.append(f'missing/malformed permission batch example {title}')
+    if wsd.count('app -> infra: COMMIT')!=1 or 'app -> api: HTTP 201' in wsd or 'app -> api: HTTP 204' in wsd:errors.append('batch has one 200 success and one final commit only')
+    for line in wsd.splitlines():
+        if re.search(r'app -> api: HTTP (404|409) ',line) and 'permissions[i]:' not in line:errors.append('every item not-found/conflict is indexed')
+    example=re.search(r'^#### Example Body Parameters\n\n```JSON\n(.*?)```',md,re.M|re.S)
+    try:
+        body=json.loads(example[1]);deletes=[p for p in body['permissions'] if p.get('rowStatus')=='DELETED']
+        assert deletes and all(p.get('id') and p.get('scopes') and all(c.get('id') and c.get('rowStatus')=='DELETED' for c in p['scopes']) for p in deletes)
+        # The HTTP and cURL examples must show the same complete withdrawal as the JSON example.
+        for p in deletes:
+            for c in p['scopes']:
+                assert md.count('"id": "'+c['id']+'"')==3
+        raw=body['permissions'];http=re.search(r'```HTTP\n.*?\n\n(.*?)```',md,re.S);curl=re.search(r"--data(?:-raw)? '(.*?)'",md,re.S)
+        assert http and curl and json.loads(http[1])['permissions']==raw and json.loads(curl[1])['permissions']==raw
+    except (AssertionError,TypeError,KeyError,ValueError):errors.append('Q24 batch Delete examples must consistently withdraw remaining definitions in JSON, HTTP and cURL')
+    errors+=json_blocks_parse(md);errors+=table_lines_aligned(md)
+    if '--rendered-svg' in sys.argv:
+        import xml.etree.ElementTree as ET
+        try:
+            root=ET.parse(sys.argv[sys.argv.index('--rendered-svg')+1]).getroot();wanted=Counter(' '.join(l.split()) for _,_,q in actual for l in q.splitlines() if l.strip());visible=Counter(' '.join(''.join(e.itertext()).split()) for e in root.iter() if e.tag.endswith('}text'));missing=wanted-visible
+            if missing:errors.append(f'rendered permission-batch SQL missing {sum(missing.values())} lines')
+            else:print(f'OK: rendered permission-batch SQL ({sum(wanted.values())}/{sum(wanted.values())} visible lines)')
+        except (IndexError,OSError,ET.ParseError) as exc:errors.append(f'cannot verify permission SVG: {exc}')
+    if errors:return fail('; '.join(dict.fromkeys(errors)))
+    print('OK: permission-batch-flow (16 exact SQL definitions; batch lock/order/atomic-result structure and owner Q22/Q23/Q24 guards)')
+    return 0
+
+COMMANDS['permission-batch-flow'] = check_permission_batch_flow
+
+
+def check_permission_inquiry_flow() -> int:
+    """Check token-claim administration and consistent filtered current role metadata."""
+    path=f'{AUTHOR_DIR}/{AUTHOR_SPECS["06"]}/spec.md';md=read(path);wsd=read(str(Path(path).with_name('sequence.wsd')));errors=[]
+    for n in ('status: in-review', 'approved_by: null', 'approved_at: null', '2026-11-07-api-review-design.md', 'exact PLATFORM_ADMIN in verified JWT role claims', 'positive signed 64-bit integers', 'nonnegative BIGINT', 'one bound text searchPattern', 'Missing/malformed roles is generic 401', 'Grant withdrawal after token issuance leaves the old privilege usable', 'Count first and optionally fetch the page in the same read-only repeatable-read snapshot', 'identical non-DELETED/id/searchPattern/rowStatus WHERE predicates', 'an offset beyond the range returns items=[] with positive totals/pages', 'Sort by name then id ascending', 'exactly permissionId/name/description/scopes/rowStatus', 'exactly five data keys', 'integer quotient/remainder', 'Map the full response before COMMIT', 'distinct UUID[] of that page', 'An empty page skips both definition and master queries', 'A page with no definitions maps scopes=[]', 'including INACTIVE/LOCKED/ARCHIVED/DELETED masters', 'Metadata is matched by immutable scope_id', 'exactly permissionScopeId/scopeId/scope/scopeName/rowStatus', "rowStatus is the definition's status", 'derive master rank', 'Credential/count/page/definition/master SELECTs share the same read-only repeatable-read snapshot', 'No per-permission or per-scope SQL queries', 'Scenario correspondence with sequence.wsd'):
+        if n not in md:errors.append(f'permission-inquiry spec missing {n!r}')
+    for n in ('QUERY - Get the platform administrator role','QUERY - Check platform administrator'):
+        if n in md or n in wsd:errors.append('permission inquiry authorization must not reload current assignments')
+    ops=spec_database_operations(md);heads=('QUERY - Check current credential and user','QUERY - Get total items','QUERY - Get permissions','QUERY - Get the scopes of the permissions','QUERY - Get scope')
+    if tuple(h for _,h,_ in ops)!=heads:errors.append('permission inquiry needs credential/count/page in declared order')
+    sql={h:re.sub(r'--[^\n]*','',s) for _,h,s in ops};filters=["WHERE p.row_status <> 'DELETED'","AND ('<sequence.id>' IS NULL OR p.id = '<sequence.id>')","AND ('<sequence.searchPattern>' IS NULL OR p.name ILIKE '<sequence.searchPattern>' OR p.description ILIKE '<sequence.searchPattern>')","AND ('<sequence.rowStatus>' IS NULL OR p.row_status = '<sequence.rowStatus>')"]
+    required={heads[0]:['JOIN authen.m_user u ON u.id = at.user_id',"at.token = '<sequence.accessTokenHash>'","at.user_id = '<sequence.callerUserId>'","at.row_status = 'ACTIVE'","at.expired_at > '<sequence.now>'","u.row_status = 'ACTIVE'"],heads[1]:filters+['COUNT(p.id) as total_items'],heads[2]:filters+["LIMIT '<sequence.pageSize>' OFFSET '<sequence.offset>'"]}
+    required[heads[1]]+=['FROM author.m_permission p']
+    required[heads[2]]+=['FROM author.m_permission p']
+    required[heads[3]]=['FROM author.t_permission_scope ps',"WHERE ps.permission_id = ANY ('<sequence.permissionIds>'::UUID[])","AND ps.row_status <> 'DELETED'",'ORDER BY ps.permission_id, ps.id']
+    required[heads[4]]=['FROM author.m_scope s',"WHERE s.id = ANY ('<sequence.scopeIds>'::UUID[])",'ORDER BY s.scope, s.id']
+    for h,ns in required.items():
+        for n in ns:
+            if n not in sql.get(h,''):errors.append(f'{h} missing {n!r}')
+    def where(h):
+        r=re.search(r'\bWHERE\b(.*?)(?:\bORDER BY\b|\bLIMIT\b|$)',sql.get(h,''),re.S);return normalize(r[1]) if r else None
+    if where(heads[1])!=where(heads[2]):errors.append('permission count/page WHERE predicates must be identical')
+    if any(where(h)!=normalize(' '.join(filters).removeprefix('WHERE ')) for h in heads[1:3]):errors.append('permission count/page must use only the four declared lifecycle/nullable predicates')
+    projection=re.search(r'SELECT\s+(.*?)\s+FROM\s',sql.get(heads[2],''),re.S)
+    if not projection or normalize(projection[1])!=normalize('p.id as permission_id, p.name, p.description, p.row_status'):errors.append('permission page returns exactly four permission fields, no audit/assignment/caller data')
+    if not re.search(r"ORDER BY p\.name, p\.id(?: ASC)?\s+LIMIT",sql.get(heads[2],'')):errors.append('permission page requires name then unique ascending id order')
+    if SEQUENCE_LOCK.search('\n'.join(sql.values())) or 'NOW()' in '\n'.join(sql.values()) or any(not q.lstrip().startswith('SELECT') for q in sql.values()):errors.append('permission inquiry must use SELECT-only fresh-bound credential time, with no locks')
+    for h,expected_where,expected_projection in [(heads[3],"ps.permission_id = ANY ('<sequence.permissionIds>'::UUID[]) AND ps.row_status <> 'DELETED'",'ps.id as permission_scope_id, ps.permission_id, ps.scope_id, ps.row_status'),(heads[4],"s.id = ANY ('<sequence.scopeIds>'::UUID[])",'s.id as scope_id, s.scope, s.name')]:
+        if where(h)!=normalize(expected_where):errors.append(f'{h} must use exact page/definition-derived ids without master/grant/status filtering')
+        projection=re.search(r'SELECT\s+(.*?)\s+FROM\s',sql.get(h,''),re.S)
+        if not projection or normalize(projection[1])!=normalize(expected_projection):errors.append(f'{h} projection must preserve exact parent/definition/master identity')
+    actual,lifecycle=sequence_database_operations(wsd);errors+=lifecycle
+    if actual!=[(t.split('.')[-1],h,q) for t,h,q in ops]:errors.append('permission inquiry SQL differs character-for-character or execution order')
+    lines=wsd.splitlines()
+    for i,l in enumerate(lines):
+        req=re.match(r'^( *)infra -> \w+: QUERY - ',l)
+        if not req:continue
+        pad=' '*(len(req[1])+8);j=i+3
+        while j<len(lines) and lines[j].strip()!='end note':
+            if lines[j] and not lines[j].startswith(pad):errors.append('permission SQL must retain exact added presentation prefix and original SQL indentation')
+            j+=1
+    for _,h,_ in ops:
+        if wsd.count('app -> infra: '+h+'\n')!=1:errors.append(f'{h} needs one Application request')
+    for mat in re.finditer(r'(?m)^( *)infra -> (\w+): (QUERY - [^\n]+)\n',wsd):
+        r=re.search(rf'{mat[2]} -> infra: Return ([^\n]+)\n.*?deactivate {mat[2]}\n\s*infra -> app: Return ([^\n]+)',wsd[mat.start():],re.S)
+        if not r or r[1]!=r[2]:errors.append('role database result must return with the same meaning to Application')
+    for n in ('Compute checked offset = (pageIndex - 1) * pageSize; reject numeric/offset overflow beyond nonnegative BIGINT', 'Verify JWT signature/issuer/audience/expiry/UUID sub and structured unique roleIds/name array', 'callerUserId = verified sub; accessTokenHash = SHA-256 exact JWT', 'Bind omitted id/searchPattern/rowStatus as typed SQL NULL; supplied searchPattern = percent + search + percent, preserving ILIKE wildcards', 'Capture fresh server UTC now immediately before joined credential read; recheck JWT exp', 'JWT expired before fresh credential read', 'Missing/invalid JWT or malformed roles', 'Current token/user missing/inactive/revoked/expired/mismatched', 'alt totalItems = 0', 'Authorize once using exact case-sensitive PLATFORM_ADMIN in verified JWT roles; never reload current grants', 'No exact PLATFORM_ADMIN role claim', 'integer quotient plus nonzero remainder', 'items = []; skip page/definition/master queries; totalPages = 0', 'Require page row count = min(pageSize, max(0, totalItems-offset)); unique parent UUIDs and non-null required columns', 'Bind permissionIds as distinct typed UUID[] from returned page permission_id values only', 'Validate definition ids/parent membership/unique scopeId per parent/non-DELETED status', 'Bind scopeIds as distinct typed UUID[] from returned definition scope_id values', 'Require one exact master for every referenced scope_id', 'Build master rank from database scope-code/id order', 'never rebind by reused code', 'Prepare groups by permission_id, ordered by master rank then definition UUID', 'Set all page scopes=[]; skip master query', 'Map exactly permissionId/name/description/scopes/rowStatus', 'Map exactly permissionScopeId/scopeId/scope/scopeName/rowStatus', 'rowStatus comes from definition', 'items = []; retain positive totalItems/totalPages; skip definition/master queries; no 404', 'data = exactly items/pageIndex/pageSize/totalItems/totalPages; echo validated page values; explicit empty arrays; finish full nested mapping'):
+        if n not in wsd:errors.append(f'permission inquiry sequence missing {n!r}')
+    if wsd.count('Authorize once using exact')!=1:errors.append('permission inquiry checks claims permission exactly once')
+    for response in re.finditer(r'(?m)^( *)app -> api: HTTP [^\n]+\n',wsd):
+        following=wsd[response.end():].splitlines()[:2]
+        if len(following)!=2 or not following[0].strip().startswith('api -> page:') or not following[1].strip().startswith('page -> user:'):errors.append('all permission inquiry responses must reach frontend and caller')
+    # Mapping loops perform no SQL and are traversed once for structural checks only.
+    flat=[];stack=[];note=False;loops=0
+    for line in lines:
+        t=line.strip()
+        if t.startswith('note ') and ':' not in t:note=True
+        if note:
+            flat.append(line)
+            if t=='end note':note=False
+            continue
+        if t.startswith('loop '):stack.append(('loop',len(flat)));loops+=1;continue
+        if t.startswith('alt '):stack.append(('alt',len(flat)))
+        elif t in ('end','end alt'):
+            if not stack:errors.append('unbalanced permission mapping loop/branch');continue
+            kind,start=stack.pop()
+            if kind=='loop':
+                if any('app -> infra:' in e or 'app -> api: HTTP' in e for e in flat[start:]):errors.append('mapping loops contain no SQL, commit or response')
+                continue
+        flat.append(line)
+    if stack or loops!=2:errors.append('permission inquiry requires complete parent/definition mapping loops')
+    traces,structure=login_sequence_paths('\n'.join(flat));errors+=structure
+    from collections import Counter
+    outcomes=[];modes=Counter();unauthorized=[]
+    for tr in traces:
+        response=[e for e in tr if e.startswith('app -> api: HTTP ')];joined='\n'.join(tr)
+        if len(response)!=1:errors.append('permission inquiry trace needs one terminal outcome');continue
+        code=int(response[0].split('HTTP ')[1].split()[0]);outcomes.append(code);queries=[e for e in tr if e.startswith('infra -> ')];begun=any(e.startswith('app -> infra: BEGIN') for e in tr)
+        def ordered(*parts):
+            pos=[next((i for i,e in enumerate(tr) if p in e),-1) for p in parts]
+            return -1 not in pos and pos==sorted(set(pos))
+        if queries and not ordered('Compute checked offset','Verify JWT','callerUserId = verified sub','Bind omitted id/searchPattern','BEGIN REPEATABLE READ READ ONLY','Capture fresh server UTC now',heads[0]):errors.append('permission SQL needs checked pagination, verified caller and fresh read-only credential snapshot')
+        if 'Authorize once using exact' in joined and not ordered(heads[0],'Authorize once using exact'):errors.append('claims permission requires valid current credential')
+        if heads[1] in joined and not ordered('Authorize once using exact',heads[1]):errors.append('no permission count may precede claims permission')
+        if heads[2] in joined and not ordered(heads[1],heads[2]):errors.append('permission page must follow its identical-filter count')
+        if heads[3] in joined and not ordered(heads[2],'Bind permissionIds',heads[3]):errors.append('definitions require exact returned page ids after the page query')
+        if heads[4] in joined and not ordered(heads[3],'Bind scopeIds',heads[4],'Build master rank'):errors.append('master reads require exact definition ids and retain database rank')
+        if any(': QUERY' not in e for e in queries):errors.append('permission inquiry may never write')
+        if code==200:
+            mode='zero' if 'skip page/definition/master queries' in joined else 'beyond' if 'retain positive totalItems' in joined else 'no_links' if 'Set all page scopes=[]' in joined else 'rows';modes[mode]+=1
+            if len(queries)!={'zero':2,'beyond':3,'no_links':4,'rows':5}[mode]:errors.append('zero permission count skips page query; positive count queries page')
+            if not ordered(heads[1],'data = exactly items','app -> infra: COMMIT','HTTP 200') or 'ROLLBACK' in joined:errors.append('success needs complete mapped read-only response then commit')
+            if mode!='zero' and 'Require page row count' not in joined:errors.append('positive permission count must validate page cardinality')
+            if 'all five pagination keys' not in response[0]:errors.append('permission inquiry success must include every pagination key')
+        elif begun:
+            if not ordered('BEGIN','ROLLBACK',f'HTTP {code}') or 'app -> infra: COMMIT' in joined:errors.append('permission inquiry transaction failures roll back before response')
+            if code in (401,403) and len(queries)>1:errors.append('invalid credentials or non-admin must not count/read permissions')
+        elif code not in (400,401) or queries:errors.append('pre-BEGIN permission inquiry reject must be no-SQL validation/JWT error')
+        if code==401:unauthorized.append(len(queries))
+    if Counter(outcomes)!=Counter({400:1,401:3,403:1,200:4,408:1,500:1}) or modes!=Counter({'zero':1,'rows':1,'beyond':1,'no_links':1}) or sorted(unauthorized)!=[0,0,1]:errors.append(f'expected 11 permission inquiry terminal traces, got {dict(Counter(outcomes))}, modes={dict(modes)},401 SQL={unauthorized}')
+    for title,code in {'Success':200,'Success - By Id':200,'Success - Not Found':200,'Success - Page Beyond Range':200,'Success - Closed Scope Master':200,'Success - Non-Active Definition':200,'Fail - Bad Request':400,'Fail - Unauthorized':401,'Fail - Forbidden':403,'Fail - Request Timeout':408,'Fail - Internal Server Error':500}.items():
+        try:
+            obj=author_json(md,title);status=obj['status']
+            if status['code']!=code or code==500 and 'bizCode' in status:errors.append(f'{title} permission inquiry envelope incorrect')
+            if code==200:
+                d=obj['data'];keys={'items','pageIndex','pageSize','totalItems','totalPages'}
+                if set(d)!=keys or type(d['items']) is not list:errors.append(f'{title} needs five keys and items array');continue
+                if any(type(d[k]) is not int for k in keys-{'items'}) or not 1<=d['pageIndex']<=2**63-1 or not 1<=d['pageSize']<=100 or d['totalItems']<0:errors.append(f'{title} invalid permission page integers');continue
+                total=d['totalItems'];size=d['pageSize'];offset=(d['pageIndex']-1)*size;pages=total//size+int(total%size!=0)
+                if offset>2**63-1 or d['totalPages']!=pages or len(d['items'])!=min(size,max(0,total-offset)):errors.append(f'{title} page cardinality/totals incorrect')
+                ids=[]
+                for item in d['items']:
+                    if set(item)!={'permissionId','name','description','scopes','rowStatus'} or any(v is None for v in item.values()) or item['rowStatus']=='DELETED':errors.append(f'{title} permission fields missing/null/leaked/DELETED')
+                    ids.append(item['permissionId'])
+                    scopes=item.get('scopes');seen=set();pairs=set()
+                    if type(scopes) is not list:errors.append(f'{title} requires scopes array');continue
+                    for child in scopes:
+                        if set(child)!={'permissionScopeId','scopeId','scope','scopeName','rowStatus'} or any(v is None for v in child.values()) or child['rowStatus'] not in ('ACTIVE','INACTIVE','LOCKED','ARCHIVED'):errors.append(f'{title} nested scope missing/null/leaked/status')
+                        if child['permissionScopeId'] in seen or child['scopeId'] in pairs:errors.append(f'{title} duplicate scope definition/pair')
+                        seen.add(child['permissionScopeId']);pairs.add(child['scopeId'])
+                    if title=='Success - Closed Scope Master' and (not scopes or scopes[0]['rowStatus']!='ACTIVE'):errors.append('closed master example must preserve definition status')
+                    if title=='Success - Non-Active Definition' and (not scopes or scopes[0]['rowStatus']!='INACTIVE'):errors.append('inactive definition example must remain visible')
+                if len(ids)!=len(set(ids)):errors.append(f'{title} repeats permission id')
+                if title=='Success - Page Beyond Range' and (not total or d['items'] or d['pageIndex']<=pages):errors.append('beyond-range role example must retain positive totals')
+        except (AttributeError,TypeError,KeyError,IndexError,ValueError):errors.append(f'{title} permission inquiry example missing/malformed')
+    errors+=json_blocks_parse(md);errors+=table_lines_aligned(md)
+    if '--rendered-svg' in sys.argv:
+        import xml.etree.ElementTree as ET
+        try:
+            root=ET.parse(sys.argv[sys.argv.index('--rendered-svg')+1]).getroot();wanted=Counter(' '.join(l.split()) for _,_,q in ops for l in q.splitlines() if l.strip());visible=Counter(' '.join(''.join(e.itertext()).split()) for e in root.iter() if e.tag.endswith('}text'));missing=wanted-visible
+            if missing:errors.append(f'rendered permission-inquiry SQL missing {sum(missing.values())} lines')
+            else:print(f'OK: rendered permission-inquiry SQL ({sum(wanted.values())}/{sum(wanted.values())} visible lines)')
+        except (IndexError,OSError,ET.ParseError) as exc:errors.append(f'cannot verify permission-inquiry SVG: {exc}')
+    if errors:return fail('; '.join(errors))
+    print('OK: permission-inquiry-flow (11 terminal traces; five exact SQL blocks, claim administration and consistent nested catalog mapping)')
+    return 0
+
+COMMANDS['permission-inquiry-flow'] = check_permission_inquiry_flow
+
+
+def check_scope_upsert_flow() -> int:
+    """Check verified-claim scope administration and guarded master/definition lifecycle."""
+    path=f'{AUTHOR_DIR}/{AUTHOR_SPECS["07"]}/spec.md';md=read(path);wsd=read(str(Path(path).with_name('sequence.wsd')));errors=[]
+    for n in ('status: in-review','approved_by: null','approved_at: null','2026-11-07-api-review-design.md','Permission: only a platform administrator from the verified JWT roles claim','exact case-sensitive role name PLATFORM_ADMIN','Malformed/missing roles is generic 401','Grant withdrawal alone does not revoke','Capture fresh server UTC now after caller lock','lock the non-DELETED scope FOR UPDATE','Duplicate scope exclusion is null-safe','Existing scope codes, including seed codes, remain editable','Lock order is caller user -> target scope -> usage reads/write','regardless of its parent permission\'s lifecycle','No parent/master/grant JOIN or ACTIVE-only filter may hide usage','Insert-ARCHIVED is allowed','zero returned rows is 404 E10004','exactly data.scopeId from RETURNING','SQLSTATE 23505 from uq_m_scope_scope','Scenario correspondence with sequence.wsd'):
+        if n not in md:errors.append(f'scope-upsert spec missing {n!r}')
+    for n in ('QUERY - Get the platform administrator role','QUERY - Check platform administrator'):
+        if n in md or n in wsd:errors.append('scope upsert must not reload live caller grants')
+    ops=spec_database_operations(md);heads=('QUERY - Lock the caller user','QUERY - Check current credential and user','QUERY - Check existing scope','QUERY - Check duplicate scope','QUERY - Check permission scope in use','INSERT - Create scope','UPDATE - Update or delete scope')
+    if tuple(h for _,h,_ in ops)!=heads:errors.append('scope upsert needs all seven caller/target/conflict/write definitions')
+    sql={h:re.sub(r'--[^\n]*','',q) for _,h,q in ops}
+    need={heads[0]:['FROM authen.m_user u',"WHERE u.id = '<sequence.callerUserId>'",'FOR UPDATE'],heads[1]:['JOIN authen.m_user u ON u.id = at.user_id',"at.token = '<sequence.accessTokenHash>'","at.user_id = '<sequence.callerUserId>'","at.row_status = 'ACTIVE'","at.expired_at > '<sequence.now>'","u.row_status = 'ACTIVE'"],heads[2]:['FROM author.m_scope s',"WHERE s.id = '<sequence.id>'","AND s.row_status <> 'DELETED'",'FOR UPDATE'],heads[3]:['FROM author.m_scope s',"WHERE s.scope = '<sequence.scope>'","AND s.row_status <> 'DELETED'","AND ('<sequence.id>' IS NULL OR s.id <> '<sequence.id>')"],heads[4]:['FROM author.t_permission_scope ps',"WHERE ps.scope_id = '<sequence.id>'","AND ps.row_status <> 'DELETED'"],heads[5]:['created_by,\n    created_at,','<sequence.createdBy>','<sequence.now>','<sequence.rowStatus>','<sequence.scope>','<sequence.name>','<sequence.description>','RETURNING id as scope_id'],heads[6]:["updated_by = '<sequence.updatedBy>'","updated_at = '<sequence.now>'","row_status = '<sequence.rowStatus>'","scope = '<sequence.scope>'","name = '<sequence.name>'","description = '<sequence.description>'","WHERE id = '<sequence.id>'","AND row_status <> 'DELETED'",'RETURNING id as scope_id']}
+    for h,ns in need.items():
+        for n in ns:
+            if n not in sql.get(h,''):errors.append(f'{h} missing {n!r}')
+    usage=sql.get(heads[4],'')
+    if 'JOIN' in usage or "row_status = 'ACTIVE'" in usage:errors.append('non-DELETED scope usage must not be hidden by parent/status joins')
+    if 'NOW()' in '\n'.join(sql.values()) or 'created_at =' in sql.get(heads[6],''):errors.append('scope writes bind fresh server now and preserve creation audit')
+    source=wsd.splitlines()
+    for i,l in enumerate(source):
+        match=re.match(r'^( *)infra -> \w+: (?:QUERY|INSERT|UPDATE) - ',l)
+        if not match:continue
+        pad=' '*(len(match[1])+8);j=i+3
+        while j<len(source) and source[j].strip()!='end note':
+            if source[j] and not source[j].startswith(pad):errors.append('scope SQL must preserve the exact note prefix/native indentation')
+            j+=1
+    actual,lifecycle=sequence_database_operations(wsd);errors+=lifecycle
+    from collections import Counter
+    expected=Counter((t.split('.')[-1],h,q) for t,h,q in ops)
+    for t,h,q in ops:
+        if h in (heads[3],heads[6]):expected[(t.split('.')[-1],h,q)]+=1
+    if Counter(actual)!=expected:errors.append('scope-upsert SQL differs character-for-character or repeated occurrences are missing/excess')
+    for _,h,_ in ops:
+        if wsd.count('app -> infra: '+h+'\n')!=(2 if h in (heads[3],heads[6]) else 1):errors.append(f'{h} Application request count incorrect')
+    for match in re.finditer(r'(?m)^( *)infra -> (\w+): ((?:QUERY|INSERT|UPDATE) - [^\n]+)\n',wsd):
+        ret=re.search(rf'{match[2]} -> infra: Return ([^\n]+)\n.*?deactivate {match[2]}\n\s*infra -> app: Return ([^\n]+)',wsd[match.start():],re.S)
+        if not ret or ret[1]!=ret[2]:errors.append('scope SQL return meaning must propagate intact to Application')
+    for n in ('Verify JWT signature/issuer/audience/expiry/UUID sub and structured unique roleIds/name array','callerUserId = verified sub; accessTokenHash = SHA-256 exact JWT; createdBy/updatedBy = caller UUID string; omitted id = typed SQL NULL','Capture fresh server UTC now after caller lock; recheck JWT exp','JWT expired while waiting for caller lock','Current token/user missing/inactive/revoked/expired/mismatched','Authorize only exact case-sensitive PLATFORM_ADMIN in verified JWT roles; never reload live grants','Any non-DELETED definition still references this scope','Guarded UPDATE returned zero rows','Require exactly one returned scope_id equal to requested id','Require exactly one inserted scope_id UUID','SQLSTATE 23505 from uq_m_scope_scope','data = exactly scopeId from RETURNING','Suppress response body/status/data for 204','Keep all definition/grant rows; code/name/description remain editable; old JWT claims stay unchanged'):
+        if n not in wsd:errors.append(f'scope upsert sequence missing {n!r}')
+    if wsd.count('alt Guarded UPDATE returned zero rows')!=2:errors.append('both existing scope UPDATE branches must handle zero rows')
+    for response in re.finditer(r'(?m)^( *)app -> api: HTTP [^\n]+\n',wsd):
+        tail=wsd[response.end():].splitlines()[:2]
+        if len(tail)!=2 or not tail[0].strip().startswith('api -> page:') or not tail[1].strip().startswith('page -> user:'):errors.append('every scope response must reach frontend and caller')
+    traces,structure=login_sequence_paths(wsd);errors+=structure;outcomes=[];unauthorized=[]
+    for tr in traces:
+        response=[e for e in tr if e.startswith('app -> api: HTTP ')];joined='\n'.join(tr)
+        if len(response)!=1:errors.append('each scope structural trace must terminate once');continue
+        code=int(response[0].split('HTTP ')[1].split()[0]);outcomes.append(code);db=[e for e in tr if e.startswith('infra -> ')];begun=any(e.startswith('app -> infra: BEGIN') for e in tr);writes=[e for e in db if ': INSERT' in e or ': UPDATE' in e];target=any(e.endswith(': '+heads[2]) for e in db)
+        def ordered(*parts):
+            pos=[next((i for i,e in enumerate(tr) if p in e),-1) for p in parts];return -1 not in pos and pos==sorted(set(pos))
+        if db and not ordered('Verify JWT','callerUserId = verified sub','BEGIN READ COMMITTED',heads[0]):errors.append('scope SQL requires verified caller and caller-first transaction lock')
+        if heads[1] in joined and not ordered(heads[0],'Capture fresh server UTC now',heads[1]):errors.append('scope credential check follows caller lock and fresh time')
+        if target and not ordered(heads[1],heads[2]):errors.append('target scope existence requires current credentials first')
+        if 'Authorize only exact' in joined:
+            if not ordered(heads[1],*([heads[2]] if target else []),'Authorize only exact'):errors.append('claims permission follows current credentials and optional target existence')
+            if sum('Authorize only exact' in e for e in tr)!=1:errors.append('scope authorizes exactly once per request')
+        if heads[3] in joined and not ordered('Authorize only exact',heads[3]):errors.append('scope conflict checks follow caller permission')
+        if heads[4] in joined and not ordered(heads[3],heads[4]):errors.append('scope usage follows duplicate check')
+        if heads[4] in joined and heads[6] in joined and not ordered(heads[4],heads[6]):errors.append('existing destructive scope usage must be read before its UPDATE')
+        if code in (200,201,204):
+            if len(writes)!=1 or not ordered(heads[3],writes[0] if writes else 'MISSING','app -> infra: COMMIT',f'HTTP {code}') or 'ROLLBACK' in joined:errors.append('scope success requires one validated write then commit before response')
+            if code==201:
+                if target or heads[4] in joined or heads[6] in joined or heads[5] not in joined:errors.append('scope insert skips target/usage and only INSERTs')
+            elif not target or heads[6] not in joined or heads[5] in joined:errors.append('existing scope success requires locked target and guarded UPDATE')
+            if code!=201 and not ordered(heads[6],'Require exactly one returned scope_id equal to requested id','app -> infra: COMMIT'):errors.append('existing scope success must validate returned id')
+            destructive=code==204 or 'Archive Scope Success' in response[0]
+            if destructive!=(heads[4] in joined):errors.append('only existing delete/archive must check non-DELETED definitions')
+            if code==204 and ('no response body' not in response[0] or 'data = exactly scopeId' in joined or 'Suppress response body/status/data for 204' not in joined):errors.append('scope delete must emit no body/status/data')
+            if code!=204 and not ordered(heads[5] if code==201 else heads[6],'Require exactly one inserted scope_id UUID' if code==201 else 'Require exactly one returned scope_id equal to requested id','data = exactly scopeId','app -> infra: COMMIT'):errors.append('scope body must map only the validated returned id after its write and before commit')
+        elif begun:
+            if not ordered('BEGIN','ROLLBACK',f'HTTP {code}') or 'app -> infra: COMMIT' in joined:errors.append('all transactional scope errors roll back before response')
+            if code in (401,403,409,408,500) and writes:errors.append('failed visible guard must not continue into a scope write')
+            if code==401 and (target or heads[4] in joined):errors.append('bad credentials never inspect target/reference rows')
+            if code==403 and any(h in joined for h in heads[3:]):errors.append('403 must precede conflicts and writes')
+        elif code not in (400,401) or db:errors.append('scope pre-BEGIN failures are no-SQL validation/JWT only')
+        if code==401:unauthorized.append(len(db))
+    if Counter(outcomes)!=Counter({400:1,401:4,403:2,404:3,409:4,201:1,200:2,204:1,408:1,500:1}) or sorted(unauthorized)!=[0,1,1,2]:errors.append(f'expected 20 scope terminal traces, got {dict(Counter(outcomes))},401 SQL={unauthorized}')
+    for title in ('Success - Insert','Success - Update','Success - Archive'):
+        obj=author_json(md,title)
+        if not obj or set(obj.get('data',{}))!={'scopeId'}:errors.append(f'{title} scope body must contain scopeId only')
+    obj=author_json(md,'Fail - Internal Server Error')
+    if not obj or obj['status']['code']!=500 or 'bizCode' in obj['status']:errors.append('scope internal error example is generic 500 without bizCode')
+    obj=author_json(md,'Fail - Conflict In Use')
+    if not obj or obj['status'].get('bizMessage')!='Scope is used by permissions.':errors.append('scope in-use response must preserve the contract message')
+    errors+=json_blocks_parse(md);errors+=table_lines_aligned(md)
+    if '--rendered-svg' in sys.argv:
+        import xml.etree.ElementTree as ET
+        try:
+            root=ET.parse(sys.argv[sys.argv.index('--rendered-svg')+1]).getroot();wanted=Counter(' '.join(l.split()) for _,_,q in actual for l in q.splitlines() if l.strip());visible=Counter(' '.join(''.join(e.itertext()).split()) for e in root.iter() if e.tag.endswith('}text'));missing=wanted-visible
+            if missing:errors.append(f'rendered scope-upsert SQL missing {sum(missing.values())} lines')
+            else:print(f'OK: rendered scope-upsert SQL ({sum(wanted.values())}/{sum(wanted.values())} visible lines)')
+        except (IndexError,OSError,ET.ParseError) as exc:errors.append(f'cannot verify scope SVG: {exc}')
+    if errors:return fail('; '.join(dict.fromkeys(errors)))
+    print('OK: scope-upsert-flow (20 terminal traces; seven exact SQL definitions, claims/current credentials and guarded lifecycle)')
+    return 0
+
+COMMANDS['scope-upsert-flow'] = check_scope_upsert_flow
+
+
+def check_role_upsert_flow() -> int:
+    """Verify role upsert claim authorization independently of live business-invariant reads."""
+    path=f'{AUTHOR_DIR}/{AUTHOR_SPECS["01"]}/spec.md';md=read(path);wsd=read(str(Path(path).with_name('sequence.wsd')));errors=[]
+    for n in ('status: in-review','approved_by: null','approved_at: null','2026-11-07-api-review-design.md',
+              'Permission: only a platform administrator from the verified JWT roles claim','exact case-sensitive role name PLATFORM_ADMIN',
+              'Malformed/missing roles is 401','Grant withdrawal alone does not invalidate','fresh server UTC now after that lock',
+              'Lock order is caller user -> target role -> binding checks/write','Reference/assignment writers must lock and recheck their target role',
+              'must not be presented as certification of an unmigrated cross-API writer','Duplicate name exclusion is null-safe','lock the non-DELETED target role FOR UPDATE',
+              'Insert-ARCHIVED is allowed (201 insert)','zero returned rows is 404 E10004','exactly roleId from RETURNING',
+              'SQLSTATE 23505','uq_m_role_name','Scenario correspondence with sequence.wsd'):
+        if n not in md:errors.append(f'role-upsert spec missing {n!r}')
+    for n in ('QUERY - Get the platform administrator role','QUERY - Check platform administrator'):
+        if n in md or n in wsd:errors.append('role-upsert may not reload live caller grants')
+    ops=spec_database_operations(md);heads=('QUERY - Lock the caller user','QUERY - Check current credential and user','QUERY - Check existing role','QUERY - Check system role','QUERY - Check duplicate name','QUERY - Check user in use','QUERY - Check role permission in use','INSERT - Create role','UPDATE - Update or delete role')
+    if tuple(h for _,h,_ in ops)!=heads:errors.append('role-upsert needs nine operations in declared lock/credential/business/write order')
+    sql={h:re.sub(r'--[^\n]*','',s) for _,h,s in ops}
+    need={heads[0]:["WHERE u.id = '<sequence.callerUserId>'",'FOR UPDATE'],heads[1]:['JOIN authen.m_user u ON u.id = at.user_id',"at.token = '<sequence.accessTokenHash>'","at.user_id = '<sequence.callerUserId>'","at.row_status = 'ACTIVE'","at.expired_at > '<sequence.now>'","u.row_status = 'ACTIVE'"],
+          heads[2]:['r.id as role_id,','r.name',"WHERE r.id = '<sequence.id>'","AND r.row_status <> 'DELETED'",'FOR UPDATE'],heads[3]:["WHERE r.id = '<sequence.id>'","AND r.name = 'PLATFORM_ADMIN'"],
+          heads[4]:["WHERE r.name = '<sequence.name>'","AND r.row_status <> 'DELETED'","AND ('<sequence.id>' IS NULL OR r.id <> '<sequence.id>')"],
+          heads[5]:["WHERE ur.role_id = '<sequence.id>'","AND ur.row_status <> 'DELETED'"],heads[6]:["WHERE rp.role_id = '<sequence.id>'","AND rp.row_status <> 'DELETED'"],
+          heads[7]:['created_by,\n    created_at,','<sequence.createdBy>','<sequence.now>','<sequence.rowStatus>','<sequence.name>','<sequence.description>','RETURNING id as role_id'],
+          heads[8]:["updated_by = '<sequence.updatedBy>'","updated_at = '<sequence.now>'","row_status = '<sequence.rowStatus>'","name = '<sequence.name>'","description = '<sequence.description>'","WHERE id = '<sequence.id>'","AND row_status <> 'DELETED'","AND name <> 'PLATFORM_ADMIN'",'RETURNING id as role_id']}
+    for h,ns in need.items():
+        for n in ns:
+            if n not in sql.get(h,''):errors.append(f'{h} missing {n!r}')
+    if 'NOW()' in '\n'.join(sql.values()) or 'created_at =' in sql.get(heads[8],''):errors.append('role upsert uses fresh bound now and preserves creation audit on update')
+    # Strict presentation decoding removes only the added note prefix, never SQL whitespace.
+    source_lines=wsd.splitlines()
+    for i,line in enumerate(source_lines):
+        request=re.match(r'^( *)infra -> \w+: (?:QUERY|INSERT|UPDATE) - ',line)
+        if not request:continue
+        prefix=' '*(len(request[1])+8);cursor=i+3
+        while cursor<len(source_lines) and source_lines[cursor].strip()!='end note':
+            raw=source_lines[cursor]
+            if raw and not raw.startswith(prefix):errors.append('every SQL line must retain the exact added presentation prefix')
+            cursor+=1
+    actual,lifecycle=sequence_database_operations(wsd);errors+=lifecycle
+    from collections import Counter
+    expected=Counter((t.split('.')[-1],h,s) for t,h,s in ops)
+    for t,h,s in ops:
+        if h in (heads[4],heads[8]):expected[(t.split('.')[-1],h,s)]+=1
+    if Counter(actual)!=expected:errors.append('role-upsert SQL differs character-for-character, has missing/excess or wrong repeated operations')
+    for _,h,_ in ops:
+        count=2 if h in (heads[4],heads[8]) else 1
+        if wsd.count('app -> infra: '+h+'\n')!=count:errors.append(f'{h} Application orchestration count incorrect')
+    for match in re.finditer(r'(?m)^( *)infra -> (\w+): ((?:QUERY|INSERT|UPDATE) - [^\n]+)\n',wsd):
+        tail=wsd[match.start():];r=re.search(rf'{match[2]} -> infra: Return ([^\n]+)\n.*?deactivate {match[2]}\n\s*infra -> app: Return ([^\n]+)',tail,re.S)
+        if not r or r[1]!=r[2]:errors.append('database result must be mapped identically back to Application')
+    for n in ('Verify JWT signature/issuer/audience/expiry/UUID sub and structured unique roleIds/name array','callerUserId = verified sub; accessTokenHash = SHA-256 exact JWT; createdBy/updatedBy = caller UUID string; omitted id = typed SQL NULL','Capture fresh server UTC now after caller lock; recheck JWT exp','JWT expired while waiting for caller lock','Authorize only exact case-sensitive PLATFORM_ADMIN in verified JWT roles; never reload live grants','Stored target is PLATFORM_ADMIN','Either non-DELETED binding exists','Guarded UPDATE returned zero rows','Require exactly one returned role_id equal to requested id','Require exactly one inserted role_id; missing or malformed result is internal failure','SQLSTATE 23505 from uq_m_role_name','data = exactly roleId from RETURNING; exclude caller/token/audit/grants','Suppress response body/status/data for 204'):
+        if n not in wsd:errors.append(f'role-upsert sequence missing {n!r}')
+    if wsd.count('alt Guarded UPDATE returned zero rows')!=2:errors.append('both destructive and reversible UPDATE branches must reject zero returned rows')
+    for response in re.finditer(r'(?m)^( *)app -> api: HTTP [^\n]+\n',wsd):
+        following=wsd[response.end():].splitlines()[:2]
+        if len(following)!=2 or not following[0].strip().startswith('api -> page:') or not following[1].strip().startswith('page -> user:'):errors.append('every HTTP outcome must reach the frontend and caller')
+    traces,structure=login_sequence_paths(wsd);errors+=structure;outcomes=[];unauthorized=[]
+    for tr in traces:
+        responses=[e for e in tr if e.startswith('app -> api: HTTP ')];joined='\n'.join(tr)
+        if len(responses)!=1:errors.append('role-upsert trace needs exactly one HTTP outcome');continue
+        code=int(responses[0].split('HTTP ')[1].split()[0]);outcomes.append(code)
+        def ordered(*parts):
+            positions=[next((i for i,e in enumerate(tr) if n in e),-1) for n in parts]
+            return -1 not in positions and positions==sorted(set(positions))
+        db=[e for e in tr if e.startswith('infra -> ')];begun=any(e.startswith('app -> infra: BEGIN') for e in tr)
+        writes=[e for e in db if ': INSERT' in e or ': UPDATE' in e];target=any(heads[2] in e for e in db);permission=any('Authorize only exact' in e for e in tr)
+        if db and not ordered('Verify JWT','callerUserId = verified sub','BEGIN READ COMMITTED',heads[0]):errors.append('DB work requires verified caller and user-first transaction lock')
+        if any(heads[1] in e for e in db) and not ordered(heads[0],'Capture fresh server UTC now',heads[1]):errors.append('fresh credentials must follow caller lock')
+        if target and not ordered(heads[1],heads[2]):errors.append('target existence requires valid current credential first')
+        if permission and not ordered(heads[1],*([heads[2]] if target else []),'Authorize only exact'):errors.append('claims permission must follow current credential and optional target existence')
+        if any(heads[3] in e for e in db) and not ordered('Authorize only exact',heads[3]):errors.append('system role check must follow caller claims permission')
+        if any(heads[4] in e for e in db) and not ordered('Authorize only exact',*([heads[3]] if target else []),heads[4]):errors.append('duplicate check must follow permission and optional system role check')
+        if any(heads[5] in e for e in db) and not ordered(heads[4],heads[5],heads[6]):errors.append('in-use checks must follow duplicate check in declared order')
+        if code in (200,201,204):
+            if len(writes)!=1 or not ordered(heads[4],writes[0] if writes else 'missing','app -> infra: COMMIT',f'HTTP {code}') or 'ROLLBACK' in joined:errors.append('successful role action requires one guarded write then commit before response')
+            if code==201:
+                if target or any(h in joined for h in (heads[3],heads[5],heads[6],heads[8])) or heads[7] not in joined:errors.append('insert skips target/system/binding reads and only inserts')
+            elif not target or heads[8] not in joined or heads[7] in joined:errors.append('existing success requires locked target and guarded update only')
+            if code!=201 and not ordered(heads[8],'Require exactly one returned role_id equal to requested id','app -> infra: COMMIT'):errors.append('each existing success must validate returned id after UPDATE and before commit')
+            destructive=code==204 or 'Archive Role Success' in responses[0]
+            if destructive!=(heads[5] in joined and heads[6] in joined):errors.append('only existing delete/archive must check both binding types')
+            if code==204 and ('no response body' not in responses[0] or 'data = exactly roleId' in joined):errors.append('204 must have no mapped response body')
+            if code!=204 and not ordered('data = exactly roleId','app -> infra: COMMIT'):errors.append('body must be mapped before commit')
+        elif begun:
+            if not ordered('BEGIN','ROLLBACK',f'HTTP {code}') or any(e=='app -> infra: COMMIT' for e in tr):errors.append('all rejected transactional role paths roll back before the error')
+            if code in (401,403,409,408,500) and writes:errors.append('visible reject path must not proceed past a failed check into a write')
+            if code==401 and any(e for e in db if 'm_role:' in e or 't_user_role:' in e or 't_role_permission:' in e):errors.append('invalid current credentials must not inspect target roles/bindings')
+            if code==403 and any(h in joined for h in heads[3:]):errors.append('403 must precede system/duplicate/in-use/write')
+        elif code not in (400,401) or db:errors.append('pre-transaction reject may only be no-SQL validation or JWT failure')
+        if code==401:unauthorized.append(len(db))
+    if Counter(outcomes)!=Counter({400:1,401:4,403:2,404:3,409:5,201:1,200:2,204:1,408:1,500:1}) or sorted(unauthorized)!=[0,1,1,2]:errors.append(f'role-upsert terminal paths incorrect: {dict(Counter(outcomes))},401 SQL={unauthorized}')
+    for title in ('Success - Insert','Success - Update','Success - Archive'):
+        obj=author_json(md,title)
+        if not obj or set(obj.get('data',{}))!={'roleId'}:errors.append(f'{title} must return exactly roleId')
+    obj=author_json(md,'Fail - Internal Server Error')
+    if not obj or obj['status']['code']!=500 or 'bizCode' in obj['status']:errors.append('internal error example must be generic 500 without bizCode')
+    errors+=json_blocks_parse(md);errors+=table_lines_aligned(md)
+    if '--rendered-svg' in sys.argv:
+        import xml.etree.ElementTree as ET
+        try:
+            root=ET.parse(sys.argv[sys.argv.index('--rendered-svg')+1]).getroot();wanted=Counter(' '.join(l.split()) for _,_,s in actual for l in s.splitlines() if l.strip());visible=Counter(' '.join(''.join(e.itertext()).split()) for e in root.iter() if e.tag.endswith('}text'));missing=wanted-visible
+            if missing:errors.append(f'rendered role-upsert SQL missing {sum(missing.values())} lines')
+            else:print(f'OK: rendered role-upsert SQL ({sum(wanted.values())}/{sum(wanted.values())} visible lines)')
+        except (IndexError,OSError,ET.ParseError) as exc:errors.append(f'cannot verify role-upsert SVG: {exc}')
+    if errors:return fail('; '.join(errors))
+    print('OK: role-upsert-flow (21 terminal traces; nine exact SQL definitions, claims and current credential gates)')
+    return 0
+
+
+COMMANDS['role-upsert-flow'] = check_role_upsert_flow
+
+
+def check_role_batch_flow() -> int:
+    """Verify whole-batch preflight and ordered atomic role mutations; unroll one representative item."""
+    path=f'{AUTHOR_DIR}/{AUTHOR_SPECS["02"]}/spec.md';md=read(path);wsd=read(str(Path(path).with_name('sequence.wsd')));errors=[]
+    for n in ('status: in-review','approved_by: null','approved_at: null','2026-11-07-api-review-design.md','Validate the whole request before SQL','Compare parsed canonical UUIDs','exact case-sensitive PLATFORM_ADMIN','all target existence checks','after all target existence checks and before any conflict or write','with one SELECT FOR UPDATE','Withdrawal of a grant alone does not invalidate','first missing/DELETED target in original request order','Each item\'s conflict reads see preceding item writes','reversing those items returns duplicate 409','does not apply a final-state rename plan','exactly one result per input item in the same order','batch never sends per-item 201/204 or partial success','SQLSTATE 23505','uq_m_role_name','reference/assignment writers must lock and recheck','Scenario correspondence with sequence.wsd'):
+        if n not in md:errors.append(f'role-batch spec missing {n!r}')
+    for n in ('QUERY - Get the platform administrator role','QUERY - Check platform administrator'):
+        if n in md or n in wsd:errors.append('batch caller authorization must not reload live assignments')
+    ops=spec_database_operations(md);heads=('QUERY - Lock the caller user','QUERY - Check current credential and user','QUERY - Lock existing roles','QUERY - Check system role','QUERY - Check duplicate name','QUERY - Check user in use','QUERY - Check role permission in use','INSERT - Create role','UPDATE - Update or delete role')
+    if tuple(h for _,h,_ in ops)!=heads:errors.append('batch needs nine declared caller/credential/sorted-target/business/write SQL definitions')
+    sql={h:re.sub(r'--[^\n]*','',s) for _,h,s in ops};required={
+        heads[0]:["WHERE u.id = '<sequence.callerUserId>'",'FOR UPDATE'],
+        heads[1]:['JOIN authen.m_user u ON u.id = at.user_id',"at.token = '<sequence.accessTokenHash>'","at.user_id = '<sequence.callerUserId>'","at.row_status = 'ACTIVE'","at.expired_at > '<sequence.now>'","u.row_status = 'ACTIVE'"],
+        heads[2]:['r.id as role_id,','r.name',"WHERE r.id = ANY ('<sequence.targetRoleIds>'::UUID[])","AND r.row_status <> 'DELETED'",'ORDER BY r.id\nFOR UPDATE'],
+        heads[3]:["WHERE r.id = '<sequence.roles.id>'","AND r.name = 'PLATFORM_ADMIN'"],
+        heads[4]:["WHERE r.name = '<sequence.roles.name>'","AND r.row_status <> 'DELETED'","AND ('<sequence.roles.id>' IS NULL OR r.id <> '<sequence.roles.id>')"],
+        heads[5]:["WHERE ur.role_id = '<sequence.roles.id>'","AND ur.row_status <> 'DELETED'"],heads[6]:["WHERE rp.role_id = '<sequence.roles.id>'","AND rp.row_status <> 'DELETED'"],
+        heads[7]:['created_by,\n    created_at,','<sequence.createdBy>','<sequence.now>','<sequence.roles.rowStatus>','<sequence.roles.name>','<sequence.roles.description>','RETURNING id as role_id'],
+        heads[8]:["updated_by = '<sequence.updatedBy>'","updated_at = '<sequence.now>'","row_status = '<sequence.roles.rowStatus>'","name = '<sequence.roles.name>'","description = '<sequence.roles.description>'","WHERE id = '<sequence.roles.id>'","AND row_status <> 'DELETED'","AND name <> 'PLATFORM_ADMIN'",'RETURNING id as role_id']}
+    for h,needles in required.items():
+        for n in needles:
+            if n not in sql.get(h,''):errors.append(f'{h} missing {n!r}')
+    if 'NOW()' in '\n'.join(sql.values()) or 'created_at =' in sql.get(heads[8],''):errors.append('batch must use bound server now and preserve creation audit on updates')
+    actual,lifecycle=sequence_database_operations(wsd);errors+=lifecycle
+    from collections import Counter
+    wanted=Counter((t.split('.')[-1],h,s) for t,h,s in ops)
+    for t,h,s in ops:
+        if h==heads[4]:wanted[(t.split('.')[-1],h,s)]+=1
+    if Counter(actual)!=wanted:errors.append('batch SQL differs character-for-character or has missing/excess/repeated blocks')
+    lines=wsd.splitlines()
+    for i,l in enumerate(lines):
+        request=re.match(r'^( *)infra -> \w+: (?:QUERY|INSERT|UPDATE) - ',l)
+        if not request:continue
+        prefix=' '*(len(request[1])+8);j=i+3
+        while j<len(lines) and lines[j].strip()!='end note':
+            if lines[j] and not lines[j].startswith(prefix):errors.append('batch SQL must retain exactly added note indentation and original SQL whitespace')
+            j+=1
+    for _,h,_ in ops:
+        if wsd.count('app -> infra: '+h+'\n')!=(2 if h==heads[4] else 1):errors.append(f'{h} needs matching Application request count')
+    for mat in re.finditer(r'(?m)^( *)infra -> (\w+): ((?:QUERY|INSERT|UPDATE) - [^\n]+)\n',wsd):
+        r=re.search(rf'{mat[2]} -> infra: Return ([^\n]+)\n.*?deactivate {mat[2]}\n\s*infra -> app: Return ([^\n]+)',wsd[mat.start():],re.S)
+        if not r or r[1]!=r[2]:errors.append('each database result must return with its meaning to Application')
+    for n in ('Validate all items in input order; canonical duplicate ids and exact duplicate non-DELETED names are 400 before SQL','Verify JWT signature/issuer/audience/expiry/UUID sub and structured unique roleIds/name array','callerUserId = verified sub; accessTokenHash = SHA-256 exact JWT; createdBy/updatedBy = caller UUID string','targetRoleIds = typed UUID[] of supplied canonical ids, empty for all inserts; omitted per-item id = typed SQL NULL','Capture fresh server UTC now after caller lock; recheck JWT exp','JWT expired while waiting for caller lock','Map locked roles by id; check all supplied target ids in original input order; choose first missing index i','Authorize once using only exact case-sensitive PLATFORM_ADMIN in verified JWT roles; never reload live grants','loop For every roles[i] in original request order; all writes remain provisional','currentIndex = i; bind this item fields and server audit/now; prior item writes are visible','Stored target is PLATFORM_ADMIN','Either non-DELETED binding exists','Guarded UPDATE returned zero rows','Require exactly one returned role_id equal to this input id','Require exactly one inserted role_id','action = DELETE for DELETED, ARCHIVE for ARCHIVED, otherwise UPDATE','Append exactly index=i, roleId from RETURNING and action to ordered results; do not emit per-item HTTP','Require results count equals input count, original index order and unique returned roleIds; data = exactly roles array of index/roleId/action; map all before COMMIT','SQLSTATE 23505 from uq_m_role_name at currentIndex'):
+        if n not in wsd:errors.append(f'batch sequence missing {n!r}')
+    if wsd.count('app -> infra: COMMIT')!=1 or wsd.count('Authorize once using only exact')!=1:errors.append('batch has exactly one permission decision and one final commit')
+    # Expand a single representative loop iteration. Real multi-item ordering/rollback is verified by SQL fixtures.
+    flattened=[];stack=[];note=False;loop_ranges=[];loop_start=None
+    for i,l in enumerate(lines):
+        t=l.strip()
+        if t.startswith('note ') and ':' not in t:note=True
+        if note:
+            flattened.append(l)
+            if t=='end note':note=False
+            continue
+        if t.startswith('loop '):stack.append('loop');loop_start=i;continue
+        if t.startswith('alt '):stack.append('alt')
+        elif t in ('end','end alt'):
+            if not stack:errors.append('batch loop/alternative unbalanced');continue
+            kind=stack.pop()
+            if kind=='loop':loop_ranges.append((loop_start,i));continue
+        flattened.append(l)
+    if stack or len(loop_ranges)!=1:errors.append('batch requires one balanced request-order item loop')
+    elif any('app -> infra: COMMIT' in l or 'app -> api: HTTP 200' in l for l in lines[loop_ranges[0][0]:loop_ranges[0][1]]):errors.append('no success/commit may occur inside the item loop')
+    for response in re.finditer(r'(?m)^( *)app -> api: HTTP [^\n]+\n',wsd):
+        next_lines=wsd[response.end():].splitlines()[:2]
+        if len(next_lines)!=2 or not next_lines[0].strip().startswith('api -> page:') or not next_lines[1].strip().startswith('page -> user:'):errors.append('every batch outcome must reach frontend and caller')
+    traces,structure=login_sequence_paths('\n'.join(flattened));errors+=structure;outcomes=[];unauthorized=[]
+    for tr in traces:
+        responses=[e for e in tr if e.startswith('app -> api: HTTP ')];joined='\n'.join(tr)
+        if len(responses)!=1:errors.append('batch representative trace needs one terminal HTTP outcome');continue
+        code=int(responses[0].split('HTTP ')[1].split()[0]);outcomes.append(code);db=[e for e in tr if e.startswith('infra -> ')];begun=any(e.startswith('app -> infra: BEGIN') for e in tr);writes=[e for e in db if ': INSERT' in e or ': UPDATE' in e]
+        def ordered(*parts):
+            pos=[next((i for i,e in enumerate(tr) if p in e),-1) for p in parts]
+            return -1 not in pos and pos==sorted(set(pos))
+        if db and not ordered('Validate all items','Verify JWT','callerUserId = verified sub','BEGIN READ COMMITTED',heads[0]):errors.append('batch must validate all items/claims before user-first transactional SQL')
+        if heads[1] in joined and not ordered(heads[0],'Capture fresh server UTC now',heads[1]):errors.append('batch credential read requires post-user-lock fresh now')
+        if heads[2] in joined and not ordered(heads[1],heads[2]):errors.append('target locks require valid current credential')
+        if 'Authorize once using only exact' in joined and not ordered(heads[2],'Map locked roles by id','Authorize once using only exact'):errors.append('whole-target existence must precede one claims permission')
+        if heads[4] in joined and not ordered('Authorize once using only exact','currentIndex = i',*([heads[3]] if heads[3] in joined else []),heads[4]):errors.append('item conflicts require preflight permission, item index and stored system-role check for existing items')
+        if heads[5] in joined and not ordered(heads[4],heads[5],heads[6]):errors.append('binding checks follow current-item duplicate in order')
+        if code==200:
+            if len(writes)!=1 or not ordered(heads[4],writes[0] if writes else 'missing','Append exactly index=i','Require results count equals input count','app -> infra: COMMIT','HTTP 200') or 'ROLLBACK' in joined:errors.append('representative item must map its returned id/action then one final committed whole-batch 200')
+            if heads[7] in joined and (heads[3] in joined or heads[5] in joined or not ordered(heads[7],'Require exactly one inserted role_id','Append exactly')):errors.append('insert iteration only inserts and validates returned id/action')
+            if heads[8] in joined and not ordered(heads[3],heads[8],'Require exactly one returned role_id equal to this input id','action = DELETE','Append exactly'):errors.append('existing iteration must protect system role and validate update id/action before result mapping')
+        elif begun:
+            if not ordered('BEGIN','ROLLBACK',f'HTTP {code}') or 'app -> infra: COMMIT' in joined:errors.append('all transactional batch failures roll back before response')
+            if code in (401,403,409,408,500) and writes:errors.append('rejected representative item must not continue into a write')
+            if code==401 and heads[2] in joined:errors.append('invalid credential must not lock/read target roles')
+            if code==403 and any(h in joined for h in heads[3:]):errors.append('single 403 must precede every item conflict/write')
+            if code in (404,409) and 'roles[i]:' not in responses[0]:errors.append('item 404/409 needs roles[i] position')
+        elif code not in (400,401) or db:errors.append('pre-BEGIN failure must be validation/JWT with no SQL')
+        if code==401:unauthorized.append(len(db))
+    if Counter(outcomes)!=Counter({400:1,401:4,404:3,403:1,409:5,200:3,408:1,500:1}) or sorted(unauthorized)!=[0,1,1,2]:errors.append(f'expected 19 representative item traces, got {dict(Counter(outcomes))},401 SQL={unauthorized}')
+    try:
+        body=json.loads(re.search(r'#### Example Body Parameters\n\n```JSON\n(.*?)```',md,re.S)[1]);result=author_json(md,'Success');items=body['roles'];rows=result['data']['roles']
+        if set(result['data'])!={'roles'} or len(items)!=len(rows) or len({x['roleId'] for x in rows})!=len(rows):errors.append('batch example needs one uniquely identified result per input')
+        for i,(item,row) in enumerate(zip(items,rows)):
+            action='INSERT' if 'id' not in item else {'DELETED':'DELETE','ARCHIVED':'ARCHIVE'}.get(item.get('rowStatus'),'UPDATE')
+            if set(row)!={'index','roleId','action'} or type(row['index']) is not int or row['index']!=i or row['action']!=action or ('id' in item and row['roleId']!=item['id']):errors.append('batch example result mapping/order/action is incorrect')
+        internal=author_json(md,'Fail - Internal Server Error')
+        if internal['status']['code']!=500 or 'bizCode' in internal['status']:errors.append('batch internal failure must omit bizCode')
+    except (AttributeError,TypeError,KeyError,IndexError,ValueError):errors.append('batch example shape malformed')
+    errors+=json_blocks_parse(md);errors+=table_lines_aligned(md)
+    if '--rendered-svg' in sys.argv:
+        import xml.etree.ElementTree as ET
+        try:
+            root=ET.parse(sys.argv[sys.argv.index('--rendered-svg')+1]).getroot();wanted=Counter(' '.join(l.split()) for _,_,s in actual for l in s.splitlines() if l.strip());visible=Counter(' '.join(''.join(e.itertext()).split()) for e in root.iter() if e.tag.endswith('}text'));missing=wanted-visible
+            if missing:errors.append(f'rendered role-batch SQL missing {sum(missing.values())} lines')
+            else:print(f'OK: rendered role-batch SQL ({sum(wanted.values())}/{sum(wanted.values())} visible lines)')
+        except (IndexError,OSError,ET.ParseError) as exc:errors.append(f'cannot verify role-batch SVG: {exc}')
+    if errors:return fail('; '.join(errors))
+    print('OK: role-batch-flow (19 representative item traces; nine exact SQL definitions, whole-target preflight and one final commit)')
+    return 0
+
+
+COMMANDS['role-batch-flow'] = check_role_batch_flow
+
+
+def check_role_inquiry_flow() -> int:
+    """Check token-claim administration and consistent filtered current role metadata."""
+    path=f'{AUTHOR_DIR}/{AUTHOR_SPECS["03"]}/spec.md';md=read(path);wsd=read(str(Path(path).with_name('sequence.wsd')));errors=[]
+    for n in ('status: in-review','approved_by: null','approved_at: null','2026-11-07-api-review-design.md','exact PLATFORM_ADMIN in verified JWT role claims','positive signed 64-bit integers','nonnegative BIGINT','one bound text searchPattern','Missing/malformed roles is generic 401','Grant withdrawal after token issuance leaves the old privilege usable','same read-only repeatable-read snapshot','identical non-DELETED/id/searchPattern/rowStatus WHERE predicates','an offset beyond the range returns items=[] with positive totals/pages','Sort by name then id ascending','exactly roleId/name/description/rowStatus','exactly five data keys','integer quotient/remainder','Map the full response before COMMIT','Scenario correspondence with sequence.wsd'):
+        if n not in md:errors.append(f'role-inquiry spec missing {n!r}')
+    for n in ('QUERY - Get the platform administrator role','QUERY - Check platform administrator'):
+        if n in md or n in wsd:errors.append('role inquiry authorization must not reload current assignments')
+    ops=spec_database_operations(md);heads=('QUERY - Check current credential and user','QUERY - Get total items','QUERY - Get roles')
+    if tuple(h for _,h,_ in ops)!=heads:errors.append('role inquiry needs credential/count/page in declared order')
+    sql={h:re.sub(r'--[^\n]*','',s) for _,h,s in ops};filters=["WHERE r.row_status <> 'DELETED'","AND ('<sequence.id>' IS NULL OR r.id = '<sequence.id>')","AND ('<sequence.searchPattern>' IS NULL OR r.name ILIKE '<sequence.searchPattern>' OR r.description ILIKE '<sequence.searchPattern>')","AND ('<sequence.rowStatus>' IS NULL OR r.row_status = '<sequence.rowStatus>')"]
+    required={heads[0]:['JOIN authen.m_user u ON u.id = at.user_id',"at.token = '<sequence.accessTokenHash>'","at.user_id = '<sequence.callerUserId>'","at.row_status = 'ACTIVE'","at.expired_at > '<sequence.now>'","u.row_status = 'ACTIVE'"],heads[1]:filters+['COUNT(r.id) as total_items'],heads[2]:filters+["LIMIT '<sequence.pageSize>' OFFSET '<sequence.offset>'"]}
+    for h,ns in required.items():
+        for n in ns:
+            if n not in sql.get(h,''):errors.append(f'{h} missing {n!r}')
+    def where(h):
+        r=re.search(r'\bWHERE\b(.*?)(?:\bORDER BY\b|\bLIMIT\b|$)',sql.get(h,''),re.S);return normalize(r[1]) if r else None
+    if where(heads[1])!=where(heads[2]):errors.append('role count/page WHERE predicates must be identical')
+    projection=re.search(r'SELECT\s+(.*?)\s+FROM\s',sql.get(heads[2],''),re.S)
+    if not projection or normalize(projection[1])!=normalize('r.id as role_id, r.name, r.description, r.row_status'):errors.append('role page returns exactly four role fields, no audit/assignment/caller data')
+    if not re.search(r"ORDER BY r\.name, r\.id(?: ASC)?\s+LIMIT",sql.get(heads[2],'')):errors.append('role page requires name then unique ascending id order')
+    if SEQUENCE_LOCK.search('\n'.join(sql.values())) or 'NOW()' in '\n'.join(sql.values()) or any(not q.lstrip().startswith('SELECT') for q in sql.values()):errors.append('role inquiry must use SELECT-only fresh-bound credential time, with no locks')
+    actual,lifecycle=sequence_database_operations(wsd);errors+=lifecycle
+    if actual!=[(t.split('.')[-1],h,q) for t,h,q in ops]:errors.append('role inquiry SQL differs character-for-character or execution order')
+    lines=wsd.splitlines()
+    for i,l in enumerate(lines):
+        req=re.match(r'^( *)infra -> \w+: QUERY - ',l)
+        if not req:continue
+        pad=' '*(len(req[1])+8);j=i+3
+        while j<len(lines) and lines[j].strip()!='end note':
+            if lines[j] and not lines[j].startswith(pad):errors.append('role SQL must retain exact added presentation prefix and original SQL indentation')
+            j+=1
+    for _,h,_ in ops:
+        if wsd.count('app -> infra: '+h+'\n')!=1:errors.append(f'{h} needs one Application request')
+    for mat in re.finditer(r'(?m)^( *)infra -> (\w+): (QUERY - [^\n]+)\n',wsd):
+        r=re.search(rf'{mat[2]} -> infra: Return ([^\n]+)\n.*?deactivate {mat[2]}\n\s*infra -> app: Return ([^\n]+)',wsd[mat.start():],re.S)
+        if not r or r[1]!=r[2]:errors.append('role database result must return with the same meaning to Application')
+    for n in ('Compute checked offset = (pageIndex - 1) * pageSize; reject numeric/offset overflow beyond nonnegative BIGINT','Verify JWT signature/issuer/audience/expiry/UUID sub and structured unique roleIds/name array','callerUserId = verified sub; accessTokenHash = SHA-256 exact JWT','Bind omitted id/searchPattern/rowStatus as typed SQL NULL; supplied searchPattern = percent + search + percent, preserving ILIKE wildcards','Capture fresh server UTC now immediately before joined credential read; recheck JWT exp','JWT expired before fresh credential read','Missing/invalid JWT or malformed roles','Current token/user missing/inactive/revoked/expired/mismatched','alt totalItems = 0','Authorize once using exact case-sensitive PLATFORM_ADMIN in verified JWT roles; never reload current grants','No exact PLATFORM_ADMIN role claim','integer quotient plus nonzero remainder','items = []; skip page query; totalPages = 0','Require page row count = min(pageSize, max(0, totalItems-offset)); mismatch is internal failure','Map exactly roleId/name/description/rowStatus per row; required values non-null; exclude caller/assignment/token/hash/audit','items = []; retain positive totalItems/totalPages; no 404','data = exactly items/pageIndex/pageSize/totalItems/totalPages; echo validated page values; explicit empty arrays; finish full mapping'):
+        if n not in wsd:errors.append(f'role inquiry sequence missing {n!r}')
+    if wsd.count('Authorize once using exact')!=1:errors.append('role inquiry checks claims permission exactly once')
+    for response in re.finditer(r'(?m)^( *)app -> api: HTTP [^\n]+\n',wsd):
+        following=wsd[response.end():].splitlines()[:2]
+        if len(following)!=2 or not following[0].strip().startswith('api -> page:') or not following[1].strip().startswith('page -> user:'):errors.append('all role inquiry responses must reach frontend and caller')
+    traces,structure=login_sequence_paths(wsd);errors+=structure
+    from collections import Counter
+    outcomes=[];modes=Counter();unauthorized=[]
+    for tr in traces:
+        response=[e for e in tr if e.startswith('app -> api: HTTP ')];joined='\n'.join(tr)
+        if len(response)!=1:errors.append('role inquiry trace needs one terminal outcome');continue
+        code=int(response[0].split('HTTP ')[1].split()[0]);outcomes.append(code);queries=[e for e in tr if e.startswith('infra -> ')];begun=any(e.startswith('app -> infra: BEGIN') for e in tr)
+        def ordered(*parts):
+            pos=[next((i for i,e in enumerate(tr) if p in e),-1) for p in parts]
+            return -1 not in pos and pos==sorted(set(pos))
+        if queries and not ordered('Compute checked offset','Verify JWT','callerUserId = verified sub','Bind omitted id/searchPattern','BEGIN REPEATABLE READ READ ONLY','Capture fresh server UTC now',heads[0]):errors.append('role SQL needs checked pagination, verified caller and fresh read-only credential snapshot')
+        if 'Authorize once using exact' in joined and not ordered(heads[0],'Authorize once using exact'):errors.append('claims permission requires valid current credential')
+        if heads[1] in joined and not ordered('Authorize once using exact',heads[1]):errors.append('no role count may precede claims permission')
+        if heads[2] in joined and not ordered(heads[1],heads[2]):errors.append('role page must follow its identical-filter count')
+        if any(': QUERY' not in e for e in queries):errors.append('role inquiry may never write')
+        if code==200:
+            mode='zero' if 'skip page query' in joined else 'beyond' if 'retain positive totalItems' in joined else 'rows';modes[mode]+=1
+            if len(queries)!=(2 if mode=='zero' else 3):errors.append('zero role count skips page query; positive count queries page')
+            if not ordered(heads[1],'data = exactly items','app -> infra: COMMIT','HTTP 200') or 'ROLLBACK' in joined:errors.append('success needs complete mapped read-only response then commit')
+            if mode!='zero' and 'Require page row count' not in joined:errors.append('positive role count must validate page cardinality')
+            if 'all five pagination keys' not in response[0]:errors.append('role inquiry success must include every pagination key')
+        elif begun:
+            if not ordered('BEGIN','ROLLBACK',f'HTTP {code}') or 'app -> infra: COMMIT' in joined:errors.append('role inquiry transaction failures roll back before response')
+            if code in (401,403) and len(queries)>1:errors.append('invalid credentials or non-admin must not count/read roles')
+        elif code not in (400,401) or queries:errors.append('pre-BEGIN role inquiry reject must be no-SQL validation/JWT error')
+        if code==401:unauthorized.append(len(queries))
+    if Counter(outcomes)!=Counter({400:1,401:3,403:1,200:3,408:1,500:1}) or modes!=Counter({'zero':1,'rows':1,'beyond':1}) or sorted(unauthorized)!=[0,0,1]:errors.append(f'expected 10 role inquiry terminal traces, got {dict(Counter(outcomes))}, modes={dict(modes)},401 SQL={unauthorized}')
+    for title,code in {'Success':200,'Success - By Id':200,'Success - Not Found':200,'Success - Page Beyond Range':200,'Fail - Bad Request':400,'Fail - Unauthorized':401,'Fail - Forbidden':403,'Fail - Request Timeout':408,'Fail - Internal Server Error':500}.items():
+        try:
+            obj=author_json(md,title);status=obj['status']
+            if status['code']!=code or code==500 and 'bizCode' in status:errors.append(f'{title} role inquiry envelope incorrect')
+            if code==200:
+                d=obj['data'];keys={'items','pageIndex','pageSize','totalItems','totalPages'}
+                if set(d)!=keys or type(d['items']) is not list:errors.append(f'{title} needs five keys and items array');continue
+                if any(type(d[k]) is not int for k in keys-{'items'}) or not 1<=d['pageIndex']<=2**63-1 or not 1<=d['pageSize']<=100 or d['totalItems']<0:errors.append(f'{title} invalid role page integers');continue
+                total=d['totalItems'];size=d['pageSize'];offset=(d['pageIndex']-1)*size;pages=total//size+int(total%size!=0)
+                if offset>2**63-1 or d['totalPages']!=pages or len(d['items'])!=min(size,max(0,total-offset)):errors.append(f'{title} page cardinality/totals incorrect')
+                ids=[]
+                for item in d['items']:
+                    if set(item)!={'roleId','name','description','rowStatus'} or any(v is None for v in item.values()) or item['rowStatus']=='DELETED':errors.append(f'{title} role fields missing/null/leaked/DELETED')
+                    ids.append(item['roleId'])
+                if len(ids)!=len(set(ids)):errors.append(f'{title} repeats role id')
+                if title=='Success - Page Beyond Range' and (not total or d['items'] or d['pageIndex']<=pages):errors.append('beyond-range role example must retain positive totals')
+        except (AttributeError,TypeError,KeyError,IndexError,ValueError):errors.append(f'{title} role inquiry example missing/malformed')
+    errors+=json_blocks_parse(md);errors+=table_lines_aligned(md)
+    if '--rendered-svg' in sys.argv:
+        import xml.etree.ElementTree as ET
+        try:
+            root=ET.parse(sys.argv[sys.argv.index('--rendered-svg')+1]).getroot();wanted=Counter(' '.join(l.split()) for _,_,q in ops for l in q.splitlines() if l.strip());visible=Counter(' '.join(''.join(e.itertext()).split()) for e in root.iter() if e.tag.endswith('}text'));missing=wanted-visible
+            if missing:errors.append(f'rendered role-inquiry SQL missing {sum(missing.values())} lines')
+            else:print(f'OK: rendered role-inquiry SQL ({sum(wanted.values())}/{sum(wanted.values())} visible lines)')
+        except (IndexError,OSError,ET.ParseError) as exc:errors.append(f'cannot verify role-inquiry SVG: {exc}')
+    if errors:return fail('; '.join(errors))
+    print('OK: role-inquiry-flow (10 terminal traces; exact SQL, claim administration and consistent filtered pagination)')
+    return 0
+
+
+COMMANDS['role-inquiry-flow'] = check_role_inquiry_flow
+
+
+def check_address_upsert_flow() -> int:
+    """Check caller-scoped address lifecycle, quota and atomic default transitions."""
+    path=AUTHEN_SPECS['09'];md=read(path);wsd=read(str(Path(path).with_name('sequence.wsd')));errors=[]
+    for needle in ('status: in-review','approved_by: null','approved_at: null','2026-11-07-api-review-design.md',
+                   'Q21 approved by the product owner','ตอบ 400 เมื่อ Delete ส่ง true (แนะนำ)',
+                   'mandatory non-blank strings for insert, update and delete','first ACTIVE, not the first physical/historical row',
+                   'False or omitted preserves an existing ACTIVE','limit is configurable and applies only to insert',
+                   'Count every non-DELETED row regardless of lifecycle','fresh server UTC now','id = SQL NULL',
+                   'Compute shouldPromote = wasDefault AND new rowStatus is not ACTIVE','Clear-before-write',
+                   'zero rows means 404 with full ROLLBACK','Delete 204 No Content has no response body',
+                   'All target/default changes are one transaction','Scenario correspondence with sequence.wsd'):
+        if needle not in md:errors.append(f'address-upsert spec missing {needle!r}')
+    operations=spec_database_operations(md)
+    expected=('QUERY - Lock the user','QUERY - Check the current access token','QUERY - Check existing address','QUERY - Count addresses','QUERY - Check an ACTIVE address exists','UPDATE - Clear the old default','INSERT - Create user address','UPDATE - Update or delete user address','UPDATE - Promote another default address')
+    if tuple(h for _,h,_ in operations)!=expected:errors.append('address contract needs nine SQL definitions in orchestration/branch order')
+    sql={h:re.sub(r'--[^\n]*','',s) for _,h,s in operations}
+    required={expected[0]:["u.id = '<sequence.userId>'","u.row_status = 'ACTIVE'",'FOR UPDATE'],
+              expected[1]:["at.token = '<sequence.accessTokenHash>'","at.user_id = '<sequence.userId>'","at.row_status = 'ACTIVE'","at.expired_at > '<sequence.now>'"],
+              expected[2]:['ua.id as user_address_id','ua.is_default',"WHERE ua.id = '<sequence.id>'","AND ua.user_id = '<sequence.userId>'","AND ua.row_status <> 'DELETED'"],
+              expected[3]:['COUNT(ua.id) as addresses',"ua.user_id = '<sequence.userId>'","ua.row_status <> 'DELETED'","AND '<sequence.id>' IS NULL"],
+              expected[4]:["ua.user_id = '<sequence.userId>'","ua.row_status = 'ACTIVE'","('<sequence.id>' IS NULL OR ua.id <> '<sequence.id>')","AND '<sequence.rowStatus>' = 'ACTIVE'"],
+              expected[5]:["WHERE user_id = '<sequence.userId>'",'AND is_default',"AND row_status <> 'DELETED'","('<sequence.id>' IS NULL OR id <> '<sequence.id>')","AND '<sequence.isDefault>'",'is_default = FALSE'],
+              expected[6]:['created_by,\n    created_at,\n    row_status,\n    user_id',"'<sequence.userId>',\n    '<sequence.now>',\n    '<sequence.rowStatus>',\n    '<sequence.userId>'",'RETURNING id as user_address_id'],
+              expected[7]:["WHERE id = '<sequence.id>'","AND user_id = '<sequence.userId>'","AND row_status <> 'DELETED'",'RETURNING id as user_address_id'],
+              expected[8]:['is_default = TRUE',"ua.user_id = '<sequence.userId>'","ua.row_status = 'ACTIVE'",'ORDER BY COALESCE(ua.updated_at, ua.created_at) DESC, ua.id','LIMIT 1',"AND user_id = '<sequence.userId>'","AND row_status = 'ACTIVE'","AND '<sequence.shouldPromote>'",'RETURNING id as user_address_id']}
+    for h in (expected[5],expected[7],expected[8]):required[h]+=["updated_by = '<sequence.userId>'","updated_at = '<sequence.now>'"]
+    for h in (expected[6],expected[7]):
+        required[h]+=["'<sequence.title>'","'<sequence.isDefault>'"]+[f"'<sequence.{v}Bytes>'" for v in ('address','city','state','postalCode','country')]
+    for h,needles in required.items():
+        for needle in needles:
+            if needle not in sql.get(h,''):errors.append(f'{h} missing {needle}')
+    if re.search(r"row_status\s*=\s*'ACTIVE'",sql.get(expected[3],'')):errors.append('quota must count every non-DELETED status')
+    if 'NOW()' in '\n'.join(sql.values()) or any(t not in ('authen.m_user','authen.t_user_access_token','authen.t_user_address') for t,_,_ in operations):errors.append('address needs fresh bound now and only caller/address credential tables')
+    actual,lifecycle=sequence_database_operations(wsd);errors+=lifecycle
+    from collections import Counter
+    definitions={(t.split('.')[-1],h,s) for t,h,s in operations}
+    if set(actual)!=definitions:errors.append('every reused address SQL block must match its spec definition character-for-character')
+    expected_reuse=Counter({h:2 if h in expected[7:] else 1 for h in expected})
+    if Counter(h for _,h,_ in actual)!=expected_reuse:errors.append('UPDATE/promotion must appear in both existing-id branches; other SQL blocks once')
+    errors+=sequence_login_standard_errors(wsd)
+    for _,heading,_ in operations:
+        requests=list(re.finditer(rf'app -> infra: {re.escape(heading)}\n',wsd));blocks=list(re.finditer(rf'infra -> (\w+): {re.escape(heading)}\n.*?\1 -> infra: Return ([^\n]+)\n.*?deactivate \1\n\s*infra -> app: Return ([^\n]+)',wsd,re.S))
+        if len(requests)!=expected_reuse[heading] or len(blocks)!=expected_reuse[heading] or any(x[2]!=x[3] for x in blocks):errors.append(f'{heading} needs matching Application request and database/result mappings on every reuse')
+    for needle in ('Q21 reject explicit isDefault=true for INACTIVE or DELETED; reject insert DELETED',
+                   'Verify JWT signature/issuer/audience/expiry/UUID sub','userId = verified sub; accessTokenHash = SHA-256 exact JWT',
+                   'id = supplied UUID or server SQL NULL for insert; omitted rowStatus = ACTIVE; preserve requestedTrue separately',
+                   'Capture fresh server UTC now after user lock; recheck JWT exp',
+                   'alt Supplied id and no owned non-DELETED target','wasDefault = returned is_default or false for insert',
+                   'alt Insert id absent and addresses >= 10','otherActiveExists = returned rows not empty',
+                   'isDefault = rowStatus ACTIVE AND (requestedTrue OR wasDefault OR NOT otherActiveExists)',
+                   'shouldPromote = wasDefault AND rowStatus not ACTIVE; flags are server-derived, never caller flags',
+                   'alt Insert with id absent','else Delete existing id with rowStatus DELETED','else Update existing id with rowStatus ACTIVE or INACTIVE'):
+        if needle not in wsd:errors.append(f'address sequence missing {needle!r}')
+    traces,structure=login_sequence_paths(wsd);errors+=structure
+    outcomes=[];unauthorized=[]
+    for trace in traces:
+        response=[e for e in trace if e.startswith('app -> api: HTTP ')]
+        if len(response)!=1:errors.append('address trace needs one outcome; abort must not reach success');continue
+        code=int(response[0].split('HTTP ')[1].split()[0]);outcomes.append(code)
+        def ordered(*parts):
+            pos=[next((i for i,e in enumerate(trace) if part in e),-1) for part in parts]
+            return -1 not in pos and pos==sorted(set(pos))
+        queries=[e for e in trace if e.startswith('infra -> ')];writes=[e for e in queries if ': UPDATE' in e or ': INSERT' in e];begun=any(e.startswith('app -> infra: BEGIN') for e in trace)
+        if queries and not ordered('Q21 reject explicit isDefault=true','Verify JWT','userId = verified sub','BEGIN READ COMMITTED',expected[0]):errors.append('address SQL needs verified identity and user-first transaction')
+        if any(expected[1] in e for e in trace) and not ordered(expected[0],'Capture fresh server UTC now',expected[1]):errors.append('stored credential read must follow user lock and fresh time')
+        if writes and not ordered(expected[1],expected[2],expected[3],expected[4],'isDefault = rowStatus ACTIVE','shouldPromote = wasDefault',expected[5]):errors.append('default/target mutations require fresh credential, owned target, quota and server-computed flags')
+        if code in (200,201,204):
+            target=expected[6] if code==201 else expected[7]
+            need=(expected[5],target) if code==201 else (expected[5],target,expected[8])
+            if not ordered(*need,'app -> infra: COMMIT',f'HTTP {code}') or any('ROLLBACK' in e for e in trace):errors.append('success must commit all required target/default changes first')
+            if sum(target in e for e in writes)!=1 or (code==201 and len(writes)!=2) or (code!=201 and len(writes)!=3):errors.append('insert/update/delete must run mutually exclusive target SQL and appropriate promotion')
+            if code==204 and 'no response body' not in response[0] or code!=204 and 'data.userAddressId only' not in response[0]:errors.append('incorrect address success payload shape')
+        elif begun:
+            if not ordered('BEGIN','ROLLBACK',f'HTTP {code}') or any(e=='app -> infra: COMMIT' for e in trace):errors.append('address failure must roll back every partial/default mutation before response')
+            if code==401 and writes:errors.append('invalid credential must not change any address')
+            if code==400 and writes:errors.append('quota rejection must precede clearing defaults')
+        elif code not in (400,401) or queries:errors.append('early input/JWT rejection must execute no SQL')
+        if code==401:unauthorized.append(len(queries))
+    if Counter(outcomes)!=Counter({200:1,201:1,204:1,400:2,401:3,404:3,408:1,500:2}) or sorted(unauthorized)!=[0,1,2]:errors.append(f'incomplete address paths: {dict(Counter(outcomes))}; 401 SQL={unauthorized}')
+    for title,code in {'Success - Insert':201,'Success - Update':200,'Fail - Bad Request':400,'Fail - Bad Request Row Status':400,'Fail - Bad Request Limit':400,'Fail - Bad Request Default':400,'Fail - Unauthorized':401,'Fail - Not Found':404,'Fail - Request Timeout':408,'Fail - Internal Server Error':500}.items():
+        try:
+            obj=authen_json(md,title);status=obj['status']
+            if status['code']!=code or code==500 and 'bizCode' in status:errors.append(f'incorrect address {title} envelope')
+            if code in (200,201) and set(obj.get('data',{}))!={'userAddressId'}:errors.append('address success returns only target address id')
+        except (TypeError,KeyError,ValueError):errors.append(f'missing address {title} example')
+    try:
+        body=json.loads(re.search(r'##### Delete\n\n```JSON\n(.*?)```',md,re.S)[1])
+        if body.get('isDefault') is True:errors.append('Q21 Delete example must not send true')
+    except (TypeError,KeyError,ValueError):errors.append('missing Delete request example')
+    delete=md.split('#### Success - Delete',1)[-1].split('#### Fail',1)[0]
+    if 'HTTP 204, no response body' not in delete or '```JSON' in delete:errors.append('delete must return 204 without JSON body')
+    errors+=json_blocks_parse(md);errors+=table_lines_aligned(md)
+    if '--rendered-svg' in sys.argv:
+        import xml.etree.ElementTree as ET
+        try:
+            root=ET.parse(sys.argv[sys.argv.index('--rendered-svg')+1]).getroot()
+            expected_lines=Counter(' '.join(l.split()) for _,_,s in actual for l in s.splitlines() if l.strip())
+            visible=Counter(' '.join(''.join(e.itertext()).split()) for e in root.iter() if e.tag.endswith('}text'))
+            missing=expected_lines-visible
+            if missing:errors.append(f'rendered address SQL missing {sum(missing.values())} lines')
+            else:print(f'OK: rendered address SQL ({sum(expected_lines.values())}/{sum(expected_lines.values())} visible lines including reused blocks)')
+        except (IndexError,OSError,ET.ParseError) as exc:errors.append(f'cannot verify address SVG: {exc}')
+    if errors:return fail('; '.join(errors))
+    print('OK: address-upsert-flow (14 terminal traces; nine exact SQL definitions, Q21 and atomic quota/default transitions)')
+    return 0
+
+
+COMMANDS['address-upsert-flow'] = check_address_upsert_flow
 
 
 def check_logout_flow() -> int:

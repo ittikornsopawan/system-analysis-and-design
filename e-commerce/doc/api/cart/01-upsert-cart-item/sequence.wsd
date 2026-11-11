@@ -37,6 +37,7 @@ box "Web API" #F8FAFC
     participant "Infrastructure" as infra
 end box
 box "Database" #F8FAFC
+    database "m_user" as m_user
     database "t_cart" as t_cart
     database "t_shop_product_sku" as t_shop_product_sku
 end box
@@ -64,6 +65,26 @@ activate page
                     app -> infra: BEGIN READ COMMITTED
                     activate infra
                     alt Work completes before commit
+                        app -> infra: QUERY - Lock the user
+                        infra -> m_user: QUERY - Lock the user
+                        activate m_user
+                            note right of m_user
+                                SELECT
+                                    u.id as user_id
+                                FROM authen.m_user u
+                                WHERE u.id = '<sequence.userId>'
+                                AND u.row_status = 'ACTIVE'
+                                FOR UPDATE -- every authen API locks the user row first
+                            end note
+                            m_user -> infra: Return the locked user or no row
+                        deactivate m_user
+                        infra -> app: Return the locked user or no row
+                        alt User not found or not ACTIVE
+                            app -> infra: ROLLBACK
+                            app -> api: HTTP 401 E10002 Invalid or expired access token.
+                            api -> page: Unauthorized
+                            page -> user: Display authentication error
+                        end
                         alt rowStatus = DELETED (delete the line)
                             app -> infra: QUERY - Check the line of the user
                             infra -> t_cart: QUERY - Check the line of the user
@@ -270,12 +291,12 @@ activate page
                                                 quantity
                                             )
                                             VALUES (
-                                                '<sequence.userId>',
-                                                '<sequence.userId>',
-                                                '<sequence.shopId>',
-                                                '<sequence.productId>',
-                                                '<sequence.skuId>',
-                                                '<sequence.quantity>'
+                                                &#39;<sequence.userId>',
+                                                &#39;<sequence.userId>',
+                                                &#39;<sequence.shopId>',
+                                                &#39;<sequence.productId>',
+                                                &#39;<sequence.skuId>',
+                                                &#39;<sequence.quantity>'
                                             )
                                             ON CONFLICT (user_id, shop_id, product_id, sku_id) WHERE row_status <> 'DELETED' -- the partial unique index uq_t_cart_user_id_shop_id_product_id_sku_id
                                             DO UPDATE SET

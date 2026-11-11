@@ -1,0 +1,238 @@
+<!DOCTYPE html>
+<html lang="en"><head><meta charset="UTF-8"><meta name="viewport" content="width=device-width,initial-scale=1.0">
+<title>Catalog, shop listings &amp; stock concepts</title><link href="https://fonts.googleapis.com/css2?family=Instrument+Serif:ital@0;1&amp;family=Geist:wght@400;500;600&amp;family=Geist+Mono:wght@400;500;600&amp;display=swap" rel="stylesheet">
+<style>
+* {box-sizing:border-box;} body {margin:0;padding:24px;background:#f5f5f5;color:#2d3142;font-family:'Geist',Arial,sans-serif;}
+main {width:100%;max-width:1584px;min-width:0;margin:0 auto;} h1 {font-family:'Instrument Serif',Georgia,serif;font-size:32px;font-weight:400;}
+.diagram-container {width:100%;overflow-x:auto;} svg {display:block;width:100%;min-width:1584px;}
+.source-note {font-size:12px;line-height:1.6;color:#4f5d75;} @media print {body {padding:0;} .diagram-container {overflow-x:visible;} svg {min-width:0;}}
+</style></head><body><main><h1>Catalog, shop listings &amp; stock concepts</h1><div class="diagram-container"><svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 1584 1120" role="img" aria-labelledby="domain-merchandising-model-title domain-merchandising-model-desc">
+<title id="domain-merchandising-model-title">Catalog, shop listings &amp; stock concepts</title>
+<desc id="domain-merchandising-model-desc">Catalog, shop listings &amp; stock concepts with business concepts, selected attributes and database-evidenced relationships grouped by SQL schema.</desc>
+<defs>
+<marker id="domain-merchandising-model-arrow" markerWidth="8" markerHeight="6" refX="7" refY="3" orient="auto"><polygon points="0 0,8 3,0 6" fill="#4f5d75"/></marker>
+<marker id="domain-merchandising-model-accent" markerWidth="8" markerHeight="6" refX="7" refY="3" orient="auto"><polygon points="0 0,8 3,0 6" fill="#bf4520"/></marker>
+<marker id="domain-merchandising-model-link" markerWidth="8" markerHeight="6" refX="7" refY="3" orient="auto"><polygon points="0 0,8 3,0 6" fill="#2e5aa8"/></marker>
+</defs>
+<rect width="1584" height="1120" fill="#f5f5f5"/>
+<g data-container-id="catalog" data-parent="root"><rect data-role="container-bounds" x="40" y="160" width="944" height="828" rx="4" fill="#f5f5f5" stroke="#5a6580" stroke-width="1"/>
+<line x1="40" y1="196" x2="984" y2="196" stroke="#bfc0c0" stroke-width="0.8"/>
+<text x="52" y="176" font-size="12" font-family="Geist,Arial,sans-serif" font-weight="600" fill="#5a6580" text-anchor="start">Global product catalog</text>
+<text x="52" y="189" font-size="8" font-family="Geist Mono,Courier New,monospace" font-weight="400" fill="#5a6580" text-anchor="start">product · 11 tables</text>
+</g>
+<g data-container-id="shops" data-parent="root"><rect data-role="container-bounds" x="1024" y="160" width="520" height="828" rx="4" fill="#f5f5f5" stroke="#5a6580" stroke-width="1"/>
+<line x1="1024" y1="196" x2="1544" y2="196" stroke="#bfc0c0" stroke-width="0.8"/>
+<text x="1036" y="176" font-size="12" font-family="Geist,Arial,sans-serif" font-weight="600" fill="#5a6580" text-anchor="start">Merchant offer &amp; inventory</text>
+<text x="1036" y="189" font-size="8" font-family="Geist Mono,Courier New,monospace" font-weight="400" fill="#5a6580" text-anchor="start">shop · 8 tables</text>
+</g>
+<path d="M 336 272 L 376 272" fill="none" stroke="#4f5d75" stroke-width="1.2"/>
+<path d="M 648 872 L 660 872 Q 668 872 668 864 L 668 680 Q 668 672 676 672 L 688 672" fill="none" stroke="#4f5d75" stroke-width="1.2"/>
+<path d="M 688 472 L 676 472 Q 668 472 668 464 L 668 368 Q 668 360 660 360 L 592 360 Q 584 360 584 352 L 584 328" fill="none" stroke="#4f5d75" stroke-width="1.2"/>
+<path d="M 448 328 L 448 416" fill="none" stroke="#4f5d75" stroke-width="1.2"/>
+<path d="M 512 528 L 512 616" fill="none" stroke="#4f5d75" stroke-width="1.2"/>
+<path d="M 584 816 L 584 728" fill="none" stroke="#4f5d75" stroke-width="1.2"/>
+<path d="M 336 872 L 376 872" fill="none" stroke="#4f5d75" stroke-width="1.2"/>
+<path d="M 1256 272 L 1312 272" fill="none" stroke="#4f5d75" stroke-width="1.2"/>
+<path d="M 1312 304 L 1296 304 Q 1288 304 1288 312 L 1288 584 Q 1288 592 1280 592 L 1160 592 Q 1152 592 1152 600 L 1152 616" fill="none" stroke="#4f5d75" stroke-width="1.2"/>
+<path d="M 1256 672 L 1312 672" fill="none" stroke="#4f5d75" stroke-width="1.2"/>
+<path d="M 1416 728 L 1416 816" fill="none" stroke="#4f5d75" stroke-width="1.2"/>
+<path d="M 1152 728 L 1152 816" fill="none" stroke="#4f5d75" stroke-width="1.2"/>
+<g data-node-id="product.m_product_category" data-parent="catalog">
+<rect data-role="node-bounds" x="64" y="216" width="272" height="112" rx="4" fill="#ffffff" stroke="#2d3142" stroke-width="1"/>
+<text x="76" y="238" font-size="12" font-family="Geist,Arial,sans-serif" font-weight="600" fill="#2d3142" text-anchor="start">Category</text>
+<text x="76" y="254" font-size="8" font-family="Geist Mono,Courier New,monospace" font-weight="400" fill="#5a6580" text-anchor="start">product.m_product_category</text>
+<text x="76" y="270" font-size="9" font-family="Geist Mono,Courier New,monospace" font-weight="400" fill="#4f5d75" text-anchor="start"># id / parent_id?</text>
+<text x="76" y="284" font-size="9" font-family="Geist Mono,Courier New,monospace" font-weight="400" fill="#4f5d75" text-anchor="start">name / slug</text>
+</g>
+<g data-node-id="product.m_product" data-parent="catalog">
+<rect data-role="node-bounds" x="376" y="216" width="272" height="112" rx="4" fill="#f1e7e4" stroke="#bf4520" stroke-width="1"/>
+<text x="388" y="238" font-size="12" font-family="Geist,Arial,sans-serif" font-weight="600" fill="#2d3142" text-anchor="start">Product</text>
+<text x="388" y="254" font-size="8" font-family="Geist Mono,Courier New,monospace" font-weight="400" fill="#5a6580" text-anchor="start">product.m_product</text>
+<text x="388" y="270" font-size="9" font-family="Geist Mono,Courier New,monospace" font-weight="400" fill="#4f5d75" text-anchor="start"># id / name</text>
+<text x="388" y="284" font-size="9" font-family="Geist Mono,Courier New,monospace" font-weight="400" fill="#4f5d75" text-anchor="start">type_id / category_id / brand_id</text>
+<text x="388" y="298" font-size="9" font-family="Geist Mono,Courier New,monospace" font-weight="400" fill="#4f5d75" text-anchor="start">slug / body</text>
+</g>
+<g data-node-id="product.m_product_brand" data-parent="catalog">
+<rect data-role="node-bounds" x="688" y="216" width="272" height="112" rx="4" fill="#ffffff" stroke="#2d3142" stroke-width="1"/>
+<text x="700" y="238" font-size="12" font-family="Geist,Arial,sans-serif" font-weight="600" fill="#2d3142" text-anchor="start">Brand</text>
+<text x="700" y="254" font-size="8" font-family="Geist Mono,Courier New,monospace" font-weight="400" fill="#5a6580" text-anchor="start">product.m_product_brand</text>
+<text x="700" y="270" font-size="9" font-family="Geist Mono,Courier New,monospace" font-weight="400" fill="#4f5d75" text-anchor="start"># id / name</text>
+<text x="700" y="284" font-size="9" font-family="Geist Mono,Courier New,monospace" font-weight="400" fill="#4f5d75" text-anchor="start">description</text>
+</g>
+<g data-node-id="product.m_product_category_attribute" data-parent="catalog">
+<rect data-role="node-bounds" x="64" y="416" width="272" height="112" rx="4" fill="#ffffff" stroke="#2d3142" stroke-width="1"/>
+<text x="76" y="438" font-size="12" font-family="Geist,Arial,sans-serif" font-weight="600" fill="#2d3142" text-anchor="start">Category attribute definition</text>
+<text x="76" y="454" font-size="8" font-family="Geist Mono,Courier New,monospace" font-weight="400" fill="#5a6580" text-anchor="start">product.m_product_category_attribute</text>
+<text x="76" y="470" font-size="9" font-family="Geist Mono,Courier New,monospace" font-weight="400" fill="#4f5d75" text-anchor="start"># id / category_id</text>
+<text x="76" y="484" font-size="9" font-family="Geist Mono,Courier New,monospace" font-weight="400" fill="#4f5d75" text-anchor="start">name</text>
+</g>
+<g data-node-id="product.m_product_sku" data-parent="catalog">
+<rect data-role="node-bounds" x="376" y="416" width="272" height="112" rx="4" fill="#ffffff" stroke="#2d3142" stroke-width="1"/>
+<text x="388" y="438" font-size="12" font-family="Geist,Arial,sans-serif" font-weight="600" fill="#2d3142" text-anchor="start">Product SKU</text>
+<text x="388" y="454" font-size="8" font-family="Geist Mono,Courier New,monospace" font-weight="400" fill="#5a6580" text-anchor="start">product.m_product_sku</text>
+<text x="388" y="470" font-size="9" font-family="Geist Mono,Courier New,monospace" font-weight="400" fill="#4f5d75" text-anchor="start"># id / product_id</text>
+<text x="388" y="484" font-size="9" font-family="Geist Mono,Courier New,monospace" font-weight="400" fill="#4f5d75" text-anchor="start">name / combination_key</text>
+</g>
+<g data-node-id="product.m_product_type" data-parent="catalog">
+<rect data-role="node-bounds" x="688" y="416" width="272" height="112" rx="4" fill="#ffffff" stroke="#2d3142" stroke-width="1"/>
+<text x="700" y="438" font-size="12" font-family="Geist,Arial,sans-serif" font-weight="600" fill="#2d3142" text-anchor="start">Product type</text>
+<text x="700" y="454" font-size="8" font-family="Geist Mono,Courier New,monospace" font-weight="400" fill="#5a6580" text-anchor="start">product.m_product_type</text>
+<text x="700" y="470" font-size="9" font-family="Geist Mono,Courier New,monospace" font-weight="400" fill="#4f5d75" text-anchor="start"># id / name</text>
+<text x="700" y="484" font-size="9" font-family="Geist Mono,Courier New,monospace" font-weight="400" fill="#4f5d75" text-anchor="start">description</text>
+</g>
+<g data-node-id="product.m_product_attribute" data-parent="catalog">
+<rect data-role="node-bounds" x="64" y="616" width="272" height="112" rx="4" fill="#ffffff" stroke="#2d3142" stroke-width="1"/>
+<text x="76" y="638" font-size="12" font-family="Geist,Arial,sans-serif" font-weight="600" fill="#2d3142" text-anchor="start">Product attribute value</text>
+<text x="76" y="654" font-size="8" font-family="Geist Mono,Courier New,monospace" font-weight="400" fill="#5a6580" text-anchor="start">product.m_product_attribute</text>
+<text x="76" y="670" font-size="9" font-family="Geist Mono,Courier New,monospace" font-weight="400" fill="#4f5d75" text-anchor="start"># id / product_id</text>
+<text x="76" y="684" font-size="9" font-family="Geist Mono,Courier New,monospace" font-weight="400" fill="#4f5d75" text-anchor="start">attribute_id / value</text>
+</g>
+<g data-node-id="product.m_product_sku_option_value" data-parent="catalog">
+<rect data-role="node-bounds" x="376" y="616" width="272" height="112" rx="4" fill="#ffffff" stroke="#2d3142" stroke-width="1"/>
+<text x="388" y="638" font-size="12" font-family="Geist,Arial,sans-serif" font-weight="600" fill="#2d3142" text-anchor="start">SKU option selection</text>
+<text x="388" y="654" font-size="8" font-family="Geist Mono,Courier New,monospace" font-weight="400" fill="#5a6580" text-anchor="start">product.m_product_sku_option_value</text>
+<text x="388" y="670" font-size="9" font-family="Geist Mono,Courier New,monospace" font-weight="400" fill="#4f5d75" text-anchor="start"># id / sku_id</text>
+<text x="388" y="684" font-size="9" font-family="Geist Mono,Courier New,monospace" font-weight="400" fill="#4f5d75" text-anchor="start">option_value_id</text>
+</g>
+<g data-node-id="product.m_product_image" data-parent="catalog">
+<rect data-role="node-bounds" x="688" y="616" width="272" height="112" rx="4" fill="#ffffff" stroke="#2d3142" stroke-width="1"/>
+<text x="700" y="638" font-size="12" font-family="Geist,Arial,sans-serif" font-weight="600" fill="#2d3142" text-anchor="start">Product image</text>
+<text x="700" y="654" font-size="8" font-family="Geist Mono,Courier New,monospace" font-weight="400" fill="#5a6580" text-anchor="start">product.m_product_image</text>
+<text x="700" y="670" font-size="9" font-family="Geist Mono,Courier New,monospace" font-weight="400" fill="#4f5d75" text-anchor="start"># id / product_id</text>
+<text x="700" y="684" font-size="9" font-family="Geist Mono,Courier New,monospace" font-weight="400" fill="#4f5d75" text-anchor="start">option_value_id?</text>
+<text x="700" y="698" font-size="9" font-family="Geist Mono,Courier New,monospace" font-weight="400" fill="#4f5d75" text-anchor="start">image_path</text>
+</g>
+<g data-node-id="product.m_product_option" data-parent="catalog">
+<rect data-role="node-bounds" x="64" y="816" width="272" height="112" rx="4" fill="#ffffff" stroke="#2d3142" stroke-width="1"/>
+<text x="76" y="838" font-size="12" font-family="Geist,Arial,sans-serif" font-weight="600" fill="#2d3142" text-anchor="start">Option level</text>
+<text x="76" y="854" font-size="8" font-family="Geist Mono,Courier New,monospace" font-weight="400" fill="#5a6580" text-anchor="start">product.m_product_option</text>
+<text x="76" y="870" font-size="9" font-family="Geist Mono,Courier New,monospace" font-weight="400" fill="#4f5d75" text-anchor="start"># id / product_id</text>
+<text x="76" y="884" font-size="9" font-family="Geist Mono,Courier New,monospace" font-weight="400" fill="#4f5d75" text-anchor="start">name / level_no</text>
+</g>
+<g data-node-id="product.m_product_option_value" data-parent="catalog">
+<rect data-role="node-bounds" x="376" y="816" width="272" height="112" rx="4" fill="#ffffff" stroke="#2d3142" stroke-width="1"/>
+<text x="388" y="838" font-size="12" font-family="Geist,Arial,sans-serif" font-weight="600" fill="#2d3142" text-anchor="start">Option value</text>
+<text x="388" y="854" font-size="8" font-family="Geist Mono,Courier New,monospace" font-weight="400" fill="#5a6580" text-anchor="start">product.m_product_option_value</text>
+<text x="388" y="870" font-size="9" font-family="Geist Mono,Courier New,monospace" font-weight="400" fill="#4f5d75" text-anchor="start"># id / option_id</text>
+<text x="388" y="884" font-size="9" font-family="Geist Mono,Courier New,monospace" font-weight="400" fill="#4f5d75" text-anchor="start">value / sort_order</text>
+</g>
+<g data-node-id="shop.m_shop_type" data-parent="shops">
+<rect data-role="node-bounds" x="1048" y="216" width="208" height="112" rx="4" fill="#ffffff" stroke="#2d3142" stroke-width="1"/>
+<text x="1060" y="238" font-size="12" font-family="Geist,Arial,sans-serif" font-weight="600" fill="#2d3142" text-anchor="start">Shop type</text>
+<text x="1060" y="254" font-size="8" font-family="Geist Mono,Courier New,monospace" font-weight="400" fill="#5a6580" text-anchor="start">shop.m_shop_type</text>
+<text x="1060" y="270" font-size="9" font-family="Geist Mono,Courier New,monospace" font-weight="400" fill="#4f5d75" text-anchor="start"># id / name</text>
+<text x="1060" y="284" font-size="9" font-family="Geist Mono,Courier New,monospace" font-weight="400" fill="#4f5d75" text-anchor="start">description</text>
+</g>
+<g data-node-id="shop.m_shop" data-parent="shops">
+<rect data-role="node-bounds" x="1312" y="216" width="208" height="112" rx="4" fill="#ffffff" stroke="#2d3142" stroke-width="1"/>
+<text x="1324" y="238" font-size="12" font-family="Geist,Arial,sans-serif" font-weight="600" fill="#2d3142" text-anchor="start">Shop</text>
+<text x="1324" y="254" font-size="8" font-family="Geist Mono,Courier New,monospace" font-weight="400" fill="#5a6580" text-anchor="start">shop.m_shop</text>
+<text x="1324" y="270" font-size="9" font-family="Geist Mono,Courier New,monospace" font-weight="400" fill="#4f5d75" text-anchor="start"># id / type_id</text>
+<text x="1324" y="284" font-size="9" font-family="Geist Mono,Courier New,monospace" font-weight="400" fill="#4f5d75" text-anchor="start">platform_margin_rate</text>
+<text x="1324" y="298" font-size="9" font-family="Geist Mono,Courier New,monospace" font-weight="400" fill="#4f5d75" text-anchor="start">shop_margin_rate</text>
+</g>
+<g data-node-id="shop.t_shop_user" data-parent="shops">
+<rect data-role="node-bounds" x="1048" y="416" width="208" height="112" rx="4" fill="#ffffff" stroke="#2d3142" stroke-width="1"/>
+<text x="1060" y="438" font-size="12" font-family="Geist,Arial,sans-serif" font-weight="600" fill="#2d3142" text-anchor="start">Shop membership</text>
+<text x="1060" y="454" font-size="8" font-family="Geist Mono,Courier New,monospace" font-weight="400" fill="#5a6580" text-anchor="start">shop.t_shop_user</text>
+<text x="1060" y="470" font-size="9" font-family="Geist Mono,Courier New,monospace" font-weight="400" fill="#4f5d75" text-anchor="start"># id / shop_id</text>
+<text x="1060" y="484" font-size="9" font-family="Geist Mono,Courier New,monospace" font-weight="400" fill="#4f5d75" text-anchor="start">user_id / role</text>
+</g>
+<g data-node-id="shop.m_shop_image" data-parent="shops">
+<rect data-role="node-bounds" x="1312" y="416" width="208" height="112" rx="4" fill="#ffffff" stroke="#2d3142" stroke-width="1"/>
+<text x="1324" y="438" font-size="12" font-family="Geist,Arial,sans-serif" font-weight="600" fill="#2d3142" text-anchor="start">Shop image</text>
+<text x="1324" y="454" font-size="8" font-family="Geist Mono,Courier New,monospace" font-weight="400" fill="#5a6580" text-anchor="start">shop.m_shop_image</text>
+<text x="1324" y="470" font-size="9" font-family="Geist Mono,Courier New,monospace" font-weight="400" fill="#4f5d75" text-anchor="start"># id / shop_id</text>
+<text x="1324" y="484" font-size="9" font-family="Geist Mono,Courier New,monospace" font-weight="400" fill="#4f5d75" text-anchor="start">type / seq / image_path</text>
+</g>
+<g data-node-id="shop.t_shop_product" data-parent="shops">
+<rect data-role="node-bounds" x="1048" y="616" width="208" height="112" rx="4" fill="#ffffff" stroke="#2d3142" stroke-width="1"/>
+<text x="1060" y="638" font-size="12" font-family="Geist,Arial,sans-serif" font-weight="600" fill="#2d3142" text-anchor="start">Shop listing</text>
+<text x="1060" y="654" font-size="8" font-family="Geist Mono,Courier New,monospace" font-weight="400" fill="#5a6580" text-anchor="start">shop.t_shop_product</text>
+<text x="1060" y="670" font-size="9" font-family="Geist Mono,Courier New,monospace" font-weight="400" fill="#4f5d75" text-anchor="start"># id / shop_id</text>
+<text x="1060" y="684" font-size="9" font-family="Geist Mono,Courier New,monospace" font-weight="400" fill="#4f5d75" text-anchor="start">product_id</text>
+</g>
+<g data-node-id="shop.t_shop_product_sku" data-parent="shops">
+<rect data-role="node-bounds" x="1312" y="616" width="208" height="112" rx="4" fill="#ffffff" stroke="#2d3142" stroke-width="1"/>
+<text x="1324" y="638" font-size="12" font-family="Geist,Arial,sans-serif" font-weight="600" fill="#2d3142" text-anchor="start">Shop SKU</text>
+<text x="1324" y="654" font-size="8" font-family="Geist Mono,Courier New,monospace" font-weight="400" fill="#5a6580" text-anchor="start">shop.t_shop_product_sku</text>
+<text x="1324" y="670" font-size="9" font-family="Geist Mono,Courier New,monospace" font-weight="400" fill="#4f5d75" text-anchor="start"># id / shop_product_id</text>
+<text x="1324" y="684" font-size="9" font-family="Geist Mono,Courier New,monospace" font-weight="400" fill="#4f5d75" text-anchor="start">sku_id / code</text>
+</g>
+<g data-node-id="shop.t_shop_product_review" data-parent="shops">
+<rect data-role="node-bounds" x="1048" y="816" width="208" height="112" rx="4" fill="#ffffff" stroke="#2d3142" stroke-width="1"/>
+<text x="1060" y="838" font-size="12" font-family="Geist,Arial,sans-serif" font-weight="600" fill="#2d3142" text-anchor="start">Product review</text>
+<text x="1060" y="854" font-size="8" font-family="Geist Mono,Courier New,monospace" font-weight="400" fill="#5a6580" text-anchor="start">shop.t_shop_product_review</text>
+<text x="1060" y="870" font-size="9" font-family="Geist Mono,Courier New,monospace" font-weight="400" fill="#4f5d75" text-anchor="start"># id / shop_product_id</text>
+<text x="1060" y="884" font-size="9" font-family="Geist Mono,Courier New,monospace" font-weight="400" fill="#4f5d75" text-anchor="start">user_id / rating</text>
+<text x="1060" y="898" font-size="9" font-family="Geist Mono,Courier New,monospace" font-weight="400" fill="#4f5d75" text-anchor="start">comment?</text>
+</g>
+<g data-node-id="shop.t_shop_product_sku_lot" data-parent="shops">
+<rect data-role="node-bounds" x="1312" y="816" width="208" height="112" rx="4" fill="#ffffff" stroke="#2d3142" stroke-width="1"/>
+<text x="1324" y="838" font-size="12" font-family="Geist,Arial,sans-serif" font-weight="600" fill="#2d3142" text-anchor="start">Stock lot</text>
+<text x="1324" y="854" font-size="8" font-family="Geist Mono,Courier New,monospace" font-weight="400" fill="#5a6580" text-anchor="start">shop.t_shop_product_sku_lot</text>
+<text x="1324" y="870" font-size="9" font-family="Geist Mono,Courier New,monospace" font-weight="400" fill="#4f5d75" text-anchor="start"># id / shop_product_sku_id</text>
+<text x="1324" y="884" font-size="9" font-family="Geist Mono,Courier New,monospace" font-weight="400" fill="#4f5d75" text-anchor="start">cost_price / selling_price</text>
+<text x="1324" y="898" font-size="9" font-family="Geist Mono,Courier New,monospace" font-weight="400" fill="#4f5d75" text-anchor="start">quantity / is_on_sale</text>
+</g>
+<text x="688" y="850" font-size="10" font-family="Geist,Arial,sans-serif" font-weight="400" fill="#4f5d75" text-anchor="start">Product SKU is not a shop offer.</text>
+<text x="688" y="870" font-size="10" font-family="Geist,Arial,sans-serif" font-weight="400" fill="#4f5d75" text-anchor="start">A shop offer has stock lots and prices.</text>
+<text x="688" y="910" font-size="10" font-family="Geist,Arial,sans-serif" font-weight="400" fill="#4f5d75" text-anchor="start">One ACTIVE on-sale lot per shop SKU;</text>
+<text x="688" y="930" font-size="10" font-family="Geist,Arial,sans-serif" font-weight="400" fill="#4f5d75" text-anchor="start">older or off-sale lots still exist.</text>
+<text x="40" y="1012" font-size="11" font-family="Geist,Arial,sans-serif" font-weight="400" fill="#4f5d75" text-anchor="start">19 tables. Selected 12 / 25 FK associations. Same-product, SKU and option consistency needs additional domain validation.</text>
+<text x="40" y="48" font-size="8" font-family="Geist Mono,Courier New,monospace" font-weight="500" fill="#5a6580" text-anchor="start">E-COMMERCE / DATABASE-GROUNDED CONCEPTUAL DOMAIN MODEL</text>
+<text x="40" y="88" font-size="32" font-family="Instrument Serif,Georgia,serif" font-weight="400" fill="#2d3142" text-anchor="start">Catalog, shop listings &amp; stock concepts</text>
+<text x="40" y="116" font-size="12" font-family="Geist,Arial,sans-serif" font-weight="400" fill="#4f5d75" text-anchor="start">Named entities inside schema groups. Selected associations show all-row cardinality, not request order or aggregate ownership.</text>
+<text x="40" y="1036" font-size="9" font-family="Geist Mono,Courier New,monospace" font-weight="400" fill="#5a6580" text-anchor="start">Source: db/migrations/up + doc/schema | 53 tables / 11 schemas / 75 FK columns | Full references in companion Markdown</text>
+<line x1="40" y1="1052" x2="1544" y2="1052" stroke="#bfc0c0"/>
+<text x="40" y="1076" font-size="9" font-family="Geist,Arial,sans-serif" font-weight="400" fill="#4f5d75" text-anchor="start">Entity / association entity</text>
+<text x="340.8" y="1076" font-size="9" font-family="Geist,Arial,sans-serif" font-weight="400" fill="#4f5d75" text-anchor="start">Line = selected FK association</text>
+<text x="641.6" y="1076" font-size="9" font-family="Geist,Arial,sans-serif" font-weight="400" fill="#4f5d75" text-anchor="start">1 or 0..1 at parent end</text>
+<text x="942.4" y="1076" font-size="9" font-family="Geist,Arial,sans-serif" font-weight="400" fill="#4f5d75" text-anchor="start">0..* = historical children</text>
+<text x="1243.2" y="1076" font-size="9" font-family="Geist,Arial,sans-serif" font-weight="400" fill="#4f5d75" text-anchor="start">Editorial focus; not aggregate root</text>
+<line x1="72" y1="260" x2="328" y2="260" stroke="#bfc0c0" stroke-width="0.6"/>
+<line x1="384" y1="260" x2="640" y2="260" stroke="#bfc0c0" stroke-width="0.6"/>
+<line x1="696" y1="260" x2="952" y2="260" stroke="#bfc0c0" stroke-width="0.6"/>
+<line x1="72" y1="460" x2="328" y2="460" stroke="#bfc0c0" stroke-width="0.6"/>
+<line x1="384" y1="460" x2="640" y2="460" stroke="#bfc0c0" stroke-width="0.6"/>
+<line x1="696" y1="460" x2="952" y2="460" stroke="#bfc0c0" stroke-width="0.6"/>
+<line x1="72" y1="660" x2="328" y2="660" stroke="#bfc0c0" stroke-width="0.6"/>
+<line x1="384" y1="660" x2="640" y2="660" stroke="#bfc0c0" stroke-width="0.6"/>
+<line x1="696" y1="660" x2="952" y2="660" stroke="#bfc0c0" stroke-width="0.6"/>
+<line x1="72" y1="860" x2="328" y2="860" stroke="#bfc0c0" stroke-width="0.6"/>
+<line x1="384" y1="860" x2="640" y2="860" stroke="#bfc0c0" stroke-width="0.6"/>
+<line x1="1056" y1="260" x2="1248" y2="260" stroke="#bfc0c0" stroke-width="0.6"/>
+<line x1="1320" y1="260" x2="1512" y2="260" stroke="#bfc0c0" stroke-width="0.6"/>
+<line x1="1056" y1="460" x2="1248" y2="460" stroke="#bfc0c0" stroke-width="0.6"/>
+<line x1="1320" y1="460" x2="1512" y2="460" stroke="#bfc0c0" stroke-width="0.6"/>
+<line x1="1056" y1="660" x2="1248" y2="660" stroke="#bfc0c0" stroke-width="0.6"/>
+<line x1="1320" y1="660" x2="1512" y2="660" stroke="#bfc0c0" stroke-width="0.6"/>
+<line x1="1056" y1="860" x2="1248" y2="860" stroke="#bfc0c0" stroke-width="0.6"/>
+<line x1="1320" y1="860" x2="1512" y2="860" stroke="#bfc0c0" stroke-width="0.6"/>
+<g data-cardinality="card-0-source"><rect x="340" y="252" width="16" height="12" rx="2" fill="#f5f5f5"/><text x="348" y="261" font-size="8" font-family="Geist Mono,Courier New,monospace" font-weight="400" fill="#4f5d75" text-anchor="middle">1</text></g>
+<g data-cardinality="card-0-target"><rect x="346" y="280" width="28" height="12" rx="2" fill="#f5f5f5"/><text x="360" y="289" font-size="8" font-family="Geist Mono,Courier New,monospace" font-weight="400" fill="#4f5d75" text-anchor="middle">0..*</text></g>
+<g data-cardinality="card-1-source"><rect x="650" y="880" width="28" height="12" rx="2" fill="#f5f5f5"/><text x="664" y="889" font-size="8" font-family="Geist Mono,Courier New,monospace" font-weight="400" fill="#4f5d75" text-anchor="middle">0..1</text></g>
+<g data-cardinality="card-1-target"><rect x="658" y="652" width="28" height="12" rx="2" fill="#f5f5f5"/><text x="672" y="661" font-size="8" font-family="Geist Mono,Courier New,monospace" font-weight="400" fill="#4f5d75" text-anchor="middle">0..*</text></g>
+<g data-cardinality="card-2-source"><rect x="668" y="452" width="16" height="12" rx="2" fill="#f5f5f5"/><text x="676" y="461" font-size="8" font-family="Geist Mono,Courier New,monospace" font-weight="400" fill="#4f5d75" text-anchor="middle">1</text></g>
+<g data-cardinality="card-2-target"><rect x="548" y="334" width="28" height="12" rx="2" fill="#f5f5f5"/><text x="562" y="343" font-size="8" font-family="Geist Mono,Courier New,monospace" font-weight="400" fill="#4f5d75" text-anchor="middle">0..*</text></g>
+<g data-cardinality="card-3-source"><rect x="424" y="334" width="16" height="12" rx="2" fill="#f5f5f5"/><text x="432" y="343" font-size="8" font-family="Geist Mono,Courier New,monospace" font-weight="400" fill="#4f5d75" text-anchor="middle">1</text></g>
+<g data-cardinality="card-3-target"><rect x="412" y="398" width="28" height="12" rx="2" fill="#f5f5f5"/><text x="426" y="407" font-size="8" font-family="Geist Mono,Courier New,monospace" font-weight="400" fill="#4f5d75" text-anchor="middle">0..*</text></g>
+<g data-cardinality="card-4-source"><rect x="488" y="534" width="16" height="12" rx="2" fill="#f5f5f5"/><text x="496" y="543" font-size="8" font-family="Geist Mono,Courier New,monospace" font-weight="400" fill="#4f5d75" text-anchor="middle">1</text></g>
+<g data-cardinality="card-4-target"><rect x="476" y="598" width="28" height="12" rx="2" fill="#f5f5f5"/><text x="490" y="607" font-size="8" font-family="Geist Mono,Courier New,monospace" font-weight="400" fill="#4f5d75" text-anchor="middle">0..*</text></g>
+<g data-cardinality="card-5-source"><rect x="560" y="798" width="16" height="12" rx="2" fill="#f5f5f5"/><text x="568" y="807" font-size="8" font-family="Geist Mono,Courier New,monospace" font-weight="400" fill="#4f5d75" text-anchor="middle">1</text></g>
+<g data-cardinality="card-5-target"><rect x="548" y="734" width="28" height="12" rx="2" fill="#f5f5f5"/><text x="562" y="743" font-size="8" font-family="Geist Mono,Courier New,monospace" font-weight="400" fill="#4f5d75" text-anchor="middle">0..*</text></g>
+<g data-cardinality="card-6-source"><rect x="340" y="852" width="16" height="12" rx="2" fill="#f5f5f5"/><text x="348" y="861" font-size="8" font-family="Geist Mono,Courier New,monospace" font-weight="400" fill="#4f5d75" text-anchor="middle">1</text></g>
+<g data-cardinality="card-6-target"><rect x="346" y="880" width="28" height="12" rx="2" fill="#f5f5f5"/><text x="360" y="889" font-size="8" font-family="Geist Mono,Courier New,monospace" font-weight="400" fill="#4f5d75" text-anchor="middle">0..*</text></g>
+<g data-cardinality="card-7-source"><rect x="1260" y="252" width="16" height="12" rx="2" fill="#f5f5f5"/><text x="1268" y="261" font-size="8" font-family="Geist Mono,Courier New,monospace" font-weight="400" fill="#4f5d75" text-anchor="middle">1</text></g>
+<g data-cardinality="card-7-target"><rect x="1282" y="252" width="28" height="12" rx="2" fill="#f5f5f5"/><text x="1296" y="261" font-size="8" font-family="Geist Mono,Courier New,monospace" font-weight="400" fill="#4f5d75" text-anchor="middle">0..*</text></g>
+<g data-cardinality="card-8-source"><rect x="1292" y="284" width="16" height="12" rx="2" fill="#f5f5f5"/><text x="1300" y="293" font-size="8" font-family="Geist Mono,Courier New,monospace" font-weight="400" fill="#4f5d75" text-anchor="middle">1</text></g>
+<g data-cardinality="card-8-target"><rect x="1116" y="598" width="28" height="12" rx="2" fill="#f5f5f5"/><text x="1130" y="607" font-size="8" font-family="Geist Mono,Courier New,monospace" font-weight="400" fill="#4f5d75" text-anchor="middle">0..*</text></g>
+<g data-cardinality="card-9-source"><rect x="1260" y="652" width="16" height="12" rx="2" fill="#f5f5f5"/><text x="1268" y="661" font-size="8" font-family="Geist Mono,Courier New,monospace" font-weight="400" fill="#4f5d75" text-anchor="middle">1</text></g>
+<g data-cardinality="card-9-target"><rect x="1282" y="652" width="28" height="12" rx="2" fill="#f5f5f5"/><text x="1296" y="661" font-size="8" font-family="Geist Mono,Courier New,monospace" font-weight="400" fill="#4f5d75" text-anchor="middle">0..*</text></g>
+<g data-cardinality="card-10-source"><rect x="1392" y="734" width="16" height="12" rx="2" fill="#f5f5f5"/><text x="1400" y="743" font-size="8" font-family="Geist Mono,Courier New,monospace" font-weight="400" fill="#4f5d75" text-anchor="middle">1</text></g>
+<g data-cardinality="card-10-target"><rect x="1380" y="798" width="28" height="12" rx="2" fill="#f5f5f5"/><text x="1394" y="807" font-size="8" font-family="Geist Mono,Courier New,monospace" font-weight="400" fill="#4f5d75" text-anchor="middle">0..*</text></g>
+<g data-cardinality="card-11-source"><rect x="1128" y="734" width="16" height="12" rx="2" fill="#f5f5f5"/><text x="1136" y="743" font-size="8" font-family="Geist Mono,Courier New,monospace" font-weight="400" fill="#4f5d75" text-anchor="middle">1</text></g>
+<g data-cardinality="card-11-target"><rect x="1116" y="798" width="28" height="12" rx="2" fill="#f5f5f5"/><text x="1130" y="807" font-size="8" font-family="Geist Mono,Courier New,monospace" font-weight="400" fill="#4f5d75" text-anchor="middle">0..*</text></g></svg></div>
+<p class="source-note">View: ER. A3 landscape, 1584 × 1120. Default light style.
+The matching PNG contains editable draw.io data. Supplied font fallbacks: Georgia, Arial and Courier New. Domain source, evidence and limitations: <a href="domain-model.md">domain model</a> and <a href="README.md">domain guide</a>.</p>
+</main></body></html>

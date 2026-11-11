@@ -1,3 +1,11 @@
+---
+name: Scope Upsert API Specification
+description: Defines JWT administration, current credentials and atomic scope lifecycle/usage checks; read when reviewing or implementing scope upsert.
+status: in-review
+approved_by: null
+approved_at: null
+---
+
 # [POST]: v1/author/scope/upsert
 
 | Title       | Description                                                                                                                                                                                                                                                        |
@@ -45,11 +53,40 @@
 
 - `scope` is unique among scopes that are not DELETED. The comparison is exact and a value held by an INACTIVE, LOCKED or ARCHIVED scope is still taken (409, E10003). The value of a DELETED scope can be used again.
 - `scope` is the scope code: capital letters, digits and `_`, starting with a letter (max 64 characters), for example `ALL`, `SHOP`, `OWN` (400, E10001). Every field that is not optional is required in every request, including a delete and an archive.
-- DELETED is final: a DELETED scope is never reopened and its `id` counts as not found (404, E10004). INACTIVE, LOCKED and ARCHIVED are reversible: an update with `rowStatus` ACTIVE opens the scope again. `rowStatus` DELETED is rejected with 400 (E10001) when the request inserts a scope. A scope that is not ACTIVE gives no right to anyone.
+- DELETED is final: a DELETED scope is never reopened and its `id` counts as not found (404, E10004). INACTIVE, LOCKED and ARCHIVED are reversible: an update with `rowStatus` ACTIVE opens the scope again. `rowStatus` DELETED is rejected with 400 (E10001) when the request inserts a scope. A scope that is not ACTIVE is excluded from newly resolved login/refresh claims; an already-issued access token keeps its previous claims until expiry (Q4/Q7).
 - A scope cannot be deleted or archived while a permission (`author.t_permission_scope`) that is not DELETED still uses it (409, E10006). INACTIVE and LOCKED are allowed, the rows that use it are not changed.
-- Permission: only a platform administrator (a user with an ACTIVE `author.t_user_role` row for the ACTIVE role `PLATFORM_ADMIN`) can call this API, any other caller gets 403 (E10009), after the existence check and before the duplicate check. Approved by the product owner (answered through the lead SA, 2026-11-06).
-- Execution order: validate the request (400) -> existence check (404) -> permission (403, E10009) -> no other check -> duplicate check (409, E10003) -> in-use check (409, E10006, only when `rowStatus` is DELETED or ARCHIVED) -> write.
+- Permission: only a platform administrator from the verified JWT roles claim can call this API; require exact case-sensitive role name PLATFORM_ADMIN. A valid non-admin claim returns 403 E10009 after optional target existence and before conflicts. No live caller-assignment or request-flag fallback. Approved by the product owner (Q2/Q4/Q10/Q13); this supersedes the earlier live-grant guard.
+- Execution order: validate the request (400) -> verify JWT (401) -> begin transaction (READ COMMITTED) -> caller user lock -> fresh current credentials (401) -> locked target existence (404, only when id supplied) -> permission (403, E10009) -> duplicate check (409 E10003) -> existing-target in-use check for DELETED/ARCHIVED (409 E10006) -> guarded write -> complete mapping -> COMMIT -> response. Every post-BEGIN rejection rolls back.
 - HTTP status of the single upsert: Insert 201 Created, Update 200 Ok, Delete 204 No Content (no response body), Archive 200 Ok.
+
+### Credential, Lifecycle and Transaction Rules
+
+- Governing design: [owner-confirmed review](../../../../../docs/superpowers/specs/2026-11-07-api-review-design.md), Q2/Q4/Q7/Q10/Q13/Q15, and approved author design A8/A12/A14/A15. Detailed revision remains in-review; no schema/backend implementation.
+- Validate one JSON object allowing only id/scope/name/description/rowStatus, no repeated/unknown body/query keys, JSON content type and mandatory UTC timestamp before SQL. id is optional only by omission and is a non-null UUID when supplied. Required scope/name/description are non-null nonblank strings, maximum 64/64/256 characters; scope matches ^[A-Z][A-Z0-9_]{0,63}$. Preserve supplied text without trimming/case-normalization. Parent status defaults to ACTIVE only when omitted and otherwise is ACTIVE/INACTIVE/DELETED/LOCKED/ARCHIVED; insert-DELETED is 400 E10001. All required fields remain mandatory on delete/archive. Generate requestId when omitted.
+- Verify JWT signature/issuer/audience/expiry/UUID sub and structured unique roles before BEGIN. roles must be an array including [], each role has UUID roleId/non-empty name and roleIds are unique. Malformed/missing roles is generic 401 E10002, never [] or live-grant fallback. callerUserId = verified sub; accessTokenHash = SHA-256 exact JWT. createdBy/updatedBy are the caller UUID string and now is fresh server UTC, never request audit values or timestamp.
+- Begin READ COMMITTED and lock caller user first. Missing caller is 401 with rollback. Capture fresh server UTC now after caller lock and recheck JWT exp; require matching hash/caller, ACTIVE token/user and strict expired_at > now. Revoked/inactive/expired/mismatched credentials are generic 401 before any target scope lookup. Logout/reset share this user-first lock. Grant withdrawal alone does not revoke current old claims; refresh resolves latest rights.
+- For supplied id lock the non-DELETED scope FOR UPDATE, then reject missing/DELETED as 404 E10004 before permission. Do not reopen a deleted target. Authorize only exact PLATFORM_ADMIN in verified JWT roles after current credentials/optional target existence. [] or any other valid role name gives 403 E10009 You do not have permission to manage scopes.; do not query live caller role grants or infer authority from scope code.
+- Duplicate scope exclusion is null-safe: omitted insert id binds typed SQL NULL, not a string or zero UUID. The current row can keep its code. Scope-code uniqueness spans every non-DELETED master, including INACTIVE/LOCKED/ARCHIVED; a DELETED master's code can be reused by a new id. Existing scope codes, including seed codes, remain editable under the original contract; no reserved-code or immutability rule is added. Labels/description remain editable and no permission definition or grant history is rewritten.
+- Lock order is caller user -> target scope -> usage reads/write. Reference writers adding/retaining an ACTIVE permission-scope definition must lock/recheck their permission parents and then scope masters ordered by id before link mutation, as in the separately delivered permission APIs. A soft master status is not protected by a foreign key alone. Q23 withdrawal may skip master ACTIVE validation and only reduces usage; it does not authorize creating a link to a closed master. These reference SQL tests do not certify unmigrated writers or backend implementations.
+- Check t_permission_scope usage only for an existing target requested DELETED/ARCHIVED. Any non-DELETED definition, including INACTIVE/LOCKED/ARCHIVED, blocks with 409 E10006 Scope is used by permissions., regardless of its parent permission's lifecycle. No parent/master/grant JOIN or ACTIVE-only filter may hide usage. INACTIVE/LOCKED or ordinary metadata/code updates retain links and are allowed; they affect newly resolved claims only. Insert-ARCHIVED is allowed and returns 201 INSERT, with no target/in-use check.
+- Bind all values. INSERT explicitly sets created_at and must return exactly one scope_id UUID; missing/malformed result is generic 500. UPDATE guards id and non-DELETED status; zero returned rows is 404 E10004 with whole-request rollback. The returned existing scope_id must equal the requested id. Preserve created_by/created_at on UPDATE. Any SQL/result/mapping failure restores provisional status/code/name/description/audit changes.
+- Map exactly data.scopeId from RETURNING before COMMIT. Insert is 201 S10000 Insert Scope Success, existing delete is 204 with no body/status/data, existing archive is 200 S10000 Archive Scope Success, and other existing updates are 200 S10000 Update Scope Success. Exclude caller/token/audit/definition/grant rows. No partial result or success before commit.
+- SQLSTATE 23505 from uq_m_scope_scope is the final concurrent uniqueness guard and maps to 409 E10003 Scope scope already exists. after full rollback. Preserve this existing business message. Other SQL/result/mapping errors roll back and return generic 500 without bizCode. Timeout before COMMIT rolls back and returns 408 E90001. No retry is promised for an unknown commit result.
+
+#### Scenario correspondence with sequence.wsd
+
+| Scenario                                                                | Outcome                            | Effects                                |
+| ----------------------------------------------------------------------- | ---------------------------------- | -------------------------------------- |
+| Invalid input / invalid JWT or malformed roles                          | 400 E10001 / 401 E10002 before SQL | None                                   |
+| Missing caller, expiry during caller wait or current credential failure | Generic 401 E10002                 | Rollback before target lookup          |
+| Missing/DELETED target / valid non-admin claims                         | 404 E10004 / 403 E10009            | No conflict/write work                 |
+| Non-DELETED code collision / concurrent unique-index collision          | 409 E10003                         | Whole transaction rollback             |
+| Existing delete/archive with any non-DELETED definition                 | 409 E10006                         | Master, references and audit unchanged |
+| Existing metadata/code edit or INACTIVE/LOCKED with links               | 200, links retained                | One guarded master update              |
+| Insert including ARCHIVED                                               | 201, exactly scopeId               | New server-generated id                |
+| Existing update/archive/delete                                          | 200 / 200 / 204 with no body       | Guarded update, one commit             |
+| Concurrent master deletion / zero guarded update                        | 404 E10004                         | No resurrection or partial mutation    |
+| SQL/result/mapping failure / timeout                                    | Generic 500 / 408 E90001           | Rollback                               |
 
 #### Example Body Parameters
 
@@ -362,9 +399,54 @@ HTTP/1.1 204 No Content
 }
 ```
 
+#### Fail - Internal Server Error
+
+```JSON
+{
+    "status": {
+        "code": 500,
+        "message": "Internal Server Error",
+        "bizMessage": "An unexpected error occurred.",
+        "requestId": "req-scope-upsert-review",
+        "timestamp": "2026-11-09T00:00:00.123Z",
+        "status": "ERROR"
+    }
+}
+```
+
 ---
 
 ## Database Relations
+
+One READ COMMITTED transaction. Caller identity is separate from the optional target id; all values and fresh UTC time are bound. Caller lock precedes current credentials and optional target lock. Usage reads protect master lifecycle only, never caller authorization.
+
+### Table: [authen.m_user](../../../schema/authen/m_user.md)
+
+#### QUERY - Lock the caller user
+
+```SQL
+SELECT
+    u.id as user_id
+FROM authen.m_user u
+WHERE u.id = '<sequence.callerUserId>'
+FOR UPDATE
+```
+
+### Table: [authen.t_user_access_token](../../../schema/authen/t_user_access_token.md)
+
+#### QUERY - Check current credential and user
+
+```SQL
+SELECT
+    at.id as access_token_id
+FROM authen.t_user_access_token at
+JOIN authen.m_user u ON u.id = at.user_id
+WHERE at.token = '<sequence.accessTokenHash>'
+AND at.user_id = '<sequence.callerUserId>'
+AND at.row_status = 'ACTIVE'
+AND at.expired_at > '<sequence.now>'
+AND u.row_status = 'ACTIVE'
+```
 
 ### Table: [author.m_scope](../../../schema/author/m_scope.md)
 
@@ -376,7 +458,10 @@ SELECT
 FROM author.m_scope s
 WHERE s.id = '<sequence.id>'
 AND s.row_status <> 'DELETED' -- the id of a DELETED scope counts as not found
+FOR UPDATE
 ```
+
+### Table: [author.m_scope](../../../schema/author/m_scope.md)
 
 #### QUERY - Check duplicate scope
 
@@ -386,42 +471,7 @@ SELECT
 FROM author.m_scope s
 WHERE s.scope = '<sequence.scope>'
 AND s.row_status <> 'DELETED'
-AND s.id <> '<sequence.id>' -- only when id is specified
-```
-
-#### INSERT - Create scope
-
-```SQL
-INSERT INTO author.m_scope (
-    created_by,
-    row_status,
-    scope,
-    name,
-    description
-)
-VALUES (
-    '<sequence.createdBy>',
-    '<sequence.rowStatus>',
-    '<sequence.scope>',
-    '<sequence.name>',
-    '<sequence.description>'
-)
-RETURNING id as scope_id
-```
-
-#### UPDATE - Update or delete scope
-
-```SQL
-UPDATE author.m_scope
-SET
-    updated_by = '<sequence.updatedBy>',
-    updated_at = NOW() AT TIME ZONE 'UTC',
-    row_status = '<sequence.rowStatus>',
-    scope = '<sequence.scope>',
-    name = '<sequence.name>',
-    description = '<sequence.description>'
-WHERE id = '<sequence.id>'
-RETURNING id as scope_id
+AND ('<sequence.id>' IS NULL OR s.id <> '<sequence.id>') -- omitted insert id is typed SQL NULL
 ```
 
 ### Table: [author.t_permission_scope](../../../schema/author/t_permission_scope.md)
@@ -436,27 +486,44 @@ WHERE ps.scope_id = '<sequence.id>' -- only when rowStatus is DELETED or ARCHIVE
 AND ps.row_status <> 'DELETED'
 ```
 
-### Table: [author.m_role](../../../schema/author/m_role.md)
+### Table: [author.m_scope](../../../schema/author/m_scope.md)
 
-#### QUERY - Get the platform administrator role
+#### INSERT - Create scope
 
 ```SQL
-SELECT
-    r.id as role_id
-FROM author.m_role r
-WHERE r.name = 'PLATFORM_ADMIN'
-AND r.row_status = 'ACTIVE'
+INSERT INTO author.m_scope (
+    created_by,
+    created_at,
+    row_status,
+    scope,
+    name,
+    description
+)
+VALUES (
+    '<sequence.createdBy>',
+    '<sequence.now>',
+    '<sequence.rowStatus>',
+    '<sequence.scope>',
+    '<sequence.name>',
+    '<sequence.description>'
+)
+RETURNING id as scope_id
 ```
 
-### Table: [author.t_user_role](../../../schema/author/t_user_role.md)
+### Table: [author.m_scope](../../../schema/author/m_scope.md)
 
-#### QUERY - Check platform administrator
+#### UPDATE - Update or delete scope
 
 ```SQL
-SELECT
-    ur.id as user_role_id
-FROM author.t_user_role ur
-WHERE ur.user_id = '<sequence.userId>'
-AND ur.role_id = '<sequence.roleId>'
-AND ur.row_status = 'ACTIVE'
+UPDATE author.m_scope
+SET
+    updated_by = '<sequence.updatedBy>',
+    updated_at = '<sequence.now>',
+    row_status = '<sequence.rowStatus>',
+    scope = '<sequence.scope>',
+    name = '<sequence.name>',
+    description = '<sequence.description>'
+WHERE id = '<sequence.id>'
+AND row_status <> 'DELETED'
+RETURNING id as scope_id
 ```

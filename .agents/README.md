@@ -66,10 +66,10 @@ Skills marked `placeholder` are unavailable until designed. Design each `SKILL.m
 | `skills/requirement-analysis/SKILL.md` | placeholder | Reserved |
 | `skills/spec-authoring/SKILL.md` | placeholder | Reserved |
 | `skills/system-modeling/SKILL.md` | placeholder | Reserved |
-| `skills/dotnet-backend-development/SKILL.md` | placeholder | Reserved |
+| `skills/backend-development/SKILL.md` | ready | Implementing approved backend features, fixing implementation bugs or refactoring in any stack with spec-first clarification and meaningful test-first DB/API evidence |
 | `skills/test-design/SKILL.md` | placeholder | Reserved |
 | `skills/code-review/SKILL.md` | placeholder | Reserved |
-| `skills/diagram-creator/SKILL.md` | placeholder | Reserved |
+| `skills/diagram-creator/SKILL.md` | ready | Creating, updating or reviewing system diagrams from specs, code or DB evidence, with editable artifacts and rendered review |
 
 The ready skills carry their own `references/`, `assets/` (templates ending in `.tmpl`), and `scripts/`; load those files only when the skill's procedure points to them.
 

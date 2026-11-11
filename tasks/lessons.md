@@ -5,7 +5,98 @@ description: Repository-wide and project-specific lessons captured from user cor
 
 # Lessons
 
+### 2026-11-09 — Preserve structure during whole-document translation
+
+- **Error**: Draft translation review found remaining Thai and displaced headings/table rows after several replacements used incorrect numeric line offsets.
+- **Root cause**: Positional replacement assumed line numbers for a long document without proving the original structural inventory.
+- **Correction**: Rebuild from the saved source with corrected mappings, then compare numbered headings, every table's row/column structure, code-fence count and the complete link-target multiset. Check the entire guide for remaining source-language characters.
+- **Preventive resource**: The translation gate in `.agents/skills/commit-and-pr/references/checklist.md` requires whole-artifact language and structural-preservation checks, including comments/captions, before publication. The captured faulty draft must fail the same gate and the corrected guide must pass.
+
+### 2026-11-09 — Cover all requested layers and their sub-layers
+
+- **Correction**: The owner asked why the meaning/scope section explained mainly Service = Domain, then required every layer and sub-layer to be explained.
+- **Root cause**: The latest terminology discussion displaced the guide's system-wide scope; a five-row overview and file inventory were treated as sufficient coverage of other layers.
+- **Corrected behavior**: Introduce the whole architecture first and give each requested layer/sub-layer its purpose, owned work, input/output, boundaries, collaborators, source example and evidence status. Keep Service = Domain in its proper Domain context and inspect the full document after a scope correction.
+- **Preventive resource**: `.agents/skills/commit-and-pr/references/checklist.md` now requires explicit substantive scope coverage before publication; names, diagram boxes and successful link checks alone are insufficient. Verify the current guide against the complete five-layer/sub-layer inventory and confirm the earlier Domain-focused introduction would fail that coverage gate.
+- **Delivery check exercised**: Preflight caught an extra blank line at EOF introduced by the scripted section append; per-line trailing-whitespace checks had not detected that whole-file condition. The guide was normalized to one final newline, the existing whitespace checklist now requires that normalization after scripted edits, and the document validator checks the same condition. A captured failing file confirms the guard rejects the original defect before the corrected checks are rerun; no publication occurred with the blocker.
+- **Integration check exercised**: Current main and this task inserted independent sections at the same position in `tasks/todo.md`, causing a real merge conflict. The resolution retains both complete sections and proves that removing this task's section reproduces incoming main byte-for-byte. The integration gate in `.agents/skills/commit-and-pr/references/checklist.md` now explicitly requires complete-section preservation and a non-task-content comparison for this conflict shape.
+
+### 2026-11-08 — Show real decomposition and choose semantics before layout
+
+- **Correction**: The owner rejected the detail and layer grouping across the whole diagram set. Application must expose Command/Query, Validator and Handler as smaller boxes inside its layer; different diagram meanings must be researched before rendering.
+- **Root cause**: The shared flat-card renderer and short node budget shaped the models before their analytical viewpoints and ownership hierarchy were settled. Long bullet lists substituted for actual subcomponents; several operational checkpoints were also presented using the same state/card grammar.
+- **Corrected behavior**: Define the question, notation, ownership/decomposition levels and edge semantics for every diagram first. Use true native parent/child containment for structural views, time/activation/fragments for sequence, state/guard/effect for lifecycle, physical host/artifact placement for deployment, entity/field/cardinality for document models, and lanes/actions/gates for recovery. Do not force application layers into unrelated business or data views. Visually compare the complete set and verify the requested sublayers are actual editable child boxes rather than descriptive rows.
+
+### 2026-11-08 — Preserve the owner's `Domain` business-logic convention
+
+- **Correction**: The Domain layer also needs a child named `Domain` for reusable business logic, with the owner-specified example path `src/Ecommerce.Domain/Authen/Domain/`. The owner further clarified “service = domain เลยความหมายเดียวกัน” when discussing code structure.
+- **Root cause**: Decomposition stopped at entities, value objects and repository contracts, omitting reusable domain operations and the project's chosen naming. Generic terminology distinctions also obscured the owner's intended business-code area.
+- **Corrected behavior**: Use Service = Domain for reusable business operations in this project's code-structure discussion and preserve the owner-selected `Domain/` name instead of replacing it with Services/Policies. Show `Domain` explicitly under the Domain layer and the feature's physical path in the repository view. Explain reusable rules separately from handler orchestration and entity invariants; infrastructure services and database-domain associations still have their own roles. Treat tax calculation as a generic example owned by the relevant business feature, not an implemented Authen capability; distinguish owner-directed design from the pinned source baseline.
+
 ## Repository-wide
+
+### 2026-11-09 — Localize questions and learn from every actual issue
+
+- **Correction**: The owner requires English question topics, Thai question bodies with English technical terms, and a preventive skill improvement after every actual bug, conflict or issue.
+- **Root cause**: The question example was entirely English, while the previous learning-loop correction narrowed the trigger to execution mistakes and excluded an assigned existing bug when the guidance already described its fix.
+- **Corrected behavior**: The backend skill's clarification reference now defines the language contract and demonstrates all four required explanations in Thai. Its learning/completion rules and verification reference explicitly include existing bugs, Git/spec conflicts and tooling issues. Record one underlying issue per occurrence, link deliberate TDD red evidence to it and verify both the correction and the exact skill/resource improvement.
+- **Tooling evidence**: The first branch action was not executed because automatic approval review could not run due to a usage limit. No alternate route was used; retrying through the same approval gate after the user's continuation succeeded. The skill now distinguishes review-service failure from a completed review and requires protected actions to resume through that gate.
+- **Verification issue**: A temporary question checker expected the label colon outside Markdown bold and rejected the valid colon-inside form. The enclosing shell also ended with a successful diff command, so its final exit code did not represent the earlier assertion failure. The checker now validates normalized question content, and checks run with independently preserved exit statuses; the verification reference records both safeguards.
+- **Independent replay**: The evaluator encountered the same false negative on an answer-choice label. The verification guard now explicitly covers question and choice labels plus valid/malformed controls. Three independently generated questions satisfy English topics, four ordered Thai explanations and Thai choice explanations; five issue-classification cases preserve required learning and scope boundaries without rerunning application tests.
+
+### 2026-11-09 — Distinguish test evidence from execution mistakes
+
+- **Error**: Independent evaluation found the backend skill's blanket error-improvement rule also treated a deliberately red test and faithful reproduction of the input bug as fresh workflow mistakes, making a successful sandbox bug fix require an unauthorized skill edit.
+- **Root cause**: The term error conflated expected business/test outcomes with failures in carrying out the method, and the improvement loop did not explicitly handle an assigned read-only or component-only boundary.
+- **Corrected behavior**: `.agents/skills/backend-development/SKILL.md` now keeps preventive skill updates mandatory for every actual execution mistake or owner/reviewer correction, identifies planned red/reproduction as evidence, and requires a concrete scope question before editing a skill outside authorization. Preserve pending improvement status when that scope decision is unavailable.
+- **Verification**: Independent prose replay of the original stock/read-only scenarios confirmed the gap is resolved, with no new material conflict. The initial evaluation report and Python fixture implementation/tests were preserved; their recorded four green SQLite tests were referenced without rerunning unchanged code.
+- **Later owner clarification**: The execution-only limit is superseded by the policy above: an assigned real bug also requires a preventive skill improvement. A deliberate red test remains evidence rather than a separate incident, but does not remove the learning obligation for the bug it reproduces. The initial evaluation remains historical evidence under its earlier policy.
+
+### 2026-11-09 — Explain each delivered file individually
+
+- **Correction**: The owner requested a file name with a nested summary for every changed file when presenting a PR.
+- **Root cause**: The delivery formats grouped PR changes by area and allowed the chat's Included field to collapse the inventory into file counts, hiding each file's purpose.
+- **Corrected behavior**: Follow the per-file change-list contract in `.agents/skills/commit-and-pr/references/formats.md` for PR Changes and chat Included; verify its inventory against the final integrated PR diff and describe each file's actual change.
+
+### 2026-11-09 — Improve delivery guidance after every error
+
+- **Correction**: The owner requires errors in `commit-and-pr` to improve the skill as well as the immediate delivery result.
+- **Root cause**: The delivery skill required resolving failures before publication but had no mandatory step that feeds each failure back into its reusable instructions.
+- **Corrected behavior**: Apply the error improvement loop in `.agents/skills/commit-and-pr/SKILL.md` for self-discovered, check/integration/publication and review failures. Verify the preventive change, record its path and evidence, and preserve all delivery authorization and protected-branch boundaries.
+- **Applied evidence**: The Python skill validator could not start because PyYAML was missing. The new loop was strengthened to distinguish startup failures from validation findings and require explicit coverage/gaps for equivalent checks; Ruby YAML parsing and direct metadata/reference checks verify this prose-only change without claiming the original validator ran.
+- **Scope evidence**: A publication check incorrectly required the entire shared checkout to be clean while another task edited `e-commerce/doc/code-structure.md`. Verification now checks this task's paths and final branch diff separately; the skill's merged-result step explicitly requires inventorying/preserving unrelated working-tree edits rather than rejecting them as task failures.
+
+### 2026-11-08 — Feed every API authoring error back into the skill
+
+- **Correction**: The owner requires every error to produce a skill improvement as well as a correction to the work.
+- **Root cause**: The API skill's completion criteria covered artifact verification but did not require every discovered failure to improve the reusable authoring method.
+- **Corrected behavior**: Apply the error improvement loop in `.agents/skills/api-contract-design/SKILL.md` for self-discovered, tooling/check/render and review failures; complete and verify the preventive skill change before closing the task.
+- **Applied evidence**: Delivery rebase stopped because two independent task sections were inserted at the same position in `tasks/todo.md`. Both sections were retained and all upstream task content was verified byte-for-byte. The loop's correction step now explicitly requires preserving valid overlapping edits and verifying unrelated content.
+### 2026-11-08 — Integrate current main before PR publication
+
+- **Correction**: The owner requires merging current main into the task branch and resolving conflicts before opening a PR.
+- **Root cause**: The delivery skill went directly from task commit to push/PR, while its blanket merge prohibition also obscured the permitted direction of integration.
+- **Corrected behavior**: The `commit-and-pr` skill now distinguishes main-to-task integration from merging a PR. Fetch the base, merge into the task branch, preserve valid work on both sides, verify the merged result and publish only after the integration gate passes; keep main and published history protected.
+
+### 2026-11-08 — Keep required skill examples inside the skill
+
+- **Correction**: The sequence guidance required reading a particular endpoint's diagram to learn its format and storytelling, so moving or deleting that file would remove the example.
+- **Root cause**: A live project artifact was treated as the durable definition of reusable authoring conventions.
+- **Corrected behavior**: Put the full presentation rules and a complete illustrative example in the skill or its bundled reference. Use the target spec for actual behavior and SQL; required instructional examples must remain available independently of the project file that inspired them.
+
+### 2026-11-08 — Reconcile renderer consumers during a rename/modify conflict
+
+- **Correction**: The owner reported PR #64's conflict at the original `e-commerce/diagram/generate_diagrams.py` path after main added the Domain diagram package.
+- **Root cause**: The PR relocated shared helpers to `scripts/` while main added `output_dir` support and a Domain generator importing helpers from their former location. Choosing either side of the conflict alone would lose behavior or break imports.
+- **Corrected behavior**: Combine explicit output directories with routed defaults, update incoming consumers and navigation, and run both generator families. Preserve existing models/PNGs and verify their hashes against each parent; resolving conflict markers alone is insufficient.
+
+
+### 2026-11-08 — Check a replacement agent's workspace before offering it
+
+- **Correction**: After Logan was found unregistered, the owner chose Jinny, but Jinny's managed workspace was already locked by another active task. The owner then directed this task to use a separate workspace.
+- **Root cause**: Identity validation and workspace availability were checked in separate rounds, so the first proposed replacement could not actually start the work.
+- **Corrected behavior**: Check registration, active assignment and lock together before proposing a named replacement. Preserve another chat's work and lock. In this task, the owner's explicit separate-workspace direction authorizes a separate Codex worktree; this task-specific choice does not change the registry or the default managed-clone rule.
+
 
 ### 2026-11-06 — Keep agent reviews within the requested adaptation scope
 
@@ -273,3 +364,115 @@ description: Repository-wide and project-specific lessons captured from user cor
 - **Correction**: The checker pull request #54 was opened and not reported to the lead; the owner merged it before the lead had reviewed it. The lead asked to be told before the owner merges, every time.
 - **Root cause**: The report to the lead was left for the end of the task, as a part of the final handoff, so the gap between opening and merging was not covered.
 - **Corrected behavior**: Send the lead the link right after `gh pr create` and the first PR status call, before any other step, with the checks and the open questions; never leave it for the final report.
+
+### 2026-11-08 — Prove that every SQL line is drawn, not only that the SQL equals the spec
+
+- **Correction**: The INSERT written by hand in PR #58 had value lines that start with a quote after the indentation; PlantUML draws such a line as a comment, so six lines were missing from the picture. `api-sequence-spec` passed because it reads the raw text, and my first rendered check passed too because it asked only whether each line appears somewhere in the picture.
+- **Root cause**: The edit script encoded a line only when the quote was in the first column, and the rendered check used a substring test that a repeated line (`'<sequence.userId>',` appears twice) satisfies by luck.
+- **Corrected behavior**: Encode a leading quote after the indentation (`&#39;`), and check the render by counting: every SQL line must appear in the picture at least as many times as it appears in the spec.
+
+### 2026-11-08 — Preserve retired exemptions when updating a PR base
+
+- **Finding**: GitHub merge commit 87162eb restored the completed inquiry-profile token/timeout exemption that its first parent b1c5c90 had removed. Endpoint artifacts still passed their flow check, but the combined main failed api-sequence-spec.
+- **Root cause**: A shared checker contains both function logic and changing exemption lists; retaining functions alone does not prove that a merge preserved retired entries.
+- **Corrected behavior**: Compare function registrations and retired exemptions against both parents, run every registered check on the combined tree before delivery, and record/repair an existing failure within the authorized scope rather than masking it or weakening the check.
+
+### 2026-11-08 — Use the returned PR identity, never the next presumed number
+
+- **Finding**: After opening role-batch PR69, the rotation command mistakenly used 68, which another branch had already taken. The identity/head guard stopped rotation before changing active assignment history.
+- **Root cause**: A sequential PR number was assumed instead of consuming the URL returned by the create command; concurrent authors can take intervening numbers.
+- **Corrected behavior**: Capture the actual returned PR URL, verify repository/base/head branch/head commit before any lifecycle action, and pass that same verified URL throughout release/archive/rotation. Keep the identity guard; correct the input rather than relaxing it.
+
+### 2026-11-08 — A replacement PR does not authorize closing the original
+
+- **Finding**: Automatic approval review rejected closing PR67 after replacement PR73 opened because the owner had explicitly instructed leaving PRs open. No closure was performed.
+- **Root cause**: Replacement delivery was incorrectly treated as an exception to the earlier leave-open instruction.
+- **Corrected behavior**: Keep original PRs and branches intact unless the owner explicitly authorizes closing that specific PR; creating a replacement and resuming other work do not supply that authorization.
+
+### 2026-11-09 — Bind a narrative guard check to its actual phase
+
+- **Finding**: A permission mutation removing the before-count rule passed because the short phrase “every non-DELETED definition” also occurred in the unrelated duplicate rule.
+- **Root cause**: A global substring check could be satisfied by another paragraph and did not prove the Q22 count definition.
+- **Corrected behavior**: Require the complete beforeDefinitionCount clause, keep exact SQL and phase checks independent, and test synchronized SQL faults in both spec and sequence. Recheck: 66/66 isolated mutations and 10/10 synchronized faults are rejected; positive permission/SQL/render checks pass.
+
+### 2026-11-09 — Turn permission-review failures into bounded preventive guidance
+
+- **Findings**: A broad narrative needle survived deletion of its intended phase clause; a fixture reused a deleted first target while expecting a missing second target; a master-only comparison received API10; an aborted block had not created the later commit-message file. Optional crop inspection also lacked its dependency, and a guessed reference filename did not exist.
+- **Root causes**: Reused text, fixture state, helper domains and temporary inputs were assumed instead of checked. These failures either weakened evidence or stopped a validator before it produced evidence; they did not justify changing the approved API behavior.
+- **Corrected behavior and resources**: Strengthen `.agents/skills/api-contract-design/references/checker-patterns.md` for phase-bound mutations, synchronized SQL/flow faults and fixture/tool preconditions. Strengthen `.agents/skills/commit-and-pr/references/checklist.md` for current reference discovery, readable retry inputs and supported-domain preservation comparisons. Keep this work in its separately validated assignment instead of widening API19 metadata to pass preflight.
+- **Evidence**: The corrected single checker rejects 66 isolated plus 10 synchronized faults; the corrected batch checker rejects 93 isolated, 10 synchronized and four phase reorderings. Exact PostgreSQL fixtures pass, including the corrected later-missing-target assertion. Supported master expectations and full registrations compare successfully after integration. Actual SVG/PNG viewing plus counted SQL checks replace the unavailable optional crop; readable message input successfully produced merge 8d0d80a. Recheck and integration results for this guidance are recorded in the task and PR.
+### 2026-11-09 — Establish fixture lifecycle before asserting error precedence
+
+- **Finding**: A batch SQL fixture expected the missing second target index, but its first target had already been deleted in the preceding all-delete scenario. The actual contract correctly returned the first missing target.
+- **Root cause**: A scenario reused a lifecycle-mutated id without checking its precondition.
+- **Corrected behavior**: Use an existing ACTIVE fixture target for the first item, then assert the missing later index. Preserve the contract and checker. The full real PostgreSQL batch driver now passes, including all-target existence, 100-item results, whole-batch rollback and concurrency. Carry this fixture-precondition guidance into the separate bounded verification-guidance follow-up; keep API19 scope intact.
+
+### 2026-11-09 — Compare a checker helper only across its supported API family
+
+- **Finding**: An integration comparison called author_needles for author API10, which belongs to another checker; the comparison stopped with KeyError before producing evidence.
+- **Root cause**: The broad AUTHOR_SPECS registry was mistaken for the helper's supported master API01..09 domain.
+- **Corrected behavior**: Re-run the comparison over the supported master family, retain the full registration/function preservation check, and report that the failed validator did not establish coverage. Corrected comparison passes for every unaffected master API and COMMANDS exactly 57 -> 58. Carry this generic validator-domain requirement into the verification-guidance follow-up without widening the API19 diff.
+
+### 2026-11-09 — Adapt SQL aliases at token boundaries
+
+- **Finding**: The permission inquiry scratch generator replaced r. globally, turning author.m_permission into authop.m_permission in its count/page SQL. Review caught both blocks before delivery.
+- **Root cause**: A column-alias replacement also matched the suffix of the schema qualifier.
+- **Corrected behavior**: Use a word-boundary alias replacement, correct both SQL definitions and regenerate the unfinished sequence from the corrected spec. Strengthen `.agents/skills/api-contract-design/references/checker-patterns.md`; require exact schema-qualified relations in the focused checker and test synchronized wrong-schema mutations. Final audit/SQL/paired verification must establish the correction before publication.
+
+- **Related example finding**: The shared author_json parser accepts adjacent fenced JSON or a Request: prelude; newly inserted explanatory paragraphs made three examples invisible to it. Move those notes after their JSON blocks, preserve the helper and strengthen the same checker-patterns reference. Require all positive examples to parse before mutation testing.
+
+- **Related scripted-edit finding**: A follow-up replacement expected an already-renamed diagnostic and aborted before writing; later checks still ran because fail-fast handling began too late. Re-read the current anchor, assert one replacement, and start the entire dependent edit/check block with fail-fast handling. Strengthen the same checker-patterns instruction. Existing artifacts were preserved; final predicate and paired-mutation checks verify the corrected edit.
+
+### 2026-11-09 — Recover completed checks from evidence after a resumed chat
+
+- **Finding**: Resuming the scope review attempted to poll a prior process handle, but the runtime no longer knew that id.
+- **Root cause**: A process identifier was treated as durable across chat execution boundaries instead of reading the saved task output first.
+- **Corrected behavior**: Read the complete scope SQL log, which contains every PASS and the final ALL SCOPE UPSERT SQL FIXTURES PASSED marker; do not classify the expired handle as a failed SQL suite. Strengthen `.agents/skills/commit-and-pr/references/checklist.md` to recover from durable completion evidence and rerun only if incomplete. Subsequent checker/mutation/render and final integration evidence remain separate requirements. Log inspection now tests file existence and completion markers before reading results; a not-yet-created later-phase log is pending, not a failed suite. The final integrated SQL log has its explicit passing completion marker.
+
+### 2026-11-09 — Check copied execution hints when transaction-count tests fail
+
+- **Finding**: Scope checks/audit/database passed, but the skeleton suite reproduced a scope-only BEGIN count failure. Its copied execution-order comment contained BEGIN READ COMMITTED in addition to the one actual generated transaction command. The completed handwritten sequence was already correct.
+- **Root cause**: Execution prose reused an executable marker that the existing skeleton test counts across the complete generated text; the earlier role lesson had not been promoted into the authoring reference.
+- **Corrected behavior**: Rephrase only the execution sentence as begin transaction (READ COMMITTED), retain every SQL byte and actual sequence transaction, and strengthen `.agents/skills/api-contract-design/references/checker-patterns.md` with the copied-hint trigger. Rerun the unchanged skeleton suite plus paired/flow checks and the full delivery suite; no test or transaction safeguard is weakened.
+
+### 2026-11-09 — Read the app attachment declaration before sending arguments
+
+- Error: PR85 existed on GitHub, but the app rejected two attachment attempts using guessed `url`/`type` fields.
+- Cause: The tool summary was read without its complete discovered declaration; the required key is `artifact_type`.
+- Correction: Read the full declaration and retry with `artifact_type: pull_request` plus the actual URL; the app returned the attached artifact successfully. GitHub publication was unaffected.
+- Prevention: `.agents/skills/commit-and-pr/references/checklist.md` now requires declaration-based arguments and separate attachment-result verification.
+
+### 2026-11-09 — Recheck old needles when new policy prose repeats their words
+
+- Error: the first Q24 batch regression mutation pass caught 93/94; removing the Q22 phrase `final whole-request state` was missed after the Q24 paragraph repeated it.
+- Cause: the old checker protected a short phrase rather than the Q22 parent-uniqueness/child-ownership clause that makes each post-item count final.
+- Correction: anchor that complete Q22 clause and rerun the full mutation set, including synchronized SQL and final-state/phase cases. Keep the approved policy intact.
+- Prevention: `.agents/skills/api-contract-design/references/checker-patterns.md` now requires rerunning existing clause mutations when neighbouring policy prose is added. Its lifecycle guidance also requires concrete later-item parent/child/audit rollback evidence for batch irreversible transitions.
+### 2026-11-09 — Trace retained children across irreversible parent deletion
+
+- **Finding**: Permission delete could keep non-DELETED scope definitions, but the final parent status made its cleanup API unreachable while scope delete/archive still counted those definitions as usage. Reviewing either endpoint alone missed this stranded state.
+- **Root cause**: Parent lifecycle, child retention and downstream in-use checks were verified separately without checking whether cleanup remained possible after the transition.
+- **Corrected behavior**: Owner Q24 requires zero final non-DELETED definitions before permission deletion, with explicit complete withdrawal allowed in the same atomic request. Preserve archive retention, Q22 and Q23. Add lifecycle reachability guidance to `.agents/skills/api-contract-design/references/checker-patterns.md` and prove single/batch behaviors in separate PRs; no implicit cascade or legacy rewrite.
+
+- **Q24 verification finding**: A mutation harness assumed the combined api-sequence-spec command would pass after removing a rollback, but that command correctly enforces transaction closure as well as SQL parity. Keep that validator unchanged; compare exact recovered SQL definitions separately, require the focused checker to reject every fault, and report whether the combined CLI also rejected it. Strengthen the checker-patterns guidance and rerun the complete guard cases.
+
+### 2026-11-09 — Parse endpoint headings after specification frontmatter
+
+- Error: the initial permission/scope inventory stopped at register because it assumed line 1 contained the route, but reviewed specs start with YAML metadata.
+- Cause: the parser used a legacy document shape although current specs intentionally have mixed frontmatter states.
+- Correction: locate exactly one anchored endpoint heading anywhere after metadata and rerun inventory across all 83 endpoint specs.
+- Prevention: `.agents/skills/api-contract-design/references/spec-structure.md` now requires mixed-shape inventory checks and explicit Allow Scope/permission/exception/status sections. No endpoint or authorization behavior was changed by this inventory failure.
+
+### 2026-11-09 — Select a scoped row before mutating an inventory effect
+
+- Error: the document fault harness stopped because its first API was public register, so replacing ALL:allow made no change.
+- Cause: a scope-specific mutation reused the first inventory row without checking the relevant cell.
+- Correction: choose a row that actually contains ALL:allow and retain the assertion that every mutation changes the document before checking rejection.
+- Prevention: `.agents/skills/api-contract-design/references/spec-structure.md` now requires row-type preconditions for mixed authorization inventory mutations. All verification is rerun after this harness correction; the document policy itself did not change.
+
+### 2026-11-09 — Separate capability names from data boundaries
+
+- Correction: the owner refined Allow Scope from ALL:allow-style strings to management:user:read:allow and management:user:crud:deny.
+- Cause: the first proposal used the existing boundary codes as capability names, hiding which module/resource/action was authorized.
+- Corrected behavior: use module:resource:action:effect, retain ALL/SHOP/OWN separately, update both mapping directions and examples, and explicitly explain CRUD/read overlap under deny precedence.
+- Prevention: `.agents/skills/api-contract-design/references/spec-structure.md` now separates all four capability components from boundaries and requires exact action-group semantics before writing an authorization matrix. Storage/JWT/endpoint enforcement remains separately scoped.
