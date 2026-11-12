@@ -1401,3 +1401,13 @@ Authority: owner Q2/Q4/Q7/Q10/Q13/Q15, assignment `authorized_by: josh`, deliver
 - [x] Mutation-test, render, and run all documentation commands, audit and database tests on the branch merged with origin/main.
 
 Scope-inquiry verification: 14/14 deliberate faults rejected (including synchronized spec+sequence SQL faults); SQL lines visible in the PlantUML render are counted above. No schema, seed or backend change.
+
+### Author API10 user role upsert — claims, user/role/assignment locks and last-administrator protection
+
+Authority: owner Q2/Q4/Q7/Q10/Q13/Q15 and the owner-approved technical corrections of 2026-11-08 (target-row `FOR UPDATE` before checks, 404 E10005 for a missing target user) confirmed by Josh (SA Lead); assignment `authorized_by: josh`, delivery `open-pr`. Slim API-specific checker as Josh asked.
+
+- [x] Revise spec.md and sequence.wsd together: verified JWT roles claim instead of the two live-admin queries, caller+target user lock in ascending id order, fresh credential gate, role lock, assignment lock before duplicate/write, 404 E10005 for a missing target user (also when taking the role away), one 403, guarded write with bound time, administrator count on the final state, one COMMIT.
+- [x] Add the slim `user-role-upsert-flow` and move the `author-spec` needles of API10 to the new contract.
+- [x] Mutation-test, render, and run every documentation command, audit and database tests on the branch merged with origin/main.
+
+User-role verification: 21/21 deliberate faults rejected (including synchronized spec+sequence SQL faults); PlantUML render shows 73/73 SQL lines. No schema, seed or backend change; locking is proven by documents and checkers only.
