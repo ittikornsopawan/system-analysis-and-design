@@ -1401,3 +1401,14 @@ Authority: owner Q2/Q4/Q7/Q10/Q13/Q15, assignment `authorized_by: josh`, deliver
 - [x] Mutation-test, render, and run all documentation commands, audit and database tests on the branch merged with origin/main.
 
 Scope-inquiry verification: 14/14 deliberate faults rejected (including synchronized spec+sequence SQL faults); SQL lines visible in the PlantUML render are counted above. No schema, seed or backend change.
+
+### Author API11 user role inquiry — claims, credential gate and consistent pagination
+
+Authority: owner Q2/Q4/Q7/Q10/Q13/Q15, assignment `authorized_by: josh`, delivery `open-pr`. Derived from the delivered scope inquiry (author/09) with user-role joins and filters; slim API-specific checker.
+
+- [x] Revise spec.md and sequence.wsd together: verified JWT roles claim, credential gate in a REPEATABLE READ READ ONLY snapshot, one 403 before count/page, count and page with identical joins and bound nullable filters (id/userId/roleId/rowStatus), six-field items, role name/user display name/id order, one COMMIT; remove the two live-admin queries.
+- [x] Generalize the slim inquiry check into `author_inquiry_flow` (now also compares FROM/JOIN) and add `user-role-inquiry-flow`; update the `author-spec` needles and counted filter lines for API11.
+- [x] Mutation-test, render, run every documentation command, audit and database tests on the branch merged with origin/main.
+- [ ] Open question for the SA Lead: two JWT wording defects in the delivered author/09 (spec lines "verify JWT/scopes (401)" and "verified token scopes") need a separate scoped fix; see the lesson of 2026-11-12.
+
+User-role-inquiry verification: 16/16 deliberate faults rejected (including synchronized spec+sequence faults and the damaged JWT wording); PlantUML render shows 40/40 SQL lines. No schema, seed or backend change.

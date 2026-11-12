@@ -4762,7 +4762,8 @@ def author_counted(key: str):
     if key == "10":
         return [("-- only when the request gives the role (an insert, or opening a row that is not ACTIVE)", 2)]
     if key == "11":
-        return [("AND ur.row_status = '<sequence.rowStatus>' -- only when rowStatus is specified", 2), ("AND ur.role_id = '<sequence.filterRoleId>' -- only when roleId is specified", 2)]
+        return [("AND ('<sequence.id>' IS NULL OR ur.id = '<sequence.id>') -- only when id is specified", 2), ("AND ('<sequence.filterUserId>' IS NULL OR ur.user_id = '<sequence.filterUserId>') -- only when userId is specified", 2),
+                ("AND ('<sequence.filterRoleId>' IS NULL OR ur.role_id = '<sequence.filterRoleId>') -- only when roleId is specified", 2), ("AND ('<sequence.rowStatus>' IS NULL OR ur.row_status = '<sequence.rowStatus>') -- only when rowStatus is specified", 2)]
     return []
 
 
@@ -4775,7 +4776,7 @@ AUTHOR_OTHER_NEEDLES = {
            "Taking the role away (`rowStatus` DELETED, ARCHIVED, INACTIVE or LOCKED) works whatever the status of the user and of the role is",
            "The last administrator rule below still applies in full.", "existence checks (404, the row of `id`, and the user and the role only when the request gives the role)"],
     "11": ["# [GET]: v1/author/user/role", "### User Role Inquiry Rules", "ORDER BY r.name, u.display_name, ur.id", f"Request: `GET v1/author/user/role?id={AUTHOR_USER_ROLE}`", "Only a platform administrator can read the roles of users",
-           "#### Fail - Forbidden", "E10009", *AUTHOR_ADMIN],
+           "use exact PLATFORM_ADMIN in verified JWT role claims", "#### Fail - Forbidden", "E10009", "You do not have permission to read user roles.", "Inquiry User Role Success", "The four nullable filters id/userId/roleId/rowStatus"],
     "12": ["# [GET]: v1/author/me", "### Me Rules", "calling token's role snapshot", "Any caller with a valid access token can call this API", "Do not query author.t_user_role or author.m_role", "Success - Platform Administrator", "Success - No Role"],
 }
 
@@ -7309,17 +7310,17 @@ def check_role_inquiry_flow() -> int:
 COMMANDS['role-inquiry-flow'] = check_role_inquiry_flow
 
 
-def check_scope_inquiry_flow() -> int:
-    """Check only what parity checks cannot: claims-based admin, read-only snapshot, step order, one commit, identical count/page filters."""
-    path=f'{AUTHOR_DIR}/{AUTHOR_SPECS["09"]}/spec.md';md=read(path);wsd=read(str(Path(path).with_name('sequence.wsd')));errors=[]
+def author_inquiry_flow(key: str, page_head: str, columns: str, forbidden: str, claims_text: tuple = ()) -> int:
+    """Check only what parity checks cannot: claims-based admin, read-only snapshot, step order, one commit, identical count/page FROM and WHERE."""
+    path=f'{AUTHOR_DIR}/{AUTHOR_SPECS[key]}/spec.md';md=read(path);wsd=read(str(Path(path).with_name('sequence.wsd')));errors=[]
     if 'QUERY - Get the platform administrator role' in md+wsd or 'QUERY - Check platform administrator' in md+wsd:errors.append('must not reload live grants')
     ops=spec_database_operations(md);heads=[h for _,h,_ in ops]
-    if heads!=['QUERY - Check current credential and user','QUERY - Get total items','QUERY - Get scopes']:errors.append('needs credential/count/page SQL in order')
+    if heads!=['QUERY - Check current credential and user','QUERY - Get total items',page_head]:errors.append('needs credential/count/page SQL in order')
     sql='\n'.join(q for _,_,q in ops)
     if SEQUENCE_LOCK.search(sql) or re.search(r'\b(?:INSERT|UPDATE|DELETE)\b',sql):errors.append('inquiry must be read-only without locks')
-    where=lambda h:next((normalize(re.search(r'\bWHERE\b(.*?)(?:\bORDER BY\b|\bLIMIT\b|$)',q,re.S)[1]) for _,k,q in ops if k==h),None)
-    if where('QUERY - Get total items')!=where('QUERY - Get scopes'):errors.append('count and page WHERE must be identical')
-    order=['BEGIN REPEATABLE READ READ ONLY','app -> infra: QUERY - Check current credential and user','Authorize once using exact','app -> infra: QUERY - Get total items','app -> infra: QUERY - Get scopes','app -> infra: COMMIT']
+    where=lambda h:next((normalize(re.search(r'\bFROM\b(.*?)(?:\bORDER BY\b|\bLIMIT\b|$)',q,re.S)[1]) for _,k,q in ops if k==h),None)
+    if where('QUERY - Get total items')!=where(page_head):errors.append('count and page FROM/JOIN/WHERE must be identical')
+    order=['BEGIN REPEATABLE READ READ ONLY','app -> infra: QUERY - Check current credential and user','Authorize once using exact','app -> infra: QUERY - Get total items','app -> infra: '+page_head,'app -> infra: COMMIT']
     pos=[wsd.find(x) for x in order]
     if -1 in pos or pos!=sorted(pos):errors.append('steps must run BEGIN read-only, credential, one permission decision, count, page, COMMIT')
     if wsd.count('Authorize once using exact')!=1 or wsd.count('app -> infra: COMMIT')!=1:errors.append('exactly one permission decision and one COMMIT')
@@ -7327,15 +7328,27 @@ def check_scope_inquiry_flow() -> int:
     for i,l in enumerate(lines):
         if i>begin and re.search(r'app -> api: HTTP (?:401|403|408|500)',l) and 'app -> infra: ROLLBACK' not in lines[i-1]:errors.append(f'post-BEGIN rejection needs ROLLBACK first: {l.strip()}')
     if not md.startswith('---\nname:') or 'status: in-review\napproved_by: null\napproved_at: null' not in md:errors.append('spec stays in-review until approved')
-    page=next((q for _,k,q in ops if k=='QUERY - Get scopes'),'');proj=re.search(r'SELECT\s+(.*?)\s+FROM\s',page,re.S)
-    if not proj or normalize(proj[1])!=normalize('s.id as scope_id, s.scope, s.name, s.description, s.row_status'):errors.append('page returns exactly scopeId/scope/name/description/rowStatus columns')
-    if 'You do not have permission to read scopes.' not in wsd or 'skip page query' not in wsd:errors.append('403 text and zero-count page skip must be drawn')
+    page=next((q for _,k,q in ops if k==page_head),'');proj=re.search(r'SELECT\s+(.*?)\s+FROM\s',page,re.S)
+    if not proj or normalize(proj[1])!=normalize(columns):errors.append('page returns exactly the documented columns')
+    errors+=[f'claims wording missing {n!r}' for n in claims_text if n not in md]
+    if forbidden not in wsd or 'skip page query' not in wsd:errors.append('403 text and zero-count page skip must be drawn')
     if errors:return fail('; '.join(errors))
-    print('OK: scope-inquiry-flow (claims-only admin, read-only snapshot, ordered count/page, one commit)')
+    print(f'OK: {AUTHOR_SPECS[key][3:]}-flow (claims-only admin, read-only snapshot, ordered count/page, one commit)')
     return 0
 
 
+def check_scope_inquiry_flow() -> int:
+    return author_inquiry_flow('09','QUERY - Get scopes','s.id as scope_id, s.scope, s.name, s.description, s.row_status','You do not have permission to read scopes.')
+
+
 COMMANDS['scope-inquiry-flow'] = check_scope_inquiry_flow
+
+
+def check_user_role_inquiry_flow() -> int:
+    return author_inquiry_flow('11','QUERY - Get user roles','ur.id as user_role_id, ur.user_id, u.display_name, ur.role_id, r.name as role_name, ur.row_status','You do not have permission to read user roles.',('verify JWT/roles (401)','verified token roles'))
+
+
+COMMANDS['user-role-inquiry-flow'] = check_user_role_inquiry_flow
 
 
 def check_address_upsert_flow() -> int:

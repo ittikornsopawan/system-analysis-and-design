@@ -493,3 +493,11 @@ description: Repository-wide and project-specific lessons captured from user cor
 - **Corrected behavior**: Run `git fetch origin main:main` in the managed clone (a fast-forward of the local ref, never a checkout) before the preflight and again after each base merge, then check the PR diff with `git diff --name-status origin/main...HEAD`.
 - **Preventive skill change**: not made in this task because `.agents/skills/commit-and-pr` is outside the assignment scope; reported to the lead SA (a step in `commit-and-pr` that fetches `main:main`, or a delivery-check that reads `origin/main`).
 - **Verification**: after `git fetch origin main:main` the preflight reported `no blockers found`.
+
+### 2026-11-12 — A word substitution on a derived spec rewrote JWT wording
+
+- **Correction**: Self-found while deriving `author/11` from the delivered `author/09`: PR #95 (scope inquiry), generated from the role inquiry by replacing `role` with `scope`, left two JWT statements saying `verify JWT/scopes (401)` and `verified token scopes` where the caller's roles claim is meant. The paired checks and all SQL parity passed.
+- **Root cause**: The substitution masked a list of JWT phrases, but two phrases were missing from the list, and no check compared the claim wording itself; parity checks read SQL, not prose.
+- **Corrected behavior**: When an inquiry or batch is derived by substitution, grep the derived file for the new noun next to `JWT`, `token`, `claim`, `caller` and `verified` before committing, and mask every claims sentence rather than listing known ones. `author/11` carries `verify JWT/roles (401)` and `verified token roles` as needles of its slim check; the two defects in `author/09` are reported to the lead SA for a separate scoped fix.
+- **Preventive skill change**: not made here because `.agents/skills` is outside this assignment scope; the needle check in `check_docs.py` is the preventive change inside scope. A step "grep the derived file for the new noun beside JWT/token/claim words" is proposed for `api-contract-design`.
+- **Verification**: `user-role-inquiry-flow` fails when `verify JWT/roles (401)` is changed to `verify JWT/scopes (401)` (16/16 mutations caught); `scope-inquiry-flow` was not changed.
