@@ -41,13 +41,13 @@ box "Database" #F8FAFC
     database "m_campaign_budget" as m_campaign_budget
     database "t_campaign_discount" as t_campaign_discount
     database "m_shop" as m_shop
+    database "t_campaign_shop" as t_campaign_shop
     database "m_product" as m_product
     database "m_product_category" as m_product_category
+    database "t_campaign_product" as t_campaign_product
     database "m_role" as m_role
     database "t_user_role" as t_user_role
     database "m_campaign_budget_ledger" as m_campaign_budget_ledger
-    database "t_campaign_shop" as t_campaign_shop
-    database "t_campaign_product" as t_campaign_product
 end box
 
 user -> page: Submit the campaign
@@ -165,6 +165,28 @@ activate page
                                         page -> user: Display which shop is not found
                                     end
                                 end
+                                alt The row has an id
+                                    app -> infra: QUERY - Check existing campaign shop
+                                    infra -> t_campaign_shop: QUERY - Check existing campaign shop
+                                    activate t_campaign_shop
+                                        note right of t_campaign_shop
+                                            SELECT
+                                                cs.id as campaign_shop_id
+                                            FROM campaign.t_campaign_shop cs
+                                            WHERE cs.campaign_id = '<sequence.campaignId>'
+                                            AND cs.row_status <> 'DELETED'
+                                            AND cs.id = '<sequence.shops.id>' -- only when the row has an id, no row means the id is not a live row of the campaign
+                                        end note
+                                        t_campaign_shop -> infra: Return query result
+                                    deactivate t_campaign_shop
+                                    infra -> app: Return the live shop row of the campaign or no row
+                                    alt The id is not a live row of the campaign
+                                        app -> infra: ROLLBACK
+                                        app -> api: HTTP 404 E10004 shops[i]: Campaign shop not found.
+                                        api -> page: Not found
+                                        page -> user: Display which row is not found
+                                    end
+                                end
                             end
                         end
                         alt products is in the request
@@ -208,6 +230,28 @@ activate page
                                         app -> api: HTTP 404 E10005 products[i]: Product category not found.
                                         api -> page: Not found
                                         page -> user: Display which category is not found
+                                    end
+                                end
+                                alt The row has an id
+                                    app -> infra: QUERY - Check existing campaign product
+                                    infra -> t_campaign_product: QUERY - Check existing campaign product
+                                    activate t_campaign_product
+                                        note right of t_campaign_product
+                                            SELECT
+                                                cp.id as campaign_product_id
+                                            FROM campaign.t_campaign_product cp
+                                            WHERE cp.campaign_id = '<sequence.campaignId>'
+                                            AND cp.row_status <> 'DELETED'
+                                            AND cp.id = '<sequence.products.id>' -- only when the row has an id, no row means the id is not a live row of the campaign
+                                        end note
+                                        t_campaign_product -> infra: Return query result
+                                    deactivate t_campaign_product
+                                    infra -> app: Return the live product row of the campaign or no row
+                                    alt The id is not a live row of the campaign
+                                        app -> infra: ROLLBACK
+                                        app -> api: HTTP 404 E10004 products[i]: Campaign product not found.
+                                        api -> page: Not found
+                                        page -> user: Display which row is not found
                                     end
                                 end
                             end
@@ -441,8 +485,53 @@ activate page
                                 m_campaign_budget -> infra: Return updated result
                             deactivate m_campaign_budget
                             infra -> app: Return the deleted budget
+                            app -> infra: UPDATE - Delete the discount of a deleted campaign
+                            infra -> t_campaign_discount: UPDATE - Delete the discount of a deleted campaign
+                            activate t_campaign_discount
+                                note right of t_campaign_discount
+                                    UPDATE campaign.t_campaign_discount
+                                    SET
+                                        updated_by = '<sequence.userId>',
+                                        updated_at = NOW() AT TIME ZONE 'UTC',
+                                        row_status = 'DELETED'
+                                    WHERE campaign_id = '<sequence.campaignId>'
+                                    AND row_status <> 'DELETED'
+                                end note
+                                t_campaign_discount -> infra: Return updated result
+                            deactivate t_campaign_discount
+                            infra -> app: Return the deleted discount
+                            app -> infra: UPDATE - Delete the shops of a deleted campaign
+                            infra -> t_campaign_shop: UPDATE - Delete the shops of a deleted campaign
+                            activate t_campaign_shop
+                                note right of t_campaign_shop
+                                    UPDATE campaign.t_campaign_shop
+                                    SET
+                                        updated_by = '<sequence.userId>',
+                                        updated_at = NOW() AT TIME ZONE 'UTC',
+                                        row_status = 'DELETED'
+                                    WHERE campaign_id = '<sequence.campaignId>'
+                                    AND row_status <> 'DELETED'
+                                end note
+                                t_campaign_shop -> infra: Return updated result
+                            deactivate t_campaign_shop
+                            infra -> app: Return the deleted shop rows
+                            app -> infra: UPDATE - Delete the products of a deleted campaign
+                            infra -> t_campaign_product: UPDATE - Delete the products of a deleted campaign
+                            activate t_campaign_product
+                                note right of t_campaign_product
+                                    UPDATE campaign.t_campaign_product
+                                    SET
+                                        updated_by = '<sequence.userId>',
+                                        updated_at = NOW() AT TIME ZONE 'UTC',
+                                        row_status = 'DELETED'
+                                    WHERE campaign_id = '<sequence.campaignId>'
+                                    AND row_status <> 'DELETED'
+                                end note
+                                t_campaign_product -> infra: Return updated result
+                            deactivate t_campaign_product
+                            infra -> app: Return the deleted product rows
                         end
-                        alt discount is in the request, or the campaign is deleted
+                        alt discount is in the request
                             alt No discount id (insert)
                                 app -> infra: INSERT - Create discount
                                 infra -> t_campaign_discount: INSERT - Create discount
@@ -455,7 +544,7 @@ activate page
                                     t_campaign_discount -> infra: Return inserted result
                                 deactivate t_campaign_discount
                                 infra -> app: Return the new discount
-                            else discount id, or the campaign is deleted (update or delete)
+                            else discount id (update or delete)
                                 app -> infra: UPDATE - Update or delete discount
                                 infra -> t_campaign_discount: UPDATE - Update or delete discount
                                 activate t_campaign_discount
@@ -476,8 +565,8 @@ activate page
                                 infra -> app: Return the changed discount
                             end
                         end
-                        alt shops is in the request, or the campaign is deleted
-                            loop For every row of shops (the live rows of the campaign when it is deleted)
+                        alt shops is in the request
+                            loop For every row of shops
                                 alt No row id (insert)
                                     app -> infra: INSERT - Create campaign shop
                                     infra -> t_campaign_shop: INSERT - Create campaign shop
@@ -510,8 +599,8 @@ activate page
                                 end
                             end
                         end
-                        alt products is in the request, or the campaign is deleted
-                            loop For every row of products (the live rows of the campaign when it is deleted)
+                        alt products is in the request
+                            loop For every row of products
                                 alt No row id (insert)
                                     app -> infra: INSERT - Create campaign product
                                     infra -> t_campaign_product: INSERT - Create campaign product

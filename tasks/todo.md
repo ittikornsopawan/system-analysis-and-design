@@ -1363,3 +1363,23 @@ Status: Implemented in the managed workspace of Marry on branch `feat/marry-susp
 - [x] Rule, `agent-workspace` skill and one sentence of `commit-and-pr` say so.
 - [x] 24 tests (9 new) cover the blocking cases (no pull request, wrong head, dirty, not pushed, wrong token, no lock, resume with another task or with metadata left on main, park before the merge, mismatched head) and 16 mutations are caught.
 - [ ] Merge `main`, run every check, push, open the pull request, tell the lead at once, check that `checks` is green.
+
+### Author API08 scope batch — claims, sorted target locks and atomic writes
+
+Authority: owner Q2/Q4/Q7/Q10/Q13/Q15 and the owner-approved lock-before-in-use correction (2026-11-08) relayed by Josh (SA Lead); assignment `authorized_by: josh`, delivery `open-pr`. New Peter session after the previous one ended; workspace recovered and PR88 parked under Josh's approval.
+
+- [x] Recover the managed clone (release stale lock, named stash `peter-owner-scope-note`, park PR88) and prepare a branch from main e361a4b with the audit baseline.
+- [x] Revise spec.md and sequence.wsd together: verified JWT roles claim instead of live grants, caller lock and fresh credential gate, one ascending `FOR UPDATE` lock of all target scopes before any in-use check or write, whole-target 404 before one 403, request-order conflicts/writes, indexed results and one final commit.
+- [x] Add `scope-batch-flow` (seven exact SQL definitions, 18 representative traces) and move API08 to the claims needles in `author-spec`.
+- [x] Mutation-test the checker, render the diagram, and run every documentation command, the SQL audit, database tests and skeleton tests on the branch merged with origin/main.
+
+Scope-batch verification: 35/35 deliberate faults rejected (6 spec rules, 10 synchronized spec+sequence SQL faults, 15 sequence flow faults including permission before the target lock, 3 example faults, 1 rendered omission). PlantUML render shows 66/66 SQL lines. No schema, seed or backend change; SQL was not executed against concurrent PostgreSQL sessions in this task, so lock behaviour is proven by document checks only.
+## e-commerce: Spec risks T2 (shipping and campaign)
+
+Status: Complete in the branch, waiting for review. Assignment: agent `tommy`, delivery `open-pr`, authorized by `josh` (the product owner approved the changes on 2026-11-08), workspace `.workspace/tommy`, branch `fix/tommy-spec-risks-shipping-campaign`, scopes `shipping/02-update-shipping-status`, `shipping/03-upsert-shipping-stop`, `shipping/06-confirm-delivery`, `campaign/01-upsert-campaign`, `e-commerce/db/tests/check_docs.py` (needles only) and `tasks`.
+
+- [x] `shipping/02` and `shipping/06`: after the order row is locked the shipping row is locked and read again (`QUERY - Lock the shipping`, `FOR UPDATE`) and the status is checked on that read.
+- [x] `shipping/03`: the example `Fail - Not Found Shipping` (404 E10004) and the rule sentence.
+- [x] `campaign/01`: `QUERY - Check existing campaign shop` and `QUERY - Check existing campaign product` answer 404 for a row id that is not a live row of the campaign; deleting a campaign soft-deletes its discount, shops and products with one statement each.
+- [x] Move the diagrams of `shipping/02`, `shipping/06` and `campaign/01`, add the needles to `shipping-spec` and `campaign-spec`, run every checker and the mutation tests.
+- [x] Open the PR with `commit-and-pr`; do not merge.
