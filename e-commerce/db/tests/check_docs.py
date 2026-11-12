@@ -1755,7 +1755,8 @@ def check_order_spec() -> int:
                "approved by the product owner", "platformProfit", "ORDER BY o.created_at DESC, o.id", "INNER JOIN authen.m_user ui"],
         "05": ["### Cancel Rules", "#### UPDATE - Cancel the order", "AND status = 'WAIT_PAYMENT'", "#### UPDATE - Give the quantity back to the lot", "E10006",
                "restoredItems", "#### QUERY - Check shop member", "FOR UPDATE -- the order row is locked first", "ORDER BY oi.lot_id",
-               "`Idempotency-Key` `cancel-<paymentIntentId>`", "approved by the product owner on 2026-11-08"],
+               "`Idempotency-Key` `cancel-<paymentIntentId>`", "approved by the product owner on 2026-11-08",
+               "#### QUERY - Lock the caller user", "#### QUERY - Check current credential and user", "do not query `author.m_role` or `author.t_user_role`", "### Allow Scope", "sales:order:cancel:allow"],
     }
     for key, need in needles.items():
         for missing in missing_needles(mds[key], need):
