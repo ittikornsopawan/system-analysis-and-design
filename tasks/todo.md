@@ -1410,3 +1410,11 @@ Status: Implemented in the managed workspace of Marry on branch `test/marry-reje
 - [x] Re-scan of `main` (4796ac2): 21 such lines were left, all in `consent` (`02` 11, `06` 5, `07` 5); `authen-and-author/09` had been fixed already. The 21 lines are written `&#39;`; only the encoding changes, no SQL and no spec.
 - [x] Proof: mutations 5 of 5 caught (a bare quote put back in `cart/01`, `cart/02` and the three consent diagrams) and one control passes; PlantUML `-checkonly` passes for the three diagrams and every SQL line appears in the picture at least as often as in the spec.
 - [ ] Merge `main`, run every check, push, open the pull request, tell the lead at once, suspend the assignment, check that `checks` is green.
+## e-commerce: JWT claims, payment/05 (refund payment)
+
+Status: Complete in the branch, waiting for review. Assignment: agent `tommy`, delivery `open-pr`, authorized by `josh`, workspace `.workspace/tommy`, branch `fix/tommy-jwt-claims-payment-05`, scopes `payment/05-refund-payment`, `e-commerce/db/tests/check_docs.py` (needles only) and `tasks`. Governing: `docs/superpowers/specs/2026-11-07-api-review-design.md` (Q2, Q4, Q10, Q13).
+
+- [x] The platform administrator is the exact role `PLATFORM_ADMIN` in the verified `roles` claim, the two `author` queries are removed, shop membership stays a database check.
+- [x] Add the caller lock and the current credential gate after `BEGIN` (lock order: caller user, order row, lots by id, budgets by id), the Allow Scope (`payment:payment:refund:allow`) and the order 400, 401, 404, 403, 409.
+- [x] Move the diagram and the needles of `payment-spec`, run every checker and the mutation tests.
+- [x] Open the PR with `commit-and-pr`, tell the lead SA when CI is green, then suspend. Next: `sales/04`.
