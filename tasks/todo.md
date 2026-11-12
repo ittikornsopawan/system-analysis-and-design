@@ -1402,6 +1402,13 @@ Authority: owner Q2/Q4/Q7/Q10/Q13/Q15, assignment `authorized_by: josh`, deliver
 
 Scope-inquiry verification: 14/14 deliberate faults rejected (including synchronized spec+sequence SQL faults); SQL lines visible in the PlantUML render are counted above. No schema, seed or backend change.
 
+## e-commerce: JWT claims, sales/04-inquiry-shop-order
+
+Status: Complete in the branch, waiting for review. Assignment: agent `tommy`, delivery `open-pr`, authorized by `josh`, workspace `.workspace/tommy`, branch `fix/tommy-jwt-claims-sales-04`, scopes `sales/04-inquiry-shop-order`, `e-commerce/db/tests/check_docs.py` (needles only) and `tasks`. Governing: `docs/superpowers/specs/2026-11-07-api-review-design.md` (Q2, Q4, Q10, Q13).
+
+- [x] The platform administrator is the exact role `PLATFORM_ADMIN` in the verified `roles` claim, the two `author` queries are removed, shop membership stays a database check.
+- [x] Add the current credential gate, the Allow Scope and the order 400, 401, 404, 403; move the diagram and the needles, run every checker and the mutation tests.
+- [x] Open the PR with `commit-and-pr`, tell the lead SA when CI is green, then suspend. Next: `sales/05`.
 ## e-commerce: api-sequence-spec fails a note line that starts with a bare quote (M4)
 
 Status: Implemented in the managed workspace of Marry on branch `test/marry-reject-bare-quote-sql`. Scope: `consent/02-upsert-consent`, `06-upsert-consent-type`, `07-upsert-consent-type-batch`, `e-commerce/db/tests/check_docs.py` and `tasks/`. The lead chose option (A) and confirmed that the new reviewer does not touch these three files.
