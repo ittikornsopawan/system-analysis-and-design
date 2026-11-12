@@ -1354,6 +1354,16 @@ Status: Written in the managed workspace of Marry on branch `ci/marry-github-act
 - [x] Real runs on pull request #91: passing https://github.com/ittikornsopawan/system-analysis-and-design/actions/runs/43008956970 (10 steps, 40 seconds); one temporary commit removes the heading `### Cart Rules` from `cart/01` so `cart-spec` fails: https://github.com/ittikornsopawan/system-analysis-and-design/actions/runs/43009141504 failed (only `check_docs.py` red, the other four steps still ran and passed; "60 sub-commands, 1 failed"); the revert commit on the same branch (no force push): https://github.com/ittikornsopawan/system-analysis-and-design/actions/runs/43009341327 passed. The net diff of the pull request is the workflow and `tasks/todo.md`.
 - [ ] Tell the lead; the owner sets the branch protection of `main` (required status check `checks`, require branches to be up to date); hold the lock until the merge, then release and park.
 
+## repository-wide: A named agent starts the next task after opening a pull request (M5)
+
+Status: Implemented in the managed workspace of Marry on branch `feat/marry-suspend-assignment-after-pr`; the pull request waits for the merge because it opens this way for the other agents. Scope: `.agents/skills/agent-workspace`, `.agents/rules/named-agent-workspaces.md`, the one sentence of `.agents/skills/commit-and-pr` and `tasks/`. Order of the owner (2026-11-11): a worker who finishes starts the next task without waiting for the merge.
+
+- [x] `suspend --agent --token`: clean task branch, pushed `HEAD`, an open GitHub pull request of the branch with the same head; the assignment moves to `.workspace/.state/<agent>-prs/<branch-slug>.json` (the format of the earlier reviewer records, which are not touched), the workspace returns to `main` and the lock is released.
+- [x] `prepare` accepts open pull requests when every one is suspended (one active task as before); `prepare --resume-pr` restores a suspended record (no other active task, fast-forward only); `park --pr` closes a suspended record after the merge is verified, whichever branch is checked out; `status` lists the records.
+- [x] Rule, `agent-workspace` skill and one sentence of `commit-and-pr` say so.
+- [x] 24 tests (9 new) cover the blocking cases (no pull request, wrong head, dirty, not pushed, wrong token, no lock, resume with another task or with metadata left on main, park before the merge, mismatched head) and 16 mutations are caught.
+- [ ] Merge `main`, run every check, push, open the pull request, tell the lead at once, check that `checks` is green.
+
 ### Author API08 scope batch — claims, sorted target locks and atomic writes
 
 Authority: owner Q2/Q4/Q7/Q10/Q13/Q15 and the owner-approved lock-before-in-use correction (2026-11-08) relayed by Josh (SA Lead); assignment `authorized_by: josh`, delivery `open-pr`. New Peter session after the previous one ended; workspace recovered and PR88 parked under Josh's approval.

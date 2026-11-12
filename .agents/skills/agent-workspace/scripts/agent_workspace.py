@@ -449,6 +449,10 @@ def read_assignment(path: Path) -> dict[str, Any]:
         payload = json.loads(path.read_text(encoding="utf-8"))
     except (OSError, json.JSONDecodeError) as exc:
         raise Blocked("active assignment metadata cannot be read") from exc
+    return validate_assignment_payload(payload)
+
+
+def validate_assignment_payload(payload: Any) -> dict[str, Any]:
     required = {
         "version",
         "agent",
@@ -519,7 +523,7 @@ def acquire_lock(locks: Path, agent_name: str, purpose: str) -> tuple[str, Path]
     return token, lock_path
 
 
-def release_lock(lock_path: Path, token: str) -> None:
+def check_lock_token(lock_path: Path, token: str) -> None:
     if not lock_path.exists() or lock_path.is_symlink():
         raise Blocked("workspace lock is missing or unsafe")
     try:
@@ -528,7 +532,71 @@ def release_lock(lock_path: Path, token: str) -> None:
         raise Blocked("workspace lock cannot be read") from exc
     if payload.get("token") != token:
         raise Blocked("workspace lock token does not match")
+
+
+def release_lock(lock_path: Path, token: str) -> None:
+    check_lock_token(lock_path, token)
     lock_path.unlink()
+
+
+# A task whose pull request is open can be suspended: its assignment moves to a record in
+# .workspace/.state/<agent>-prs/<branch-slug>.json (the format of the records of the previous reviewer) and the
+# workspace goes back to main, so the agent can start the next task without waiting for the merge.
+SUSPENDED_KEYS = {"assignment", "pr", "head", "state_at_delivery", "delivered_at"}
+SUSPENDED_OPTIONAL_KEYS = {"owner_override"}
+SHA_RE = re.compile(r"^[0-9a-f]{40}$")
+
+
+def branch_slug(branch: str) -> str:
+    return branch.replace("/", "__")
+
+
+def suspended_dir(root: Path, agent_name: str) -> Path:
+    state = root / ".state"
+    if state.is_symlink():
+        raise Blocked("workspace state directory must not be a symlink")
+    directory = state / f"{agent_name}-prs"
+    if directory.is_symlink():
+        raise Blocked("suspended assignment directory must not be a symlink")
+    if directory.exists() and not directory.is_dir():
+        raise Blocked("suspended assignment path must be a directory")
+    return directory
+
+
+def read_suspended(path: Path, agent_name: str, expected_slug: str) -> dict[str, Any]:
+    if not path.exists() or path.is_symlink() or not path.is_file():
+        raise Blocked("suspended assignment record is missing or unsafe")
+    try:
+        payload = json.loads(path.read_text(encoding="utf-8"))
+    except (OSError, json.JSONDecodeError) as exc:
+        raise Blocked("suspended assignment record cannot be read") from exc
+    if (
+        not isinstance(payload, dict)
+        or not SUSPENDED_KEYS <= set(payload)
+        or not set(payload) <= SUSPENDED_KEYS | SUSPENDED_OPTIONAL_KEYS
+    ):
+        raise Blocked("suspended assignment record has an invalid schema")
+    assignment = validate_assignment_payload(payload["assignment"])
+    if assignment["agent"] != agent_name or path.stem != branch_slug(assignment["branch"]):
+        raise Blocked("suspended assignment record does not match its agent or branch")
+    require_pr_url_matches(str(payload["pr"]), expected_slug)
+    if not SHA_RE.fullmatch(str(payload["head"])):
+        raise Blocked("suspended assignment record has an invalid head")
+    return payload
+
+
+def suspended_branches(directory: Path, agent_name: str, expected_slug: str) -> dict[str, dict[str, Any]]:
+    """Valid suspended records of the agent by branch; a record that cannot be read is not counted."""
+    records: dict[str, dict[str, Any]] = {}
+    if not directory.is_dir():
+        return records
+    for path in sorted(directory.glob("*.json")):
+        try:
+            record = read_suspended(path, agent_name, expected_slug)
+        except Blocked:
+            continue
+        records[record["assignment"]["branch"]] = record
+    return records
 
 
 def clean_workspace(workspace: Path) -> None:
@@ -792,6 +860,16 @@ def cmd_status(args: argparse.Namespace) -> None:
             "delivery": assignment["delivery"],
             "branch": assignment["branch"],
         }
+    records = suspended_branches(
+        suspended_dir(root, agent["name"]),
+        agent["name"],
+        remote_slug(expected_remote),
+    )
+    if records:
+        payload["suspended"] = [
+            {"branch": name, "pull_request": record["pr"], "head": record["head"]}
+            for name, record in sorted(records.items())
+        ]
     if not target.exists():
         payload["status"] = "missing"
         output(payload)
@@ -847,6 +925,156 @@ def run_baselines(workspace: Path, commands: list[str]) -> list[dict[str, Any]]:
     return results
 
 
+def resume_suspended(
+    target: Path,
+    agent: dict[str, Any],
+    args: argparse.Namespace,
+    *,
+    task: str,
+    scopes: list[str],
+    expected_remote: str,
+    records_dir: Path,
+    active_assignment: Path,
+    token: str,
+) -> None:
+    """Make the suspended assignment of an open pull request the active one again."""
+    if active_assignment.exists() or active_assignment.is_symlink():
+        raise Blocked("named agent has an active assignment; finish or suspend it before resuming another")
+    pull_request = gh_pr(target, args.resume_pr, expected_remote)
+    branch = str(pull_request["headRefName"])
+    record_path = records_dir / f"{branch_slug(branch)}.json"
+    if not record_path.exists() and not record_path.is_symlink():
+        raise Blocked("pull request has no suspended assignment record")
+    record = read_suspended(record_path, agent["name"], remote_slug(expected_remote))
+    assignment = record["assignment"]
+    assignment_matches(
+        assignment,
+        agent=agent["name"],
+        task=task,
+        scopes=scopes,
+        delivery=args.delivery,
+        authorized_by=args.authorized_by,
+        branch=branch,
+    )
+    if pull_request["state"] != "OPEN":
+        raise Blocked("review resume requires an open pull request")
+    if pull_request["baseRefName"] != DEFAULT_BRANCH:
+        raise Blocked("pull request base is not main")
+    if str(pull_request["url"]) != str(record["pr"]):
+        raise Blocked("pull request does not match the suspended record")
+    exists = git(target, "show-ref", "--verify", "--quiet", f"refs/heads/{branch}", check=False)
+    if exists.returncode != 0:
+        raise Blocked("local task branch of the suspended assignment is missing")
+    git(target, "switch", branch)
+    try:
+        pr_head = str(pull_request["headRefOid"])
+        if git(target, "rev-parse", "HEAD").stdout.strip() != pr_head:
+            # the owner may have updated the branch on GitHub: accept a pure fast-forward and nothing else
+            git(target, "fetch", "origin", branch)
+            remote_head = git(target, "rev-parse", f"refs/remotes/origin/{branch}").stdout.strip()
+            behind = git(target, "merge-base", "--is-ancestor", "HEAD", remote_head, check=False)
+            if remote_head != pr_head or behind.returncode != 0:
+                raise Blocked("local HEAD does not match the pull-request head")
+            git(target, "merge", "--ff-only", remote_head)
+        write_assignment(active_assignment, assignment)
+        record_path.unlink()
+    except Blocked:
+        git(target, "switch", DEFAULT_BRANCH, check=False)
+        raise
+    output(
+        {
+            "status": "resumed",
+            "agent": agent["name"],
+            "workspace": str(target),
+            "branch": branch,
+            "lock_token": token,
+            "pull_request": pull_request["url"],
+        }
+    )
+
+
+def cmd_suspend(args: argparse.Namespace) -> None:
+    host = resolve_host(args.host)
+    expected_remote = origin_for(host)
+    registry = registry_from_origin_main(host)
+    agent = agent_record(registry, args.agent, require_enabled=False)
+    root, target, locks = workspace_paths(host, agent)
+    active_assignment = assignment_path(root, agent["name"])
+    verify_workspace(
+        target,
+        expected_remote,
+        host=host,
+        agent_name=agent["name"],
+    )
+    lock_path = locks / f"{agent['name']}.json"
+    check_lock_token(lock_path, args.token)
+    clean_workspace(target)
+    branch = current_branch(target)
+    if branch == DEFAULT_BRANCH:
+        raise Blocked("workspace is on main; there is no task to suspend")
+    if not branch_belongs_to_agent(branch, agent["name"]):
+        raise Blocked("current branch does not belong to the named agent")
+    assignment = read_assignment(active_assignment)
+    if assignment["agent"] != agent["name"] or assignment["branch"] != branch:
+        raise Blocked("active assignment does not match the current workspace")
+    if assignment["delivery"] != "open-pr":
+        raise Blocked("active assignment did not authorize pull-request delivery")
+    local_head = git(target, "rev-parse", "HEAD").stdout.strip()
+    pushed = git(target, "ls-remote", "--heads", "origin", branch).stdout.strip()
+    if not pushed or pushed.split()[0] != local_head:
+        raise Blocked("HEAD of the task branch is not pushed to origin")
+    pulls = [
+        item
+        for item in open_agent_pull_requests(target, agent["name"], expected_remote)
+        if item["headRefName"] == branch
+    ]
+    if not pulls:
+        raise Blocked("GitHub has no open pull request for this task branch")
+    if len(pulls) > 1:
+        raise Blocked("GitHub has more than one open pull request for this task branch")
+    pull_request = pulls[0]
+    if pull_request["baseRefName"] != DEFAULT_BRANCH:
+        raise Blocked("pull request base is not main")
+    if pull_request["headRefOid"] != local_head:
+        raise Blocked("pull-request head does not match the local HEAD")
+    directory = suspended_dir(root, agent["name"])
+    record_path = directory / f"{branch_slug(branch)}.json"
+    if record_path.exists() or record_path.is_symlink():
+        raise Blocked("a suspended record already exists for this branch")
+    record = {
+        "assignment": assignment,
+        "pr": str(pull_request["url"]),
+        "head": local_head,
+        "state_at_delivery": "OPEN",
+        "delivered_at": dt.datetime.now(dt.timezone.utc).isoformat(),
+    }
+    try:
+        directory.mkdir(parents=True, exist_ok=True)
+        descriptor = os.open(record_path, os.O_WRONLY | os.O_CREAT | os.O_EXCL, 0o600)
+    except OSError as exc:
+        raise Blocked(f"cannot create the suspended record: {exc}") from exc
+    with os.fdopen(descriptor, "w", encoding="utf-8") as handle:
+        json.dump(record, handle, indent=2, sort_keys=True)
+        handle.write("\n")
+    try:
+        git(target, "switch", DEFAULT_BRANCH)
+    except Blocked:
+        record_path.unlink()
+        raise
+    active_assignment.unlink()
+    release_lock(lock_path, args.token)
+    output(
+        {
+            "status": "suspended",
+            "agent": agent["name"],
+            "workspace": str(target),
+            "branch": branch,
+            "pull_request": record["pr"],
+            "record": str(record_path),
+        }
+    )
+
+
 def cmd_prepare(args: argparse.Namespace) -> None:
     host = resolve_host(args.host)
     expected_remote = origin_for(host)
@@ -875,8 +1103,24 @@ def cmd_prepare(args: argparse.Namespace) -> None:
         fetch_main(target, expected_remote)
         branch = current_branch(target)
         if args.resume_pr:
+            slug = remote_slug(expected_remote)
+            records_dir = suspended_dir(root, agent["name"])
             if branch == DEFAULT_BRANCH:
-                raise Blocked("cannot resume a pull request while parked on main")
+                if not suspended_branches(records_dir, agent["name"], slug):
+                    raise Blocked("cannot resume a pull request while parked on main")
+                resume_suspended(
+                    target,
+                    agent,
+                    args,
+                    task=task,
+                    scopes=scopes,
+                    expected_remote=expected_remote,
+                    records_dir=records_dir,
+                    active_assignment=active_assignment,
+                    token=token,
+                )
+                keep_lock = True
+                return
             if not branch_belongs_to_agent(branch, agent["name"]):
                 raise Blocked("current branch does not belong to the named agent")
             assignment = read_assignment(active_assignment)
@@ -921,9 +1165,18 @@ def cmd_prepare(args: argparse.Namespace) -> None:
             agent["name"],
             expected_remote,
         )
-        if open_pull_requests:
-            urls = ", ".join(str(item["url"]) for item in open_pull_requests)
-            raise Blocked(f"named agent already has an open pull request: {urls}")
+        suspended = suspended_branches(
+            suspended_dir(root, agent["name"]),
+            agent["name"],
+            remote_slug(expected_remote),
+        )
+        not_suspended = [item for item in open_pull_requests if item["headRefName"] not in suspended]
+        if not_suspended:
+            urls = ", ".join(str(item["url"]) for item in not_suspended)
+            raise Blocked(
+                f"named agent has an open pull request whose assignment is not suspended: {urls}; "
+                "run suspend for it first"
+            )
         relation = main_relation(target)
         if relation not in {"synchronized", "behind"}:
             raise Blocked(f"local main is {relation}; fast-forward is unsafe")
@@ -1111,6 +1364,58 @@ def cmd_delivery_check(args: argparse.Namespace) -> None:
     )
 
 
+def park_suspended(
+    target: Path,
+    agent: dict[str, Any],
+    pull_request: dict[str, Any],
+    *,
+    record_path: Path,
+    current: str,
+    expected_remote: str,
+) -> None:
+    """Close a suspended assignment after its pull request is merged: check the merge, delete the local branch, delete the record."""
+    record = read_suspended(record_path, agent["name"], remote_slug(expected_remote))
+    assignment = record["assignment"]
+    branch = assignment["branch"]
+    if assignment["delivery"] != "open-pr":
+        raise Blocked("suspended assignment did not authorize pull-request delivery")
+    if pull_request["state"] != "MERGED" or not pull_request["mergedAt"]:
+        raise Blocked("pull request is not merged")
+    if pull_request["baseRefName"] != DEFAULT_BRANCH:
+        raise Blocked("pull request base is not main")
+    if pull_request["headRefName"] != branch or str(pull_request["url"]) != str(record["pr"]):
+        raise Blocked("pull request does not match the suspended record")
+    if current == branch:
+        raise Blocked("the suspended task branch is checked out")
+    exists = git(target, "show-ref", "--verify", "--quiet", f"refs/heads/{branch}", check=False)
+    if exists.returncode == 0:
+        local_head = git(target, "rev-parse", f"refs/heads/{branch}").stdout.strip()
+        if pull_request["headRefOid"] != local_head:
+            raise Blocked("local task branch does not match the merged pull-request head")
+        remote_head = git(target, "ls-remote", "--heads", "origin", branch).stdout.strip()
+        if remote_head and remote_head.split()[0] != local_head:
+            raise Blocked("remote task branch no longer matches local HEAD")
+    if current == DEFAULT_BRANCH:
+        relation = main_relation(target)
+        if relation not in {"synchronized", "behind"}:
+            raise Blocked(f"local main is {relation}; fast-forward is unsafe")
+        if relation == "behind":
+            git(target, "merge", "--ff-only", f"origin/{DEFAULT_BRANCH}")
+    if exists.returncode == 0:
+        git(target, "branch", "-D", branch)
+    record_path.unlink()
+    output(
+        {
+            "status": "parked",
+            "agent": agent["name"],
+            "workspace": str(target),
+            "branch_deleted_locally": branch if exists.returncode == 0 else None,
+            "pull_request": pull_request["url"],
+            "suspended_record_removed": True,
+        }
+    )
+
+
 def cmd_park(args: argparse.Namespace) -> None:
     host = resolve_host(args.host)
     expected_remote = origin_for(host)
@@ -1129,6 +1434,20 @@ def cmd_park(args: argparse.Namespace) -> None:
         clean_workspace(target)
         fetch_main(target, expected_remote)
         branch = current_branch(target)
+        records_dir = suspended_dir(root, agent["name"])
+        if records_dir.is_dir() and any(records_dir.glob("*.json")):
+            candidate = gh_pr(target, args.pr, expected_remote)
+            record_path = records_dir / f"{branch_slug(str(candidate['headRefName']))}.json"
+            if record_path.exists() or record_path.is_symlink():
+                park_suspended(
+                    target,
+                    agent,
+                    candidate,
+                    record_path=record_path,
+                    current=branch,
+                    expected_remote=expected_remote,
+                )
+                return
         if branch == DEFAULT_BRANCH:
             if active_assignment.exists() or active_assignment.is_symlink():
                 raise Blocked("workspace is on main but active assignment metadata remains")
@@ -1221,6 +1540,15 @@ def build_parser() -> argparse.ArgumentParser:
     release.add_argument("--token", required=True)
     release.add_argument("--host")
     release.set_defaults(func=cmd_release)
+
+    suspend = subparsers.add_parser(
+        "suspend",
+        help="move the assignment of a task whose pull request is open to a record and return to main",
+    )
+    suspend.add_argument("--agent", required=True)
+    suspend.add_argument("--token", required=True)
+    suspend.add_argument("--host")
+    suspend.set_defaults(func=cmd_suspend)
 
     delivery_check = subparsers.add_parser(
         "delivery-check",

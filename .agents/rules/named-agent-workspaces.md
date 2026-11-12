@@ -31,7 +31,7 @@ Before a file-changing assignment starts, establish all of:
 - `delivery`: `open-pr` or `none`.
 - `authorized_by`: the authorized user or an enabled agent with `delegate-delivery` on `origin/main` when `delivery` is `open-pr`.
 
-An incomplete or contradictory contract blocks file changes. A named agent may hold only one active task or pull request. An assignment without `delivery: open-pr` stops before commit or push.
+An incomplete or contradictory contract blocks file changes. A named agent may hold only one active task at a time. By the order of the owner on 2026-11-11 ("a worker who finishes starts the next task without waiting for the merge"), a named agent may have several open pull requests when the assignment of each one is **suspended** (see the lifecycle). An assignment without `delivery: open-pr` stops before commit or push.
 
 Persist the normalized contract as ignored local assignment metadata when the task branch is created. Every review-resume and delivery preflight must match that metadata, and every changed path must remain inside its recorded scope. Remove the metadata only after verified post-merge parking or an explicitly approved discard.
 
@@ -52,6 +52,8 @@ Persist the normalized contract as ignored local assignment metadata when the ta
 4. **PR open**: use `commit-and-pr` only when delivery is authorized. Release the execution lock when the session ends, but keep the workspace on the task branch for review fixes.
 5. **Review**: a later session may reacquire the lock and resume only the same task and pull request.
 6. **Parked again**: after GitHub proves the matching pull request in the workspace's configured origin repository merged into `main`, require a clean workspace and matching local PR head, fetch and fast-forward `main`, delete only the verified local task branch, remove its assignment metadata, and release the lock.
+
+**Suspended**: after delivery, `suspend` moves the assignment of a task whose pull request is open to the record `.workspace/.state/<agent>-prs/<branch-slug>.json`, returns the workspace to `main` and releases the lock, so the agent can start the next task. It requires a clean task branch, a pushed `HEAD` and an open GitHub pull request of the same branch with the same head. `prepare` accepts open pull requests only when every one of them is suspended, and the agent still has one active task. `prepare --resume-pr` restores a suspended record for review fixes (no other active task allowed; a pure fast-forward of the branch is accepted) and `park --pr` closes it after the merge is verified.
 
 Before assigning new work, reconcile the previous pull request. A closed but unmerged pull request remains on its branch until the user or an authorized lead chooses `resume` or explicitly approves destructive discard.
 

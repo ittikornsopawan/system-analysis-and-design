@@ -55,6 +55,15 @@ When resuming review fixes, use `prepare --resume-pr <number-or-url>` with the o
 
 When `delivery: open-pr`, run `commit-and-pr` from the managed workspace. Its preflight invokes `agent-workspace delivery-check` to prove the durable authorization and reject every changed path outside the recorded assignment scope. Opening the pull request ends delivery; it never authorizes merging or starting unrelated work.
 
+To start the next task while the pull request is still open, suspend the delivered task (the order of the owner on 2026-11-11). Hold the lock, have a clean task branch, a pushed `HEAD` and an open pull request of the branch with the same head:
+
+```bash
+python3 .agents/skills/agent-workspace/scripts/agent_workspace.py suspend \
+  --agent <name> --token <lock-token>
+```
+
+`suspend` moves the assignment to `.workspace/.state/<name>-prs/<branch-slug>.json`, switches to `main` and releases the lock; `status` lists the suspended records. `prepare` then accepts the open pull request because it is suspended. To fix a review, run `prepare --resume-pr <number-or-url>` with the original assignment fields while no other task is active. `park --pr` also closes a suspended record, after the merge is verified.
+
 After the user or an authorized lead reports that the pull request merged, verify and park it:
 
 ```bash
