@@ -1,3 +1,11 @@
+---
+name: Scope Inquiry API Specification
+description: Defines verified JWT administration, current credential gating, bound nullable filters and consistent read-only scope pagination.
+status: in-review
+approved_by: null
+approved_at: null
+---
+
 # [GET]: v1/author/scope
 
 | Title       | Description                                                                                                                                                           |
@@ -32,19 +40,40 @@
 
 ### Query Parameters
 
-|     | Parameter Name | Data Type    | M/O      | Description                                                                                            | Example                              |
-| --- | -------------- | ------------ | -------- | ------------------------------------------------------------------------------------------------------ | ------------------------------------ |
-| 1   | id             | String: UUID | OPTIONAL | Scope Id, Response is a list with one item                                                             | a7b8c9d0-e1f2-4a3b-8c4d-5e6f7a8b9c0d |
-| 2   | pageIndex      | Numeric      | OPTIONAL | Page index starting from 1, Defaults to 1                                                              | 1                                    |
-| 3   | pageSize       | Numeric      | OPTIONAL | Number of items per page (max 100), Defaults to 10                                                     | 10                                   |
-| 4   | search         | String       | OPTIONAL | Search by scope scope or description                                                                   | region                               |
-| 5   | rowStatus      | String       | OPTIONAL | Row status filter (ACTIVE, INACTIVE, LOCKED, ARCHIVED), All statuses except DELETED when not specified | ACTIVE                               |
+|     | Parameter Name | Data Type    | M/O      | Description                                                                                                 | Example                              |
+| --- | -------------- | ------------ | -------- | ----------------------------------------------------------------------------------------------------------- | ------------------------------------ |
+| 1   | id             | String: UUID | OPTIONAL | Scope id filter combined with other filters and normal pagination; missing/DELETED id returns an empty list | a7b8c9d0-e1f2-4a3b-8c4d-5e6f7a8b9c0d |
+| 2   | pageIndex      | Numeric      | OPTIONAL | Page index starting from 1, Defaults to 1                                                                   | 1                                    |
+| 3   | pageSize       | Numeric      | OPTIONAL | Number of items per page (max 100), Defaults to 10                                                          | 10                                   |
+| 4   | search         | String       | OPTIONAL | Search by scope code or description                                                                         | catalog                              |
+| 5   | rowStatus      | String       | OPTIONAL | Row status filter (ACTIVE, INACTIVE, LOCKED, ARCHIVED), All statuses except DELETED when not specified      | ACTIVE                               |
 
 ### Scope Inquiry Rules
 
-- Only a platform administrator can read scopes (403, E10009), because they describe the security model. Approved by the product owner (answered through the lead SA, 2026-11-06).
-- Scopes with `rowStatus` DELETED are never returned. Sorted by `scope` and then by `id`, so that pages never repeat or skip a row.
-- Execution order: validate the request (400) -> permission (403) -> read.
+- Only a platform administrator can read scopes (403, E10009), because they describe the security model. Approved by the product owner (answered through the lead SA, 2026-11-06; claims basis A12); use exact PLATFORM_ADMIN in verified JWT role claims under [owner-confirmed review](../../../../../docs/superpowers/specs/2026-11-07-api-review-design.md), Q2/Q4/Q10/Q13. This detailed revision remains in-review; no backend/schema implementation.
+- Validate timestamp as mandatory UTC and accept only single id/pageIndex/pageSize/search/rowStatus query keys, with no body. Reject unknown/repeated keys and malformed header/query with 400 E10001 before SQL. Generate requestId if omitted. Supplied id is a non-empty UUID, never null; omitted id is typed SQL NULL. pageIndex/pageSize are positive signed 64-bit integers, default 1/10 only when omitted, pageSize at most 100. Compute checked offset = (pageIndex - 1) * pageSize and reject parse/offset overflow beyond nonnegative BIGINT with 400. Explicit empty/null-like values do not become defaults. Row status must be one of ACTIVE, INACTIVE, LOCKED, ARCHIVED.
+- search matches scope code OR description with existing case-insensitive ILIKE wildcard semantics. Omitted searchPattern binds typed SQL NULL; supplied search, including empty string, becomes one bound text searchPattern = percent + search + percent, preserving percent/underscore wildcards. Never interpolate client text into SQL. The three nullable filters disable only themselves and combine by AND; id is still filtered/paginated, not an unpaged alternate path.
+- Verify Bearer JWT signature/issuer/audience/expiry/UUID sub and structured roles before BEGIN. roles must be an array including [], every role object has UUID roleId and non-empty string name, and roleIds are unique. Missing/malformed roles is generic 401 E10002, never an empty-list or live-grant fallback. Derive callerUserId only from verified sub and accessTokenHash as SHA-256 of the exact JWT; do not accept caller ids or isPlatformAdmin flags from requests.
+- Begin REPEATABLE READ READ ONLY, capture fresh server UTC now immediately before the joined current credential/user read and recheck JWT exp. Require matching token hash/caller id, ACTIVE token/user and strict expired_at > now; missing/inactive/revoked/expired/mismatched credentials is generic 401 E10002 with rollback before scope reads. No user/role/token locks or writes. This current credential gate preserves immediate logout/reset revocation (Q13).
+- After current credentials pass, authorize once using exact case-sensitive PLATFORM_ADMIN in verified JWT roles. Valid roles=[] or any other role name is 403 E10009 `You do not have permission to read scopes.` after rollback and before count/page SQL. Never query current caller role assignments to grant, remove or replace authorization. Grant withdrawal after token issuance leaves the old privilege usable until access expiry (Q4); refresh reloads current grants (Q7). Scope metadata returned below comes from the database snapshot, distinct from author/me's calling-token snapshot.
+- Count first and optionally fetch the page in the same read-only repeatable-read snapshot as credentials. Both scope queries use identical non-DELETED/id/searchPattern/rowStatus WHERE predicates; every supplied value is bound, including pageSize and checked offset. If totalItems=0 skip the page SQL and return items=[], totalPages=0. With positive count, query the requested page; an offset beyond the range returns items=[] with positive totals/pages and no 404. A missing/DELETED id is the same empty-list 200 for an authorized caller; permission is checked before revealing whether any scope exists.
+- Scopes with rowStatus DELETED are never returned. Omitted rowStatus preserves every non-DELETED status; supplied status accepts only ACTIVE/INACTIVE/LOCKED/ARCHIVED. Sort by scope then id ascending, preserving database collation. This is deterministic within one snapshot; later requests may see newly committed changes and are not a frozen paging cursor.
+- Map each row to exactly scopeId/scope/name/description/rowStatus. No caller id, assignment, token/hash, audit or extra table fields are returned. Return exactly five data keys: items/pageIndex/pageSize/totalItems/totalPages, with explicit empty arrays. Echo validated pages and compute totalPages by integer quotient/remainder (zero when count=0), avoiding floating point or overflowing count+pageSize-1. Require page row count = min(pageSize, max(0, totalItems-offset)); mismatch or malformed/null/missing required data is internal failure.
+- Map the full response before COMMIT, then HTTP 200 S10000 Inquiry Scope Success. An unexpected SQL/result/mapping error rolls back and returns generic 500 without bizCode; timeout before COMMIT rolls back and returns 408 E90001. Never return partially mapped rows, mutate scopes/assignments/tokens/audit, or answer 404/409 for this inquiry.
+- Execution order: validate query/header/body and checked pagination (400) -> verify JWT/scopes (401) -> begin read-only repeatable-read transaction -> fresh now/expiry -> joined current credential/user (401) -> claims permission (403) -> count -> optional page -> complete mapping -> COMMIT -> 200. Every post-BEGIN rejection rolls back.
+
+#### Scenario correspondence with sequence.wsd
+
+| Scenario                                                              | Outcome                                                  | Transaction/query effects             |
+| --------------------------------------------------------------------- | -------------------------------------------------------- | ------------------------------------- |
+| Invalid input / invalid JWT or malformed roles                        | 400 E10001 / 401 E10002                                  | No BEGIN/SQL                          |
+| JWT expires before fresh credential read / current token-user invalid | 401 E10002                                               | Rollback, no scope queries            |
+| Current credential without exact PLATFORM_ADMIN role claim            | 403 E10009                                               | Rollback before count/page            |
+| No matching scope, including missing/DELETED id                       | 200 S10000, empty items and zero pages                   | Count only, commit read-only snapshot |
+| Positive count, populated page                                        | 200 S10000 with five-field items and all pagination keys | Same-filter/snapshot count and page   |
+| Positive count, page beyond range                                     | 200 S10000, empty items but positive totals/pages        | No 404                                |
+| Scope change committed between count/page                             | Consistent one-snapshot result                           | A later request sees the change       |
+| Timeout / unexpected SQL/result/mapping failure                       | 408 E90001 / generic 500                                 | Rollback, no partial response         |
 
 ## Example Request
 
@@ -103,9 +132,9 @@ curl --location --request GET 'https://www.domain.com/api-dev/v1/author/scope?pa
 |     | Parameter Name | Data Type    | M/O       | Source           | Field                    | Description                                     | Example                              |
 | --- | -------------- | ------------ | --------- | ---------------- | ------------------------ | ----------------------------------------------- | ------------------------------------ |
 | 1   | scopeId        | String: UUID | MANDATORY | Sequence Diagram | data.items[].scopeId     | Scope Id                                        | a7b8c9d0-e1f2-4a3b-8c4d-5e6f7a8b9c0d |
-| 2   | scope          | String       | MANDATORY | Sequence Diagram | data.items[].scope       | Scope Scope                                     | REGION                               |
+| 2   | scope          | String       | MANDATORY | Sequence Diagram | data.items[].scope       | Scope Code                                      | REGION                               |
 | 3   | name           | String       | MANDATORY | Sequence Diagram | data.items[].name        | Scope Name                                      | Region                               |
-| 4   | description    | String       | MANDATORY | Sequence Diagram | data.items[].description | Scope Description                               | The shops of one region              |
+| 4   | description    | String       | MANDATORY | Sequence Diagram | data.items[].description | Scope Description                               | Manages the product catalogue        |
 | 5   | rowStatus      | String       | MANDATORY | Sequence Diagram | data.items[].rowStatus   | Row status (ACTIVE, INACTIVE, LOCKED, ARCHIVED) | ACTIVE                               |
 
 ### Example Response Parameters
@@ -284,9 +313,79 @@ Request: `GET v1/author/scope?id=a7b8c9d0-e1f2-4a3b-8c4d-5e6f7a8b9c0d`
 }
 ```
 
+#### Success - Page Beyond Range
+
+```JSON
+{
+    "status": {
+        "code": 200,
+        "message": "Ok",
+        "bizCode": "S10000",
+        "bizMessage": "Inquiry Scope Success",
+        "requestId": "req-8f6a2b4c-5d7e-4f9a-b1c3-4d5e6f7a8b9c",
+        "timestamp": "2026-11-06T09:10:00.123Z",
+        "status": "SUCCESS"
+    },
+    "data": {
+        "items": [],
+        "pageIndex": 2,
+        "pageSize": 10,
+        "totalItems": 1,
+        "totalPages": 1
+    }
+}
+```
+
+#### Fail - Internal Server Error
+
+```JSON
+{
+    "status": {
+        "code": 500,
+        "message": "Internal Server Error",
+        "bizMessage": "An unexpected error occurred.",
+        "requestId": "req-scope-inquiry-review",
+        "timestamp": "2026-11-08T00:00:00.123Z",
+        "status": "ERROR"
+    }
+}
+```
+
 ---
 
 ## Database Relations
+
+All three SELECTs share one REPEATABLE READ READ ONLY transaction; authorization is derived solely from the verified token scopes, and current token/user status is read from the database. Bound nullable filters and identical scope predicates apply to count and page. No locks or writes.
+
+### Table: [authen.t_user_access_token](../../../schema/authen/t_user_access_token.md)
+
+#### QUERY - Check current credential and user
+
+```SQL
+SELECT
+    at.id as access_token_id
+FROM authen.t_user_access_token at
+JOIN authen.m_user u ON u.id = at.user_id
+WHERE at.token = '<sequence.accessTokenHash>'
+AND at.user_id = '<sequence.callerUserId>'
+AND at.row_status = 'ACTIVE'
+AND at.expired_at > '<sequence.now>'
+AND u.row_status = 'ACTIVE'
+```
+
+### Table: [author.m_scope](../../../schema/author/m_scope.md)
+
+#### QUERY - Get total items
+
+```SQL
+SELECT
+    COUNT(s.id) as total_items
+FROM author.m_scope s
+WHERE s.row_status <> 'DELETED'
+AND ('<sequence.id>' IS NULL OR s.id = '<sequence.id>') -- only when id is specified
+AND ('<sequence.searchPattern>' IS NULL OR s.scope ILIKE '<sequence.searchPattern>' OR s.description ILIKE '<sequence.searchPattern>') -- only when search is specified
+AND ('<sequence.rowStatus>' IS NULL OR s.row_status = '<sequence.rowStatus>') -- only when rowStatus is specified
+```
 
 ### Table: [author.m_scope](../../../schema/author/m_scope.md)
 
@@ -301,46 +400,9 @@ SELECT
     s.row_status
 FROM author.m_scope s
 WHERE s.row_status <> 'DELETED'
-AND s.id = '<sequence.id>' -- only when id is specified
-AND (s.scope ILIKE '%<sequence.search>%' OR s.description ILIKE '%<sequence.search>%') -- only when search is specified
-AND s.row_status = '<sequence.rowStatus>' -- only when rowStatus is specified
+AND ('<sequence.id>' IS NULL OR s.id = '<sequence.id>') -- only when id is specified
+AND ('<sequence.searchPattern>' IS NULL OR s.scope ILIKE '<sequence.searchPattern>' OR s.description ILIKE '<sequence.searchPattern>') -- only when search is specified
+AND ('<sequence.rowStatus>' IS NULL OR s.row_status = '<sequence.rowStatus>') -- only when rowStatus is specified
 ORDER BY s.scope, s.id
-LIMIT <sequence.pageSize> OFFSET (<sequence.pageIndex> - 1) * <sequence.pageSize>
-```
-
-#### QUERY - Get total items
-
-```SQL
-SELECT
-    COUNT(s.id) as total_items
-FROM author.m_scope s
-WHERE s.row_status <> 'DELETED'
-AND s.id = '<sequence.id>' -- only when id is specified
-AND (s.scope ILIKE '%<sequence.search>%' OR s.description ILIKE '%<sequence.search>%') -- only when search is specified
-AND s.row_status = '<sequence.rowStatus>' -- only when rowStatus is specified
-```
-
-### Table: [author.m_role](../../../schema/author/m_role.md)
-
-#### QUERY - Get the platform administrator role
-
-```SQL
-SELECT
-    r.id as role_id
-FROM author.m_role r
-WHERE r.name = 'PLATFORM_ADMIN'
-AND r.row_status = 'ACTIVE'
-```
-
-### Table: [author.t_user_role](../../../schema/author/t_user_role.md)
-
-#### QUERY - Check platform administrator
-
-```SQL
-SELECT
-    ur.id as user_role_id
-FROM author.t_user_role ur
-WHERE ur.user_id = '<sequence.userId>'
-AND ur.role_id = '<sequence.roleId>'
-AND ur.row_status = 'ACTIVE'
+LIMIT '<sequence.pageSize>' OFFSET '<sequence.offset>'
 ```
