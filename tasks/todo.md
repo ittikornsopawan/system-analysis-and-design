@@ -1402,6 +1402,14 @@ Authority: owner Q2/Q4/Q7/Q10/Q13/Q15, assignment `authorized_by: josh`, deliver
 
 Scope-inquiry verification: 14/14 deliberate faults rejected (including synchronized spec+sequence SQL faults); SQL lines visible in the PlantUML render are counted above. No schema, seed or backend change.
 
+## e-commerce: JWT claims, payment/05 (refund payment)
+
+Status: Complete in the branch, waiting for review. Assignment: agent `tommy`, delivery `open-pr`, authorized by `josh`, workspace `.workspace/tommy`, branch `fix/tommy-jwt-claims-payment-05`, scopes `payment/05-refund-payment`, `e-commerce/db/tests/check_docs.py` (needles only) and `tasks`. Governing: `docs/superpowers/specs/2026-11-07-api-review-design.md` (Q2, Q4, Q10, Q13).
+
+- [x] The platform administrator is the exact role `PLATFORM_ADMIN` in the verified `roles` claim, the two `author` queries are removed, shop membership stays a database check.
+- [x] Add the caller lock and the current credential gate after `BEGIN` (lock order: caller user, order row, lots by id, budgets by id), the Allow Scope (`payment:payment:refund:allow`) and the order 400, 401, 404, 403, 409.
+- [x] Move the diagram and the needles of `payment-spec`, run every checker and the mutation tests.
+- [x] Open the PR with `commit-and-pr`, tell the lead SA when CI is green, then suspend. Next: `sales/04`.
 ### Author API11 user role inquiry — claims, credential gate and consistent pagination
 
 Authority: owner Q2/Q4/Q7/Q10/Q13/Q15, assignment `authorized_by: josh`, delivery `open-pr`. Derived from the delivered scope inquiry (author/09) with user-role joins and filters; slim API-specific checker.
