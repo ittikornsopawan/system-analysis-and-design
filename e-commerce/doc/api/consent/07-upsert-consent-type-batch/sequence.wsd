@@ -96,11 +96,11 @@ activate page
                                 is_required
                             )
                             VALUES (
-                                '<sequence.createdBy>',
-                                '<sequence.consentTypes.rowStatus>',
-                                '<sequence.consentTypes.name>',
-                                '<sequence.consentTypes.description>',
-                                '<sequence.consentTypes.isRequired>'
+                                &#39;<sequence.createdBy>',
+                                &#39;<sequence.consentTypes.rowStatus>',
+                                &#39;<sequence.consentTypes.name>',
+                                &#39;<sequence.consentTypes.description>',
+                                &#39;<sequence.consentTypes.isRequired>'
                             )
                             RETURNING id as consent_type_id
                         end note

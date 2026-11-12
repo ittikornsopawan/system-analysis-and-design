@@ -1751,7 +1751,8 @@ def check_order_spec() -> int:
                "one transaction", "E10007", "ck_t_shop_product_sku_lot_price_not_below_cost",
                "ORDER BY c.id\nFOR UPDATE -- the lines to order are locked in id order", "the cart lines of the request by `id` (`FOR UPDATE` in `QUERY - Get the cart lines to order`)", "approved by the product owner on 2026-11-08"],
         "03": ["### Order Inquiry Rules", "ORDER BY o.created_at DESC, o.id", "o.user_id = '<sequence.userId>'", "#### QUERY - Count the orders of the user", "ILIKE"],
-        "04": ["### Shop Order Inquiry Rules", "E10009", "#### Fail - Forbidden", "#### QUERY - Check shop member", "#### QUERY - Check platform administrator",
+        "04": ["### Shop Order Inquiry Rules", "E10009", "#### Fail - Forbidden", "#### QUERY - Check shop member", "#### QUERY - Check active credential and user",
+               "the role `PLATFORM_ADMIN` in the verified `roles` claim", "do not query `author.m_role` or `author.t_user_role`", "### Allow Scope", "sales:order:read:allow",
                "approved by the product owner", "platformProfit", "ORDER BY o.created_at DESC, o.id", "INNER JOIN authen.m_user ui"],
         "05": ["### Cancel Rules", "#### UPDATE - Cancel the order", "AND status = 'WAIT_PAYMENT'", "#### UPDATE - Give the quantity back to the lot", "E10006",
                "restoredItems", "#### QUERY - Check shop member", "FOR UPDATE -- the order row is locked first", "ORDER BY oi.lot_id",
@@ -2565,6 +2566,7 @@ def check_payment_spec() -> int:
                "providerPaymentId", "ORDER BY p.created_at DESC, p.id", "#### QUERY - Count the payments of the shop"],
         "05": ["### Refund Rules", "#### UPDATE - Refund the payment", "AND status = 'COMPLETED'", "#### UPDATE - Refund the order", "AND status = 'PAYMENT_CONFIRMED'",
                "#### UPDATE - Give the quantity back to the lot", "refund-", "E10006", "E10009", "restoredItems", "#### QUERY - Check shop member", "FOR UPDATE -- taken before the payment is changed",
+               "#### QUERY - Lock the caller user", "#### QUERY - Check current credential and user", "do not query `author.m_role` or `author.t_user_role`", "### Allow Scope", "payment:payment:refund:allow",
                "ORDER BY oi.lot_id", "`Idempotency-Key` `refund-<paymentId>`", "If the `COMMIT` fails after Stripe refunded", "approved by the product owner on 2026-11-08"],
     }
     for key, need in needles.items():
@@ -4099,6 +4101,21 @@ def sequence_answer_errors(text: str, needs_token: bool, is_public: bool) -> lis
     return errors
 
 
+def sequence_quote_errors(text: str) -> list[str]:
+    """A note line that starts with a bare quote is drawn by PlantUML as a comment, so the SQL line is missing from the picture."""
+    errors = []
+    inside = False
+    for number, line in enumerate(text.splitlines(), start=1):
+        stripped = line.strip()
+        if re.match(r"^note (?:left|right|over)\b[^:]*$", stripped):
+            inside = True
+        elif stripped == "end note":
+            inside = False
+        elif inside and stripped.startswith("'"):
+            errors.append(f"line {number}: a note line starts with a bare quote (PlantUML draws it as a comment), write it as &#39;")
+    return errors
+
+
 def sequence_heading_errors(text: str) -> list[str]:
     """Each 'app -> infra: <SQL heading>' line is followed at once by 'infra -> <table>: <the same heading>'."""
     errors = []
@@ -4206,6 +4223,7 @@ def check_api_sequence_spec() -> int:
             errors.extend(f"{relative_sequence}: login standard: {error}" for error in standard_errors)
         spec_text = spec_path.read_text(encoding="utf-8")
         errors.extend(f"{relative_sequence}: {error}" for error in sequence_heading_errors(sequence_text))
+        errors.extend(f"{relative_sequence}: {error}" for error in sequence_quote_errors(sequence_text))
         answer_errors = sequence_answer_errors(sequence_text, spec_needs_token(spec_text), spec_is_public(spec_text))
         if folder in LEGACY_TOKEN_SEQUENCES:
             if not answer_errors:
