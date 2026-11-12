@@ -60,7 +60,7 @@ approved_at: null
 - Scopes with rowStatus DELETED are never returned. Omitted rowStatus preserves every non-DELETED status; supplied status accepts only ACTIVE/INACTIVE/LOCKED/ARCHIVED. Sort by scope then id ascending, preserving database collation. This is deterministic within one snapshot; later requests may see newly committed changes and are not a frozen paging cursor.
 - Map each row to exactly scopeId/scope/name/description/rowStatus. No caller id, assignment, token/hash, audit or extra table fields are returned. Return exactly five data keys: items/pageIndex/pageSize/totalItems/totalPages, with explicit empty arrays. Echo validated pages and compute totalPages by integer quotient/remainder (zero when count=0), avoiding floating point or overflowing count+pageSize-1. Require page row count = min(pageSize, max(0, totalItems-offset)); mismatch or malformed/null/missing required data is internal failure.
 - Map the full response before COMMIT, then HTTP 200 S10000 Inquiry Scope Success. An unexpected SQL/result/mapping error rolls back and returns generic 500 without bizCode; timeout before COMMIT rolls back and returns 408 E90001. Never return partially mapped rows, mutate scopes/assignments/tokens/audit, or answer 404/409 for this inquiry.
-- Execution order: validate query/header/body and checked pagination (400) -> verify JWT/scopes (401) -> begin read-only repeatable-read transaction -> fresh now/expiry -> joined current credential/user (401) -> claims permission (403) -> count -> optional page -> complete mapping -> COMMIT -> 200. Every post-BEGIN rejection rolls back.
+- Execution order: validate query/header/body and checked pagination (400) -> verify JWT/roles (401) -> begin read-only repeatable-read transaction -> fresh now/expiry -> joined current credential/user (401) -> claims permission (403) -> count -> optional page -> complete mapping -> COMMIT -> 200. Every post-BEGIN rejection rolls back.
 
 #### Scenario correspondence with sequence.wsd
 
@@ -355,7 +355,7 @@ Request: `GET v1/author/scope?id=a7b8c9d0-e1f2-4a3b-8c4d-5e6f7a8b9c0d`
 
 ## Database Relations
 
-All three SELECTs share one REPEATABLE READ READ ONLY transaction; authorization is derived solely from the verified token scopes, and current token/user status is read from the database. Bound nullable filters and identical scope predicates apply to count and page. No locks or writes.
+All three SELECTs share one REPEATABLE READ READ ONLY transaction; authorization is derived solely from the verified token roles, and current token/user status is read from the database. Bound nullable filters and identical scope predicates apply to count and page. No locks or writes.
 
 ### Table: [authen.t_user_access_token](../../../schema/authen/t_user_access_token.md)
 

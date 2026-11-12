@@ -1434,3 +1434,11 @@ Status: Complete in the branch, waiting for review. Assignment: agent `tommy`, d
 - [x] Add the caller lock and the current credential gate after `BEGIN` (lock order: caller user, order row, lots by id, budgets by id), the Allow Scope (`payment:payment:refund:allow`) and the order 400, 401, 404, 403, 409.
 - [x] Move the diagram and the needles of `payment-spec`, run every checker and the mutation tests.
 - [x] Open the PR with `commit-and-pr`, tell the lead SA when CI is green, then suspend. Next: `sales/04`.
+
+### Author API09 wording fix — JWT statements said scopes instead of roles
+
+Authority: SA Lead (Josh) approved this one-folder fix after Peter reported two defects introduced in PR #95; assignment `authorized_by: josh`, delivery `open-pr`. Behaviour, SQL and sequence are unchanged.
+
+- [x] Correct `verify JWT/scopes (401)` and `verified token scopes` to roles in `author/09-inquiry-scope/spec.md`.
+- [x] Guard both phrases in `scope-inquiry-flow`; mutation: both reverted phrases are rejected (2/2).
+- [x] Run every documentation command, audit and database tests on the branch merged with origin/main.

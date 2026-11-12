@@ -7346,6 +7346,7 @@ def check_scope_inquiry_flow() -> int:
     if not md.startswith('---\nname:') or 'status: in-review\napproved_by: null\napproved_at: null' not in md:errors.append('spec stays in-review until approved')
     page=next((q for _,k,q in ops if k=='QUERY - Get scopes'),'');proj=re.search(r'SELECT\s+(.*?)\s+FROM\s',page,re.S)
     if not proj or normalize(proj[1])!=normalize('s.id as scope_id, s.scope, s.name, s.description, s.row_status'):errors.append('page returns exactly scopeId/scope/name/description/rowStatus columns')
+    errors+=[f'claims wording missing {n!r}' for n in ('verify JWT/roles (401)','verified token roles') if n not in md]
     if 'You do not have permission to read scopes.' not in wsd or 'skip page query' not in wsd:errors.append('403 text and zero-count page skip must be drawn')
     if errors:return fail('; '.join(errors))
     print('OK: scope-inquiry-flow (claims-only admin, read-only snapshot, ordered count/page, one commit)')
