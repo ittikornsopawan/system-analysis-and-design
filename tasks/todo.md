@@ -1382,3 +1382,12 @@ Status: Complete in the branch, waiting for review. Assignment: agent `tommy`, d
 - [x] Add the current credential check (`QUERY - Check active credential and user`), the Allow Scope section (`payment:payment:read:allow`) and the order 400, 401, 404, 403.
 - [x] Move the diagram and the needles of `payment-spec`, run every checker and the mutation tests.
 - [x] Open the PR with `commit-and-pr`; do not merge. The next API of the queue is `payment/05`.
+### Author API09 scope inquiry — claims, credential gate and consistent pagination
+
+Authority: owner Q2/Q4/Q7/Q10/Q13/Q15, assignment `authorized_by: josh`, delivery `open-pr`. Built from the reviewed role inquiry (author/03) with scope-specific fields; Josh asked (PR94 review) for a slim API-specific checker that covers only what parity/lifecycle checks cannot.
+
+- [x] Revise spec.md and sequence.wsd together: verified JWT roles claim, fresh credential gate in a REPEATABLE READ READ ONLY snapshot, one 403 before count/page, identical count/page filters, five-field scope items, scope-then-id order, one COMMIT.
+- [x] Add the slim `scope-inquiry-flow` (about 25 lines: no live grants, read-only SQL, identical WHERE, step order, one decision and one COMMIT, rollback before post-BEGIN rejections, exact columns, still in-review) and point `author-spec` needles for API09 at the claims wording.
+- [x] Mutation-test, render, and run all documentation commands, audit and database tests on the branch merged with origin/main.
+
+Scope-inquiry verification: 14/14 deliberate faults rejected (including synchronized spec+sequence SQL faults); SQL lines visible in the PlantUML render are counted above. No schema, seed or backend change.
