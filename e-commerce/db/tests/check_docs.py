@@ -5387,6 +5387,10 @@ ADMIN_WRITE_SPECS = {  # folder: (the thing it manages, batch)
 }
 ADMIN_WRITE_REFERENCE = "e-commerce/doc/api/shop/05-upsert-shop-type/spec.md"  # sales/05 now reads the administrator from the JWT claims
 ADMIN_WRITE_APPROVED = "Approved by the product owner (answered through the lead SA, 2026-11-06)."
+# Specs moved to the verified JWT roles claim (API review Q2, Q4, Q10, Q13): the two live role queries are gone, the caller lock and the
+# current credential check take their place. Add a folder here in the pull request that migrates it.
+ADMIN_WRITE_JWT_CLAIMS = {"product/01-upsert-product"}
+ADMIN_WRITE_CLAIMS_RULE = "the verified JWT `roles` claim must contain the exact case-sensitive role `PLATFORM_ADMIN`"
 ADMIN_WRITE_RULE_BATCH = ("Permission: the same as the single upsert, only a platform administrator (a user with an ACTIVE `author.t_user_role` row for the ACTIVE role `PLATFORM_ADMIN`) "
                           "can call this API, any other caller gets 403 (E10009)")
 ADMIN_WRITE_RULE = ("Permission: only a platform administrator (a user with an ACTIVE `author.t_user_role` row for the ACTIVE role `PLATFORM_ADMIN`) "
@@ -5401,6 +5405,34 @@ def admin_write_reference_queries() -> list[str]:
         match = re.search(rf"#### {re.escape(title)}\n\n```SQL\n(.*?)```", md, re.DOTALL)
         found.append(match.group(1) if match else "")
     return found
+
+
+def admin_write_claims_flow_errors(wsd: str) -> list[str]:
+    """Order of a diagram that authorizes from the verified roles claim: lock, current credential, existence, claims permission, conflicts, writes."""
+    errors = []
+    marks = [
+        ("BEGIN", r"^\s*app -> infra: BEGIN READ COMMITTED"),
+        ("caller lock", r"^\s*app -> infra: QUERY - Lock the caller user"),
+        ("current credential check", r"^\s*app -> infra: QUERY - Check current credential and user"),
+        ("first existence check", r"^\s*app -> infra: QUERY - Check product type\b"),
+        ("claims permission", r"^\s*alt The verified roles claim has no PLATFORM_ADMIN"),
+        ("first conflict check", r"^\s*app -> infra: QUERY - Check product SKUs in use"),
+        ("first write", r"^\s*app -> infra: (?:INSERT|UPDATE) - "),
+    ]
+    found = []
+    for name, pattern in marks:
+        match = re.search(pattern, wsd, re.MULTILINE)
+        if not match:
+            errors.append(f"the diagram has no {name}")
+        else:
+            found.append((match.start(), name))
+    if not errors and [name for _, name in sorted(found)] != [name for name, _ in marks]:
+        errors.append("the diagram must run: " + " -> ".join(name for name, _ in marks))
+    if not re.search(r"^\s*app -> app: Verify JWT\b.*roles claim", wsd, re.MULTILINE):
+        errors.append("the JWT step must verify the roles claim")
+    if re.search(r"infra -> (?:m_role|t_user_role):", wsd):
+        errors.append("the diagram must not read author.m_role or author.t_user_role")
+    return errors
 
 
 def check_admin_write_spec() -> int:
@@ -5426,13 +5458,22 @@ def check_admin_write_spec() -> int:
         description = next((line for line in md.split("\n") if line.startswith("| Description |")), "")
         if "only a platform administrator can call it" not in description:
             errors.append(f"{path}: the Description row must say that only a platform administrator can call it")
+        claims = folder in ADMIN_WRITE_JWT_CLAIMS
         need = [ADMIN_WRITE_RULE_BATCH if batch else ADMIN_WRITE_RULE, ADMIN_WRITE_APPROVED, "permission (403, E10009)", "#### QUERY - Get the platform administrator role", "#### QUERY - Check platform administrator",
                 "(../../../schema/author/m_role.md)", "(../../../schema/author/t_user_role.md)", f"You do not have permission to manage {thing}."]
+        if claims:
+            need = [ADMIN_WRITE_CLAIMS_RULE, "Q2, Q4, Q10 and Q13", "Never query `author.m_role` or `author.t_user_role`", "permission from the `roles` claim (403, E10009)",
+                    "verify the JWT and its `roles` claim (401), lock the caller and check the current credential (401), existence checks (404,", "-> verify the JWT and its `roles` claim (401) -> lock the caller and check the current credential (401) -> existence checks (404)", "#### QUERY - Lock the caller user", "WHERE u.id = '<sequence.callerUserId>'\nFOR UPDATE",
+                    "#### QUERY - Check current credential and user", "AND at.expired_at > '<sequence.now>'", "(../../../schema/authen/m_user.md)",
+                    "(../../../schema/authen/t_user_access_token.md)", f"You do not have permission to manage {thing}."]
+            for gone in ("#### QUERY - Get the platform administrator role", "#### QUERY - Check platform administrator", "(../../../schema/author/m_role.md)", "(../../../schema/author/t_user_role.md)"):
+                if gone in md:
+                    errors.append(f"{path}: the live platform administrator query must be gone, found {gone!r}")
         if batch:
             need += ["so the 403 message has no item position", "the same as the single upsert, only a platform administrator"]
         if folder.startswith("product/0") and folder.split("/")[1].startswith(("01", "03")):
-            need += ["permission check (403, E10009, once for the request in a batch), in-use check (409)"]
-        elif folder != "shop/05-upsert-shop-type":
+            need += ["permission check (403, E10009, once for the request in a batch), in-use check (409)"] if not claims else []
+        elif folder != "shop/05-upsert-shop-type" and not claims:
             need += ["- Order of checks: validate the request (400) -> existence checks (404) -> permission (403, E10009) -> duplicate, in-use and other conflicts (409) -> write."]
         if folder == "shop/05-upsert-shop-type":
             need += ["existence check (404) -> permission (403, E10009) -> duplicate name check"]
@@ -5441,11 +5482,12 @@ def check_admin_write_spec() -> int:
         for stale in ("Any caller with a valid access token can call this API", "A role check (for example platform administrators only) is not defined yet"):
             if stale in md:
                 errors.append(f"{path} still says {stale!r}")
-        for query in queries:
+        for query in ([] if claims else queries):
             if query and md.count(query) != 1:
                 errors.append(f"{path}: the platform administrator query must be copied exactly from the reference spec, found {md.count(query)} copies")
-        if md.count("#### Fail - Forbidden") != 1 or md.count("#### QUERY - Get the platform administrator role") != 1 or md.count("#### QUERY - Check platform administrator") != 1:
-            errors.append(f"{path}: Fail - Forbidden and each platform administrator query must appear exactly once")
+        queries_once = ("#### QUERY - Lock the caller user", "#### QUERY - Check current credential and user") if claims else ("#### QUERY - Get the platform administrator role", "#### QUERY - Check platform administrator")
+        if md.count("#### Fail - Forbidden") != 1 or any(md.count(q) != 1 for q in queries_once):
+            errors.append(f"{path}: Fail - Forbidden and each {'caller lock and credential' if claims else 'platform administrator'} query must appear exactly once")
         match = re.search(r"#### Fail - Forbidden\n\n```JSON\n(.*?)```", md, re.DOTALL)
         if not match:
             errors.append(f"{path}: no JSON in 'Fail - Forbidden'")
@@ -5457,10 +5499,12 @@ def check_admin_write_spec() -> int:
                 errors.append(f"{path}: the 403 message must have no item position")
             if md.index("#### Fail - Forbidden") > md.index("#### Fail - Conflict"):
                 errors.append(f"{path}: Fail - Forbidden must come before the Conflict examples (after Not Found)")
-        if md.index("#### QUERY - Get the platform administrator role") < md.index("## Database Relations"):
-            errors.append(f"{path}: the platform administrator queries belong to Database Relations")
+        if md.index(queries_once[0]) < md.index("## Database Relations"):
+            errors.append(f"{path}: the {'caller lock and credential' if claims else 'platform administrator'} queries belong to Database Relations")
         if md.count("E10009") < 3:
             errors.append(f"{path}: E10009 must appear in the rule, the order of checks and the example")
+        if claims:
+            errors.extend(f"{path}: {error}" for error in admin_write_claims_flow_errors(read(str(Path(path).with_name("sequence.wsd")))))
     if errors:
         return fail("; ".join(errors))
     print("OK: admin-write-spec (9 specs)")
