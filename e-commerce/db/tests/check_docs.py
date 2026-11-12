@@ -1751,11 +1751,13 @@ def check_order_spec() -> int:
                "one transaction", "E10007", "ck_t_shop_product_sku_lot_price_not_below_cost",
                "ORDER BY c.id\nFOR UPDATE -- the lines to order are locked in id order", "the cart lines of the request by `id` (`FOR UPDATE` in `QUERY - Get the cart lines to order`)", "approved by the product owner on 2026-11-08"],
         "03": ["### Order Inquiry Rules", "ORDER BY o.created_at DESC, o.id", "o.user_id = '<sequence.userId>'", "#### QUERY - Count the orders of the user", "ILIKE"],
-        "04": ["### Shop Order Inquiry Rules", "E10009", "#### Fail - Forbidden", "#### QUERY - Check shop member", "#### QUERY - Check platform administrator",
+        "04": ["### Shop Order Inquiry Rules", "E10009", "#### Fail - Forbidden", "#### QUERY - Check shop member", "#### QUERY - Check active credential and user",
+               "the role `PLATFORM_ADMIN` in the verified `roles` claim", "do not query `author.m_role` or `author.t_user_role`", "### Allow Scope", "sales:order:read:allow",
                "approved by the product owner", "platformProfit", "ORDER BY o.created_at DESC, o.id", "INNER JOIN authen.m_user ui"],
         "05": ["### Cancel Rules", "#### UPDATE - Cancel the order", "AND status = 'WAIT_PAYMENT'", "#### UPDATE - Give the quantity back to the lot", "E10006",
                "restoredItems", "#### QUERY - Check shop member", "FOR UPDATE -- the order row is locked first", "ORDER BY oi.lot_id",
-               "`Idempotency-Key` `cancel-<paymentIntentId>`", "approved by the product owner on 2026-11-08"],
+               "`Idempotency-Key` `cancel-<paymentIntentId>`", "approved by the product owner on 2026-11-08",
+               "#### QUERY - Lock the caller user", "#### QUERY - Check current credential and user", "do not query `author.m_role` or `author.t_user_role`", "### Allow Scope", "sales:order:cancel:allow"],
     }
     for key, need in needles.items():
         for missing in missing_needles(mds[key], need):
@@ -4691,7 +4693,7 @@ BATCH_UPSERT_SPECS.extend(f"{AUTHOR_DIR}/{AUTHOR_SPECS[k]}/spec.md" for k in ("0
 AUTHOR_ADMIN = ["#### QUERY - Get the platform administrator role", "#### QUERY - Check platform administrator", "WHERE r.name = 'PLATFORM_ADMIN'", "AND r.row_status = 'ACTIVE'",
                 "AND ur.role_id = '<sequence.roleId>'", "AND ur.row_status = 'ACTIVE'", "(../../../schema/author/m_role.md)", "(../../../schema/author/t_user_role.md)", "Approved by the product owner"]
 AUTHOR_USER_ROLE = "5e6f7a8b-9c0d-4e1f-8a2b-3c4d5e6f7a8b"
-AUTHOR_FORBIDDEN_TEXT = {"10": ["The user must be ACTIVE and the role must be ACTIVE, otherwise 404"]}
+AUTHOR_FORBIDDEN_TEXT = {"10": ["The user must be ACTIVE and the role must be ACTIVE, otherwise 404", "#### QUERY - Get the platform administrator role", "#### QUERY - Check platform administrator", "NOW()"]}
 
 
 def author_json(md: str, heading: str):
@@ -4776,8 +4778,6 @@ def author_counted(key: str):
         alias, ucol = m[7], m[8]
         return [(f"AND ({alias}.{ucol} ILIKE '%<sequence.search>%' OR {alias}.description ILIKE '%<sequence.search>%') -- only when search is specified", 2),
                 (f"AND {alias}.row_status = '<sequence.rowStatus>' -- only when rowStatus is specified", 2)]
-    if key == "10":
-        return [("-- only when the request gives the role (an insert, or opening a row that is not ACTIVE)", 2)]
     if key == "11":
         return [("AND ('<sequence.id>' IS NULL OR ur.id = '<sequence.id>') -- only when id is specified", 2), ("AND ('<sequence.filterUserId>' IS NULL OR ur.user_id = '<sequence.filterUserId>') -- only when userId is specified", 2),
                 ("AND ('<sequence.filterRoleId>' IS NULL OR ur.role_id = '<sequence.filterRoleId>') -- only when roleId is specified", 2), ("AND ('<sequence.rowStatus>' IS NULL OR ur.row_status = '<sequence.rowStatus>') -- only when rowStatus is specified", 2)]
@@ -4785,13 +4785,14 @@ def author_counted(key: str):
 
 
 AUTHOR_OTHER_NEEDLES = {
-    "10": ["# [POST]: v1/author/user/role/upsert", "### User Role Rules", "**The platform keeps at least one administrator.**", "Lock order:", "FOR UPDATE -- the target users, in ascending id order, before any role row",
-           "FOR UPDATE -- only when the request touches the PLATFORM_ADMIN assignment", "#### QUERY - Count the platform administrators after the write", "#### Fail - Conflict Last Administrator",
-           "The platform must keep at least one administrator.", "The user already has this role.", "User Id and Role Id cannot be changed.", "-> permission (403, E10009) -> duplicate check (409, E10003) -> write -> last administrator rule",
-           "AND ur.row_status = 'ACTIVE' -- the request is rolled back (409) when the count is 0", "        AND u.row_status = 'ACTIVE'\nWHERE ur.role_id = '<sequence.platformAdminRoleId>'", "INNER JOIN authen.m_user u", "Delete 204 No Content", "Archive when rowStatus is ARCHIVED", "User or role not found or not ACTIVE.", *AUTHOR_ADMIN,
-           "**The user and the role must be ACTIVE only when the request gives the role**",
-           "Taking the role away (`rowStatus` DELETED, ARCHIVED, INACTIVE or LOCKED) works whatever the status of the user and of the role is",
-           "The last administrator rule below still applies in full.", "existence checks (404, the row of `id`, and the user and the role only when the request gives the role)"],
+    "10": ["# [POST]: v1/author/user/role/upsert", "### User Role Rules", "### Credential, Lock and Transaction Rules", "**The platform keeps at least one administrator.**",
+           "Lock order is users (ascending id) -> the role of the request", "#### QUERY - Lock the users", "#### QUERY - Lock the role", "#### QUERY - Lock existing user role", "ORDER BY u.id\nFOR UPDATE",
+           "#### QUERY - Count the platform administrators after the write", "#### Fail - Conflict Last Administrator", "#### Fail - Not Found Target User", "The platform must keep at least one administrator.",
+           "The user already has this role.", "User Id and Role Id cannot be changed.", "User not found.", "User or role not found or not ACTIVE.", "You do not have permission to assign roles.",
+           "Only a platform administrator from the verified JWT roles claim", "exact case-sensitive role name PLATFORM_ADMIN", "Approved by the product owner", "uq_t_user_role_user_id_role_id",
+           "Delete 204 No Content", "Archive when rowStatus is ARCHIVED", "**The user and the role must be ACTIVE only when the request gives the role**",
+           "Taking the role away (`rowStatus` DELETED, ARCHIVED, INACTIVE or LOCKED) works whatever the status of the user and of the role is", "The last administrator rule below still applies in full.",
+           "a missing target user is 404 (E10005) `User not found.`, also when the request takes the role away"],
     "11": ["# [GET]: v1/author/user/role", "### User Role Inquiry Rules", "ORDER BY r.name, u.display_name, ur.id", f"Request: `GET v1/author/user/role?id={AUTHOR_USER_ROLE}`", "Only a platform administrator can read the roles of users",
            "use exact PLATFORM_ADMIN in verified JWT role claims", "#### Fail - Forbidden", "E10009", "You do not have permission to read user roles.", "Inquiry User Role Success", "The four nullable filters id/userId/roleId/rowStatus"],
     "12": ["# [GET]: v1/author/me", "### Me Rules", "calling token's role snapshot", "Any caller with a valid access token can call this API", "Do not query author.t_user_role or author.m_role", "Success - Platform Administrator", "Success - No Role"],
@@ -5385,7 +5386,7 @@ ADMIN_WRITE_SPECS = {  # folder: (the thing it manages, batch)
     "product/09-upsert-product-category-attribute-batch": ("product category attributes", True),
     "consent/02-upsert-consent": ("consents", False),
 }
-ADMIN_WRITE_REFERENCE = "e-commerce/doc/api/sales/05-cancel-order/spec.md"
+ADMIN_WRITE_REFERENCE = "e-commerce/doc/api/shop/05-upsert-shop-type/spec.md"  # sales/05 now reads the administrator from the JWT claims
 ADMIN_WRITE_APPROVED = "Approved by the product owner (answered through the lead SA, 2026-11-06)."
 ADMIN_WRITE_RULE_BATCH = ("Permission: the same as the single upsert, only a platform administrator (a user with an ACTIVE `author.t_user_role` row for the ACTIVE role `PLATFORM_ADMIN`) "
                           "can call this API, any other caller gets 403 (E10009)")
@@ -5394,7 +5395,7 @@ ADMIN_WRITE_RULE = ("Permission: only a platform administrator (a user with an A
 
 
 def admin_write_reference_queries() -> list[str]:
-    """The two named queries of sales/05 (the text every spec must copy)."""
+    """The two named queries of the reference spec (the text every spec must copy)."""
     md = read(ADMIN_WRITE_REFERENCE)
     found = []
     for title in ("QUERY - Get the platform administrator role", "QUERY - Check platform administrator"):
@@ -5443,7 +5444,7 @@ def check_admin_write_spec() -> int:
                 errors.append(f"{path} still says {stale!r}")
         for query in queries:
             if query and md.count(query) != 1:
-                errors.append(f"{path}: the platform administrator query must be copied exactly from sales/05, found {md.count(query)} copies")
+                errors.append(f"{path}: the platform administrator query must be copied exactly from the reference spec, found {md.count(query)} copies")
         if md.count("#### Fail - Forbidden") != 1 or md.count("#### QUERY - Get the platform administrator role") != 1 or md.count("#### QUERY - Check platform administrator") != 1:
             errors.append(f"{path}: Fail - Forbidden and each platform administrator query must appear exactly once")
         match = re.search(r"#### Fail - Forbidden\n\n```JSON\n(.*?)```", md, re.DOTALL)
@@ -7366,6 +7367,40 @@ def check_user_role_inquiry_flow() -> int:
 
 
 COMMANDS['user-role-inquiry-flow'] = check_user_role_inquiry_flow
+def check_user_role_upsert_flow() -> int:
+    """Check only what parity checks cannot: claims-only admin, user -> role -> assignment lock order, one decision/commit, rollbacks, missing-user 404."""
+    path=f'{AUTHOR_DIR}/{AUTHOR_SPECS["10"]}/spec.md';md=read(path);wsd=read(str(Path(path).with_name('sequence.wsd')));errors=[]
+    if 'QUERY - Get the platform administrator role' in md+wsd or 'QUERY - Check platform administrator' in md+wsd:errors.append('must not reload live caller grants')
+    if not md.startswith('---\nname:') or 'status: in-review\napproved_by: null\napproved_at: null' not in md:errors.append('spec stays in-review until approved')
+    ops=spec_database_operations(md);heads=[h for _,h,_ in ops]
+    want=['QUERY - Lock the users','QUERY - Check current credential and user','QUERY - Lock the role','QUERY - Lock existing user role','QUERY - Check duplicate user role','INSERT - Create user role','UPDATE - Update, archive or delete user role','QUERY - Count the platform administrators after the write']
+    if heads!=want:errors.append('needs the eight caller/user/role/assignment/write/count SQL definitions in order')
+    sql={h:q for _,h,q in ops}
+    for h in want[:4]:
+        if 'FOR UPDATE' not in sql.get(h,'') and h!=want[1]:errors.append(f'{h} must lock with FOR UPDATE')
+    if "ANY ('<sequence.userIds>'::UUID[])" not in sql.get(want[0],'') or 'ORDER BY u.id\nFOR UPDATE' not in sql.get(want[0],''):errors.append('users lock must take caller and target in ascending id order')
+    for h,needles in {want[3]:["ur.row_status <> 'DELETED'"],want[4]:["('<sequence.id>' IS NULL OR ur.id <> '<sequence.id>')","ur.row_status <> 'DELETED'"],want[5]:['created_at',"'<sequence.now>'",'RETURNING id as user_role_id'],want[6]:["updated_at = '<sequence.now>'","AND row_status <> 'DELETED'",'RETURNING id as user_role_id'],want[7]:["r.name = 'PLATFORM_ADMIN'","r.row_status = 'ACTIVE'","u.row_status = 'ACTIVE'","ur.row_status = 'ACTIVE'"]}.items():
+        errors+=[f'{h} missing {n!r}' for n in needles if n not in sql.get(h,'')]
+    try:
+        if 'bizCode' in author_json(md,'Fail - Internal Server Error')['status']:errors.append('500 example must omit bizCode')
+    except (TypeError,KeyError):errors.append('500 example missing')
+    if any(SEQUENCE_LOCK.search(sql.get(h,'')) for h in want[1:2]+want[4:]) or 'NOW()' in '\n'.join(sql.values()):errors.append('only the three row locks may lock; times are bound')
+    order=['app -> infra: '+h for h in want[:5]]+['app -> infra: '+want[5],'app -> infra: '+want[7],'app -> infra: COMMIT']
+    pos=[wsd.find(x) for x in order]
+    if -1 in pos or pos!=sorted(pos):errors.append('steps must run users lock, credential, role lock, assignment lock, duplicate, write, administrator count, COMMIT')
+    if not (wsd.find('Authorize once')<wsd.find('app -> infra: '+want[4]) and wsd.find('Find the target user')<wsd.find('app -> infra: '+want[2])):errors.append('permission precedes the duplicate check and target-user existence precedes the role lock')
+    if wsd.count('Authorize once')!=1 or wsd.count('app -> infra: COMMIT')!=1:errors.append('exactly one permission decision and one COMMIT')
+    lines=wsd.splitlines();begin=next((i for i,l in enumerate(lines) if 'BEGIN READ COMMITTED' in l),len(lines))
+    for i,l in enumerate(lines):
+        if i>begin and re.search(r'app -> api: HTTP (?:400|401|403|404|408|409|500)',l) and 'app -> infra: ROLLBACK' not in lines[i-1]:errors.append(f'post-BEGIN rejection needs ROLLBACK first: {l.strip()}')
+    for n in ('HTTP 404 E10005 User not found.','HTTP 404 E10005 User or role not found or not ACTIVE.','HTTP 409 E10006 The platform must keep at least one administrator.','HTTP 403 E10009 You do not have permission to assign roles.'):
+        if n not in wsd:errors.append(f'sequence missing {n!r}')
+    if errors:return fail('; '.join(errors))
+    print('OK: user-role-upsert-flow (claims-only admin, ordered user/role/assignment locks, one decision and commit)')
+    return 0
+
+
+COMMANDS['user-role-upsert-flow'] = check_user_role_upsert_flow
 
 
 def check_address_upsert_flow() -> int:
