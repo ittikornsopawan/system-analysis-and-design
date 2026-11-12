@@ -1409,3 +1409,12 @@ Status: Complete in the branch, waiting for review. Assignment: agent `tommy`, d
 - [x] The platform administrator is the exact role `PLATFORM_ADMIN` in the verified `roles` claim, the two `author` queries are removed, shop membership stays a database check.
 - [x] Add the current credential gate, the Allow Scope and the order 400, 401, 404, 403; move the diagram and the needles, run every checker and the mutation tests.
 - [x] Open the PR with `commit-and-pr`, tell the lead SA when CI is green, then suspend. Next: `shipping/01`.
+
+## e-commerce: JWT claims, payment/05 (refund payment)
+
+Status: Complete in the branch, waiting for review. Assignment: agent `tommy`, delivery `open-pr`, authorized by `josh`, workspace `.workspace/tommy`, branch `fix/tommy-jwt-claims-payment-05`, scopes `payment/05-refund-payment`, `e-commerce/db/tests/check_docs.py` (needles only) and `tasks`. Governing: `docs/superpowers/specs/2026-11-07-api-review-design.md` (Q2, Q4, Q10, Q13).
+
+- [x] The platform administrator is the exact role `PLATFORM_ADMIN` in the verified `roles` claim, the two `author` queries are removed, shop membership stays a database check.
+- [x] Add the caller lock and the current credential gate after `BEGIN` (lock order: caller user, order row, lots by id, budgets by id), the Allow Scope (`payment:payment:refund:allow`) and the order 400, 401, 404, 403, 409.
+- [x] Move the diagram and the needles of `payment-spec`, run every checker and the mutation tests.
+- [x] Open the PR with `commit-and-pr`, tell the lead SA when CI is green, then suspend. Next: `sales/04`.
