@@ -105,12 +105,14 @@
 - Adding a value or reopening a value generates the SKU combinations that are missing.
 - Adding, removing or reordering (changing the position of) a level closes the current SKUs and generates new ones, and it is rejected with 409 when any SKU of the product is used in `shop.t_shop_product_sku`, `cart.t_cart` or `sales.t_order_item`.
 - A product cannot be deleted while it is in a campaign that is not DELETED and has not ended (a live `campaign.t_campaign_product` row of a campaign whose `end_at` is after now), 409 (E10006) with the campaign name in the message. Take it out of the campaign first with the upsert campaign API (a campaign that ended or was deleted does not block). Archiving is always allowed. (`docs/superpowers/specs/2026-11-06-campaign-design.md`, C13, approved by the product owner on 2026-11-06)
-- Execution order: validate the request (400, including the SKU maximum), existence checks (404, the id of a DELETED option or value counts as not found, E10004), permission check (403, E10009, once for the request in a batch), in-use check (409), move levels aside, delete the options and values that are not in the list, update the listed options and values (renames that collide are set to temporary names first), insert new options and values, images, close or reopen SKUs, then generate SKUs.
+- Execution order: validate the request (400, including the SKU maximum), verify the JWT and its `roles` claim (401), lock the caller and check the current credential (401), existence checks (404, the id of a DELETED option or value counts as not found, E10004), permission check (403, E10009, once for the request in a batch), in-use check (409), move levels aside, delete the options and values that are not in the list, update the listed options and values (renames that collide are set to temporary names first), insert new options and values, images, close or reopen SKUs, then generate SKUs.
 
 #### Permission Rules
 
-- Permission: only a platform administrator (a user with an ACTIVE `author.t_user_role` row for the ACTIVE role `PLATFORM_ADMIN`) can call this API, any other caller gets 403 (E10009), after the existence checks and before the duplicate, in-use and other conflict checks and before anything is written. Reading is not changed by this rule. Approved by the product owner (answered through the lead SA, 2026-11-06).
-- Order of checks: validate the request (400) -> existence checks (404) -> permission (403, E10009) -> duplicate, in-use and other conflicts (409) -> write.
+- Permission: only a platform administrator can call this API: the verified JWT `roles` claim must contain the exact case-sensitive role `PLATFORM_ADMIN`. Any other caller with a valid current token gets 403 (E10009), after the existence checks and before the duplicate, in-use and other conflict checks and before anything is written. Never query `author.m_role` or `author.t_user_role` and never read a flag of the request: a change of the role assignments after the token was issued does not change this token, the former privilege may last until it expires (15 minutes by the existing configuration). Reading is not changed by this rule. Approved by the product owner (Q2, Q4, Q10 and Q13 of the [API review](../../../../../docs/superpowers/specs/2026-11-07-api-review-design.md), 2026-11-07), superseding the live-assignment check of 2026-11-06.
+- Verified JWT: validate the structured `roles` claim defined by [login](../../authen-and-author/02-login/spec.md#claim-resolution-and-payload): `roles` must be an array (an empty array is valid), each object has a UUID `roleId` and a non-empty string `name`, and the `roleId` values are unique; a missing or malformed claim is a generic 401 (E10002) and never an empty-role fallback. The caller is the verified `sub`, the access token hash is the SHA-256 of the exact JWT, and `createdBy` and `updatedBy` are the caller UUID string.
+- Caller lock and current credential: begin one READ COMMITTED transaction, lock the caller user first (`QUERY - Lock the caller user`, `FOR UPDATE`), capture the fresh server UTC `now` after the lock, recheck the JWT expiry at `now`, then run `QUERY - Check current credential and user`. No row (a missing or inactive user, or a revoked, inactive, expired or different access token) is a generic 401 (E10002) before any other read; logout and password reset use the same user-first lock.
+- Order of checks: validate the request (400) -> verify the JWT and its `roles` claim (401) -> lock the caller and check the current credential (401) -> existence checks (404) -> permission from the `roles` claim (403, E10009) -> duplicate, in-use and other conflicts (409) -> write.
 
 #### Example Body Parameters
 
@@ -849,6 +851,34 @@ HTTP/1.1 204 No Content
 
 ## Database Relations
 
+### Table: [authen.m_user](../../../schema/authen/m_user.md)
+
+#### QUERY - Lock the caller user
+
+```SQL
+SELECT
+    u.id as user_id
+FROM authen.m_user u
+WHERE u.id = '<sequence.callerUserId>'
+FOR UPDATE
+```
+
+### Table: [authen.t_user_access_token](../../../schema/authen/t_user_access_token.md)
+
+#### QUERY - Check current credential and user
+
+```SQL
+SELECT
+    at.id as access_token_id
+FROM authen.t_user_access_token at
+JOIN authen.m_user u ON u.id = at.user_id
+WHERE at.token = '<sequence.accessTokenHash>'
+AND at.user_id = '<sequence.callerUserId>'
+AND at.row_status = 'ACTIVE'
+AND at.expired_at > '<sequence.now>'
+AND u.row_status = 'ACTIVE'
+```
+
 ### Table: [product.m_product_type](../../../schema/product/m_product_type.md)
 
 #### QUERY - Check product type
@@ -1519,29 +1549,4 @@ AND cp.row_status <> 'DELETED'
 AND c.row_status <> 'DELETED'
 AND c.end_at > NOW() AT TIME ZONE 'UTC' -- a campaign that ended or was deleted does not block, answer 409 (E10006) when a row is found
 LIMIT 1
-```
-
-### Table: [author.m_role](../../../schema/author/m_role.md)
-
-#### QUERY - Get the platform administrator role
-
-```SQL
-SELECT
-    r.id as role_id
-FROM author.m_role r
-WHERE r.name = 'PLATFORM_ADMIN'
-AND r.row_status = 'ACTIVE'
-```
-
-### Table: [author.t_user_role](../../../schema/author/t_user_role.md)
-
-#### QUERY - Check platform administrator
-
-```SQL
-SELECT
-    ur.id as user_role_id
-FROM author.t_user_role ur
-WHERE ur.user_id = '<sequence.userId>'
-AND ur.role_id = '<sequence.roleId>'
-AND ur.row_status = 'ACTIVE'
 ```

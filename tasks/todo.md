@@ -1402,6 +1402,16 @@ Authority: owner Q2/Q4/Q7/Q10/Q13/Q15, assignment `authorized_by: josh`, deliver
 
 Scope-inquiry verification: 14/14 deliberate faults rejected (including synchronized spec+sequence SQL faults); SQL lines visible in the PlantUML render are counted above. No schema, seed or backend change.
 
+## e-commerce: JWT claims, product/01 (upsert product)
+
+Status: Implemented in the managed workspace of Marry on branch `docs/marry-product-upsert-jwt-claims`; first API of the queue of the lead (product 01, 03, 04, 06, 07, 09, 10, 11, 13, 14 and shop 01, 02, 05, 06, 08-13, one API per pull request). Scope: `product/01-upsert-product`, `e-commerce/db/tests/check_docs.py` and `tasks/`. Governing decisions: Q2, Q4, Q10 and Q13 of `docs/superpowers/specs/2026-11-07-api-review-design.md`. No Allow Scope mapping is added (the four-part notation is still in review).
+
+- [x] Permission: the platform administrator is the exact role `PLATFORM_ADMIN` in the verified JWT `roles` claim (structured claim of login: array, UUID `roleId`, non-empty `name`, unique ids; missing or malformed is 401, no empty-role fallback). `QUERY - Get the platform administrator role` and `QUERY - Check platform administrator` are removed from the spec and the diagram; a change of the assignments does not change an issued token (up to 15 minutes).
+- [x] Order: validate (400) -> verify the JWT and its `roles` claim (401) -> BEGIN, `QUERY - Lock the caller user` (`FOR UPDATE`), fresh `now`, recheck of the JWT expiry, `QUERY - Check current credential and user` (401) -> existence checks (404) -> permission from the claim (403, E10009) -> conflicts (409) -> writes -> COMMIT. SQL of the two new blocks is the SQL of `author/08`.
+- [x] `admin-write-spec`: `ADMIN_WRITE_JWT_CLAIMS` lists the migrated specs; they must carry the claims rule, the two new blocks and the order text, must not carry the old queries, and their diagram must run BEGIN -> lock -> credential -> existence -> claims permission -> conflict -> write and must not read the author tables. Other specs are unchanged.
+- [x] Proof: 12 mutations of the spec, the diagram and the new order caught (one first miss because a phrase stood in two places; each place has its own needle now), control passes; PlantUML passes and all 457 SQL lines are drawn; 62 sub-commands, audit and skeleton test pass.
+- [ ] Merge `main`, run every check, push, open the pull request, tell the lead at once, suspend the assignment, check that `checks` is green.
+
 ## e-commerce: JWT claims, sales/05-cancel-order
 
 Status: Complete in the branch, waiting for review. Assignment: agent `tommy`, delivery `open-pr`, authorized by `josh`, workspace `.workspace/tommy`, branch `fix/tommy-jwt-claims-sales-05`, scopes `sales/05-cancel-order`, `e-commerce/db/tests/check_docs.py` (needles only) and `tasks`. Governing: `docs/superpowers/specs/2026-11-07-api-review-design.md` (Q2, Q4, Q10, Q13).
@@ -1453,3 +1463,10 @@ Authority: owner Q2/Q4/Q7/Q10/Q13/Q15, assignment `authorized_by: josh`, deliver
 - [ ] Open question for the SA Lead: two JWT wording defects in the delivered author/09 (spec lines "verify JWT/scopes (401)" and "verified token scopes") need a separate scoped fix; see the lesson of 2026-11-12.
 
 User-role-inquiry verification: 16/16 deliberate faults rejected (including synchronized spec+sequence faults and the damaged JWT wording); PlantUML render shows 40/40 SQL lines. No schema, seed or backend change.
+### Author API09 wording fix — JWT statements said scopes instead of roles
+
+Authority: SA Lead (Josh) approved this one-folder fix after Peter reported two defects introduced in PR #95; assignment `authorized_by: josh`, delivery `open-pr`. Behaviour, SQL and sequence are unchanged.
+
+- [x] Correct `verify JWT/scopes (401)` and `verified token scopes` to roles in `author/09-inquiry-scope/spec.md`.
+- [x] Guard both phrases in `scope-inquiry-flow`; mutation: both reverted phrases are rejected (2/2).
+- [x] Run every documentation command, audit and database tests on the branch merged with origin/main.
