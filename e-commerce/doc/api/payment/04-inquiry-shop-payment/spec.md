@@ -1,3 +1,11 @@
+---
+name: Shop Payment Inquiry API Specification
+description: Defines the verified-JWT authorization, the current credential check, the shop membership rule and the Allow Scope of the shop payment inquiry; read when reviewing or implementing this endpoint.
+status: in-review
+approved_by: null
+approved_at: null
+---
+
 # [GET]: v1/shop/payment
 
 | Title       | Description                                                                                                                                                                                                                                                                  |
@@ -44,9 +52,22 @@
 
 ### Shop Payment Inquiry Rules
 
-- The caller must be an ACTIVE member of the shop (a row of `shop.t_shop_user` with the role ADMIN or STAFF that is ACTIVE) or a platform administrator (a user that has the role `PLATFORM_ADMIN`), otherwise 403 (E10009). A shop that does not exist or is DELETED is not found (404, E10005).
+- The caller needs a verified JWT (below), then an ACTIVE member row of the shop (a row of `shop.t_shop_user` with the role ADMIN or STAFF that is ACTIVE) or the role `PLATFORM_ADMIN` in the verified `roles` claim, otherwise 403 (E10009). A shop that does not exist or is DELETED is not found (404, E10005).
+- Governing behavior: [owner-confirmed API review](../../../../../docs/superpowers/specs/2026-11-07-api-review-design.md), Q2/Q4/Q10/Q13; this detailed revision remains in-review and includes no backend implementation. Validate the mandatory timestamp as a UTC timestamp before SQL; a missing or malformed timestamp returns 400 E10001. Missing or malformed Bearer credentials or a failed JWT signature/issuer/audience/expiry/UUID sub/roles-claim validation return the same 401 E10002 `Invalid or expired access token.` before SQL.
+- Validate the structured `roles` claim defined by [login](../../authen-and-author/02-login/spec.md#claim-resolution-and-payload): `roles` must be an array (an empty array is valid), each object has a UUID `roleId` and a non-empty string `name`, and the `roleId`s are unique; a missing or malformed claim is a 401, never an empty list and never recovered from the database. `userId` comes only from the verified `sub`; `accessTokenHash` is the SHA-256 of the exact presented JWT. Capture the server UTC `now` immediately before the one credential query, recheck the JWT expiry at `now`, then run `QUERY - Check active credential and user`: no row (a missing, revoked or expired stored token, another owner or an inactive user) returns the same 401. The request never carries a user id, a role or a platform administrator flag that controls this lookup.
+- The platform administrator is the exact case-sensitive role `PLATFORM_ADMIN` in the verified `roles` claim; do not query `author.m_role` or `author.t_user_role`, and a change of the assignment after the token was issued does not change this token (it may stay usable until its expiry). Membership of a shop is not a token claim and is still read from `shop.t_shop_user`.
 - Only the payments of the orders of the shop are returned. Payments with `rowStatus` DELETED are never returned. The payments are ordered by creation time (newest first) then `id`.
 - `transactionCode` (the Stripe charge id) is returned to the members of the shop. `providerPaymentId` and `providerRefundId` are returned only to a platform administrator and are `null` (the key stays) for the members of the shop, the same way the margin of the platform is hidden.
+- Execution order: validate the request and the timestamp (400) -> verify the JWT (401) -> current credential and user (401) -> existence of the shop (404) -> permission (403) -> read. The inquiry has no transaction: every query is one autocommit SELECT, and the authorization result comes from the verified claims and the shop membership row.
+
+### Allow Scope
+
+- Rules: `payment:payment:read:allow`
+- Requested action: `read`
+- Data boundary: `SHOP` (ACTIVE ADMIN or STAFF member of the shop) or `ALL` (`PLATFORM_ADMIN` in the verified roles claim)
+- Resolution: the checks above decide; a member of the shop reads the payments of the shop, a platform administrator reads every shop and also receives `providerPaymentId` and `providerRefundId`
+- Status: in-review; no explicit deny rule exists yet and the rule does not create a grant by itself
+- Reference: [permission-scope.md](../../../permission-scope.md)
 
 ## Example Request
 
@@ -383,27 +404,22 @@ AND su.role IN ('ADMIN', 'STAFF')
 AND su.row_status = 'ACTIVE'
 ```
 
-### Table: [author.m_role](../../../schema/author/m_role.md)
+### Table: [authen.t_user_access_token](../../../schema/authen/t_user_access_token.md)
 
-#### QUERY - Get the platform administrator role
-
-```SQL
-SELECT
-    r.id as role_id
-FROM author.m_role r
-WHERE r.name = 'PLATFORM_ADMIN'
-AND r.row_status = 'ACTIVE'
-```
-
-### Table: [author.t_user_role](../../../schema/author/t_user_role.md)
-
-#### QUERY - Check platform administrator
+#### QUERY - Check active credential and user
 
 ```SQL
 SELECT
-    ur.id as user_role_id
-FROM author.t_user_role ur
-WHERE ur.user_id = '<sequence.userId>'
-AND ur.role_id = '<sequence.roleId>'
-AND ur.row_status = 'ACTIVE'
+    at.user_id
+FROM authen.t_user_access_token at
+WHERE at.token = '<sequence.accessTokenHash>'
+AND at.user_id = '<sequence.userId>'
+AND at.row_status = 'ACTIVE'
+AND at.expired_at > '<sequence.now>'
+AND EXISTS (
+    SELECT 1
+    FROM authen.m_user u
+    WHERE u.id = at.user_id
+    AND u.row_status = 'ACTIVE'
+)
 ```

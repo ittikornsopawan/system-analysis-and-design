@@ -1374,6 +1374,14 @@ Status: Complete in the branch, waiting for review. Assignment: agent `tommy`, d
 - [x] Move the diagrams of `shipping/02`, `shipping/06` and `campaign/01`, add the needles to `shipping-spec` and `campaign-spec`, run every checker and the mutation tests.
 - [x] Open the PR with `commit-and-pr`; do not merge.
 
+## e-commerce: JWT claims, payment/04 (inquiry shop payment)
+
+Status: Complete in the branch, waiting for review. Assignment: agent `tommy`, delivery `open-pr`, authorized by `josh`, workspace `.workspace/tommy`, branch `fix/tommy-jwt-claims-payment-04`, scopes `payment/04-inquiry-shop-payment`, `e-commerce/db/tests/check_docs.py` (needles only) and `tasks`. Governing: `docs/superpowers/specs/2026-11-07-api-review-design.md` (Q2, Q4, Q10, Q13).
+
+- [x] Authorization comes from the verified JWT: the platform administrator is the exact role `PLATFORM_ADMIN` in the `roles` claim, the two `author` queries are removed, shop membership stays a database check.
+- [x] Add the current credential check (`QUERY - Check active credential and user`), the Allow Scope section (`payment:payment:read:allow`) and the order 400, 401, 404, 403.
+- [x] Move the diagram and the needles of `payment-spec`, run every checker and the mutation tests.
+- [x] Open the PR with `commit-and-pr`; do not merge. The next API of the queue is `payment/05`.
 ### Author API09 scope inquiry — claims, credential gate and consistent pagination
 
 Authority: owner Q2/Q4/Q7/Q10/Q13/Q15, assignment `authorized_by: josh`, delivery `open-pr`. Built from the reviewed role inquiry (author/03) with scope-specific fields; Josh asked (PR94 review) for a slim API-specific checker that covers only what parity/lifecycle checks cannot.
