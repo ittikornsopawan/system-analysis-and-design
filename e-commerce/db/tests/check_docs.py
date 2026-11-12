@@ -4701,7 +4701,7 @@ def author_needles(key: str):
     base = [*AUTHOR_ADMIN, "E10009", "#### Fail - Forbidden", f"You do not have permission to {'read' if kind == 'inquiry' else 'manage'} {lower}s."]
     if key in ("01", "02", "05", "07", "08"):
         base = ["Permission: only a platform administrator from the verified JWT roles claim", "Approved by the product owner", "E10009", "#### Fail - Forbidden", f"You do not have permission to manage {lower}s."]
-    if key in ("03", "06"):
+    if key in ("03", "06", "09"):
         base = ["use exact PLATFORM_ADMIN in verified JWT role claims", "Approved by the product owner", "E10009", "#### Fail - Forbidden", f"You do not have permission to read {lower}s."]
     if key == "04":
         base = ["Permission: only a platform administrator from verified JWT roles", "Approved by the product owner", "E10009", "#### Fail - Forbidden", "You do not have permission to manage permissions."]
@@ -4746,6 +4746,10 @@ def author_counted(key: str):
         return [("AND ('<sequence.id>' IS NULL OR r.id = '<sequence.id>') -- only when id is specified", 2),
                 ("AND ('<sequence.searchPattern>' IS NULL OR r.name ILIKE '<sequence.searchPattern>' OR r.description ILIKE '<sequence.searchPattern>') -- only when search is specified", 2),
                 ("AND ('<sequence.rowStatus>' IS NULL OR r.row_status = '<sequence.rowStatus>') -- only when rowStatus is specified", 2)]
+    if key == "09":
+        return [("AND ('<sequence.id>' IS NULL OR s.id = '<sequence.id>') -- only when id is specified", 2),
+                ("AND ('<sequence.searchPattern>' IS NULL OR s.scope ILIKE '<sequence.searchPattern>' OR s.description ILIKE '<sequence.searchPattern>') -- only when search is specified", 2),
+                ("AND ('<sequence.rowStatus>' IS NULL OR s.row_status = '<sequence.rowStatus>') -- only when rowStatus is specified", 2)]
     if key == "06":
         return [("AND ('<sequence.id>' IS NULL OR p.id = '<sequence.id>') -- only when id is specified", 2),
                 ("AND ('<sequence.searchPattern>' IS NULL OR p.name ILIKE '<sequence.searchPattern>' OR p.description ILIKE '<sequence.searchPattern>') -- only when search is specified", 2),
@@ -7302,6 +7306,35 @@ def check_role_inquiry_flow() -> int:
 
 
 COMMANDS['role-inquiry-flow'] = check_role_inquiry_flow
+
+
+def check_scope_inquiry_flow() -> int:
+    """Check only what parity checks cannot: claims-based admin, read-only snapshot, step order, one commit, identical count/page filters."""
+    path=f'{AUTHOR_DIR}/{AUTHOR_SPECS["09"]}/spec.md';md=read(path);wsd=read(str(Path(path).with_name('sequence.wsd')));errors=[]
+    if 'QUERY - Get the platform administrator role' in md+wsd or 'QUERY - Check platform administrator' in md+wsd:errors.append('must not reload live grants')
+    ops=spec_database_operations(md);heads=[h for _,h,_ in ops]
+    if heads!=['QUERY - Check current credential and user','QUERY - Get total items','QUERY - Get scopes']:errors.append('needs credential/count/page SQL in order')
+    sql='\n'.join(q for _,_,q in ops)
+    if SEQUENCE_LOCK.search(sql) or re.search(r'\b(?:INSERT|UPDATE|DELETE)\b',sql):errors.append('inquiry must be read-only without locks')
+    where=lambda h:next((normalize(re.search(r'\bWHERE\b(.*?)(?:\bORDER BY\b|\bLIMIT\b|$)',q,re.S)[1]) for _,k,q in ops if k==h),None)
+    if where('QUERY - Get total items')!=where('QUERY - Get scopes'):errors.append('count and page WHERE must be identical')
+    order=['BEGIN REPEATABLE READ READ ONLY','app -> infra: QUERY - Check current credential and user','Authorize once using exact','app -> infra: QUERY - Get total items','app -> infra: QUERY - Get scopes','app -> infra: COMMIT']
+    pos=[wsd.find(x) for x in order]
+    if -1 in pos or pos!=sorted(pos):errors.append('steps must run BEGIN read-only, credential, one permission decision, count, page, COMMIT')
+    if wsd.count('Authorize once using exact')!=1 or wsd.count('app -> infra: COMMIT')!=1:errors.append('exactly one permission decision and one COMMIT')
+    lines=wsd.splitlines();begin=next((i for i,l in enumerate(lines) if 'BEGIN REPEATABLE READ' in l),len(lines))
+    for i,l in enumerate(lines):
+        if i>begin and re.search(r'app -> api: HTTP (?:401|403|408|500)',l) and 'app -> infra: ROLLBACK' not in lines[i-1]:errors.append(f'post-BEGIN rejection needs ROLLBACK first: {l.strip()}')
+    if not md.startswith('---\nname:') or 'status: in-review\napproved_by: null\napproved_at: null' not in md:errors.append('spec stays in-review until approved')
+    page=next((q for _,k,q in ops if k=='QUERY - Get scopes'),'');proj=re.search(r'SELECT\s+(.*?)\s+FROM\s',page,re.S)
+    if not proj or normalize(proj[1])!=normalize('s.id as scope_id, s.scope, s.name, s.description, s.row_status'):errors.append('page returns exactly scopeId/scope/name/description/rowStatus columns')
+    if 'You do not have permission to read scopes.' not in wsd or 'skip page query' not in wsd:errors.append('403 text and zero-count page skip must be drawn')
+    if errors:return fail('; '.join(errors))
+    print('OK: scope-inquiry-flow (claims-only admin, read-only snapshot, ordered count/page, one commit)')
+    return 0
+
+
+COMMANDS['scope-inquiry-flow'] = check_scope_inquiry_flow
 
 
 def check_address_upsert_flow() -> int:
