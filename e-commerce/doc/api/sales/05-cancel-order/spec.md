@@ -1,3 +1,11 @@
+---
+name: Cancel Order API Specification
+description: Defines the verified-JWT authorization, the caller lock and current credential gate, the owner, shop member and administrator rule, the Allow Scope and the cancel flow of an order; read when reviewing or implementing this endpoint.
+status: in-review
+approved_by: null
+approved_at: null
+---
+
 # [POST]: v1/order/cancel
 
 | Title       | Description                                                                                                                                                                                                                                                                                                                                                                               |
@@ -39,7 +47,11 @@
 
 ### Cancel Rules
 
-- The caller must be the owner of the order (the user of the access token), an ACTIVE member of the shop of the order (ADMIN or STAFF in `shop.t_shop_user`) or a platform administrator (a user that has the role `PLATFORM_ADMIN`). For any other user the order counts as not found (404, E10004), the same answer as an order that does not exist or is DELETED.
+- The caller needs a verified JWT (below), then must be the owner of the order (the user of the access token), an ACTIVE member of the shop of the order (ADMIN or STAFF in `shop.t_shop_user`) or have the role `PLATFORM_ADMIN` in the verified `roles` claim. For any other user the order counts as not found (404, E10004), the same answer as an order that does not exist or is DELETED.
+- Governing behavior: [owner-confirmed API review](../../../../../docs/superpowers/specs/2026-11-07-api-review-design.md), Q2/Q4/Q10/Q13; this detailed revision remains in-review and includes no backend implementation. Validate the whole request, including the mandatory UTC timestamp, before SQL (400 E10001). Missing or malformed Bearer credentials or a failed JWT signature/issuer/audience/expiry/UUID sub/roles-claim validation return the same 401 E10002 `Invalid or expired access token.` before BEGIN.
+- Validate the structured `roles` claim defined by [login](../../authen-and-author/02-login/spec.md#claim-resolution-and-payload): `roles` must be an array (an empty array is valid), each object has a UUID `roleId` and a non-empty string `name`, and the `roleId`s are unique; a missing or malformed claim is a 401, never an empty list and never recovered from the database. `userId` comes only from the verified `sub`; `accessTokenHash` is the SHA-256 of the exact presented JWT.
+- Begin one READ COMMITTED transaction, lock the caller user first (`QUERY - Lock the caller user`, `FOR UPDATE`), capture the fresh server UTC `now` after the lock, recheck the JWT expiry at `now`, then run `QUERY - Check current credential and user`; no row (a missing, revoked or expired stored token, another owner or an inactive user) returns the same 401 and rolls back before any other row is read. Lock order: the caller user, the order row, the lots by id, then the budgets by id.
+- The platform administrator is the exact case-sensitive role `PLATFORM_ADMIN` in the verified `roles` claim; do not query `author.m_role` or `author.t_user_role`, and a change of the assignment after the token was issued does not change this token (it may stay usable until its expiry). Membership of a shop is not a token claim and is still read from `shop.t_shop_user`.
 - Only an order with the status `WAIT_PAYMENT` can be cancelled, otherwise 409 (E10006) with the current status in the message. An order that has been paid is refunded through the payment API, it is not cancelled here.
 - The order becomes `CANCELLED` and the quantity of every item is added back to its lot (`lot_id` of the item) even when that lot is no longer on sale. A lot that was DELETED or ARCHIVED still gets its quantity back because the lot is the stock history. The order and its items stay in the tables as history.
 - The payment of the order is handled in the same request. A payment with the status `PENDING` becomes `CANCELLED` and its PaymentIntent is cancelled at the payment provider (Stripe). A payment with the status `PROCESSING` means money may be on its way, so the order cannot be cancelled and the answer is 409 (E10006) with the message `A payment of the order is in progress.` The scheduled job that cancels expired orders skips an order whose payment is `PROCESSING` and tries it again later. A payment that is `FAILED` or `CANCELLED` needs no change. If money arrives after the order was cancelled, the payment API refunds it automatically (see the payment webhook).
@@ -47,7 +59,16 @@
 - The cancel is idempotent in outcome: cancelling an order that is already `CANCELLED` answers 409 (E10006), no quantity is added twice.
 - The budget that the order took from a campaign goes back in the same transaction as the stock, when the order is cancelled, also when the system cancels it because `expires_at` has passed (`docs/superpowers/specs/2026-11-06-campaign-design.md`, C7 and C9, approved by the product owner on 2026-11-06): every budget that has a ledger row `RESERVE` of the order and no `RELEASE` yet gets its `usage` back (`remaining` grows by that amount) and a ledger row `RELEASE` with the same `usage` is written. An order that took no budget changes nothing. The order of the locks is the order row, the lots by `id`, then the budgets by `id`.
 - The cancel of the PaymentIntent at Stripe carries the `Idempotency-Key` `cancel-<paymentIntentId>` and is the last step before the `COMMIT`, so a refusal at Stripe rolls everything back (approved by the product owner on 2026-11-08). If the `COMMIT` fails after Stripe cancelled the PaymentIntent, the order stays `WAIT_PAYMENT` and the payment `PENDING` until the Stripe event `payment_intent.canceled` arrives, and the webhook (`02-stripe-webhook`) then sets the payment `CANCELLED`; the customer or the shop can cancel the order again.
-- Execution order: validate the request (400) -> existence and ownership checks (404) -> permission of a member of the shop (the owner skips it) -> status check and payment check (409) -> write the order, cancel the pending payment and give the quantity back. The whole request is one transaction.
+- Execution order: validate the request (400) -> verify the JWT (401) -> begin the transaction, lock the caller user and check the current credential (401) -> existence and ownership checks (404) -> permission of a member of the shop or the claims administrator (the owner skips it) -> status check and payment check (409) -> write the order, cancel the pending payment and give the quantity back. The whole request is one transaction.
+
+### Allow Scope
+
+- Rules: `sales:order:cancel:allow`
+- Requested action: `cancel`
+- Data boundary: `OWN` (the order of the verified sub), `SHOP` (ACTIVE ADMIN or STAFF member of the shop of the order) or `ALL` (`PLATFORM_ADMIN` in the verified roles claim)
+- Resolution: the checks above decide; any other caller gets 404 as if the order did not exist
+- Status: in-review; no explicit deny rule exists yet and the rule does not create a grant by itself
+- Reference: [permission-scope.md](../../../permission-scope.md)
 
 #### Example Body Parameters
 
@@ -361,31 +382,6 @@ AND su.role IN ('ADMIN', 'STAFF')
 AND su.row_status = 'ACTIVE'
 ```
 
-### Table: [author.m_role](../../../schema/author/m_role.md)
-
-#### QUERY - Get the platform administrator role
-
-```SQL
-SELECT
-    r.id as role_id
-FROM author.m_role r
-WHERE r.name = 'PLATFORM_ADMIN'
-AND r.row_status = 'ACTIVE'
-```
-
-### Table: [author.t_user_role](../../../schema/author/t_user_role.md)
-
-#### QUERY - Check platform administrator
-
-```SQL
-SELECT
-    ur.id as user_role_id
-FROM author.t_user_role ur
-WHERE ur.user_id = '<sequence.userId>'
-AND ur.role_id = '<sequence.roleId>'
-AND ur.row_status = 'ACTIVE'
-```
-
 ### Table: [campaign.m_campaign_budget_ledger](../../../schema/campaign/m_campaign_budget_ledger.md)
 
 #### QUERY - Get the budget that the order took
@@ -429,4 +425,32 @@ SET
     remaining = remaining + '<sequence.usage>' -- the budget may be INACTIVE, LOCKED or ARCHIVED by now, it still gets the amount back
 WHERE id = '<sequence.campaignBudgetId>'
 RETURNING id as budget_id, remaining
+```
+
+### Table: [authen.m_user](../../../schema/authen/m_user.md)
+
+#### QUERY - Lock the caller user
+
+```SQL
+SELECT
+    u.id as user_id
+FROM authen.m_user u
+WHERE u.id = '<sequence.userId>'
+FOR UPDATE -- the caller user is locked first, before any other row of the request
+```
+
+### Table: [authen.t_user_access_token](../../../schema/authen/t_user_access_token.md)
+
+#### QUERY - Check current credential and user
+
+```SQL
+SELECT
+    at.id as access_token_id
+FROM authen.t_user_access_token at
+JOIN authen.m_user u ON u.id = at.user_id
+WHERE at.token = '<sequence.accessTokenHash>'
+AND at.user_id = '<sequence.userId>'
+AND at.row_status = 'ACTIVE'
+AND at.expired_at > '<sequence.now>'
+AND u.row_status = 'ACTIVE'
 ```
