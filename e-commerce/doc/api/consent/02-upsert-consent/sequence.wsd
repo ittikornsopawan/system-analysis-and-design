@@ -112,17 +112,17 @@ activate page
                                 body
                             )
                             VALUES (
-                                '<sequence.createdBy>',
-                                '<sequence.rowStatus>',
-                                '<sequence.code>',
-                                '<sequence.consentTypeId>',
-                                '<sequence.consentVersion>',
-                                '<sequence.consentName>',
-                                '<sequence.consentDescription>',
-                                '<sequence.effectiveAt>',
-                                '<sequence.expiredAt>',
-                                '<sequence.isRequired>',
-                                '<sequence.body>'
+                                &#39;<sequence.createdBy>',
+                                &#39;<sequence.rowStatus>',
+                                &#39;<sequence.code>',
+                                &#39;<sequence.consentTypeId>',
+                                &#39;<sequence.consentVersion>',
+                                &#39;<sequence.consentName>',
+                                &#39;<sequence.consentDescription>',
+                                &#39;<sequence.effectiveAt>',
+                                &#39;<sequence.expiredAt>',
+                                &#39;<sequence.isRequired>',
+                                &#39;<sequence.body>'
                             )
                             RETURNING id as consent_id
                         end note
