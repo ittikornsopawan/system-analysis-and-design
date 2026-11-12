@@ -2566,6 +2566,7 @@ def check_payment_spec() -> int:
                "providerPaymentId", "ORDER BY p.created_at DESC, p.id", "#### QUERY - Count the payments of the shop"],
         "05": ["### Refund Rules", "#### UPDATE - Refund the payment", "AND status = 'COMPLETED'", "#### UPDATE - Refund the order", "AND status = 'PAYMENT_CONFIRMED'",
                "#### UPDATE - Give the quantity back to the lot", "refund-", "E10006", "E10009", "restoredItems", "#### QUERY - Check shop member", "FOR UPDATE -- taken before the payment is changed",
+               "#### QUERY - Lock the caller user", "#### QUERY - Check current credential and user", "do not query `author.m_role` or `author.t_user_role`", "### Allow Scope", "payment:payment:refund:allow",
                "ORDER BY oi.lot_id", "`Idempotency-Key` `refund-<paymentId>`", "If the `COMMIT` fails after Stripe refunded", "approved by the product owner on 2026-11-08"],
     }
     for key, need in needles.items():
