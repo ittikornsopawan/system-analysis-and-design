@@ -1373,3 +1373,12 @@ Status: Complete in the branch, waiting for review. Assignment: agent `tommy`, d
 - [x] `campaign/01`: `QUERY - Check existing campaign shop` and `QUERY - Check existing campaign product` answer 404 for a row id that is not a live row of the campaign; deleting a campaign soft-deletes its discount, shops and products with one statement each.
 - [x] Move the diagrams of `shipping/02`, `shipping/06` and `campaign/01`, add the needles to `shipping-spec` and `campaign-spec`, run every checker and the mutation tests.
 - [x] Open the PR with `commit-and-pr`; do not merge.
+
+## e-commerce: JWT claims, payment/04 (inquiry shop payment)
+
+Status: Complete in the branch, waiting for review. Assignment: agent `tommy`, delivery `open-pr`, authorized by `josh`, workspace `.workspace/tommy`, branch `fix/tommy-jwt-claims-payment-04`, scopes `payment/04-inquiry-shop-payment`, `e-commerce/db/tests/check_docs.py` (needles only) and `tasks`. Governing: `docs/superpowers/specs/2026-11-07-api-review-design.md` (Q2, Q4, Q10, Q13).
+
+- [x] Authorization comes from the verified JWT: the platform administrator is the exact role `PLATFORM_ADMIN` in the `roles` claim, the two `author` queries are removed, shop membership stays a database check.
+- [x] Add the current credential check (`QUERY - Check active credential and user`), the Allow Scope section (`payment:payment:read:allow`) and the order 400, 401, 404, 403.
+- [x] Move the diagram and the needles of `payment-spec`, run every checker and the mutation tests.
+- [x] Open the PR with `commit-and-pr`; do not merge. The next API of the queue is `payment/05`.
