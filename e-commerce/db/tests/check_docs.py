@@ -5368,7 +5368,7 @@ ADMIN_WRITE_SPECS = {  # folder: (the thing it manages, batch)
     "product/09-upsert-product-category-attribute-batch": ("product category attributes", True),
     "consent/02-upsert-consent": ("consents", False),
 }
-ADMIN_WRITE_REFERENCE = "e-commerce/doc/api/sales/05-cancel-order/spec.md"
+ADMIN_WRITE_REFERENCE = "e-commerce/doc/api/shop/05-upsert-shop-type/spec.md"  # sales/05 now reads the administrator from the JWT claims
 ADMIN_WRITE_APPROVED = "Approved by the product owner (answered through the lead SA, 2026-11-06)."
 ADMIN_WRITE_RULE_BATCH = ("Permission: the same as the single upsert, only a platform administrator (a user with an ACTIVE `author.t_user_role` row for the ACTIVE role `PLATFORM_ADMIN`) "
                           "can call this API, any other caller gets 403 (E10009)")
@@ -5377,7 +5377,7 @@ ADMIN_WRITE_RULE = ("Permission: only a platform administrator (a user with an A
 
 
 def admin_write_reference_queries() -> list[str]:
-    """The two named queries of sales/05 (the text every spec must copy)."""
+    """The two named queries of the reference spec (the text every spec must copy)."""
     md = read(ADMIN_WRITE_REFERENCE)
     found = []
     for title in ("QUERY - Get the platform administrator role", "QUERY - Check platform administrator"):
@@ -5426,7 +5426,7 @@ def check_admin_write_spec() -> int:
                 errors.append(f"{path} still says {stale!r}")
         for query in queries:
             if query and md.count(query) != 1:
-                errors.append(f"{path}: the platform administrator query must be copied exactly from sales/05, found {md.count(query)} copies")
+                errors.append(f"{path}: the platform administrator query must be copied exactly from the reference spec, found {md.count(query)} copies")
         if md.count("#### Fail - Forbidden") != 1 or md.count("#### QUERY - Get the platform administrator role") != 1 or md.count("#### QUERY - Check platform administrator") != 1:
             errors.append(f"{path}: Fail - Forbidden and each platform administrator query must appear exactly once")
         match = re.search(r"#### Fail - Forbidden\n\n```JSON\n(.*?)```", md, re.DOTALL)
