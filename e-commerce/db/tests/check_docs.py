@@ -4101,6 +4101,21 @@ def sequence_answer_errors(text: str, needs_token: bool, is_public: bool) -> lis
     return errors
 
 
+def sequence_quote_errors(text: str) -> list[str]:
+    """A note line that starts with a bare quote is drawn by PlantUML as a comment, so the SQL line is missing from the picture."""
+    errors = []
+    inside = False
+    for number, line in enumerate(text.splitlines(), start=1):
+        stripped = line.strip()
+        if re.match(r"^note (?:left|right|over)\b[^:]*$", stripped):
+            inside = True
+        elif stripped == "end note":
+            inside = False
+        elif inside and stripped.startswith("'"):
+            errors.append(f"line {number}: a note line starts with a bare quote (PlantUML draws it as a comment), write it as &#39;")
+    return errors
+
+
 def sequence_heading_errors(text: str) -> list[str]:
     """Each 'app -> infra: <SQL heading>' line is followed at once by 'infra -> <table>: <the same heading>'."""
     errors = []
@@ -4208,6 +4223,7 @@ def check_api_sequence_spec() -> int:
             errors.extend(f"{relative_sequence}: login standard: {error}" for error in standard_errors)
         spec_text = spec_path.read_text(encoding="utf-8")
         errors.extend(f"{relative_sequence}: {error}" for error in sequence_heading_errors(sequence_text))
+        errors.extend(f"{relative_sequence}: {error}" for error in sequence_quote_errors(sequence_text))
         answer_errors = sequence_answer_errors(sequence_text, spec_needs_token(spec_text), spec_is_public(spec_text))
         if folder in LEGACY_TOKEN_SEQUENCES:
             if not answer_errors:
