@@ -63,6 +63,21 @@ activate page
                     page -> user: Ask the user to sign in again
                 else Verified JWT
                     app -> app: userId = verified sub; accessTokenHash = SHA-256 of the exact JWT; isPlatformAdmin = roles contains PLATFORM_ADMIN (no database query)
+                     note over app, infra
+                        - Governing behavior: owner-confirmed API review, Q2/Q4/Q10/Q13; this detailed revision remains in-review and includes no backend implementation.
+                          Validate the mandatory timestamp as a UTC timestamp before SQL; a missing or malformed timestamp returns 400 E10001. Missing or malformed Bearer
+                          credentials or a failed JWT signature/issuer/audience/expiry/UUID sub/roles-claim validation return the same 401 E10002 `Invalid or expired access
+                          token.` before SQL.
+                        - Validate the structured `roles` claim defined by login: `roles` must be an array (an empty array is valid), each object has a UUID `roleId` and a
+                          non-empty string `name`, and the `roleId`s are unique; a missing or malformed claim is a 401, never an empty list and never recovered from the
+                          database. `userId` comes only from the verified `sub`; `accessTokenHash` is the SHA-256 of the exact presented JWT. Capture the server UTC `now`
+                          immediately before the one credential query, recheck the JWT expiry at `now`, then run `QUERY - Check active credential and user`: no row (a
+                          missing, revoked or expired stored token, another owner or an inactive user) returns the same 401. The request never carries a user id, a role or a
+                          platform administrator flag that controls this lookup.
+                        - Execution order: validate the request and the timestamp (400) -> verify the JWT (401) -> current credential and user (401) -> existence of the shop
+                          (404) -> permission (403) -> read. The inquiry has no transaction: every query is one autocommit SELECT, and the authorization result comes from the
+                          verified claims and the shop membership row.
+                    end note
                     app -> infra: Execute database operations
                     activate infra
                     alt Work completes

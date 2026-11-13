@@ -18,6 +18,13 @@
 | PRE-PRODUCTION | https://www.domain.com/api-pre-prod |
 | PRODUCTION     | https://www.domain.com/api          |
 
+- Only the owner of the order can pay it; the order of another user, a missing order and a DELETED order answer 404 (E10004). The order must be `WAIT_PAYMENT` and not expired, otherwise 409 (E10006).
+- `paymentMethod` accepts only `CREDIT_CARD` (Stripe card) and `THAI_QR` (Stripe PromptPay); `PAYPAL`, `BANK_TRANSFER` and `CASH_ON_DELIVERY` are not supported yet and answer 400 (E10001). The provider is always `STRIPE`.
+- The system calculates the shipping fee from `shippingMethod` (a flat rate from a config: STANDARD 40.00, EXPRESS 80.00, SAME_DAY 150.00 baht) and `amount = totalPrice - totalDiscount + totalTax + shippingFee` in THB; the amount sent to Stripe is `amount x 100` in satang. The amount must be at least 10.00 baht and, for `THAI_QR`, at most 2,000,000.00 baht, otherwise 409 (E10006).
+- At most one payment of an order is live (`uq_t_payment_order_id_live`): a PENDING payment with the same method and shipping method is reused (200), a PENDING payment with a different method is cancelled and replaced (201), a PROCESSING payment answers 409 (E10006). A FAILED or CANCELLED payment is history and one row is one Stripe PaymentIntent.
+- The `clientSecret` is returned only here and is never stored; the result of the payment is read from the Stripe webhook and card data never reaches this API. When Stripe does not answer or refuses, nothing is written and the answer is 408 (E90001).
+- The Idempotency-Key of every Stripe call, the lock, the failed `COMMIT` and the order of the checks are in the sequence diagram.
+
 ---
 
 ## Request Parameters
@@ -38,21 +45,6 @@
 | 1   | orderId        | String: UUID | MANDATORY | Order Id, Must be an order of the user that is waiting for payment | d1e2f3a4-1b2c-4d3e-9f4a-5b6c7d8e9f01 |
 | 2   | paymentMethod  | String       | MANDATORY | Payment method, one of: CREDIT_CARD, THAI_QR                       | CREDIT_CARD                          |
 | 3   | shippingMethod | String       | MANDATORY | Shipping method, one of: STANDARD, EXPRESS, SAME_DAY               | STANDARD                             |
-
-### Payment Rules
-
-- Only the owner of the order (the user of the access token, the request never carries a user id) can pay it. The order of another user, a missing order and an order that is DELETED all answer 404 (E10004).
-- The order must be `WAIT_PAYMENT` and `expires_at` must not have passed, otherwise 409 (E10006) with the current status in the message. The order keeps holding the stock while the payment is in progress.
-- `paymentMethod` accepts only `CREDIT_CARD` (Stripe card) and `THAI_QR` (Stripe PromptPay). `PAYPAL`, `BANK_TRANSFER` and `CASH_ON_DELIVERY` exist in the table but are not supported yet, they answer 400 (E10001) with the message `Payment method is not supported.` The provider is always `STRIPE`.
-- The shipping fee is calculated by the system from `shippingMethod`, the client never sends an amount or a fee. The fee is a flat rate for each order taken from a config (not from the database schema), the values in this spec are STANDARD 40.00, EXPRESS 80.00 and SAME_DAY 150.00 baht, free shipping does not exist yet.
-- `amount = totalPrice - totalDiscount + totalTax + shippingFee` (the same formula that the database enforces on the order, `ck_t_order_total_amount_sum`). The system sets `total_shipping` and `total_amount` of the order to the new values in the same transaction, the currency is always THB, and the amount that goes to Stripe is `amount x 100` in satang.
-- The amount must be at least 10.00 baht (the Stripe minimum for THB) and, for `THAI_QR`, at most 2,000,000.00 baht, otherwise 409 (E10006) with the limit in the message. Both limits are configs.
-- At most one payment of an order is live (PENDING, PROCESSING or COMPLETED, enforced by `uq_t_payment_order_id_live`). When the order already has a live payment: a PENDING payment with the same `paymentMethod` and the same `shippingMethod` is reused, the answer is 200 with a new client secret that the system reads from Stripe and no row is written; a PENDING payment with a different method is cancelled (at Stripe and in the table, status CANCELLED) and a new payment is created (201); a PROCESSING payment answers 409 (E10006) with the message `A payment of the order is in progress.`
-- A payment that is FAILED or CANCELLED is history, starting again creates a new row. One row is one Stripe PaymentIntent. Every call to Stripe carries an `Idempotency-Key` header (approved by the product owner on 2026-11-08): the PaymentIntent is created with `payment-<orderId>-<attempt>-<paymentMethod>-<shippingMethod>`, where `<attempt>` is the number of payments of the order in any status plus one (`QUERY - Count the payments of the order`, read while the order row is locked), so a request that is repeated after a failure sends the same key and Stripe returns the same PaymentIntent instead of creating a second one, and the PaymentIntent of a payment that is replaced is cancelled with `cancel-<paymentIntentId>`. The metadata of the PaymentIntent carries `orderId` and `attempt`.
-- The client secret is returned only here and is never stored. The result of the payment is read from the Stripe webhook (`02-stripe-webhook`), not from the browser. Card data never reaches this API, Stripe.js sends it to Stripe.
-- If Stripe does not answer or refuses the request nothing is written (the whole request is one transaction) and the answer is 408 (E90001).
-- If the `COMMIT` fails after Stripe answered, nothing is written and the client secret was never returned, so the new PaymentIntent cannot be confirmed and the repeated request gets it again with the same key. The PaymentIntent of a replaced payment that was already cancelled at Stripe leaves its payment `PENDING` until the Stripe event `payment_intent.canceled` arrives, and the webhook (`02-stripe-webhook`, row PENDING and `payment_intent.canceled`) then sets that payment `CANCELLED` (approved by the product owner on 2026-11-08).
-- Execution order: validate the request (400) -> existence and ownership of the order (404) -> status, expiry, live payment and amount limits (409) -> create the PaymentIntent and write the order and the payment. The whole request is one transaction and the order row is locked (`FOR UPDATE`) so two requests cannot start two payments.
 
 #### Example Body Parameters
 

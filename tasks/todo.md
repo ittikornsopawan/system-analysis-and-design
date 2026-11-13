@@ -1499,3 +1499,12 @@ Status: Implemented in the managed workspace of Marry on branch `test/marry-spec
 - [x] Guidance: one sentence in `template.md` (and its snapshot `assets/api-spec.md.tmpl`), the new section "Template sections and links" in `references/spec-structure.md`, the correction of the two passages that told authors to add `### ... Rules` and `### Allow Scope` sections, and the rule "ask the owner before adding a section" in `SKILL.md`.
 - [x] Mutation tests: 9 of 9 caught (an extra `###` and `##` section, a link to another spec, to a design document and to `permission-scope.md`, an anchor to nothing, an entry removed from, added to and invented in the list) and 5 controls pass (`####` and `#####` headings, an own anchor, an external URL, a schema link).
 - [ ] Merge `main`, run every check, push, open the pull request, tell the lead at once, suspend, then close the records of PR 99 and 107 with the script on `main`.
+
+## e-commerce: spec template, payment
+
+Status: Complete in the branch, waiting for review. Assignment: agent `tommy`, delivery `open-pr`, authorized by `josh`, workspace `.workspace/tommy`, branch `docs/tommy-spec-template-payment`, scopes `e-commerce/doc/api/payment`, `e-commerce/db/tests/check_docs.py`, `tasks`.
+
+- [x] Remove `### Payment Rules`, `### Webhook Rules`, `### Refund Rules`, `### Payment Inquiry Rules`, `### Shop Payment Inquiry Rules` and the two `### Allow Scope` sections; the rules become short bullets under `## Domain`; remove the links to the design doc, login and permission-scope.
+- [x] Move the JWT checks, the lock order, the Idempotency-Key, the failed `COMMIT`, the state table of the webhook and the order of the checks into a note of `sequence.wsd`; no SQL and no behavior is changed.
+- [x] The `payment-spec` and `campaign-spec` checkers search the spec and its sequence note; adjust the needles; run every checker, strict SQL parity and the render check.
+- [x] Open the PR with `commit-and-pr`, tell the lead SA when CI is green, then suspend. Next: `sales`.
