@@ -1470,3 +1470,12 @@ Authority: SA Lead (Josh) approved this one-folder fix after Peter reported two 
 - [x] Correct `verify JWT/scopes (401)` and `verified token scopes` to roles in `author/09-inquiry-scope/spec.md`.
 - [x] Guard both phrases in `scope-inquiry-flow`; mutation: both reverted phrases are rejected (2/2).
 - [x] Run every documentation command, audit and database tests on the branch merged with origin/main.
+
+## e-commerce: spec template, cart
+
+Status: Complete in the branch, waiting for review. Assignment: agent `tommy`, delivery `open-pr`, authorized by `josh`, workspace `.workspace/tommy`, branch `docs/tommy-spec-template-cart`, scopes `e-commerce/doc/api/cart`, `e-commerce/db/tests/check_docs.py`, `tasks`.
+
+- [x] Remove `### Cart Rules` (cart/01, cart/02) and `### Availability Rules` (cart/03) from the specs; the rules become short bullets under `## Domain`; the `####` object headings stay (confirmed by the lead SA).
+- [x] Move the order of the checks, the lock and the merge details into a note of `sequence.wsd` (cart/01, cart/02); no SQL and no behavior is changed.
+- [x] Adjust the needles of `cart-spec`; run every checker, strict SQL parity and the render check.
+- [x] Open the PR with `commit-and-pr`, tell the lead SA when CI is green, then suspend. Next: `payment`.
