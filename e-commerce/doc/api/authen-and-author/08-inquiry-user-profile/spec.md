@@ -26,6 +26,14 @@ approved_at: null
 | PRE-PRODUCTION | https://www.domain.com/api-pre-prod |
 | PRODUCTION     | https://www.domain.com/api          |
 
+- Governing decisions: owner-confirmed API review Q13, Q15 (approved by the product owner).
+- The profile is the data of the caller: userId comes only from verified JWT sub.
+- Verify Bearer JWT signature/issuer/audience/expiry/UUID sub before BEGIN.
+- BEGIN REPEATABLE READ READ ONLY, capture fresh server UTC now immediately before the first query and recheck JWT expiry.
+- Read user and information from the same repeatable-read snapshot, so a concurrent atomic profile writer cannot mix the old name with new phone/address.
+- Query information only after the joined user/credential result succeeds.
+- The order of the checks, the locks and every outcome is in the sequence diagram.
+
 ---
 
 ## Request Parameters
@@ -41,32 +49,6 @@ approved_at: null
 ### Query Parameters
 
 No query parameters. The profile is the one of the caller.
-
-### User Profile Inquiry Rules
-
-- Governing behavior: WP4 U18/U24 and [owner-confirmed review](../../../../../docs/superpowers/specs/2026-11-07-api-review-design.md), Q13 current credential revocation and Q15 delivery, approved by the product owner. This detailed endpoint revision remains in-review; no backend/schema implementation is included.
-- The profile is the data of the caller: userId comes only from verified JWT sub. No id/userId/query filters or body are accepted; reject non-empty query/body and invalid mandatory UTC timestamp with 400 E10001 before SQL. Generate requestId when omitted. No administrator role is required and no caller may choose another user's profile.
-- Verify Bearer JWT signature/issuer/audience/expiry/UUID sub before BEGIN. Missing/malformed/invalid JWT gets generic 401 E10002 `Invalid or expired access token.` without SQL. Derive accessTokenHash as SHA-256 of the exact presented JWT; never read target identity from the request or trust an unverified token. All SQL parameters are typed bound UUID/bytes/UTC timestamps, never interpolated input.
-- BEGIN REPEATABLE READ READ ONLY, capture fresh server UTC now immediately before the first query and recheck JWT expiry. The first SELECT joins the caller's ACTIVE m_user with its matching ACTIVE stored access token, checking exact hash, ownership and expiry > now, and projects only the six user-profile fields. A missing/inactive user or missing/revoked/expired/mismatched token returns the same 401 after ROLLBACK; do not query information or return partial data. Do not authorize from JWT validity alone or transaction-start NOW().
-- Read user and information from the same repeatable-read snapshot, so a concurrent atomic profile writer cannot mix the old name with new phone/address. No user/credential lock is taken for this inquiry. Credential/user validation is performed by the first joined read; role-assignment claims do not replace current credential checks and no live role query is needed for this self operation.
-- Query information only after the joined user/credential result succeeds. Read the single row with the same userId and row_status <> DELETED, as enforced by uq_m_user_information_user_id. Preserve the existing visibility of non-DELETED information, including INACTIVE/LOCKED/ARCHIVED; DELETED history is excluded. No information row is a normal state, not 404: return null for phoneNumber/address/dateOfBirth/gender.
-- Sensitive fields (emailAddress, firstName, lastName, phoneNumber, address) are decrypted server-side and returned as plain text over TLS. Preserve NULL without decrypting it. displayName/profilePicturePath are copied as stored; dateOfBirth is YYYY-MM-DD or null; gender is MALE/FEMALE/OTHER or null. Q20 is approved by the product owner on 2026-11-08: “คืน null สำหรับค่าว่างเดิม (แนะนำ)”. Project legacy empty gender to null with NULLIF(ui.gender, ''); preserve existing NULL and valid values. This is response normalization only: do not update stored history. New writes still accept MALE/FEMALE/OTHER or null under the upsert contract.
-- Return all ten data keys every time: userId, emailAddress, firstName, lastName, displayName, profilePicturePath, phoneNumber, address, dateOfBirth, gender. A nullable value is explicit JSON null, never an omitted key. data.userId is the verified caller id; emailAddress is mandatory and read only. Username and the password are never returned, nor token/hash/salt, session, audit/lifecycle fields, role grants or internal informationId. Unexpected mapping/decryption failure is generic 500, not partial 200.
-- All SQL is SELECT-only: do not create a missing information row, mark anything read, refresh tokens or update audit fields. COMMIT the read-only transaction only after mapping succeeds, then 200 S10000 `Inquiry User Profile Success`. On timeout before commit ROLLBACK then 408 E90001; on other unexpected failure ROLLBACK then generic 500 without bizCode. The endpoint adds no 403/404/409 and no pagination or write side effect.
-- Execution order: validate empty query/body and timestamp -> verify JWT -> derive verified userId/token hash -> BEGIN REPEATABLE READ READ ONLY -> fresh now/JWT expiry recheck -> joined ACTIVE user/current-token projection -> own non-DELETED information -> map all ten keys/decrypt nullable fields -> COMMIT -> 200. Every SQL result returns to Application before branching or mapping.
-
-#### Scenario correspondence with sequence.wsd
-
-| Scenario                                      | Sequence behavior                                            | HTTP             | Data/side effects            |
-| --------------------------------------------- | ------------------------------------------------------------ | ---------------- | ---------------------------- |
-| Invalid timestamp/query/body                  | No SQL or BEGIN                                              | 400 E10001       | None                         |
-| Invalid JWT                                   | No SQL or BEGIN                                              | 401 E10002       | None                         |
-| User/current credential invalid               | Joined query returns no row; ROLLBACK; no information query  | 401 E10002       | None                         |
-| User and non-DELETED information exist        | Map stored/decrypted values from one snapshot, COMMIT        | 200 S10000       | Ten keys, no writes          |
-| Information missing / only DELETED history    | Map four information keys to null, COMMIT                    | 200 S10000       | Ten keys, no row created     |
-| Nullable base fields / legacy empty gender    | Explicit nulls; project empty gender to null under owner Q20 | 200 S10000       | No rewriting/history changes |
-| Concurrent profile change between reads       | Both SELECTs use the same repeatable-read snapshot           | 200 S10000       | Consistent profile version   |
-| Timeout / mapping or other pre-commit failure | ROLLBACK before error                                        | 408 E90001 / 500 | No partial data or writes    |
 
 ## Example Request
 

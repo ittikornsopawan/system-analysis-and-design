@@ -58,9 +58,17 @@ def require(md: str, needles: list[str]) -> list[str]:
     return [needle for needle in needles if needle not in md]
 
 
+MOVED_RULES = re.compile(r"^' --- Rules moved[^\n]*\n(.*?)^' --- end of the moved rules ---$", re.MULTILINE | re.DOTALL)
+
+
 def read(path: str) -> str:
-    """Read a repo-relative file as UTF-8 text."""
-    return (ROOT / path).read_text(encoding="utf-8")
+    """Read a repo-relative file as UTF-8 text; a spec.md also yields the rules that the template alignment moved into its sequence.wsd."""
+    text = (ROOT / path).read_text(encoding="utf-8")
+    if path.endswith("/spec.md") and (ROOT / path).with_name("sequence.wsd").exists():
+        moved = MOVED_RULES.search((ROOT / path).with_name("sequence.wsd").read_text(encoding="utf-8"))
+        if moved:
+            text += "\n" + "\n".join(line[2:] if line.startswith("' ") else line[1:] for line in moved.group(1).splitlines()) + "\n"
+    return text
 
 
 def fail(reason: str) -> int:
