@@ -1453,6 +1453,16 @@ Status: Complete in the branch, waiting for review. Assignment: agent `tommy`, d
 - [x] Move the diagram and the needles of `payment-spec`, run every checker and the mutation tests.
 - [x] Open the PR with `commit-and-pr`, tell the lead SA when CI is green, then suspend. Next: `sales/04`.
 
+### Author API11 user role inquiry — claims, credential gate and consistent pagination
+
+Authority: owner Q2/Q4/Q7/Q10/Q13/Q15, assignment `authorized_by: josh`, delivery `open-pr`. Derived from the delivered scope inquiry (author/09) with user-role joins and filters; slim API-specific checker.
+
+- [x] Revise spec.md and sequence.wsd together: verified JWT roles claim, credential gate in a REPEATABLE READ READ ONLY snapshot, one 403 before count/page, count and page with identical joins and bound nullable filters (id/userId/roleId/rowStatus), six-field items, role name/user display name/id order, one COMMIT; remove the two live-admin queries.
+- [x] Generalize the slim inquiry check into `author_inquiry_flow` (now also compares FROM/JOIN) and add `user-role-inquiry-flow`; update the `author-spec` needles and counted filter lines for API11.
+- [x] Mutation-test, render, run every documentation command, audit and database tests on the branch merged with origin/main.
+- [ ] Open question for the SA Lead: two JWT wording defects in the delivered author/09 (spec lines "verify JWT/scopes (401)" and "verified token scopes") need a separate scoped fix; see the lesson of 2026-11-12.
+
+User-role-inquiry verification: 16/16 deliberate faults rejected (including synchronized spec+sequence faults and the damaged JWT wording); PlantUML render shows 40/40 SQL lines. No schema, seed or backend change.
 ### Author API09 wording fix — JWT statements said scopes instead of roles
 
 Authority: SA Lead (Josh) approved this one-folder fix after Peter reported two defects introduced in PR #95; assignment `authorized_by: josh`, delivery `open-pr`. Behaviour, SQL and sequence are unchanged.
@@ -1463,9 +1473,18 @@ Authority: SA Lead (Josh) approved this one-folder fix after Peter reported two 
 
 ## repository-wide: park of a suspended assignment accepts a branch the owner updated
 
-Status: Implemented in the managed workspace of Marry on branch `fix/marry-park-suspend-ancestor-fix` (see the git branch of the pull request). Scope: `.agents/skills/agent-workspace` and `tasks/`. Approved by the lead after the first real use of `suspend` (park of PR 99 blocked).
+Status: Implemented in the managed workspace of Marry on branch `fix/marry-park-suspended-ancestor`. Scope: `.agents/skills/agent-workspace` and `tasks/`. Approved by the lead after the first real use of `suspend` (park of PR 99 blocked).
 
 - [x] Cause: the owner presses "update branch" on GitHub, so the merged head is ahead of the local branch of a suspended task; `resume` accepted a fast-forward but `park` of the suspended record blocked with "local task branch does not match the merged pull-request head".
 - [x] Fix: when the local branch differs from the merged head, `park` fetches the merged head (the branch, or `refs/pull/<n>/head` when the branch was deleted) and accepts the local branch only when it is an ancestor of the merged head; a diverged branch blocks as before and keeps the record and the branch. The remote branch may equal the merged head.
 - [x] Tests: 26 (2 new): a branch the owner updated is parked, a diverged branch blocks and is kept; 3 of 3 mutations caught (the ancestor test, the fetch and the remote tolerance). A fourth check (the fetched ref equals the merged head) was removed because the ancestor test already fails without the object.
 - [ ] Merge `main`, run every check, push, open the pull request, tell the lead at once, suspend, close the record of PR 99 with the fixed script.
+
+## e-commerce: spec template, cart
+
+Status: Complete in the branch, waiting for review. Assignment: agent `tommy`, delivery `open-pr`, authorized by `josh`, workspace `.workspace/tommy`, branch `docs/tommy-spec-template-cart`, scopes `e-commerce/doc/api/cart`, `e-commerce/db/tests/check_docs.py`, `tasks`.
+
+- [x] Remove `### Cart Rules` (cart/01, cart/02) and `### Availability Rules` (cart/03) from the specs; the rules become short bullets under `## Domain`; the `####` object headings stay (confirmed by the lead SA).
+- [x] Move the order of the checks, the lock and the merge details into a note of `sequence.wsd` (cart/01, cart/02); no SQL and no behavior is changed.
+- [x] Adjust the needles of `cart-spec`; run every checker, strict SQL parity and the render check.
+- [x] Open the PR with `commit-and-pr`, tell the lead SA when CI is green, then suspend. Next: `payment`.

@@ -493,3 +493,19 @@ description: Repository-wide and project-specific lessons captured from user cor
 - **Corrected behavior**: Run `git fetch origin main:main` in the managed clone (a fast-forward of the local ref, never a checkout) before the preflight and again after each base merge, then check the PR diff with `git diff --name-status origin/main...HEAD`.
 - **Preventive skill change**: not made in this task because `.agents/skills/commit-and-pr` is outside the assignment scope; reported to the lead SA (a step in `commit-and-pr` that fetches `main:main`, or a delivery-check that reads `origin/main`).
 - **Verification**: after `git fetch origin main:main` the preflight reported `no blockers found`.
+
+### 2026-11-12 — A word substitution on a derived spec rewrote JWT wording
+
+- **Correction**: Self-found while deriving `author/11` from the delivered `author/09`: PR #95 (scope inquiry), generated from the role inquiry by replacing `role` with `scope`, left two JWT statements saying `verify JWT/scopes (401)` and `verified token scopes` where the caller's roles claim is meant. The paired checks and all SQL parity passed.
+- **Root cause**: The substitution masked a list of JWT phrases, but two phrases were missing from the list, and no check compared the claim wording itself; parity checks read SQL, not prose.
+- **Corrected behavior**: When an inquiry or batch is derived by substitution, grep the derived file for the new noun next to `JWT`, `token`, `claim`, `caller` and `verified` before committing, and mask every claims sentence rather than listing known ones. `author/11` carries `verify JWT/roles (401)` and `verified token roles` as needles of its slim check; the two defects in `author/09` are reported to the lead SA for a separate scoped fix.
+- **Preventive skill change**: not made here because `.agents/skills` is outside this assignment scope; the needle check in `check_docs.py` is the preventive change inside scope. A step "grep the derived file for the new noun beside JWT/token/claim words" is proposed for `api-contract-design`.
+- **Verification**: `user-role-inquiry-flow` fails when `verify JWT/roles (401)` is changed to `verify JWT/scopes (401)` (16/16 mutations caught); `scope-inquiry-flow` was not changed.
+
+### 2026-11-13 — A refactor of a function that a parallel PR also edits can be merged back to its old body
+
+- **Correction**: After #105 (one needle line inside `check_scope_inquiry_flow`) merged, the CI of #103 (which turned that function into the shared `author_inquiry_flow`) failed `user-role-inquiry-flow` with the scope values of API 09. Git placed #105's line inside the helper and kept three hard-coded scope lines that #103 had parameterized.
+- **Root cause**: Two open PRs edited the same function (one added a line, one rewrote it). The textual merge of GitHub's `refs/pull/N/merge` is not the same as my own merge of main before the PR was opened, and I had not run the checks on the PR's merge ref after the other PR landed.
+- **Corrected behavior**: After any other PR that touches `check_docs.py` merges, fetch `refs/pull/N/merge` of my open PRs and run the affected checks on it before the owner merges; parameterize every value of a shared helper and run both of its callers.
+- **Preventive skill change**: none inside this assignment scope; the shared helper now has no hard-coded API values and both callers plus 18 mutations (16 for API 11, 2 for API 09) reject the wrong values. Proposed for `commit-and-pr`: when another PR merges into the base after the task PR opens, run the checks on `refs/pull/N/merge` before handoff.
+- **Verification**: `scope-inquiry-flow` and `user-role-inquiry-flow` pass; reverting the JWT wording or a column of API 09 and the 16 API 11 faults are all rejected.

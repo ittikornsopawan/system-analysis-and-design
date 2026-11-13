@@ -18,6 +18,12 @@
 | PRE-PRODUCTION | https://www.domain.com/api-pre-prod |
 | PRODUCTION     | https://www.domain.com/api          |
 
+- AVAILABLE: the SKU is on sale and the quantity is not larger than the remaining quantity of the lot that is on sale (`quantity <= maxOrderQuantity`). Only these lines count in the subtotals and the summary.
+- QUANTITY_EXCEEDS_STOCK: the SKU is on sale but `quantity > maxOrderQuantity`. `sellingPrice` is returned, `lineTotal` is null, the customer must lower the quantity.
+- OUT_OF_STOCK: the SKU has no lot on sale or the lot on sale has quantity 0. `sellingPrice` is null and `maxOrderQuantity` is 0.
+- UNAVAILABLE: the shop, the product, the shop product, the shop product SKU or the product SKU is no longer ACTIVE. `sellingPrice` is null and `maxOrderQuantity` is 0. The line stays in the cart so the customer can remove it.
+- The price is always the current price of the lot on sale. The cart keeps no price, so a change of the price or of the lot is visible the next time the cart is read.
+
 ---
 
 ## Request Parameters
@@ -128,14 +134,6 @@ curl --location --request GET 'https://www.domain.com/api-dev/v1/cart' \
 | 2   | availableLineCount | Numeric   | MANDATORY | Sequence Diagram | data.summary.availableLineCount | Number of AVAILABLE lines                                                                                                     | 2       |
 | 3   | totalQuantity      | Numeric   | MANDATORY | Sequence Diagram | data.summary.totalQuantity      | Sum of quantity of the AVAILABLE lines                                                                                        | 3       |
 | 4   | subtotal           | Numeric   | MANDATORY | Sequence Diagram | data.summary.subtotal           | Sum of lineTotal of the AVAILABLE lines of every shop, Discount, tax and shipping are not included (they belong to the order) | 918.00  |
-
-### Availability Rules
-
-- AVAILABLE: the SKU is on sale and the quantity is not larger than the remaining quantity of the lot that is on sale (`quantity <= maxOrderQuantity`). Only these lines count in the subtotals and the summary.
-- QUANTITY_EXCEEDS_STOCK: the SKU is on sale but `quantity > maxOrderQuantity`. `sellingPrice` is returned, `lineTotal` is null, the customer must lower the quantity.
-- OUT_OF_STOCK: the SKU has no lot on sale or the lot on sale has quantity 0. `sellingPrice` is null and `maxOrderQuantity` is 0.
-- UNAVAILABLE: the shop, the product, the shop product, the shop product SKU or the product SKU is no longer ACTIVE. `sellingPrice` is null and `maxOrderQuantity` is 0. The line stays in the cart so the customer can remove it.
-- The price is always the current price of the lot on sale. The cart keeps no price, so a change of the price or of the lot is visible the next time the cart is read.
 
 ### Example Response Parameters
 

@@ -1,3 +1,11 @@
+---
+name: User Role Inquiry API Specification
+description: Defines verified JWT administration, current credential gating, bound nullable filters and consistent read-only user role pagination; read when reviewing or implementing user role inquiry.
+status: in-review
+approved_by: null
+approved_at: null
+---
+
 # [GET]: v1/author/user/role
 
 | Title       | Description                                                                                                                                              |
@@ -32,20 +40,41 @@
 
 ### Query Parameters
 
-|     | Parameter Name | Data Type    | M/O      | Description                                                                                            | Example                              |
-| --- | -------------- | ------------ | -------- | ------------------------------------------------------------------------------------------------------ | ------------------------------------ |
-| 1   | id             | String: UUID | OPTIONAL | User Role Id, Response is a list with one item                                                         | 5e6f7a8b-9c0d-4e1f-8a2b-3c4d5e6f7a8b |
-| 2   | userId         | String: UUID | OPTIONAL | Only the roles of this user                                                                            | b1c2d3e4-f5a6-4b7c-8d9e-0f1a2b3c4d5e |
-| 3   | roleId         | String: UUID | OPTIONAL | Only the users that have this role                                                                     | a1b2c3d4-e5f6-4a7b-8c9d-0e1f2a3b4c5d |
-| 4   | pageIndex      | Numeric      | OPTIONAL | Page index starting from 1, Defaults to 1                                                              | 1                                    |
-| 5   | pageSize       | Numeric      | OPTIONAL | Number of items per page (max 100), Defaults to 10                                                     | 10                                   |
-| 6   | rowStatus      | String       | OPTIONAL | Row status filter (ACTIVE, INACTIVE, LOCKED, ARCHIVED), All statuses except DELETED when not specified | ACTIVE                               |
+|     | Parameter Name | Data Type    | M/O      | Description                                                                                                     | Example                              |
+| --- | -------------- | ------------ | -------- | --------------------------------------------------------------------------------------------------------------- | ------------------------------------ |
+| 1   | id             | String: UUID | OPTIONAL | User Role Id filter combined with other filters and normal pagination; missing/DELETED id returns an empty list | 5e6f7a8b-9c0d-4e1f-8a2b-3c4d5e6f7a8b |
+| 2   | userId         | String: UUID | OPTIONAL | Only the roles of this user                                                                                     | b1c2d3e4-f5a6-4b7c-8d9e-0f1a2b3c4d5e |
+| 3   | roleId         | String: UUID | OPTIONAL | Only the users that have this role                                                                              | a1b2c3d4-e5f6-4a7b-8c9d-0e1f2a3b4c5d |
+| 4   | pageIndex      | Numeric      | OPTIONAL | Page index starting from 1, Defaults to 1                                                                       | 1                                    |
+| 5   | pageSize       | Numeric      | OPTIONAL | Number of items per page (max 100), Defaults to 10                                                              | 10                                   |
+| 6   | rowStatus      | String       | OPTIONAL | Row status filter (ACTIVE, INACTIVE, LOCKED, ARCHIVED), All statuses except DELETED when not specified          | ACTIVE                               |
 
 ### User Role Inquiry Rules
 
-- Only a platform administrator can read the roles of users (403, E10009). Approved by the product owner (answered through the lead SA, 2026-11-06).
-- Rows with `rowStatus` DELETED are never returned. Sorted by role name, then user display name, then `id`, so that pages never repeat or skip a row.
-- `userDisplayName` is the display name of the user (plain text, the same as in the shop member list). Execution order: validate the request (400) -> permission (403) -> read.
+- Only a platform administrator can read the roles of users (403, E10009), because they describe who holds which authority. Approved by the product owner (answered through the lead SA, 2026-11-06; claims basis A12); use exact PLATFORM_ADMIN in verified JWT role claims under [owner-confirmed review](../../../../../docs/superpowers/specs/2026-11-07-api-review-design.md), Q2/Q4/Q10/Q13. This detailed revision remains in-review; no backend/schema implementation.
+- Validate timestamp as mandatory UTC and accept only single id/userId/roleId/pageIndex/pageSize/rowStatus query keys, with no body. Reject unknown/repeated keys and malformed header/query with 400 E10001 before SQL. Generate requestId if omitted. Supplied id/userId/roleId is a non-empty UUID, never null; omitted ones are typed SQL NULL (filterUserId, filterRoleId). pageIndex/pageSize are positive signed 64-bit integers, default 1/10 only when omitted, pageSize at most 100. Compute checked offset = (pageIndex - 1) * pageSize and reject parse/offset overflow beyond nonnegative BIGINT with 400. Explicit empty/null-like values do not become defaults. Row status must be one of ACTIVE, INACTIVE, LOCKED, ARCHIVED.
+- The four nullable filters id/userId/roleId/rowStatus disable only themselves and combine by AND; every supplied value is bound and never interpolated into SQL. userId returns the roles of that user, roleId the users that have that role; the id filter is still filtered/paginated, not an unpaged alternate path. The inner joins to the user and the role never remove a row because both references are mandatory foreign keys; the user and the role status are not filtered.
+- Verify Bearer JWT signature/issuer/audience/expiry/UUID sub and structured roles before BEGIN. roles must be an array including [], every role object has UUID roleId and non-empty string name, and roleIds are unique. Missing/malformed roles is generic 401 E10002, never an empty-list or live-grant fallback. Derive callerUserId only from verified sub and accessTokenHash as SHA-256 of the exact JWT; do not accept caller ids or isPlatformAdmin flags from requests.
+- Begin REPEATABLE READ READ ONLY, capture fresh server UTC now immediately before the joined current credential/user read and recheck JWT exp. Require matching token hash/caller id, ACTIVE token/user and strict expired_at > now; missing/inactive/revoked/expired/mismatched credentials is generic 401 E10002 with rollback before user-role reads. No user/role/token locks or writes. This current credential gate preserves immediate logout/reset revocation (Q13).
+- After current credentials pass, authorize once using exact case-sensitive PLATFORM_ADMIN in verified JWT roles. Valid roles=[] or any other role name is 403 E10009 `You do not have permission to read user roles.` after rollback and before count/page SQL. Never query current caller role assignments to grant, remove or replace authorization. Grant withdrawal after token issuance leaves the old privilege usable until access expiry (Q4); refresh reloads current grants (Q7). User-role data returned below comes from the database snapshot, distinct from author/me's calling-token snapshot.
+- Count first and optionally fetch the page in the same read-only repeatable-read snapshot as credentials. Both user-role queries use identical joins and non-DELETED/id/userId/roleId/rowStatus WHERE predicates; every supplied value is bound, including pageSize and checked offset. If totalItems=0 skip the page SQL and return items=[], totalPages=0. With positive count, query the requested page; an offset beyond the range returns items=[] with positive totals/pages and no 404. A missing/DELETED id is the same empty-list 200 for an authorized caller; permission is checked before revealing whether any user role exists.
+- Rows with rowStatus DELETED are never returned. Omitted rowStatus preserves every non-DELETED status; supplied status accepts only ACTIVE/INACTIVE/LOCKED/ARCHIVED. Sort by role name, then user display name, then id ascending, preserving database collation. This is deterministic within one snapshot; later requests may see newly committed changes and are not a frozen paging cursor.
+- Map each row to exactly userRoleId/userId/userDisplayName/roleId/roleName/rowStatus (userDisplayName is plain text, null when not set). No caller id, assignment, token/hash, audit or extra table fields are returned. Return exactly five data keys: items/pageIndex/pageSize/totalItems/totalPages, with explicit empty arrays. Echo validated pages and compute totalPages by integer quotient/remainder (zero when count=0), avoiding floating point or overflowing count+pageSize-1. Require page row count = min(pageSize, max(0, totalItems-offset)); mismatch or malformed/null/missing required data is internal failure.
+- Map the full response before COMMIT, then HTTP 200 S10000 Inquiry User Role Success. An unexpected SQL/result/mapping error rolls back and returns generic 500 without bizCode; timeout before COMMIT rolls back and returns 408 E90001. Never return partially mapped rows, mutate assignments/users/roles/tokens/audit, or answer 404/409 for this inquiry.
+- Execution order: validate query/header/body and checked pagination (400) -> verify JWT/roles (401) -> begin read-only repeatable-read transaction -> fresh now/expiry -> joined current credential/user (401) -> claims permission (403) -> count -> optional page -> complete mapping -> COMMIT -> 200. Every post-BEGIN rejection rolls back.
+
+#### Scenario correspondence with sequence.wsd
+
+| Scenario                                                              | Outcome                                                 | Transaction/query effects             |
+| --------------------------------------------------------------------- | ------------------------------------------------------- | ------------------------------------- |
+| Invalid input / invalid JWT or malformed roles                        | 400 E10001 / 401 E10002                                 | No BEGIN/SQL                          |
+| JWT expires before fresh credential read / current token-user invalid | 401 E10002                                              | Rollback, no user-role queries        |
+| Current credential without exact PLATFORM_ADMIN role claim            | 403 E10009                                              | Rollback before count/page            |
+| No matching user role, including missing/DELETED id                   | 200 S10000, empty items and zero pages                  | Count only, commit read-only snapshot |
+| Positive count, populated page                                        | 200 S10000 with six-field items and all pagination keys | Same-filter/snapshot count and page   |
+| Positive count, page beyond range                                     | 200 S10000, empty items but positive totals/pages       | No 404                                |
+| Assignment change committed between count/page                        | Consistent one-snapshot result                          | A later request sees the change       |
+| Timeout / unexpected SQL/result/mapping failure                       | 408 E90001 / generic 500                                | Rollback, no partial response         |
 
 ## Example Request
 
@@ -289,9 +318,84 @@ Request: `GET v1/author/user/role?id=5e6f7a8b-9c0d-4e1f-8a2b-3c4d5e6f7a8b`
 }
 ```
 
+#### Success - Page Beyond Range
+
+```JSON
+{
+    "status": {
+        "code": 200,
+        "message": "Ok",
+        "bizCode": "S10000",
+        "bizMessage": "Inquiry User Role Success",
+        "requestId": "req-8f6a2b4c-5d7e-4f9a-b1c3-4d5e6f7a8b9c",
+        "timestamp": "2026-11-06T09:10:00.123Z",
+        "status": "SUCCESS"
+    },
+    "data": {
+        "items": [],
+        "pageIndex": 2,
+        "pageSize": 10,
+        "totalItems": 1,
+        "totalPages": 1
+    }
+}
+```
+
+#### Fail - Internal Server Error
+
+```JSON
+{
+    "status": {
+        "code": 500,
+        "message": "Internal Server Error",
+        "bizMessage": "An unexpected error occurred.",
+        "requestId": "req-user-role-inquiry-review",
+        "timestamp": "2026-11-08T00:00:00.123Z",
+        "status": "ERROR"
+    }
+}
+```
+
 ---
 
 ## Database Relations
+
+All three SELECTs share one REPEATABLE READ READ ONLY transaction; authorization is derived solely from the verified token roles, and current token/user status is read from the database. Bound nullable filters and identical joins and predicates apply to count and page. No locks or writes.
+
+### Table: [authen.t_user_access_token](../../../schema/authen/t_user_access_token.md)
+
+#### QUERY - Check current credential and user
+
+```SQL
+SELECT
+    at.id as access_token_id
+FROM authen.t_user_access_token at
+JOIN authen.m_user u ON u.id = at.user_id
+WHERE at.token = '<sequence.accessTokenHash>'
+AND at.user_id = '<sequence.callerUserId>'
+AND at.row_status = 'ACTIVE'
+AND at.expired_at > '<sequence.now>'
+AND u.row_status = 'ACTIVE'
+```
+
+### Table: [author.t_user_role](../../../schema/author/t_user_role.md)
+
+#### QUERY - Get total items
+
+```SQL
+SELECT
+    COUNT(ur.id) as total_items
+FROM author.t_user_role ur
+INNER JOIN authen.m_user u
+    ON u.id = ur.user_id
+INNER JOIN author.m_role r
+    ON r.id = ur.role_id
+WHERE ur.row_status <> 'DELETED'
+AND ('<sequence.id>' IS NULL OR ur.id = '<sequence.id>') -- only when id is specified
+AND ('<sequence.filterUserId>' IS NULL OR ur.user_id = '<sequence.filterUserId>') -- only when userId is specified
+AND ('<sequence.filterRoleId>' IS NULL OR ur.role_id = '<sequence.filterRoleId>') -- only when roleId is specified
+AND ('<sequence.rowStatus>' IS NULL OR ur.row_status = '<sequence.rowStatus>') -- only when rowStatus is specified
+```
 
 ### Table: [author.t_user_role](../../../schema/author/t_user_role.md)
 
@@ -311,48 +415,10 @@ INNER JOIN authen.m_user u
 INNER JOIN author.m_role r
     ON r.id = ur.role_id
 WHERE ur.row_status <> 'DELETED'
-AND ur.id = '<sequence.id>' -- only when id is specified
-AND ur.user_id = '<sequence.filterUserId>' -- only when userId is specified
-AND ur.role_id = '<sequence.filterRoleId>' -- only when roleId is specified
-AND ur.row_status = '<sequence.rowStatus>' -- only when rowStatus is specified
+AND ('<sequence.id>' IS NULL OR ur.id = '<sequence.id>') -- only when id is specified
+AND ('<sequence.filterUserId>' IS NULL OR ur.user_id = '<sequence.filterUserId>') -- only when userId is specified
+AND ('<sequence.filterRoleId>' IS NULL OR ur.role_id = '<sequence.filterRoleId>') -- only when roleId is specified
+AND ('<sequence.rowStatus>' IS NULL OR ur.row_status = '<sequence.rowStatus>') -- only when rowStatus is specified
 ORDER BY r.name, u.display_name, ur.id
-LIMIT <sequence.pageSize> OFFSET (<sequence.pageIndex> - 1) * <sequence.pageSize>
-```
-
-#### QUERY - Get total items
-
-```SQL
-SELECT
-    COUNT(ur.id) as total_items
-FROM author.t_user_role ur
-WHERE ur.row_status <> 'DELETED'
-AND ur.id = '<sequence.id>' -- only when id is specified
-AND ur.user_id = '<sequence.filterUserId>' -- only when userId is specified
-AND ur.role_id = '<sequence.filterRoleId>' -- only when roleId is specified
-AND ur.row_status = '<sequence.rowStatus>' -- only when rowStatus is specified
-```
-
-### Table: [author.m_role](../../../schema/author/m_role.md)
-
-#### QUERY - Get the platform administrator role
-
-```SQL
-SELECT
-    r.id as role_id
-FROM author.m_role r
-WHERE r.name = 'PLATFORM_ADMIN'
-AND r.row_status = 'ACTIVE'
-```
-
-### Table: [author.t_user_role](../../../schema/author/t_user_role.md)
-
-#### QUERY - Check platform administrator
-
-```SQL
-SELECT
-    ur.id as user_role_id
-FROM author.t_user_role ur
-WHERE ur.user_id = '<sequence.userId>'
-AND ur.role_id = '<sequence.roleId>'
-AND ur.row_status = 'ACTIVE'
+LIMIT '<sequence.pageSize>' OFFSET '<sequence.offset>'
 ```
