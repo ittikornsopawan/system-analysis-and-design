@@ -1517,3 +1517,12 @@ Authority: owner decision that API specs follow `e-commerce/doc/api/template.md`
 - [x] The full removed rule text stays in each `sequence.wsd` as a PlantUML comment block (`' --- Rules moved ...`); `read()` in `check_docs.py` returns a spec together with that block, so every existing needle keeps protecting the rules without changing any flow check.
 - [x] Verify: headings and links of the 10 specs, all 64 documentation commands, audit, database tests, render of the 10 diagrams (all SQL lines visible), mutation of the moved text (4/4).
 - [ ] Open for Marry's `spec-template` checker: take the ten files out of its exception list when it merges.
+## e-commerce: spec template, sales
+
+Status: Complete in the branch, waiting for review. Assignment: agent `tommy`, delivery `open-pr`, authorized by `josh`, workspace `.workspace/tommy`, branch `docs/tommy-spec-template-sales`, scopes `e-commerce/doc/api/sales`, `e-commerce/db/tests/check_docs.py`, `tasks`.
+
+- [x] Remove `### Checkout Rules`, `### Order Rules`, `### Order Inquiry Rules`, `### Shop Order Inquiry Rules`, `### Cancel Rules`, `### Discount Example` and both `### Allow Scope` sections; the rules become short bullets under `## Domain` (the worked discount example is a bold label with its table under `## Domain`); remove the links to the design doc, login and permission-scope.
+- [x] Move the JWT checks, the lock order, the Idempotency-Key, the budget and stock updates and the order of the checks into a note of `sequence.wsd`; no SQL and no behavior is changed.
+- [x] The roles claim sentences follow the new JWT payload (role names), as recorded in the API review design.
+- [x] The `order-spec` checker searches the spec and its sequence note; adjust the needles; run every checker, strict SQL parity and the render check.
+- [x] Open the PR with `commit-and-pr`, tell the lead SA when CI is green, then suspend. Next: `shipping`, with the roles sentence of the payment notes.

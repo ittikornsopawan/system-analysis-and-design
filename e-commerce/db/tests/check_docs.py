@@ -1751,24 +1751,26 @@ def check_order_spec() -> int:
     if errors:
         return fail("; ".join(errors))
     needles = {
-        "01": ["### Checkout Rules", "canCheckout", "#### Problem Object", "QUANTITY_EXCEEDS_STOCK", "#### QUERY - Get the cart lines to order",
+        "01": ["- Only the logged-in customer previews a checkout", "canCheckout", "#### Problem Object", "QUANTITY_EXCEEDS_STOCK", "#### QUERY - Get the cart lines to order",
                "#### QUERY - Get the SKU of each line with the lot that is on sale", "#### QUERY - Check the address of the user", "E10007"],
-        "02": ["### Order Rules", "WAIT_PAYMENT", "expires_at", "ck_t_order_total_amount_sum", "ship_address", "#### INSERT - Create the order of a shop",
+        "02": ["- Only the logged-in customer creates orders", "WAIT_PAYMENT", "expires_at", "ck_t_order_total_amount_sum", "ship_address", "#### INSERT - Create the order of a shop",
                "#### INSERT - Create the items of the order", "#### UPDATE - Take the quantity from the lot that is on sale",
                "AND quantity >= '<sequence.quantity>'", "AND is_on_sale = TRUE", "#### UPDATE - Delete the cart lines that were ordered",
                "one transaction", "E10007", "ck_t_shop_product_sku_lot_price_not_below_cost",
                "ORDER BY c.id\nFOR UPDATE -- the lines to order are locked in id order", "the cart lines of the request by `id` (`FOR UPDATE` in `QUERY - Get the cart lines to order`)", "approved by the product owner on 2026-11-08"],
-        "03": ["### Order Inquiry Rules", "ORDER BY o.created_at DESC, o.id", "o.user_id = '<sequence.userId>'", "#### QUERY - Count the orders of the user", "ILIKE"],
-        "04": ["### Shop Order Inquiry Rules", "E10009", "#### Fail - Forbidden", "#### QUERY - Check shop member", "#### QUERY - Check active credential and user",
-               "the role `PLATFORM_ADMIN` in the verified `roles` claim", "do not query `author.m_role` or `author.t_user_role`", "### Allow Scope", "sales:order:read:allow",
+        "03": ["- Only the orders of the user of the access token are returned", "ORDER BY o.created_at DESC, o.id", "o.user_id = '<sequence.userId>'", "#### QUERY - Count the orders of the user", "ILIKE"],
+        "04": ["- The caller needs a verified JWT, then an ACTIVE member row of the shop", "E10009", "#### Fail - Forbidden", "#### QUERY - Check shop member", "#### QUERY - Check active credential and user",
+               "the role `PLATFORM_ADMIN` in the verified `roles` claim", "do not query `author.m_role` or `author.t_user_role`",
                "approved by the product owner", "platformProfit", "ORDER BY o.created_at DESC, o.id", "INNER JOIN authen.m_user ui"],
-        "05": ["### Cancel Rules", "#### UPDATE - Cancel the order", "AND status = 'WAIT_PAYMENT'", "#### UPDATE - Give the quantity back to the lot", "E10006",
+        "05": ["- The caller needs a verified JWT, then must be the owner of the order", "#### UPDATE - Cancel the order", "AND status = 'WAIT_PAYMENT'", "#### UPDATE - Give the quantity back to the lot", "E10006",
                "restoredItems", "#### QUERY - Check shop member", "FOR UPDATE -- the order row is locked first", "ORDER BY oi.lot_id",
                "`Idempotency-Key` `cancel-<paymentIntentId>`", "approved by the product owner on 2026-11-08",
-               "#### QUERY - Lock the caller user", "#### QUERY - Check current credential and user", "do not query `author.m_role` or `author.t_user_role`", "### Allow Scope", "sales:order:cancel:allow"],
+               "#### QUERY - Lock the caller user", "#### QUERY - Check current credential and user", "do not query `author.m_role` or `author.t_user_role`"],
     }
     for key, need in needles.items():
-        for missing in missing_needles(mds[key], need):
+        # rules that moved into a note of the sequence diagram are searched there, one line per wrapped note
+        seq = re.sub(r"\n\s+", " ", read(ORDER_SPECS[key].replace("spec.md", "sequence.wsd")))
+        for missing in missing_needles(mds[key] + "\n" + seq, need):
             errors.append(f"{ORDER_SPECS[key]} missing: {missing}")
     for key, want in {"01": {"Success": 200, "Success - With Campaign": 200, "Success - With Problems": 200},
                       "02": {"Success": 201, "Success - With Campaign": 201, "Success - With Capped Discount": 201}, "03": {"Success": 200, "Success - Empty": 200},
@@ -4532,7 +4534,7 @@ CAMPAIGN_EFFECTS = {
         "#### UPDATE - Take the budget of the campaign", "AND remaining >= '<sequence.discountTotal>'", "#### INSERT - Write the reservation in the ledger", "'RESERVE'",
         "the lots by `id`, then the budgets by `id`", "gross_profit = gross_margin x quantity - discount", "shop_profit = share_margin x quantity",
         "platform_profit = platform_margin x quantity - discount", "'<sequence.totalDiscount>'", "'<sequence.discount>'", "#### Fail - Conflict Discount Budget",
-        "#### Success - With Campaign", "### Discount Example", "#### Success - With Capped Discount"],
+        "#### Success - With Campaign", "**Discount Example**", "#### Success - With Capped Discount"],
     "e-commerce/doc/api/sales/05-cancel-order/spec.md": CAMPAIGN_RELEASE_NEEDLES + ["also when the system cancels it because `expires_at` has passed"],
     "e-commerce/doc/api/payment/05-refund-payment/spec.md": CAMPAIGN_RELEASE_NEEDLES + ["when the payment is refunded"],
     "e-commerce/doc/api/payment/02-stripe-webhook/spec.md": CAMPAIGN_RELEASE_NEEDLES + ["does not touch the budget"],
@@ -4552,7 +4554,7 @@ CAMPAIGN_ITEM_CAP = {"e1f2a3b4-3c4d-4e5f-9a6b-7c8d9e0f1a21": 158.0, "e2a3b4c5-4d
 def check_discount_example(md: str) -> list[str]:
     """The worked example of sales/02: FIXED_AMOUNT discount, the cap, the profits, and the capped success example that follows from it."""
     errors = []
-    m = re.search(r"### Discount Example\n\n.*?\n\n((?:\|[^\n]*\n)+)", md, re.DOTALL)
+    m = re.search(r"\*\*Discount Example\*\*\n\n.*?\n\n((?:\|[^\n]*\n)+)", md, re.DOTALL)
     if not m:
         return ["sales/02: the Discount Example table is missing"]
     rows = [[c.strip() for c in line.strip().strip("|").split("|")] for line in m.group(1).strip().split("\n")][2:]
