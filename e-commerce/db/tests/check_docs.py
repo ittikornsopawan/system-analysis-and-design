@@ -1039,7 +1039,7 @@ def check_cart_spec() -> int:
     if errors:
         return fail("; ".join(errors))
     needles = {
-        "01": ["### Cart Rules", "#### Success - Merge", "E10007", "E10008",
+        "01": ["- Add (no `id`) merges into the line of the same SKU", "#### Success - Merge", "E10007", "E10008",
                "\nON CONFLICT (user_id, shop_id, product_id, sku_id) WHERE row_status <> 'DELETED' -- the partial unique index uq_t_cart_user_id_shop_id_product_id_sku_id\nDO UPDATE SET",
                "WHERE cart.t_cart.quantity + EXCLUDED.quantity <= '<sequence.maxOrderQuantity>'", "(xmax = 0) as is_insert",
                "#### UPDATE - Update or delete a line", "more than 100 lines",
@@ -1054,7 +1054,7 @@ def check_cart_spec() -> int:
                "#### QUERY - Lock the user", "AND u.row_status = 'ACTIVE'\nFOR UPDATE -- every authen API locks the user row first",
                "locking the ACTIVE row of the user",
                "must be ACTIVE, otherwise the request is rejected with 404 (E10005)"],
-        "03": ["### Availability Rules", "QUANTITY_EXCEEDS_STOCK", "#### QUERY - Get the lot that is on sale of each shop product SKU", "no paging"],
+        "03": ["- AVAILABLE: the SKU is on sale", "QUANTITY_EXCEEDS_STOCK", "#### QUERY - Get the lot that is on sale of each shop product SKU", "no paging"],
     }
     for key, need in needles.items():
         for missing in missing_needles(mds[key], need):

@@ -18,6 +18,12 @@
 | PRE-PRODUCTION | https://www.domain.com/api-pre-prod |
 | PRODUCTION     | https://www.domain.com/api          |
 
+- The cart belongs to the user of the access token; the request carries no user id and a line of another user is 404 (E10004). A line is one SKU of a shop, with at most one line that is not deleted per user and SKU and at most 100 lines that are not deleted per user (config). The limit is checked after the write in the same transaction: more than 100 lines rolls back with 409 (E10008) (approved by the product owner on 2026-11-08).
+- Add (no `id`) merges into the line of the same SKU (200) or inserts a new line (201) in one statement; Update (`id`) replaces the quantity (200); Delete (`rowStatus = DELETED`) soft-deletes the line (204, no response body).
+- The SKU must be on sale: the shop, the product, the shop product, the shop product SKU and the product SKU must be ACTIVE, otherwise the request is rejected with 404 (E10005); the quantity after the request must not be larger than the remaining quantity of the lot on sale, otherwise 409 (E10007). The stock rule is not checked on delete.
+- The cart keeps no price and no lot, the inquiry reads them each time the cart is read.
+- The transaction starts by locking the ACTIVE row of the user, a user that is missing or not ACTIVE gets 401 (E10002). The order of the checks and the locks is in the sequence diagram.
+
 ---
 
 ## Request Parameters
@@ -39,16 +45,6 @@
 | 2   | shopProductSkuId | String: UUID | MANDATORY | Shop Product SKU Id from the product page (storefront), The SKU must be on sale, Cannot be changed when the line is updated                                                                                    | 9c0d1e2f-3a4b-4c5d-8e6f-7a8b9c0d1e2f |
 | 3   | quantity         | Numeric      | OPTIONAL  | Quantity of the line (integer greater than 0), Required unless rowStatus is DELETED, Without id the quantity is added to the existing line of the same SKU, With id the quantity replaces the current quantity | 2                                    |
 | 4   | rowStatus        | String       | OPTIONAL  | Row status (ACTIVE, DELETED), Defaults to ACTIVE, Delete when DELETED (HTTP 204 No Content), Other statuses answer 400                                                                                         | ACTIVE                               |
-
-### Cart Rules
-
-- The cart belongs to the user of the access token (customer). The request never carries a user id and a line of another user is treated as not found (404, E10004). A user has one cart that holds lines of any number of shops, the lines are grouped by shop only when the cart is read.
-- A line is one SKU of a shop. `shop_id`, `product_id` and `sku_id` of the line come from `shopProductSkuId`. There is at most one line that is not deleted per user and SKU, and at most 100 lines that are not deleted per user (the limit is a config). The limit is checked after the line is written, in the same transaction: when the cart then has more than 100 lines the transaction is rolled back and the request answers 409 (E10008) (approved by the product owner on 2026-11-08).
-- Add (no `id`): when the user already has a line of the same SKU the quantity is added to that line (merge, HTTP 200), otherwise a new line is inserted (HTTP 201). An add is one statement, `INSERT ... ON CONFLICT (user_id, shop_id, product_id, sku_id) WHERE row_status <> 'DELETED' DO UPDATE`, that uses the partial unique index `uq_t_cart_user_id_shop_id_product_id_sku_id` (it covers the lines that are not DELETED): two requests at the same time can never create two lines of the same SKU, the merge is limited by the stock in the same statement, and a line that was deleted is outside the index, so adding the SKU again inserts a new line (approved by the product owner on 2026-11-08). Update (`id`): the quantity of the line is replaced (HTTP 200). Delete (`rowStatus = DELETED`): the line is soft-deleted (HTTP 204, no response body). The cart has no archive.
-- Stock rule: the SKU must be on sale: the shop, the product, the shop product, the shop product SKU and the product SKU must be ACTIVE, otherwise the request is rejected with 404 (E10005) and the cart is not changed. One lot must be on sale and the quantity of the line after the request must not be larger than the remaining quantity of that lot, otherwise the request is rejected with 409 (E10007) and the cart is not changed. The rule is checked on add, merge and update, not on delete (approved by the product owner on 2026-11-08).
-- The cart keeps no price and no lot. The price, the stock status and the total are read from the lot that is on sale each time the cart is read, so they always follow the shop (see the inquiry). A line can later become larger than the stock or no longer on sale, the cart still holds it and the inquiry reports it.
-- Lock: the transaction starts by locking the ACTIVE row of the user (`authen.m_user`, `FOR UPDATE`, the first statement after BEGIN, as every authen API does), so that two requests of the same user are applied one after the other: the merge, the stock rule and the limit of 100 lines are then exact, because no other request of the user can write a line between the write and the count. A user that is missing or not ACTIVE gets 401 (E10002) and nothing is written (a technical decision of the lead SA that does not change the business rules approved by the product owner on 2026-11-08).
-- Execution order: validate the request (400) -> verify the access token (401) -> BEGIN and lock the user (401 when the user is missing or not ACTIVE) -> existence checks (404, the line of the user and the shop, product and SKU that must be ACTIVE) -> stock checks (409, E10007) -> write the line (an add is the one `INSERT ... ON CONFLICT` that merges) -> line limit check (409, E10008, the transaction is rolled back). The whole request is one transaction.
 
 #### Example Body Parameters
 
