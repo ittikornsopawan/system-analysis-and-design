@@ -18,6 +18,11 @@
 | PRE-PRODUCTION | https://www.domain.com/api-pre-prod |
 | PRODUCTION     | https://www.domain.com/api          |
 
+- Only the orders of the user of the access token are returned (the request never carries a user id), the order of another user is not found, `id` of another user answers an empty list. Orders with `rowStatus` DELETED are never returned.
+- The orders are ordered by creation time (newest first) then `id`. `items` of an order are ordered by creation time then `id`.
+- The customer sees the price that was locked when the order was created (`price`, `totalPrice`), never the cost, the lot, the margin or the profit. The shipping address is returned only by its title (`shipTitle`), the full copy is for the shop.
+- An order that is `WAIT_PAYMENT` holds the stock until `expiresAt`, after that the system cancels it (status CANCELLED).
+
 ---
 
 ## Request Parameters
@@ -39,13 +44,6 @@
 | 3   | pageIndex      | Numeric      | OPTIONAL | Page index starting from 1, Defaults to 1                                                                                                   | 1                                    |
 | 4   | pageSize       | Numeric      | OPTIONAL | Number of items per page (max 100), Defaults to 10                                                                                          | 10                                   |
 | 5   | search         | String       | OPTIONAL | Search by order code or shop name                                                                                                           | ORD-2026                             |
-
-### Order Inquiry Rules
-
-- Only the orders of the user of the access token are returned (the request never carries a user id), the order of another user is not found, `id` of another user answers an empty list. Orders with `rowStatus` DELETED are never returned.
-- The orders are ordered by creation time (newest first) then `id`. `items` of an order are ordered by creation time then `id`.
-- The customer sees the price that was locked when the order was created (`price`, `totalPrice`), never the cost, the lot, the margin or the profit. The shipping address is returned only by its title (`shipTitle`), the full copy is for the shop.
-- An order that is `WAIT_PAYMENT` holds the stock until `expiresAt`, after that the system cancels it (status CANCELLED).
 
 ## Example Request
 
