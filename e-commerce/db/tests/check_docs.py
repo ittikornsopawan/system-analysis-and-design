@@ -2554,24 +2554,26 @@ def check_payment_spec() -> int:
     if errors:
         return fail("; ".join(errors))
     needles = {
-        "01": ["### Payment Rules", "CASH_ON_DELIVERY", "uq_t_payment_order_id_live", "payment-<orderId>-<attempt>-<paymentMethod>-<shippingMethod>", "cancel-<paymentIntentId>",
+        "01": ["- Only the owner of the order can pay it", "CASH_ON_DELIVERY", "uq_t_payment_order_id_live", "payment-<orderId>-<attempt>-<paymentMethod>-<shippingMethod>", "cancel-<paymentIntentId>",
                "#### QUERY - Count the payments of the order", "If the `COMMIT` fails after Stripe answered", "approved by the product owner on 2026-11-08", "clientSecret", "amount x 100", "#### Fail - Conflict Payment In Progress",
                "#### INSERT - Create the payment", "#### UPDATE - Set the shipping fee and the amount of the order", "AND status = 'WAIT_PAYMENT'", "FOR UPDATE", "E10006", "E90001"],
-        "02": ["### Webhook Rules", "stripe-signature", "raw body", "5 minutes", "LATE_PAYMENT_REFUNDED", "IGNORED", "payment_intent.succeeded", "charge.refunded",
+        "02": ["- The endpoint is public", "stripe-signature", "raw body", "5 minutes", "LATE_PAYMENT_REFUNDED", "IGNORED", "payment_intent.succeeded", "charge.refunded",
                "#### UPDATE - Mark the payment as completed", "#### UPDATE - Confirm the order", "AND status = 'WAIT_PAYMENT'", "#### UPDATE - Mark the payment as refunded",
                "#### UPDATE - Give the quantity back to the lot", "idempotent", "E10001",
                "ORDER BY oi.lot_id", "VALUES ('system', '<sequence.campaignBudgetId>'", "has `system` in `created_by` or `updated_by`", "refund-<paymentId>", "also makes the database match when another API called Stripe"],
-        "03": ["### Payment Inquiry Rules", "ORDER BY p.created_at DESC, p.id", "o.user_id = '<sequence.userId>'", "#### QUERY - Count the payments of the user", "ILIKE"],
-        "04": ["### Shop Payment Inquiry Rules", "E10009", "#### Fail - Forbidden", "#### QUERY - Check shop member", "#### QUERY - Check active credential and user",
-               "the role `PLATFORM_ADMIN` in the verified `roles` claim", "do not query `author.m_role` or `author.t_user_role`", "### Allow Scope", "payment:payment:read:allow",
+        "03": ["- Only the payments of the orders of the user", "ORDER BY p.created_at DESC, p.id", "o.user_id = '<sequence.userId>'", "#### QUERY - Count the payments of the user", "ILIKE"],
+        "04": ["- A member of the shop (an ACTIVE", "E10009", "#### Fail - Forbidden", "#### QUERY - Check shop member", "#### QUERY - Check active credential and user",
+               "the role `PLATFORM_ADMIN` in the verified `roles` claim", "do not query `author.m_role` or `author.t_user_role`",
                "providerPaymentId", "ORDER BY p.created_at DESC, p.id", "#### QUERY - Count the payments of the shop"],
-        "05": ["### Refund Rules", "#### UPDATE - Refund the payment", "AND status = 'COMPLETED'", "#### UPDATE - Refund the order", "AND status = 'PAYMENT_CONFIRMED'",
+        "05": ["- A member of the shop of the order", "#### UPDATE - Refund the payment", "AND status = 'COMPLETED'", "#### UPDATE - Refund the order", "AND status = 'PAYMENT_CONFIRMED'",
                "#### UPDATE - Give the quantity back to the lot", "refund-", "E10006", "E10009", "restoredItems", "#### QUERY - Check shop member", "FOR UPDATE -- taken before the payment is changed",
-               "#### QUERY - Lock the caller user", "#### QUERY - Check current credential and user", "do not query `author.m_role` or `author.t_user_role`", "### Allow Scope", "payment:payment:refund:allow",
+               "#### QUERY - Lock the caller user", "#### QUERY - Check current credential and user", "do not query `author.m_role` or `author.t_user_role`",
                "ORDER BY oi.lot_id", "`Idempotency-Key` `refund-<paymentId>`", "If the `COMMIT` fails after Stripe refunded", "approved by the product owner on 2026-11-08"],
     }
     for key, need in needles.items():
-        for missing in missing_needles(mds[key], need):
+        # rules that moved into a note of the sequence diagram are searched there, one line per wrapped note
+        seq = re.sub(r"\n\s+", " ", read(PAYMENT_SPECS[key].replace("spec.md", "sequence.wsd")))
+        for missing in missing_needles(mds[key] + "\n" + seq, need):
             errors.append(f"{PAYMENT_SPECS[key]} missing: {missing}")
     for key, want in {"01": {"Success": 201, "Success - Reused": 200}, "02": {"Success": 200, "Success - Ignored": 200, "Success - Late Payment Refunded": 200},
                       "03": {"Success": 200, "Success - Empty": 200}, "04": {"Success": 200, "Success - Empty": 200}, "05": {"Success": 200}}.items():
@@ -4588,7 +4590,9 @@ def check_campaign_effects() -> list[str]:
     errors = []
     for path, needles in CAMPAIGN_EFFECTS.items():
         md = read(path)
-        for missing in missing_needles(md, needles):
+        # rules that moved into a note of the sequence diagram are searched there, one line per wrapped note
+        seq = re.sub(r"\n\s+", " ", read(path.replace("spec.md", "sequence.wsd")))
+        for missing in missing_needles(md + "\n" + seq, needles):
             errors.append(f"{path} missing: {missing}")
         if "Fail - Conflict Campaign In Use" in md:
             example = json_examples(md, "Fail - Conflict Campaign In Use")
