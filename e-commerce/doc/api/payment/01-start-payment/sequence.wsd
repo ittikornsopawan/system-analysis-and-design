@@ -61,6 +61,21 @@ activate page
                     page -> user: Ask the user to sign in again
                 else Verified JWT
                     app -> app: userId = verified sub
+                     note over app, infra
+                        - A payment that is FAILED or CANCELLED is history, starting again creates a new row. One row is one Stripe PaymentIntent. Every call to Stripe carries
+                          an `Idempotency-Key` header (approved by the product owner on 2026-11-08): the PaymentIntent is created with
+                          `payment-<orderId>-<attempt>-<paymentMethod>-<shippingMethod>`, where `<attempt>` is the number of payments of the order in any status plus one
+                          (`QUERY - Count the payments of the order`, read while the order row is locked), so a request that is repeated after a failure sends the same key
+                          and Stripe returns the same PaymentIntent instead of creating a second one, and the PaymentIntent of a payment that is replaced is cancelled with
+                          `cancel-<paymentIntentId>`. The metadata of the PaymentIntent carries `orderId` and `attempt`.
+                        - If the `COMMIT` fails after Stripe answered, nothing is written and the client secret was never returned, so the new PaymentIntent cannot be confirmed
+                          and the repeated request gets it again with the same key. The PaymentIntent of a replaced payment that was already cancelled at Stripe leaves its
+                          payment `PENDING` until the Stripe event `payment_intent.canceled` arrives, and the webhook (`02-stripe-webhook`, row PENDING and
+                          `payment_intent.canceled`) then sets that payment `CANCELLED` (approved by the product owner on 2026-11-08).
+                        - Execution order: validate the request (400) -> existence and ownership of the order (404) -> status, expiry, live payment and amount limits (409) ->
+                          create the PaymentIntent and write the order and the payment. The whole request is one transaction and the order row is locked (`FOR UPDATE`) so two
+                          requests cannot start two payments.
+                    end note
                     app -> infra: BEGIN READ COMMITTED
                     activate infra
                     alt Work completes before commit
