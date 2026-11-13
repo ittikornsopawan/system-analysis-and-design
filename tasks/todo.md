@@ -1519,6 +1519,15 @@ Status: Complete in the branch, waiting for review. Assignment: agent `tommy`, d
 - [x] The `payment-spec` and `campaign-spec` checkers search the spec and its sequence note; adjust the needles; run every checker, strict SQL parity and the render check.
 - [x] Open the PR with `commit-and-pr`, tell the lead SA when CI is green, then suspend. Next: `sales`.
 
+### Template alignment — authen-and-author group (10 specs)
+
+Authority: owner decision that API specs follow `e-commerce/doc/api/template.md`, relayed by Josh (SA Lead); assignment `authorized_by: josh`, delivery `open-pr`; same rules as the cart group (PR #106) and payment (#108). No SQL and no behaviour change.
+
+- [x] Remove every `### ... Rules` section and the `####` blocks that are not objects or examples (Scenario correspondence, Acceptance criteria, Claim resolution); keep `#### Example Body Parameters`, the objects and the examples; move `#### Example JWT Payload` under `### Example Response Parameters` in login.
+- [x] Short bullets under `## Domain` (first sentences of the removed rules, links turned into text) and a rendered note with the order of the checks and the lock order in every sequence.
+- [x] The full removed rule text stays in each `sequence.wsd` as a PlantUML comment block (`' --- Rules moved ...`); `read()` in `check_docs.py` returns a spec together with that block, so every existing needle keeps protecting the rules without changing any flow check.
+- [x] Verify: headings and links of the 10 specs, all 64 documentation commands, audit, database tests, render of the 10 diagrams (all SQL lines visible), mutation of the moved text (4/4).
+- [ ] Open for Marry's `spec-template` checker: take the ten files out of its exception list when it merges.
 ## e-commerce: spec template, sales
 
 Status: Complete in the branch, waiting for review. Assignment: agent `tommy`, delivery `open-pr`, authorized by `josh`, workspace `.workspace/tommy`, branch `docs/tommy-spec-template-sales`, scopes `e-commerce/doc/api/sales`, `e-commerce/db/tests/check_docs.py`, `tasks`.

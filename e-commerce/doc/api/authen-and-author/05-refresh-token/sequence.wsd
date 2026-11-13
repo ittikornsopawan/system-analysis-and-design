@@ -25,6 +25,48 @@ skinparam sequence {
 hide footbox
 ' Leading SQL apostrophes use &#39;; the checker compares decoded SQL.
 
+' --- Rules moved from spec.md by the template alignment; the checks read them together with the spec ---
+' ### Refresh Token Rules
+'
+' - Governing decisions: [owner-confirmed API review](../../../../../docs/superpowers/specs/2026-11-07-api-review-design.md), Q4/Q7/Q12 (approved by the product owner). This detailed endpoint revision is in-review and includes no backend implementation.
+' - No `authorization` header is required: the access token may have expired. `refreshAccessToken` is a mandatory non-empty string, sent over TLS and compared exactly without trimming. Missing, empty or non-string input, malformed JSON or invalid mandatory headers returns 400 (E10001) before any SQL. An unknown or invalid non-empty credential returns 401 (E10002) `Invalid or expired refresh token.` All authentication failures use that same message.
+' - Hash the presented credential once as `presentedRefreshTokenHash` (SHA-256, 32 bytes). Capture UTC `lookupNow` immediately before the owner lookup. Do not use claims or a user/session id supplied by the request; `userId`, `refreshTokenId` and `sessionId` all come from the stored refresh row. A missing/expired lookup result returns 401 with no transaction or writes.
+' - Lock order: after finding the owner, BEGIN READ COMMITTED -> lock the ACTIVE `authen.m_user` row (`FOR UPDATE`) -> capture fresh UTC `now` after the lock returns -> reread the presented refresh row under that user lock -> classify the fresh state -> update token rows. For the user check, any other user gets 401 and **nothing has changed**, the refresh token is not made INACTIVE. Do not classify replay from the pre-lock row: another refresh may have consumed it while this request waited.
+' - The post-lock reread must still belong to this user, match the presented hash and be unexpired at `now`. A missing row, expired row, or status other than ACTIVE/INACTIVE returns 401 after ROLLBACK without issuing or revoking tokens. Reuse classification uses its current `updated_at`; PostgreSQL transaction-start `NOW()` must not substitute for time captured after a lock wait.
+' - **Rotation:** for a freshly ACTIVE row, atomically consume it using ACTIVE/expiry/user/session/hash guards and `RETURNING session_id`. A zero-row consume returns 401 after ROLLBACK; no replacement is issued. A successful consume, the new access/refresh rows and their common existing `session_id` are one transaction: when any of them fails nothing is saved. COMMIT must succeed before 200 is sent. Existing access tokens remain valid until their own expiry; successful rotation does not revoke them.
+' - **Fresh authorization claims:** after a successful consume, resolve current ACTIVE role/direct assignments, permission masters and the exact assigned scope definitions using [login's claim resolution](../02-login/spec.md#claim-resolution-and-payload). Use the same eight SQL queries and permission-specific `(permissionId, scopeId)` mapping; do not copy the original access token's claims or expand a direct assignment to all catalogue scopes. A user with no surviving grants still refreshes successfully with empty arrays. `user`, `roles`, `permissions` and `scopes` use the same payload mapping as login (owner-confirmed 2026-11-13): role names, permission names with the last `.` as `:`, `<lower-case scope code>:*` and a fresh `user` snapshot decoded from the locked user row.
+' - Generate a fresh JWT and 32 random bytes in base64url for a fresh refresh credential. Use distinct `newRefreshTokenHash` and `accessTokenHash`, never the presented hash, for the INSERTs. The new JWT contains `iss`, `sub`, `aud`, `jti`, `iat`, `exp` and the current `user`, `roles`, `permissions` and `scopes` claims; its default lifetime is 15 minutes (`expiresIn` 900), and the new refresh token lasts 14 days. Capture UTC `issuedAt` after claim resolution, derive both expiry values from it, and keep the existing session id. Both tokens are stored as SHA-256 (32 bytes), never as the token itself; only the newly issued raw values appear in the 200 TLS response.
+' - **Reuse:** a freshly INACTIVE, unexpired row was already consumed or revoked. When the row became INACTIVE less than 10 seconds ago (configurable), return 401 after ROLLBACK with no session revocation or new tokens. At exactly 10 seconds or later, or when `updated_at` is NULL and recency cannot be established, revoke every ACTIVE refresh and access row for that user/session. In particular, when the row was a reuse older than 10 seconds the session is closed and committed first. **The closing of the session is committed although the answer is 401:** it is written in its own transaction that is committed before the answer is sent, not rolled back as an authentication error. No rotation INSERT executes on either reuse path.
+' - The grace period handles concurrent requests: both may find the owner, but the second waits for the same user lock and then rereads INACTIVE with the first request's fresh `updated_at`. It returns 401 without closing the newly rotated session when within the grace window. A request that waited until the credential expired changes nothing. A concurrent logout/reset holding the same user lock cannot be bypassed by a stale pre-lock refresh snapshot.
+' - Any timeout before COMMIT rolls back current writes and returns 408 (E90001). An unexpected pre-commit failure rolls back and returns the generic 500 example without a new bizCode. Never send 200 or replay-related 401 before the required COMMIT. A lost response after COMMIT cannot undo durable rotation/revocation. A client that loses the rotated token pair must not assume the old refresh token can recover it.
+' - Execution order: validate -> hash/find owner -> BEGIN -> lock ACTIVE user -> capture now -> reread fresh token -> ACTIVE: consume once, reload claims, create both fresh tokens, COMMIT, 200; INACTIVE/recent: ROLLBACK, 401; INACTIVE/older: revoke both token tables, COMMIT, 401; other invalid state or failed consume: ROLLBACK, 401. Earlier invalid lookup has no transaction. Successful rotation never runs the replay revocation queries.
+'
+' #### Scenario correspondence with sequence.wsd
+'
+' | Scenario                           | Required sequence behavior                                                  | HTTP                | Durable effects                    |
+' | ---------------------------------- | --------------------------------------------------------------------------- | ------------------- | ---------------------------------- |
+' | Invalid input                      | No SQL or transaction                                                       | 400 E10001          | None                               |
+' | Owner lookup missing/expired       | Lookup only; no BEGIN                                                       | 401 E10002          | None                               |
+' | Inactive/missing user              | Lock returns no ACTIVE user; ROLLBACK                                       | 401 E10002          | None                               |
+' | Fresh token invalid after waiting  | Post-lock reread fails state/expiry; ROLLBACK                               | 401 E10002          | None                               |
+' | Conditional consume returns no row | No replacement; ROLLBACK                                                    | 401 E10002          | None                               |
+' | Recent duplicate                   | Fresh INACTIVE timestamp within grace; ROLLBACK                             | 401 E10002          | No revocation                      |
+' | Older replay / unknown recency     | Close both token tables; COMMIT before 401                                  | 401 E10002          | Session-wide revocation            |
+' | Rotation succeeds                  | Consume once; reload current claims; insert fresh tokens; COMMIT before 200 | 200 S10000          | Rotation and both new token hashes |
+' | Timeout                            | ROLLBACK before response                                                    | 408 E90001          | No uncommitted writes persist      |
+' | Unexpected failure                 | ROLLBACK before generic response                                            | 500, no new bizCode | No uncommitted writes persist      |
+'
+' All database results return to Application before branch decisions or later parameters use them. Quoted SQL value lines remain visible in the rendered sequence, and decoded note SQL matches the specification exactly.
+'
+' #### Acceptance criteria
+'
+' - Two concurrent uses of one refresh credential produce at most one new pair. The losing request classifies the reread state, not the original snapshot, and cannot silently invalidate the winner inside the grace interval.
+' - Delayed replay outside the grace period revokes every access/refresh token in the same session and commits this before returning 401; sessions of other users/devices are unaffected.
+' - Refresh loads current grants using login's exact resolver, including empty grants, direct-scope subsets, inactive definitions/masters and mismatched scope ids. Already issued access-token claims remain effective only until their own expiry as previously agreed.
+' - Presented and newly generated refresh credentials have different hashes; no response, log or query exposes stored hashes, salts or a previously issued raw token.
+' - Both token INSERTs roll back with a failed consume/claim load/insert. No invalid, recent-duplicate or replay branch creates any new token.
+' --- end of the moved rules ---
+
 actor "User" as user
 box "Frontend" #F8FAFC
     participant "Client Session" as page
@@ -55,6 +97,17 @@ activate page
     activate api
         api -> app: [**RefreshTokenCommandHandler**] Process request
         activate app
+            note over app, infra
+                Lock order: after finding the owner, BEGIN READ COMMITTED -> lock the ACTIVE `authen.m_user` row (`FOR
+                UPDATE`) -> capture fresh UTC `now` after the lock returns -> reread the presented refresh row under that user
+                lock -> classify the fresh state -> update token rows. For the user check, any other user gets 401 and
+                **nothing has changed**, the refresh token is not made INACTIVE. Do not classify replay from the pre-lock row:
+                another refresh may have consumed it while this request waited.
+                Execution order: validate -> hash/find owner -> BEGIN -> lock ACTIVE user -> capture now -> reread fresh token
+                -> ACTIVE: consume once, reload claims, create both fresh tokens, COMMIT, 200; INACTIVE/recent: ROLLBACK, 401;
+                INACTIVE/older: revoke both token tables, COMMIT, 401; other invalid state or failed consume: ROLLBACK, 401.
+                Earlier invalid lookup has no transaction. Successful rotation never runs the replay revocation queries.
+            end note
             app -> app: Create request context; generate requestId if omitted
             app -> app: Validate mandatory headers, JSON and non-empty token
             alt Invalid input

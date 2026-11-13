@@ -26,6 +26,14 @@ approved_at: null
 | PRE-PRODUCTION | https://www.domain.com/api-pre-prod |
 | PRODUCTION     | https://www.domain.com/api          |
 
+- Governing decisions: owner-confirmed API review Q13 (approved by the product owner).
+- Public API: no `authorization` header.
+- The new password follows the password policy: 8 to 128 characters with an upper-case letter, a lower-case letter and a digit (400, E10001).
+- **A reset token that does not exist, is INACTIVE (used or replaced), has expired, or belongs to a user that is not ACTIVE gets one answer: 400 (E10001) `Reset token is invalid or expired.`** Do not disclose which case occurred.
+- The lookup is only a routing hint.
+- The new password must differ from the current one (400, E10001).
+- The order of the checks, the locks and every outcome is in the sequence diagram.
+
 ---
 
 ## Request Parameters
@@ -44,36 +52,6 @@ approved_at: null
 | --- | -------------- | --------- | --------- | ----------------------------------------------------------------------------------------------------------------------------------------------------- | ---------------------------------------------- |
 | 1   | resetToken     | String    | MANDATORY | Reset token from the link of the reset email                                                                                                          | k9Vf2Tq8Lm5Zx1Rc7Ya3Pw6Jd0Hs4Gn2Bv8Cx5Mq1Ae... |
 | 2   | newPassword    | String    | MANDATORY | New password, Plain text over TLS (8 to 128 characters, an upper-case letter, a lower-case letter and a digit), Must differ from the current password | NewSecret1x                                    |
-
-### Create New Password Rules
-
-- Governing behavior: [owner-confirmed review](../../../../../docs/superpowers/specs/2026-11-07-api-review-design.md), Q13, approved by the product owner, plus existing WP4 password reset rules. This detailed revision remains in-review; no backend implementation is included.
-- Public API: no `authorization` header. The reset token is the proof. Validate timestamp as UTC and body strings resetToken/newPassword before SQL; reject missing/empty/wrong-type fields with 400 E10001. Generate requestId when omitted. Never log or return either secret. Only the SHA-256 (32 bytes) of the exact resetToken is compared with reset_token; all SQL placeholders are typed bound bytes/UUIDs/timestamps, never interpolated text.
-- The new password follows the password policy: 8 to 128 characters with an upper-case letter, a lower-case letter and a digit (400, E10001). The values are configurable. Do not trim or normalize passwords. Policy validation precedes any reset lookup or write.
-- **A reset token that does not exist, is INACTIVE (used or replaced), has expired, or belongs to a user that is not ACTIVE gets one answer: 400 (E10001) `Reset token is invalid or expired.`** Do not disclose which case occurred. The 30-minute lifetime is set when the reset token is issued and is never extended here; expiry is strict expired_at > now, including rejection at equality.
-- Lock order: capture lookupNow from the server UTC clock and find resetId/userId by hash in an autocommit read -> BEGIN READ COMMITTED -> lock the ACTIVE authen.m_user row FOR UPDATE -> capture fresh server UTC now after the lock -> conditionally consume the same reset row -> read the current password -> compare -> replace password -> close all user access and refresh tokens -> COMMIT -> 200. userId/resetId come only from the lookup, never from the body. No reset/password/token UPDATE may run before the user lock.
-- The lookup is only a routing hint. Revalidate the reset token after the lock with one UPDATE guarded by resetId, userId, resetTokenHash, ACTIVE status and expiry > fresh now, RETURNING reset_id. A reset replaced/consumed or expired while waiting returns zero rows: ROLLBACK then the same generic 400. Do not authorize using lookupNow, a pre-lock row snapshot or transaction-start NOW(). Concurrent calls serialize on the user; only the first successful call consumes the token.
-- The new password must differ from the current one (400, E10001). Read the single ACTIVE PASSWORD row under the user lock. Application hashes the candidate with the stored salt using PBKDF2-HMAC-SHA256, 600,000 iterations and compares in constant time. If equal, ROLLBACK includes the reset consumption: the reset token stays usable until it expires. A missing current password is an internal consistency failure (500 with rollback), not a successful reset.
-- Password storage: PBKDF2-HMAC-SHA256 with a random 16 byte salt and 600,000 iterations. For a different password generate a fresh cryptographically random salt and derive passwordBytes in Application, never SQL/plaintext storage. The current PASSWORD row becomes INACTIVE (kept as history) and a new ACTIVE PASSWORD row is inserted (partial unique index `uq_m_user_password_user_id_password`). Guard the old-row UPDATE by passwordId, userId, PASSWORD and ACTIVE, RETURNING password_id; unexpected zero rows is 500 and rolls back. TEMPORARY_PASSWORD and prior history rows are unchanged.
-- All ACTIVE access tokens and refresh tokens of the user (every session) become INACTIVE in the same transaction, including expired ACTIVE rows. Revocation must not filter by session, presented token or expiry. Zero access/refresh rows is allowed. Other users and already INACTIVE history are unchanged. The API does not log the user in, issue replacement tokens or claims, or alter role/permission assignments; the user calls login with the new password.
-- The common user lock serializes reset with login, refresh, logout and reset issuance. A refresh/login that commits first has its new tokens revoked by this reset; one that waits must reread credentials/password after the lock and cannot reuse the revoked token/old password. A second reset waits and its guarded consumption returns zero rows. A failed same-password request releases the lock and leaves the token usable for a different-password retry.
-- Reset consumption, password history/replacement and both revocations are one transaction. COMMIT must succeed before 200 S10000 `Create New Password Success`, status only with no data. On timeout before commit, ROLLBACK then 408 E90001; on unexpected pre-commit failure, ROLLBACK then generic 500 without bizCode. A lookup timeout/failure before BEGIN returns 408/500 without a transaction to roll back. On any failure before commit nothing is saved; never partially consume the reset token or close only one token table. If a committed response is lost, retry finds the used token and returns the generic 400.
-- Execution order: validate input/policy -> hash reset token and capture lookupNow -> routing lookup -> BEGIN -> user lock -> fresh now -> guarded reset consumption -> current PASSWORD -> constant-time difference check -> fresh hash/salt -> guarded old-password closure -> insert PASSWORD -> close all access tokens -> close all refresh tokens -> COMMIT -> status-only 200. Every database result returns to Application before branching or deriving parameters.
-
-#### Scenario correspondence with sequence.wsd
-
-| Scenario                                          | Required sequence behavior                                        | HTTP                  | Durable effects                                      |
-| ------------------------------------------------- | ----------------------------------------------------------------- | --------------------- | ---------------------------------------------------- |
-| Invalid fields/timestamp/password policy          | No SQL or BEGIN                                                   | 400 E10001            | None                                                 |
-| Reset lookup has no valid row                     | No BEGIN or writes                                                | 400 E10001            | None                                                 |
-| Missing/inactive user after lookup                | User lock returns no row; ROLLBACK                                | 400 E10001            | None                                                 |
-| Used/replaced/expired token after lock wait       | Conditional consume returns zero; ROLLBACK                        | 400 E10001            | None                                                 |
-| Candidate equals current password                 | Compare with stored salt; ROLLBACK reset consumption              | 400 E10001            | Token remains usable                                 |
-| Missing password / unexpected zero old-row update | Abort before common success; ROLLBACK                             | 500                   | None                                                 |
-| Valid different password                          | Replace PASSWORD, close both token tables, COMMIT before response | 200 S10000            | Token used once; new password; every session revoked |
-| Concurrent reset / refresh                        | Common user lock, fresh guard and credential reread               | 400 or 200 per winner | No reset reuse; no surviving earlier refresh pair    |
-| Pre-BEGIN lookup timeout/failure                  | No ROLLBACK needed                                                | 408 E90001 / 500      | None                                                 |
-| Timeout / other pre-commit failure                | ROLLBACK every change                                             | 408 E90001 / 500      | None                                                 |
 
 #### Example Body Parameters
 
