@@ -1471,6 +1471,15 @@ Authority: SA Lead (Josh) approved this one-folder fix after Peter reported two 
 - [x] Guard both phrases in `scope-inquiry-flow`; mutation: both reverted phrases are rejected (2/2).
 - [x] Run every documentation command, audit and database tests on the branch merged with origin/main.
 
+## repository-wide: park of a suspended assignment accepts a branch the owner updated
+
+Status: Implemented in the managed workspace of Marry on branch `fix/marry-park-suspended-ancestor`. Scope: `.agents/skills/agent-workspace` and `tasks/`. Approved by the lead after the first real use of `suspend` (park of PR 99 blocked).
+
+- [x] Cause: the owner presses "update branch" on GitHub, so the merged head is ahead of the local branch of a suspended task; `resume` accepted a fast-forward but `park` of the suspended record blocked with "local task branch does not match the merged pull-request head".
+- [x] Fix: when the local branch differs from the merged head, `park` fetches the merged head (the branch, or `refs/pull/<n>/head` when the branch was deleted) and accepts the local branch only when it is an ancestor of the merged head; a diverged branch blocks as before and keeps the record and the branch. The remote branch may equal the merged head.
+- [x] Tests: 26 (2 new): a branch the owner updated is parked, a diverged branch blocks and is kept; 3 of 3 mutations caught (the ancestor test, the fetch and the remote tolerance). A fourth check (the fetched ref equals the merged head) was removed because the ancestor test already fails without the object.
+- [ ] Merge `main`, run every check, push, open the pull request, tell the lead at once, suspend, close the record of PR 99 with the fixed script.
+
 ## e-commerce: spec template, cart
 
 Status: Complete in the branch, waiting for review. Assignment: agent `tommy`, delivery `open-pr`, authorized by `josh`, workspace `.workspace/tommy`, branch `docs/tommy-spec-template-cart`, scopes `e-commerce/doc/api/cart`, `e-commerce/db/tests/check_docs.py`, `tasks`.

@@ -1390,10 +1390,15 @@ def park_suspended(
     exists = git(target, "show-ref", "--verify", "--quiet", f"refs/heads/{branch}", check=False)
     if exists.returncode == 0:
         local_head = git(target, "rev-parse", f"refs/heads/{branch}").stdout.strip()
-        if pull_request["headRefOid"] != local_head:
-            raise Blocked("local task branch does not match the merged pull-request head")
+        pr_head = str(pull_request["headRefOid"])
+        if pr_head != local_head:
+            # the owner may have updated the branch on GitHub before the merge: accept only a local branch that is a plain ancestor of the merged head
+            for ref in (branch, f"refs/pull/{pull_request['number']}/head"):  # the branch, or GitHub's ref when the branch was deleted
+                git(target, "fetch", "origin", ref, check=False)
+            if git(target, "merge-base", "--is-ancestor", local_head, pr_head, check=False).returncode != 0:
+                raise Blocked("local task branch does not match the merged pull-request head")
         remote_head = git(target, "ls-remote", "--heads", "origin", branch).stdout.strip()
-        if remote_head and remote_head.split()[0] != local_head:
+        if remote_head and remote_head.split()[0] not in (local_head, pr_head):
             raise Blocked("remote task branch no longer matches local HEAD")
     if current == DEFAULT_BRANCH:
         relation = main_relation(target)

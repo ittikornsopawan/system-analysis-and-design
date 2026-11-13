@@ -828,6 +828,45 @@ class WorkspaceIntegrationTests(unittest.TestCase):
         self.assertNotEqual(0, gone.returncode)
         self.assertEqual("main", self.git(workspace, "branch", "--show-current").stdout.strip())
 
+    def owner_updates_branch(self, branch: str, diverge: bool) -> str:
+        """The owner presses 'update branch' on GitHub: a commit lands on the task branch (or the history is replaced when diverge)."""
+        updater = self.root / ("updater-diverge" if diverge else "updater")
+        self.git(self.root, "clone", "--branch", "main" if diverge else branch, self.remote_url, str(updater))
+        if diverge:
+            self.git(updater, "switch", "-c", branch)
+        (updater / "owner-update.md").write_text("update\n", encoding="utf-8")
+        self.git(updater, "add", "owner-update.md")
+        self.git(updater, "commit", "-m", "chore: update branch")
+        if diverge:
+            self.git(updater, "push", "--force", "origin", branch)
+        else:
+            self.git(updater, "push", "origin", branch)
+        return self.git(updater, "rev-parse", "HEAD").stdout.strip()
+
+    def test_park_of_a_suspended_assignment_accepts_a_branch_the_owner_updated(self) -> None:
+        workspace, prepared, branch, head = self.start_pushed_task()
+        self.suspend(prepared["lock_token"], [self.pr_item(branch, head)])
+        new_head = self.owner_updates_branch(branch, diverge=False)
+        merged_item = self.pr_item(branch, new_head, state="MERGED")
+        merged_item["mergedAt"] = "2026-11-13T12:00:00Z"
+        parked = self.cli("park", "--agent", "tommy", "--pr", "5", extra_env={"FAKE_GH_JSON": json.dumps(merged_item)})
+        self.assertEqual("parked", parked["status"])
+        self.assertFalse(self.record_path(branch).exists())
+        gone = command(["git", "show-ref", "--verify", "--quiet", f"refs/heads/{branch}"], cwd=workspace, env=self.env)
+        self.assertNotEqual(0, gone.returncode)
+
+    def test_park_of_a_suspended_assignment_blocks_when_the_local_branch_is_not_an_ancestor(self) -> None:
+        workspace, prepared, branch, head = self.start_pushed_task()
+        self.suspend(prepared["lock_token"], [self.pr_item(branch, head)])
+        new_head = self.owner_updates_branch(branch, diverge=True)
+        merged_item = self.pr_item(branch, new_head, state="MERGED")
+        merged_item["mergedAt"] = "2026-11-13T12:00:00Z"
+        blocked = self.cli("park", "--agent", "tommy", "--pr", "5", expected=2, extra_env={"FAKE_GH_JSON": json.dumps(merged_item)})
+        self.assertIn("does not match the merged pull-request head", str(blocked["reason"]))
+        self.assertTrue(self.record_path(branch).exists())
+        kept = command(["git", "show-ref", "--verify", "--quiet", f"refs/heads/{branch}"], cwd=workspace, env=self.env)
+        self.assertEqual(0, kept.returncode)
+
     def test_park_of_a_suspended_assignment_leaves_the_current_task_alone(self) -> None:
         workspace, prepared, branch, head = self.start_pushed_task()
         self.suspend(prepared["lock_token"], [self.pr_item(branch, head)])
