@@ -102,7 +102,10 @@ activate page
                         activate m_user
                             note right of m_user
                                 SELECT
-                                    u.id as user_id
+                                    u.id as user_id,
+                                    u.username,
+                                    u.email_address,
+                                    u.display_name
                                 FROM authen.m_user u
                                 WHERE (u.username = '<sequence.usernameBytes>' OR u.email_address = '<sequence.usernameBytes>')
                                 AND u.row_status = 'ACTIVE'
@@ -264,8 +267,8 @@ activate page
                                 infra -> app: Return activeScopes
                                 app -> domain: Build verified authorization claims
                                 activate domain
-                                    domain -> domain: Filter ACTIVE masters; retain permission-specific scopes; deduplicate and sort
-                                    domain -> app: roles, permissions, scopes (empty arrays are valid)
+                                    domain -> domain: Filter ACTIVE masters; resolve permission-specific grants (Q12); map roles to names, permissions to names with the last dot as colon, scopes to lower-case code + :*; deduplicate and sort; build user {id, username, displayName, email} from the locked user row
+                                    domain -> app: user, roles, permissions, scopes (empty arrays are valid)
                                 deactivate domain
                                 app -> app: Create new session; sign JWT; create refresh token; hash both
                                 app -> infra: INSERT - Create access token

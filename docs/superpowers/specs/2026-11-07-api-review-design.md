@@ -85,6 +85,8 @@ Q19: The owner answered **“q19 ทั้งหมด”**. The management inqu
 
 ## Allow Scope notation and deny precedence (2026-11-09)
 
+> **Superseded 2026-11-13:** the four-part notation, the effect `deny` and the deny-wins precedence below are replaced by the [JWT payload decision](#jwt-payload-decision-2026-11-13). The text is kept as history.
+
 The two-part display notation below is historical and superseded by the Four-part Allow Scope refinement at the end of this record; its deny-precedence decision remains in force.
 
 The owner requested `permission-scope.md`, API allowlists and spec links, then specified **“เพิ่ม section ขึ้นมา ประมาณว่า Allow Scope แล้วใส่ชื่อ scope มา”** and **“อยากปรับให้ scope มันประมาณนี้ <scope-name>:<allow, deny, อื่นๆ>”**. Use an `Allow Scope` section with notation such as `ALL:allow`, `SHOP:allow`, `OWN:deny`; keep the scope name distinct from its effect and associate every rule with its exact permission.
@@ -94,3 +96,21 @@ The owner answered **“ใช่ deny ชนะเมื่อครอบค�
 ### Four-part Allow Scope refinement (2026-11-09)
 
 The owner subsequently requested **“ปรับนิดนึงอยากได้ประมาณนี้ management:user:read:allow, management:user:crud:deny ปรับ”**. This supersedes scope-name:effect as the active display format: use `<module>:<resource>:<action>:<effect>`, lowercase names and allow/deny. Keep ALL/SHOP/OWN as separate data boundaries, not the module/resource/action. CRUD means create/read/update/delete; a matching crud:deny therefore overrides read:allow on the same module/resource/data under the previously approved deny precedence. Do not silently redefine CRUD as write-only. Specific namespace/API mappings, grant storage, JWT/schema changes and additional effects remain in-review, not implicitly approved by this format correction.
+
+## JWT payload decision (2026-11-13)
+
+The owner replaced the JWT authorization claims and the Allow Scope notation. The choice of the new shape was the owner's: **“ใช้รูปแบบใหม่แทน”** (use the new format instead), with the payload example below. On the four open points the owner answered through the SA Lead **“ตามคำแนะนำทั้ง 4 ข้อ”**, that is the recommendations recorded here.
+
+New access-token payload: `iss`, `sub`, `aud`, `jti`, `iat`, `exp`, `user` (`id`, `username`, `displayName`, `email`), `roles` (role names, for example `"ADMIN"`), `permissions` (`"resource:action"`, for example `"users:create"`) and `scopes` (`"type:value"`, for example `"org:company_a"`).
+
+- **Supersedes** the structured `roles` (`{roleId, name}`), `permissions` (`{permissionId, name}`) and `scopes` (`{permissionId, scopeId, scope}`) claims of the WP4/WP5 payload, and the sentences of Q2, Q7, Q11 and the earlier specs that name the structured roles claim; the behaviour of those decisions (claims are the authorization source, refresh resolves current assignments, `author/me` reports the calling token) is unchanged.
+- **Permission claim:** the stored permission name with its last `.` replaced by `:` (`catalog.manage` becomes `catalog:manage`, `shop.product.manage` becomes `shop.product:manage`). The name in the database and the seed do not change.
+- **Scope claim:** `<lower-case scope code>:*` (`shop:*`), meaning every instance of that type. The database holds no instance value. Membership and ownership of the data stay API checks (Q10); no schema change is approved.
+- **Q12 stays** as the resolution rule at login and refresh (a scope of one permission never grants another permission). The flat payload does not show the association, so a consumer must not read a scope as granted to every permission.
+- **Allow Scope four-part notation and deny precedence are cancelled.** `module:resource:action:effect`, the effect `deny` and “a matching deny wins” (2026-11-09) no longer apply: having the permission allows, not having it denies. [The matrix](../../../e-commerce/doc/permission-scope.md) records the replacement (`module:resource:action:allow` becomes the permission claim `module.resource:action`).
+- **`user` is a display snapshot** taken at login or refresh from the locked user row; it is never an authorization input. The API authorizes only from `sub`, `roles`, `permissions` and `scopes`.
+- **Scope of this change:** `login/02`, `refresh/05`, `author/12-me` and the matrix. `author/12-me` now returns `data.roles` as role-name strings because the token no longer carries role ids (decided by the SA, pending confirmation). Every other specification, sequence and checker that still says `roles` is an array of `{roleId, name}` is outstanding and is corrected by each analyst in their own group.
+
+## Consent management upsert decisions (2026-11-13)
+
+For `consent/02-upsert-consent` the owner answered the SA Lead's five recommendations **“ใช้คำแนะนำทั้งหมด”**: (1) DELETED is final, an id of a DELETED consent is 404 E10004, while INACTIVE, LOCKED and ARCHIVED can return to ACTIVE; (2) when both are supplied, `expiredAt` must be later than `effectiveAt` (400 E10001); (3) deleting or archiving a consent that already has user answers is not blocked and adds no 409 in-use rule; (4) `consentVersion` may change to any different value of at most 8 characters, answers of the old version become pending again under Q8 and existing user consent rows are never overwritten; (5) `code` stays plainly UNIQUE, the code of a DELETED row cannot be reused and returns 409 E10003, with no schema change. The SA Lead also confirmed (6) the technical corrections of 2026-11-08 for this API: verified JWT claims, the current credential gate, and `FOR UPDATE` locks of the consent type first and then the target consent.

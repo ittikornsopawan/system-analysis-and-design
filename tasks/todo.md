@@ -1500,6 +1500,16 @@ Status: Implemented in the managed workspace of Marry on branch `test/marry-spec
 - [x] Mutation tests: 9 of 9 caught (an extra `###` and `##` section, a link to another spec, to a design document and to `permission-scope.md`, an anchor to nothing, an entry removed from, added to and invented in the list) and 5 controls pass (`####` and `#####` headings, an own anchor, an external URL, a schema link).
 - [ ] Merge `main`, run every check, push, open the pull request, tell the lead at once, suspend, then close the records of PR 99 and 107 with the script on `main`.
 
+### JWT payload contract — new access-token claims in login, refresh, me and the permission matrix
+
+Authority: owner decision of 2026-11-13 relayed by Josh (SA Lead): "ใช้รูปแบบใหม่แทน" with the payload `iss`, `sub`, `aud`, `jti`, `iat`, `exp`, `user`, `roles` (names), `permissions` (`resource:action`), `scopes` (`type:value`), and the owner's answer "ตามคำแนะนำทั้ง 4 ข้อ" on permission naming, scope value, Q12 and deny; assignment `authorized_by: josh`, delivery `open-pr`. One outcome (the payload contract) across the three APIs that issue or report it and the matrix.
+
+- [x] Record the decision and the 2026-11-13 consent/02 answers in `api-review-design.md`; mark the Allow Scope four-part and deny-wins text superseded.
+- [x] login/02 and refresh/05 (spec + sequence): map roles to names, permissions to names with the last `.` as `:`, scopes to `<lower-case code>:*`, add the `user` snapshot (the user lock now returns `username`, `email_address`, `display_name`), keep Q12 in the resolution, new example payload.
+- [x] author/12-me: roles claim is unique non-empty strings; `data.roles` is an array of role names (roleId removed because the token no longer carries it; pending confirmation).
+- [x] permission-scope.md: rules converted to permission claims (`module.resource:action`) and scope claims (`all:*`, `shop:*`, `own:*`); deny and deny-wins removed; 83 links and 40 queue markers kept.
+- [x] Update the login payload check, the me checks and the refresh/login needles; mutation 15/15; render 116/116, 131/131 and 13/13 SQL lines.
+- [ ] Outstanding by design: every other spec, sequence and checker that still says roles are `{roleId, name}` objects (author 01–11, consent, payment, sales, product, shop) — each analyst corrects their group during the template work.
 ## e-commerce: spec template, payment
 
 Status: Complete in the branch, waiting for review. Assignment: agent `tommy`, delivery `open-pr`, authorized by `josh`, workspace `.workspace/tommy`, branch `docs/tommy-spec-template-payment`, scopes `e-commerce/doc/api/payment`, `e-commerce/db/tests/check_docs.py`, `tasks`.

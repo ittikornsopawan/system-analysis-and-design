@@ -57,7 +57,7 @@ approved_at: null
 - The `FAILED` and `REFUSED` rows are committed although the answer is 401. Those branches perform no token writes. `SUCCESS`, the two token rows and their common session are committed atomically. A failed attempt does not change `authen.m_user.row_status`; the `LOCKED` status remains an administrative state. Attempts older than 30 days are deleted by a system job.
 - **Authorization claims:** after password verification, load ACTIVE user-role assignments and ACTIVE roles, then role/direct permission assignments and the permission-scope definitions they reference. Resolve ACTIVE permission and scope masters. Preserve the `(permissionId, scopeId)` association; scope definitions are a catalogue, not grants. In particular, `t_role_permission_scope.permission_scope_id` references `t_permission_scope.id`, not `m_scope.id`, and a direct assignment uses its own `t_user_permission.permission_scope_id`, not every scope defined for that permission. See the resolution rules below. A user with no assigned role or permission can still log in with empty claim arrays.
 - **JWT authorization:** `roles`, `permissions` and `scopes` are the effective authorization snapshot for this access token. Assignment or role/permission/scope-status changes may leave former privileges usable until that token expires (15 minutes by configuration). Every new access token at login or refresh resolves current assignments; refresh must not copy the old claims. Keep signature, issuer, audience, expiry, ACTIVE token-row and ACTIVE user checks on protected calls so logout/password reset still revoke credentials immediately. `author/me` will display this same token snapshot. Dependent endpoints are migrated in separate PRs; this login PR does not claim they are already synchronized.
-- **Session:** successful login creates a new `session_id` and inserts one access token and one refresh token with that session id. The access token is a JWT (HS256) with `sub`, `jti`, `iss`, `aud`, `iat`, `exp`, `roles`, `permissions` and `scopes`; default `exp - iat` and `expiresIn` are 900 seconds. The refresh token is 32 random bytes in base64url, valid 14 days, and usable once (`05-refresh-token`). Both database tokens are stored as SHA-256 (32 bytes), never as the token itself. Issuer, audience, lifetimes and signing key are server configuration, never request values.
+- **Session:** successful login creates a new `session_id` and inserts one access token and one refresh token with that session id. The access token is a JWT (HS256) with `iss`, `sub`, `aud`, `jti`, `iat`, `exp`, `user`, `roles`, `permissions` and `scopes`; default `exp - iat` and `expiresIn` are 900 seconds. The refresh token is 32 random bytes in base64url, valid 14 days, and usable once (`05-refresh-token`). Both database tokens are stored as SHA-256 (32 bytes), never as the token itself. Issuer, audience, lifetimes and signing key are server configuration, never request values.
 - Lock order: identifier advisory lock -> matching `authen.m_user` rows by `id` (`FOR UPDATE`) -> current password read -> authorization reads -> token and attempt inserts. A reset that changes the password must hold the same user-row lock, so login cannot verify an old password and then issue tokens after that reset commits.
 - Execution order: validate (400) -> BEGIN and serialize/count -> record `REFUSED` and answer 401 when there are 5 (after committing the attempt, without a password read) -> lock/find the user -> read and verify the current password -> record `FAILED` and answer 401 when it does not match or the user is not found (also when ambiguous, after committing the attempt) -> resolve claims -> create both tokens -> record `SUCCESS` -> COMMIT -> answer 200.
 - Any timeout before COMMIT rolls the transaction back, including token and attempt inserts, and answers 408 (E90001). An unexpected failure before COMMIT also rolls back and answers 500 with the generic example below and no new bizCode. Never send 200 or 401 before a successful COMMIT. A lost response after COMMIT cannot undo the durable transaction; login is not idempotent, and a retry creates a different session.
@@ -72,55 +72,45 @@ No role, permission or scope definition creates a grant on its own. Empty UUID l
 4. Derive `assignedScopeIds` only from those matched assignment-definition pairs and retain only ACTIVE `m_scope` rows. Never infer a grant from the catalogue alone. A scoped permission with no surviving assigned scope is omitted. A NULL direct scope, or a role grant with no ACTIVE scope link, grants an unscoped permission only when that permission has no non-DELETED scope definition; it is not a wildcard for a scoped permission. An ACTIVE role-scope link that fails resolution must not be reinterpreted as an unscoped role grant.
 5. Merge role and direct grants by `permissionId`. Deduplicate roles by `roleId`, permissions by `permissionId`, and scope grants by `(permissionId, scopeId)`. Sort roles by `(name, roleId)`, permissions by `(name, permissionId)`, and scope grants by `(permissionId, scope, scopeId)`. A consumer checks scopes for the requested permission id, never the union of every permission's scopes.
 
-`roles` contains `{roleId, name}` objects; `permissions` contains `{permissionId, name}` objects; `scopes` contains permission-specific `{permissionId, scopeId, scope}` objects. An unscoped granted permission has no corresponding scope objects. `sub` remains the user's UUID; a claim payload never includes credentials or personal profile fields.
+6. Map the resolved grants to the payload claims (owner-confirmed 2026-11-13): `roles` is the sorted unique list of the ACTIVE role names; `permissions` is the sorted unique list of the effective permission names with the last `.` replaced by `:` (`catalog.manage` becomes `catalog:manage`, `shop.product.manage` becomes `shop.product:manage`; the stored name never changes); `scopes` is the sorted unique list of `<lower-case scope code>:*` of the surviving assigned scopes (`OWN` becomes `own:*`), meaning every instance of that type. Q12 still governs the permission-specific resolution above, but the payload no longer shows which permission a scope belongs to: a consumer must not treat a scope as granted to every permission, and an API still checks membership or ownership of the data itself (Q10). `user` is `{id, username, displayName, email}` decoded from the locked user row (`username` and `email` are decrypted by the Application, `displayName` is null when not set); it is a snapshot for display and never an authorization input. A permission without a scope definition contributes no scope. `sub` equals `user.id`; the payload never includes credentials or other profile fields.
 
 #### Example JWT Payload
 
 ```JSON
 {
-    "sub": "b1c2d3e4-f5a6-4b7c-8d9e-0f1a2b3c4d5e",
-    "jti": "8bf3ef1e-cddc-4ad7-b627-5ed8093675ca",
     "iss": "https://www.domain.com",
+    "sub": "b1c2d3e4-f5a6-4b7c-8d9e-0f1a2b3c4d5e",
     "aud": "ecommerce",
+    "jti": "8bf3ef1e-cddc-4ad7-b627-5ed8093675ca",
     "iat": 1793882520,
     "exp": 1793883420,
+    "user": {
+        "id": "b1c2d3e4-f5a6-4b7c-8d9e-0f1a2b3c4d5e",
+        "username": "johndoe",
+        "displayName": "John Doe",
+        "email": "john.doe@example.com"
+    },
     "roles": [
-        {
-            "roleId": "a1b2c3d4-e5f6-4a7b-8c9d-0e1f2a3b4c5d",
-            "name": "CATALOG_MANAGER"
-        }
+        "CATALOG_MANAGER"
     ],
     "permissions": [
-        {
-            "permissionId": "00000000-0000-4000-8000-000000000001",
-            "name": "catalog.manage"
-        },
-        {
-            "permissionId": "00000000-0000-4000-8000-000000000002",
-            "name": "order.view"
-        }
+        "catalog:manage",
+        "order:view"
     ],
     "scopes": [
-        {
-            "permissionId": "00000000-0000-4000-8000-000000000001",
-            "scopeId": "00000000-0000-4000-8000-000000000011",
-            "scope": "OWN"
-        },
-        {
-            "permissionId": "00000000-0000-4000-8000-000000000002",
-            "scopeId": "00000000-0000-4000-8000-000000000012",
-            "scope": "ALL"
-        }
+        "all:*",
+        "own:*"
     ]
 }
 ```
 
-The example grants `OWN` only for `catalog.manage` and `ALL` only for `order.view`; it does not grant `ALL` for `catalog.manage`. It is a decoded illustrative payload, not a usable signed token. The HTTP response still contains the same four token fields as before.
+The example is a decoded illustrative payload, not a usable signed token. The payload is flat: `own:*` and `all:*` do not say which permission they belong to. The HTTP response still contains the same four token fields as before.
 
 #### Acceptance criteria
 
 - 400 opens no transaction. REFUSED reads no user/password and does not extend the failure window. Unknown, ambiguous and incorrect credentials return the same 401; each 401 requires its attempt insert to commit.
 - Concurrent attempts for one identifier serialize the count and log; only FAILED contributes to the 5-in-15-minute threshold. Password lookup/verification occurs under the user lock.
+- The payload has exactly `iss`, `sub`, `aud`, `jti`, `iat`, `exp`, `user`, `roles`, `permissions` and `scopes`; the three claim lists are sorted unique strings and may be empty.
 - Role/direct scope resolution cannot grant a different permission's scope, all catalogue scopes, inactive masters/assignments, or a scoped permission with no valid assigned scope. A user with no grants still receives valid tokens and empty claim arrays.
 - Success commits both token hashes and SUCCESS together; pre-commit failure rolls back all of them. No secret is logged or returned except the newly issued raw tokens in the successful TLS response.
 - The sequence contains the same SQL as this spec and shows every validation, failed/refused, success, timeout and internal-error path explicitly.
@@ -330,7 +320,10 @@ AND la.created_at > '<sequence.windowStart>' -- now minus 15 minutes (configurab
 
 ```SQL
 SELECT
-    u.id as user_id
+    u.id as user_id,
+    u.username,
+    u.email_address,
+    u.display_name
 FROM authen.m_user u
 WHERE (u.username = '<sequence.usernameBytes>' OR u.email_address = '<sequence.usernameBytes>')
 AND u.row_status = 'ACTIVE'
