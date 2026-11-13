@@ -61,13 +61,32 @@ activate page
                 api -> page: Bad request
                 page -> user: Display validation error
             else Valid input
-                app -> app: Verify JWT signature, issuer, audience, exp, UUID sub and the roles claim (an array of roleId and name)
+                app -> app: Verify JWT signature, issuer, audience, exp, UUID sub and the roles claim (an array of role names)
                 alt Missing, malformed or invalid JWT or roles claim
                     app -> api: HTTP 401 E10002 Invalid or expired access token.
                     api -> page: Authentication error
                     page -> user: Ask the user to sign in again
                 else Verified JWT
                     app -> app: userId = verified sub; accessTokenHash = SHA-256 of the exact JWT; isPlatformAdmin = roles contains PLATFORM_ADMIN (no database query)
+                    note over app, infra
+                        - Governing behavior: owner-confirmed API review, Q2/Q4/Q10/Q13; this detailed revision remains in-review and includes no backend implementation.
+                          Validate the whole request, including the mandatory UTC timestamp, before SQL (400 E10001). Missing or malformed Bearer credentials or a failed JWT
+                          signature/issuer/audience/expiry/UUID sub/roles-claim validation return the same 401 E10002 `Invalid or expired access token.` before BEGIN.
+                        - Validate the `roles` claim defined by login: `roles` must be an array of non-empty role name strings (an empty array is valid) and the names are
+                          unique; a missing or malformed claim is a 401, never an empty list and never recovered from the database. `userId` comes only from the verified
+                          `sub`; `accessTokenHash` is the SHA-256 of the exact presented JWT.
+                        - Begin one READ COMMITTED transaction, lock the caller user first (`QUERY - Lock the caller user`, `FOR UPDATE`), capture the fresh server UTC `now`
+                          after the lock, recheck the JWT expiry at `now`, then run `QUERY - Check current credential and user`; no row (a missing, revoked or expired stored
+                          token, another owner or an inactive user) returns the same 401 and rolls back before any other row is read. Lock order: the caller user, the order
+                          row, the lots by id, then the budgets by id.
+                        - The cancel of the PaymentIntent at Stripe carries the `Idempotency-Key` `cancel-<paymentIntentId>` and is the last step before the `COMMIT`, so a
+                          refusal at Stripe rolls everything back (approved by the product owner on 2026-11-08). If the `COMMIT` fails after Stripe cancelled the
+                          PaymentIntent, the order stays `WAIT_PAYMENT` and the payment `PENDING` until the Stripe event `payment_intent.canceled` arrives, and the webhook
+                          (`02-stripe-webhook`) then sets the payment `CANCELLED`; the customer or the shop can cancel the order again.
+                        - Execution order: validate the request (400) -> verify the JWT (401) -> begin the transaction, lock the caller user and check the current credential
+                          (401) -> existence and ownership checks (404) -> permission of a member of the shop or the claims administrator (the owner skips it) -> status check
+                          and payment check (409) -> write the order, cancel the pending payment and give the quantity back. The whole request is one transaction.
+                    end note
                     app -> infra: BEGIN READ COMMITTED
                     activate infra
                     alt Work completes before commit
