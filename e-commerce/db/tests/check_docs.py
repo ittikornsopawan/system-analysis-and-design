@@ -7372,7 +7372,7 @@ def check_role_inquiry_flow() -> int:
 COMMANDS['role-inquiry-flow'] = check_role_inquiry_flow
 
 
-def author_inquiry_flow(key: str, page_head: str, columns: str, forbidden: str, claims_text: tuple = ()) -> int:
+def author_inquiry_flow(key: str, page_head: str, columns: str, forbidden: str) -> int:
     """Check only what parity checks cannot: claims-based admin, read-only snapshot, step order, one commit, identical count/page FROM and WHERE."""
     path=f'{AUTHOR_DIR}/{AUTHOR_SPECS[key]}/spec.md';md=read(path);wsd=read(str(Path(path).with_name('sequence.wsd')));errors=[]
     if 'QUERY - Get the platform administrator role' in md+wsd or 'QUERY - Check platform administrator' in md+wsd:errors.append('must not reload live grants')
@@ -7390,10 +7390,10 @@ def author_inquiry_flow(key: str, page_head: str, columns: str, forbidden: str, 
     for i,l in enumerate(lines):
         if i>begin and re.search(r'app -> api: HTTP (?:401|403|408|500)',l) and 'app -> infra: ROLLBACK' not in lines[i-1]:errors.append(f'post-BEGIN rejection needs ROLLBACK first: {l.strip()}')
     if not md.startswith('---\nname:') or 'status: in-review\napproved_by: null\napproved_at: null' not in md:errors.append('spec stays in-review until approved')
-    page=next((q for _,k,q in ops if k=='QUERY - Get scopes'),'');proj=re.search(r'SELECT\s+(.*?)\s+FROM\s',page,re.S)
-    if not proj or normalize(proj[1])!=normalize('s.id as scope_id, s.scope, s.name, s.description, s.row_status'):errors.append('page returns exactly scopeId/scope/name/description/rowStatus columns')
+    page=next((q for _,k,q in ops if k==page_head),'');proj=re.search(r'SELECT\s+(.*?)\s+FROM\s',page,re.S)
+    if not proj or normalize(proj[1])!=normalize(columns):errors.append('page returns exactly the documented columns')
     errors+=[f'claims wording missing {n!r}' for n in ('verify JWT/roles (401)','verified token roles') if n not in md]
-    if 'You do not have permission to read scopes.' not in wsd or 'skip page query' not in wsd:errors.append('403 text and zero-count page skip must be drawn')
+    if forbidden not in wsd or 'skip page query' not in wsd:errors.append('403 text and zero-count page skip must be drawn')
     if errors:return fail('; '.join(errors))
     print(f'OK: {AUTHOR_SPECS[key][3:]}-flow (claims-only admin, read-only snapshot, ordered count/page, one commit)')
     return 0
@@ -7407,7 +7407,7 @@ COMMANDS['scope-inquiry-flow'] = check_scope_inquiry_flow
 
 
 def check_user_role_inquiry_flow() -> int:
-    return author_inquiry_flow('11','QUERY - Get user roles','ur.id as user_role_id, ur.user_id, u.display_name, ur.role_id, r.name as role_name, ur.row_status','You do not have permission to read user roles.',('verify JWT/roles (401)','verified token roles'))
+    return author_inquiry_flow('11','QUERY - Get user roles','ur.id as user_role_id, ur.user_id, u.display_name, ur.role_id, r.name as role_name, ur.row_status','You do not have permission to read user roles.')
 
 
 COMMANDS['user-role-inquiry-flow'] = check_user_role_inquiry_flow
