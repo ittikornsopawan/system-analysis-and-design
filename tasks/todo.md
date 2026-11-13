@@ -1488,3 +1488,14 @@ Status: Complete in the branch, waiting for review. Assignment: agent `tommy`, d
 - [x] Move the order of the checks, the lock and the merge details into a note of `sequence.wsd` (cart/01, cart/02); no SQL and no behavior is changed.
 - [x] Adjust the needles of `cart-spec`; run every checker, strict SQL parity and the render check.
 - [x] Open the PR with `commit-and-pr`, tell the lead SA when CI is green, then suspend. Next: `payment`.
+
+## e-commerce: spec-template checker and guidance (M6)
+
+Status: Implemented in the managed workspace of Marry on branch `test/marry-spec-template-checker`. Scope: `e-commerce/db/tests/check_docs.py`, `.agents/skills/api-contract-design` (SKILL.md, references, the snapshot of the template), the guidance sentence of `e-commerce/doc/api/template.md` and `tasks/`. Owner decision of 2026-11-13 given by the lead; the JWT work per API is paused until the template is in place.
+
+- [x] `check_docs.py spec-template`: a `spec.md` has only the `##` and `###` sections of `template.md` (`Domain`, `Request Parameters` with Header/Path/Query/Body Parameters, `Example Request` with HTTP/cUrl Request, `Response Parameters` with Status Object, Data Object and Example Response Parameters, `Database Relations` with `### Table: [...]`, `External Services` with `### API: ...`); `####` and `#####` are free; text inside code fences is not read.
+- [x] Links only to schema docs (`../../../schema/...`), external `http(s)` URLs and anchors that match a heading of the same file; a link to a design document, `permission-scope.md` or another spec fails, and so does an anchor to nothing.
+- [x] `LEGACY_SPEC_TEMPLATE`: the 73 of 83 specs that do not pass today are named; an entry must be a spec folder and must still fail, so a spec that passes leaves the list in the same change; the OK line prints how many are left. The work of fixing product and shop specs follows this pull request.
+- [x] Guidance: one sentence in `template.md` (and its snapshot `assets/api-spec.md.tmpl`), the new section "Template sections and links" in `references/spec-structure.md`, the correction of the two passages that told authors to add `### ... Rules` and `### Allow Scope` sections, and the rule "ask the owner before adding a section" in `SKILL.md`.
+- [x] Mutation tests: 9 of 9 caught (an extra `###` and `##` section, a link to another spec, to a design document and to `permission-scope.md`, an anchor to nothing, an entry removed from, added to and invented in the list) and 5 controls pass (`####` and `#####` headings, an own anchor, an external URL, a schema link).
+- [ ] Merge `main`, run every check, push, open the pull request, tell the lead at once, suspend, then close the records of PR 99 and 107 with the script on `main`.

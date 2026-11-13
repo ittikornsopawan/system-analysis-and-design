@@ -7,6 +7,8 @@
 | Endpoint    | <api-endpoint>    |
 | Description | <api-description> |
 
+> Use only the `##` and `###` sections of this template and do not add a section without asking the owner; link only to schema docs, external API URLs and anchors of this file; keep the order of checks, locks and branches in `sequence.wsd`. Checked by `check_docs.py spec-template`.
+
 ## Domain
 
 | Environment    | Url                                 |

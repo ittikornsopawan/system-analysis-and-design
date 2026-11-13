@@ -7991,6 +7991,151 @@ def check_registry() -> int:
 COMMANDS["check-registry"] = check_registry
 
 
+# ---------------------------------------------------------------- spec template (owner decision of 2026-11-13)
+SPEC_TEMPLATE_SECTIONS = {
+    "##": {"Domain", "Request Parameters", "Example Request", "Response Parameters", "Database Relations", "External Services"},
+    "###": {"Header Parameters", "Path Parameters", "Query Parameters", "Body Parameters", "HTTP Request", "cUrl Request", "Status Object", "Data Object", "Example Response Parameters"},
+}
+
+
+def spec_template_errors(md: str) -> list[str]:
+    """A spec.md has only the ## and ### sections of template.md, and links only to schema docs, external URLs and anchors of its own headings."""
+    errors = []
+    headings = []
+    prose = []
+    in_code = False
+    for line in md.split("\n"):
+        if line.startswith("```"):
+            in_code = not in_code
+            continue
+        if in_code:
+            continue
+        prose.append(line)
+        match = re.match(r"^(#{1,6}) (.+?)\s*$", line)
+        if match:
+            headings.append((match.group(1), match.group(2)))
+    for level, title in headings:
+        if level not in ("##", "###"):
+            continue
+        allowed = title in SPEC_TEMPLATE_SECTIONS[level] or (level == "###" and re.match(r"(?:Table: \[|API: )", title))
+        if not allowed:
+            errors.append(f"section '{level} {title}' is not a section of template.md (ask the owner before adding one)")
+    anchors = {re.sub(r"[^a-z0-9 _-]", "", title.lower()).replace(" ", "-") for _, title in headings}
+    for target in re.findall(r"\]\(([^)\s]+)\)", "\n".join(prose)):
+        if target.startswith("#"):
+            if target[1:] not in anchors:
+                errors.append(f"anchor {target} does not match a heading of the file")
+        elif target.startswith(("http://", "https://")):
+            continue
+        elif "/schema/" not in "/" + target.lstrip("./"):
+            errors.append(f"link {target} goes to a file that is not a schema doc (only schema docs, external API URLs and anchors are allowed)")
+    return errors
+
+
+# Specs that do not follow the template yet. Each is exempt until its sections and links are fixed; an entry must be a spec folder and
+# must still fail, so a spec that passes has to leave the list in the same change. The count is printed in the OK line.
+LEGACY_SPEC_TEMPLATE = (
+    "authen-and-author/01-register",
+    "authen-and-author/02-login",
+    "authen-and-author/03-reset-password",
+    "authen-and-author/04-create-new-password",
+    "authen-and-author/05-refresh-token",
+    "authen-and-author/06-logout",
+    "authen-and-author/07-upsert-user-profile",
+    "authen-and-author/08-inquiry-user-profile",
+    "authen-and-author/09-upsert-user-address",
+    "authen-and-author/10-inquiry-user-address",
+    "author/01-upsert-role",
+    "author/02-upsert-role-batch",
+    "author/03-inquiry-role",
+    "author/04-upsert-permission",
+    "author/05-upsert-permission-batch",
+    "author/06-inquiry-permission",
+    "author/07-upsert-scope",
+    "author/08-upsert-scope-batch",
+    "author/09-inquiry-scope",
+    "author/10-upsert-user-role",
+    "author/11-inquiry-user-role",
+    "author/12-me",
+    "campaign/01-upsert-campaign",
+    "campaign/02-inquiry-campaign",
+    "campaign/03-inquiry-campaign-ledger",
+    "consent/01-inquiry-active-consent",
+    "consent/02-upsert-consent",
+    "consent/04-submit-consent",
+    "consent/05-inquiry-pending-consent",
+    "consent/06-upsert-consent-type",
+    "consent/07-upsert-consent-type-batch",
+    "consent/08-inquiry-consent-type",
+    "payment/01-start-payment",
+    "payment/02-stripe-webhook",
+    "payment/03-inquiry-payment",
+    "payment/04-inquiry-shop-payment",
+    "payment/05-refund-payment",
+    "product/01-upsert-product",
+    "product/04-upsert-product-category",
+    "product/06-upsert-product-category-batch",
+    "product/07-upsert-product-category-attribute",
+    "product/09-upsert-product-category-attribute-batch",
+    "product/10-upsert-product-type",
+    "product/11-upsert-product-type-batch",
+    "product/12-inquiry-product-type",
+    "product/13-upsert-product-brand",
+    "product/14-upsert-product-brand-batch",
+    "product/15-inquiry-product-brand",
+    "sales/01-inquiry-checkout",
+    "sales/02-create-order",
+    "sales/03-inquiry-order",
+    "sales/04-inquiry-shop-order",
+    "sales/05-cancel-order",
+    "shipping/01-create-shipping",
+    "shipping/02-update-shipping-status",
+    "shipping/03-upsert-shipping-stop",
+    "shipping/04-inquiry-shop-shipping",
+    "shipping/05-inquiry-shipping",
+    "shipping/06-confirm-delivery",
+    "shop/01-upsert-shop-product-sku",
+    "shop/02-upsert-shop-product-sku-batch",
+    "shop/04-inquiry-storefront-product",
+    "shop/05-upsert-shop-type",
+    "shop/06-upsert-shop-type-batch",
+    "shop/08-upsert-shop",
+    "shop/09-upsert-shop-batch",
+    "shop/10-inquiry-shop",
+    "shop/11-upsert-shop-user",
+    "shop/12-upsert-shop-user-batch",
+    "shop/13-inquiry-shop-user",
+    "shop/14-inquiry-storefront-shop-product",
+    "shop/15-upsert-shop-product-review",
+    "shop/16-inquiry-storefront-product-review",
+)
+
+
+def check_spec_template() -> int:
+    errors = []
+    api_root = ROOT / "e-commerce/doc/api"
+    specs = {f"{spec.parent.parent.name}/{spec.parent.name}": spec for spec in sorted(api_root.glob("*/*/spec.md"))}
+    if not specs:
+        errors.append("no spec.md found under e-commerce/doc/api")
+    for entry in LEGACY_SPEC_TEMPLATE:
+        if entry not in specs:
+            errors.append(f"LEGACY_SPEC_TEMPLATE lists {entry}, which is not a spec folder")
+    for name, spec in specs.items():
+        found = spec_template_errors(spec.read_text(encoding="utf-8"))
+        if name in LEGACY_SPEC_TEMPLATE:
+            if not found:
+                errors.append(f"{name}/spec.md: already follows the template, remove it from LEGACY_SPEC_TEMPLATE")
+        else:
+            errors.extend(f"{name}/spec.md: {error}" for error in found)
+    if errors:
+        return fail("; ".join(errors))
+    print(f"OK: spec-template ({len(specs)} specs; {len(LEGACY_SPEC_TEMPLATE)} not following the template yet)")
+    return 0
+
+
+COMMANDS["spec-template"] = check_spec_template
+
+
 def main(argv: list[str]) -> int:
     if len(argv) < 2:
         print("usage: check_docs.py <subcommand>")
