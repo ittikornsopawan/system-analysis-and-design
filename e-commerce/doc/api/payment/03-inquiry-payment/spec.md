@@ -18,6 +18,10 @@
 | PRE-PRODUCTION | https://www.domain.com/api-pre-prod |
 | PRODUCTION     | https://www.domain.com/api          |
 
+- Only the payments of the orders of the user of the access token are returned (the request never carries a user id), the payment of another user is not found, `id` of another user answers an empty list. Payments with `rowStatus` DELETED are never returned.
+- The payments are ordered by creation time (newest first) then `id`.
+- The customer never receives `providerPaymentId`, `providerRefundId`, `transactionCode` or `clientSecret`. `failureCode` and `failureMessage` are filled only when the status is FAILED, `refundedAt` and `refundReason` only when it is REFUNDED, `transactionAt` only when it is COMPLETED or REFUNDED.
+
 ---
 
 ## Request Parameters
@@ -40,12 +44,6 @@
 | 4   | pageIndex      | Numeric      | OPTIONAL | Page index starting from 1, Defaults to 1                                                                            | 1                                    |
 | 5   | pageSize       | Numeric      | OPTIONAL | Number of items per page (max 100), Defaults to 10                                                                   | 10                                   |
 | 6   | search         | String       | OPTIONAL | Search by order code                                                                                                 | ORD-2026                             |
-
-### Payment Inquiry Rules
-
-- Only the payments of the orders of the user of the access token are returned (the request never carries a user id), the payment of another user is not found, `id` of another user answers an empty list. Payments with `rowStatus` DELETED are never returned.
-- The payments are ordered by creation time (newest first) then `id`.
-- The customer never receives `providerPaymentId`, `providerRefundId`, `transactionCode` or `clientSecret`. `failureCode` and `failureMessage` are filled only when the status is FAILED, `refundedAt` and `refundReason` only when it is REFUNDED, `transactionAt` only when it is COMPLETED or REFUNDED.
 
 ## Example Request
 

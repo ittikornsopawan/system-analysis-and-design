@@ -18,6 +18,12 @@
 | PRE-PRODUCTION | https://www.domain.com/api-pre-prod |
 | PRODUCTION     | https://www.domain.com/api          |
 
+- The endpoint is public (no `authorization` header and no user) and is protected by `stripe-signature`, verified against the **raw body**; a missing or wrong signature, a body that is not JSON or a timestamp more than 5 minutes away answers 400 (E10001) and nothing is changed. The system acts as the caller `system`.
+- Any other valid event answers 200 with `action` = `IGNORED`, a 408 (E90001) or any other failure makes Stripe send the event again. Every event is applied by the state of the payment, so the same event twice gives the same result (idempotent) and a final payment never moves back.
+- `payment_intent.succeeded` completes the payment and confirms the order; `payment_intent.payment_failed` fails the payment (the order stays `WAIT_PAYMENT`); `payment_intent.canceled` cancels it; `charge.refunded` refunds it and gives the stock and the campaign budget back. A late payment (the order is not waiting for payment any more) is refunded at Stripe (`LATE_PAYMENT_REFUNDED`).
+- Every row the webhook writes has `system` in `created_by` or `updated_by` (approved by the product owner on 2026-11-08).
+- The state table, the late payment, the refund and the budget details are in the sequence diagram.
+
 ---
 
 ## Request Parameters
@@ -41,31 +47,6 @@
 | 6   | data.object.latest_charge              | String    | OPTIONAL  | Id of the charge, on payment_intent.succeeded                                                                                                            | ch_3QxHk2EXAMPLE0001     |
 | 7   | data.object.last_payment_error.code    | String    | OPTIONAL  | Failure code, on payment_intent.payment_failed                                                                                                           | card_declined            |
 | 8   | data.object.last_payment_error.message | String    | OPTIONAL  | Failure message, on payment_intent.payment_failed                                                                                                        | Your card was declined.  |
-
-### Webhook Rules
-
-- The endpoint is public: there is no `authorization` header and no user. It is protected by the signature in `stripe-signature`, which is verified with the signing secret of the endpoint (a config, never in this spec) against the **raw body** (the body must not be parsed or changed before the check). A missing or wrong signature, a body that is not JSON, or a timestamp that is more than 5 minutes away from now answers 400 (E10001) and nothing is changed. The system acts as the caller `system`.
-- Any other valid event answers 200 so Stripe does not send it again: an event type that is not handled, a payment that is not found (`provider_payment_id`), or an event that changes nothing all answer 200 with `action` = `IGNORED`. A 408 (E90001) or any other failure makes Stripe send the event again later.
-- The payment is found by `provider_payment_id` (the PaymentIntent id) and then the order of the payment is locked (`FOR UPDATE`). The lock order is always the order first, the same as the start payment, the refund and the shipping APIs, so they never wait for each other in a circle, and every update of the payment is guarded by its status. Every event is applied by the state of the payment, so the same event twice gives the same result (idempotent) and events that arrive in another order never move a final payment back:
-
-  | Payment status    | Event                          | New payment status                         | Order                                                                            | `action`               |
-  | ----------------- | ------------------------------ | ------------------------------------------ | -------------------------------------------------------------------------------- | ---------------------- |
-  | PENDING           | payment_intent.processing      | PROCESSING                                 | no change                                                                        | PAYMENT_PROCESSING     |
-  | PENDING           | payment_intent.succeeded       | COMPLETED                                  | WAIT_PAYMENT -> PAYMENT_CONFIRMED (not WAIT_PAYMENT: a late payment, see below) | PAYMENT_COMPLETED      |
-  | PROCESSING        | payment_intent.succeeded       | COMPLETED                                  | WAIT_PAYMENT -> PAYMENT_CONFIRMED (not WAIT_PAYMENT: a late payment, see below) | PAYMENT_COMPLETED      |
-  | PENDING           | payment_intent.payment_failed  | FAILED (failure_code, failure_message)     | no change (still WAIT_PAYMENT, the customer can try again)                       | PAYMENT_FAILED         |
-  | PROCESSING        | payment_intent.payment_failed  | FAILED                                     | no change                                                                        | PAYMENT_FAILED         |
-  | PENDING           | payment_intent.canceled        | CANCELLED                                  | no change                                                                        | PAYMENT_CANCELLED      |
-  | COMPLETED         | charge.refunded                | REFUNDED                                   | PAYMENT_CONFIRMED -> REFUNDED and the stock goes back to the lots                | PAYMENT_REFUNDED       |
-  | FAILED, CANCELLED | payment_intent.succeeded       | REFUNDED (late payment, see below)         | no change                                                                        | LATE_PAYMENT_REFUNDED  |
-  | any other         | any other                      | no change                                  | no change                                                                        | IGNORED                |
-
-- On `payment_intent.succeeded` the payment gets `transaction_code` (the charge id), `transaction_at` (the time of the event, UTC) and `payment_name` (a label such as `Visa 4242` or `PromptPay`), and the order is changed with a guarded update (`AND status = 'WAIT_PAYMENT'`). The order is accepted even when `expires_at` has passed as long as the order is still `WAIT_PAYMENT`, because the stock is still held.
-- **Late payment:** when the guarded update of the order changes no row (the order was cancelled or expired first), or the payment is already FAILED or CANCELLED, the money must not stay with the platform. The system asks Stripe for a full refund (`Idempotency-Key` = `refund-` + payment id) and sets the payment to REFUNDED directly with `refund_reason` = `Late payment: the order is not waiting for payment`. The order is not changed and the stock is not given back again.
-- On `charge.refunded` (a refund made in the Stripe dashboard or by the refund API) a COMPLETED payment becomes REFUNDED. When the order is `PAYMENT_CONFIRMED` it becomes `REFUNDED` and the quantity of every item goes back to its lot, otherwise (the order has started to ship) only the payment changes and the event is written to the log for a person to handle.
-- When `charge.refunded` turns a COMPLETED payment into REFUNDED the budget that the order took from a campaign goes back in the same transaction as the stock (`docs/superpowers/specs/2026-11-06-campaign-design.md`, C7 and C9, approved by the product owner on 2026-11-06), with the same `RELEASE` ledger rows as the refund API. A refund that arrives after the order was already cancelled (the late payment rule above) does not touch the budget, it went back when the order was cancelled.
-- The whole event is one transaction. The response never contains the secret or the signature. The webhook has no user, so every row it writes (the payment, the order, the lots, the ledger and the budget) has `system` in `created_by` or `updated_by` (approved by the product owner on 2026-11-08).
-- The webhook also makes the database match when another API called Stripe and its `COMMIT` failed afterwards (approved by the product owner on 2026-11-08): a `charge.refunded` after a refund of `05-refund-payment` finds the payment COMPLETED and applies the refund (payment and order REFUNDED, the stock and the budget go back, the lots in `lot_id` order), and a `payment_intent.canceled` after a cancel of `sales/05` or after a replaced payment of `01-start-payment` finds the payment PENDING and sets it CANCELLED. The refund of a late payment uses the `Idempotency-Key` `refund-<paymentId>`, so the retry of an event that failed after Stripe answered refunds once.
 
 #### Example Body Parameters
 

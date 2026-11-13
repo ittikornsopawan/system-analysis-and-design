@@ -1499,3 +1499,11 @@ Authority: owner decision of 2026-11-13 relayed by Josh (SA Lead): "ใช้ร
 - [x] permission-scope.md: rules converted to permission claims (`module.resource:action`) and scope claims (`all:*`, `shop:*`, `own:*`); deny and deny-wins removed; 83 links and 40 queue markers kept.
 - [x] Update the login payload check, the me checks and the refresh/login needles; mutation 15/15; render 116/116, 131/131 and 13/13 SQL lines.
 - [ ] Outstanding by design: every other spec, sequence and checker that still says roles are `{roleId, name}` objects (author 01–11, consent, payment, sales, product, shop) — each analyst corrects their group during the template work.
+## e-commerce: spec template, payment
+
+Status: Complete in the branch, waiting for review. Assignment: agent `tommy`, delivery `open-pr`, authorized by `josh`, workspace `.workspace/tommy`, branch `docs/tommy-spec-template-payment`, scopes `e-commerce/doc/api/payment`, `e-commerce/db/tests/check_docs.py`, `tasks`.
+
+- [x] Remove `### Payment Rules`, `### Webhook Rules`, `### Refund Rules`, `### Payment Inquiry Rules`, `### Shop Payment Inquiry Rules` and the two `### Allow Scope` sections; the rules become short bullets under `## Domain`; remove the links to the design doc, login and permission-scope.
+- [x] Move the JWT checks, the lock order, the Idempotency-Key, the failed `COMMIT`, the state table of the webhook and the order of the checks into a note of `sequence.wsd`; no SQL and no behavior is changed.
+- [x] The `payment-spec` and `campaign-spec` checkers search the spec and its sequence note; adjust the needles; run every checker, strict SQL parity and the render check.
+- [x] Open the PR with `commit-and-pr`, tell the lead SA when CI is green, then suspend. Next: `sales`.

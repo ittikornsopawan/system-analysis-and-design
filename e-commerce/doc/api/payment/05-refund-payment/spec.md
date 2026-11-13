@@ -1,9 +1,16 @@
 ---
 name: Refund Payment API Specification
-description: Defines the verified-JWT authorization, the caller lock and current credential gate, the shop membership rule, the Allow Scope and the refund flow of a payment; read when reviewing or implementing this endpoint.
+description: Defines the verified-JWT authorization, the caller lock and current credential gate, the shop membership rule and the refund flow of a payment; read when reviewing or implementing this endpoint.
 status: in-review
 approved_by: null
 approved_at: null
+- A member of the shop of the order (an ACTIVE `shop.t_shop_user` row with the role ADMIN or STAFF) or the role `PLATFORM_ADMIN` in the verified `roles` claim can refund, otherwise 403 (E10009); the customer cannot refund. A payment that does not exist or is DELETED is 404 (E10004).
+- The platform administrator is the exact case-sensitive role `PLATFORM_ADMIN` in the verified `roles` claim; do not query `author.m_role` or `author.t_user_role`. Membership of a shop is not a token claim and is still read from `shop.t_shop_user`.
+- Only a `COMPLETED` payment of a `PAYMENT_CONFIRMED` order can be refunded, otherwise 409 (E10006); after the first shipment the order is `PROCESSING` and cannot be refunded here until the shipping API gives it back to `PAYMENT_CONFIRMED`.
+- The refund is always the whole `amount` of the payment, shipping fee included, asked from Stripe with an Idempotency-Key. When Stripe does not answer or refuses, nothing is written and the answer is 408 (E90001).
+- The payment and the order become `REFUNDED`, the quantity of every item goes back to its lot, and the budget the order took from a campaign goes back in the same transaction (`RELEASE` ledger rows).
+- The JWT and credential checks, the lock order, the Idempotency-Key, the failed `COMMIT` and the order of the checks are in the sequence diagram.
+
 ---
 
 # [POST]: v1/shop/payment/refund
@@ -45,29 +52,6 @@ approved_at: null
 | --- | -------------- | ------------ | --------- | ----------------------------------------- | ------------------------------------ |
 | 1   | paymentId      | String: UUID | MANDATORY | Payment Id                                | a1b2c3d4-e5f6-4a7b-8c9d-0e1f2a3b4c5d |
 | 2   | reason         | String       | MANDATORY | Reason of the refund (max 256 characters) | Out of stock                         |
-
-### Refund Rules
-
-- The caller needs a verified JWT (below), then an ACTIVE member row of the shop of the order (a row of `shop.t_shop_user` with the role ADMIN or STAFF that is ACTIVE) or the role `PLATFORM_ADMIN` in the verified `roles` claim, otherwise 403 (E10009). The customer cannot refund, the customer asks the shop. A payment that does not exist or is DELETED is not found (404, E10004).
-- Governing behavior: [owner-confirmed API review](../../../../../docs/superpowers/specs/2026-11-07-api-review-design.md), Q2/Q4/Q10/Q13; this detailed revision remains in-review and includes no backend implementation. Validate the whole request, including the mandatory UTC timestamp, before SQL (400 E10001). Missing or malformed Bearer credentials or a failed JWT signature/issuer/audience/expiry/UUID sub/roles-claim validation return the same 401 E10002 `Invalid or expired access token.` before BEGIN.
-- Validate the structured `roles` claim defined by [login](../../authen-and-author/02-login/spec.md#claim-resolution-and-payload): `roles` must be an array (an empty array is valid), each object has a UUID `roleId` and a non-empty string `name`, and the `roleId`s are unique; a missing or malformed claim is a 401, never an empty list and never recovered from the database. `userId` comes only from the verified `sub`; `accessTokenHash` is the SHA-256 of the exact presented JWT.
-- Begin one READ COMMITTED transaction, lock the caller user first (`QUERY - Lock the caller user`, `FOR UPDATE`), capture the fresh server UTC `now` after the lock, recheck the JWT expiry at `now`, then run `QUERY - Check current credential and user`; no row (a missing, revoked or expired stored token, another owner or an inactive user) returns the same 401 and rolls back before any other row is read. Lock order: the caller user, the order row, the lots by id, then the budgets by id.
-- The platform administrator is the exact case-sensitive role `PLATFORM_ADMIN` in the verified `roles` claim; do not query `author.m_role` or `author.t_user_role`, and a change of the assignment after the token was issued does not change this token (it may stay usable until its expiry). Membership of a shop is not a token claim and is still read from `shop.t_shop_user`.
-- Only a payment with the status `COMPLETED` can be refunded and only when its order is `PAYMENT_CONFIRMED`, otherwise 409 (E10006) with the current statuses in the message. The first shipment of the order changes the order to `PROCESSING`, so after the shop has started to ship the order cannot be refunded here (a return process is not in this version). When the shop cancels every parcel or every parcel comes back, the shipping API gives the order back to `PAYMENT_CONFIRMED` (shipping design S9, approved by the product owner) and the order can be refunded here again.
-- The refund is always the whole `amount` of the payment, shipping fee included. The system asks Stripe for the refund of the PaymentIntent with the `Idempotency-Key` header `refund-` + payment id, so pressing the button twice refunds once. If Stripe does not answer or refuses, nothing is written and the answer is 408 (E90001).
-- The payment becomes `REFUNDED` with `provider_refund_id`, `refunded_at` and `refund_reason`, the order becomes `REFUNDED` and the quantity of every item is added back to its lot (`lot_id` of the item) even when that lot is no longer on sale, the same way as a cancel. The Stripe event `charge.refunded` that follows finds the payment already REFUNDED and changes nothing.
-- The budget that the order took from a campaign goes back in the same transaction as the stock, when the payment is refunded (`docs/superpowers/specs/2026-11-06-campaign-design.md`, C7 and C9, approved by the product owner on 2026-11-06): every budget that has a ledger row `RESERVE` of the order and no `RELEASE` yet gets its `usage` back (`remaining` grows by that amount) and a ledger row `RELEASE` with the same `usage` is written. An order that took no budget changes nothing. The order of the locks is the order row, the lots by `id`, then the budgets by `id`.
-- The Stripe refund carries the `Idempotency-Key` `refund-<paymentId>` (approved by the product owner on 2026-11-08). If the `COMMIT` fails after Stripe refunded, nothing is written here, the Stripe event `charge.refunded` that follows finds the payment COMPLETED and the webhook (`02-stripe-webhook`) applies the refund (payment and order REFUNDED, the stock and the budget go back), and a repeated request sends the same key and does not refund twice.
-- Execution order: validate the request (400) -> verify the JWT (401) -> begin the transaction, lock the caller user and check the current credential (401) -> existence of the payment (404) -> lock the order row -> permission (403) -> status check (409) -> refund at Stripe and write the payment, the order and the lots. The whole request is one transaction and the order row is locked (`FOR UPDATE`) before the payment is changed, the same lock order as the start payment, the webhook and the shipping APIs.
-
-### Allow Scope
-
-- Rules: `payment:payment:refund:allow`
-- Requested action: `refund`
-- Data boundary: `SHOP` (ACTIVE ADMIN or STAFF member of the shop of the order) or `ALL` (`PLATFORM_ADMIN` in the verified roles claim)
-- Resolution: the checks above decide; the customer cannot refund
-- Status: in-review; no explicit deny rule exists yet and the rule does not create a grant by itself
-- Reference: [permission-scope.md](../../../permission-scope.md)
 
 #### Example Body Parameters
 
