@@ -1479,4 +1479,3 @@ Status: Complete in the branch, waiting for review. Assignment: agent `tommy`, d
 - [x] Move the order of the checks, the lock and the merge details into a note of `sequence.wsd` (cart/01, cart/02); no SQL and no behavior is changed.
 - [x] Adjust the needles of `cart-spec`; run every checker, strict SQL parity and the render check.
 - [x] Open the PR with `commit-and-pr`, tell the lead SA when CI is green, then suspend. Next: `payment`.
-
