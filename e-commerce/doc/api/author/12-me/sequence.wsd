@@ -49,7 +49,7 @@ alt Missing or malformed timestamp
     app -> api: HTTP 400 E10001
     api -> page: Header validation error
 else Valid ordinary headers
-    app -> app: Verify JWT signature/issuer/audience/exp/UUID sub and structured roles; reject duplicate roleIds
+    app -> app: Verify JWT signature/issuer/audience/exp/UUID sub and roles claim as unique non-empty strings (payload of 2026-11-13)
     alt Missing/invalid JWT or malformed roles claim
         app -> api: HTTP 401 E10002 Invalid or expired access token.
         api -> page: Authentication error
@@ -79,7 +79,7 @@ else Valid ordinary headers
             deactivate t_user_access_token
             infra -> app: Return ACTIVE matching token/user or no row
             alt Credential/user ACTIVE and stored/JWT expiry valid at now
-                app -> app: roles = copy roleId/name from verifiedJwt.roles; sort ordinal name then roleId
+                app -> app: roles = copy the role names from verifiedJwt.roles; sort ordinal
                 alt Token roles is empty
                     app -> app: data.roles = []; isPlatformAdmin = false
                 else Returned token roles contain exact name PLATFORM_ADMIN

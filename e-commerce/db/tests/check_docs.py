@@ -4941,7 +4941,7 @@ def author_example_errors(key: str, md: str) -> list[str]:
     elif key == "12":
         for t in ("Success", "Success - Platform Administrator", "Success - No Role"):
             data = author_json(md, t)["data"]
-            names = [r["name"] for r in data["roles"]]
+            names = list(data["roles"])
             if data["isPlatformAdmin"] != ("PLATFORM_ADMIN" in names):
                 errors.append(f"'{t}': isPlatformAdmin must be true exactly when PLATFORM_ADMIN is a role")
             if names != sorted(names):
@@ -5218,7 +5218,7 @@ def check_login_flow() -> int:
     required = {
         'QUERY - Serialize identifier': ['pg_advisory_xact_lock', '<sequence.identifierLockKey>', '::BIGINT'],
         'QUERY - Count failed attempts': [ "la.result = 'FAILED'", 'la.identifier_hash', 'la.created_at >'],
-        'QUERY - Lock the user': ['u.username', 'u.email_address', "u.row_status = 'ACTIVE'", 'ORDER BY u.id', 'FOR UPDATE'],
+        'QUERY - Lock the user': ['u.username', 'u.email_address', 'u.display_name', "u.row_status = 'ACTIVE'", 'ORDER BY u.id', 'FOR UPDATE'],
         'QUERY - Get current password': ['up.password AS password_hash', 'up.password_salt', "up.row_type = 'PASSWORD'", "up.row_status = 'ACTIVE'", "up.user_id = '<sequence.userId>'"],
         'QUERY - Get active role ids': ["ur.row_status = 'ACTIVE'", 'ur.user_id'],
         'QUERY - Get active roles': ["r.row_status = 'ACTIVE'", 'r.id', 'r.name'],
@@ -5256,21 +5256,16 @@ def check_login_flow() -> int:
         payload = json.loads(re.search(r'#### Example JWT Payload\n\n```JSON\n(.*?)```', md, re.DOTALL).group(1))
         if payload['exp'] - payload['iat'] != 900:
             errors.append('JWT example must have a 900-second lifetime')
-        roles = payload['roles']
-        perms = payload['permissions']
-        scopes = payload['scopes']
-        permission_ids = {p['permissionId'] for p in perms}
-        if len(permission_ids) != len(perms) or len({r['roleId'] for r in roles}) != len(roles):
-            errors.append('JWT roles and permissions must be unique by id')
-        scope_pairs = [(s['permissionId'], s['scopeId']) for s in scopes]
-        if len(set(scope_pairs)) != len(scope_pairs) or any(p not in permission_ids for p, _ in scope_pairs):
-            errors.append('each JWT scope must belong to one granted permission, without duplicate pairs')
-        expected = {'catalog.manage': ['OWN'], 'order.view': ['ALL']}
-        actual = {p['name']: sorted(s['scope'] for s in scopes if s['permissionId'] == p['permissionId']) for p in perms}
-        if actual != expected:
-            errors.append('JWT example must demonstrate distinct scopes for catalog.manage and order.view')
+        if set(payload) != {'iss', 'sub', 'aud', 'jti', 'iat', 'exp', 'user', 'roles', 'permissions', 'scopes'}:
+            errors.append('JWT example must have exactly iss/sub/aud/jti/iat/exp/user/roles/permissions/scopes')
+        if set(payload['user']) != {'id', 'username', 'displayName', 'email'} or payload['user']['id'] != payload['sub']:
+            errors.append('JWT user must be exactly id/username/displayName/email with id equal to sub')
+        for claim, shape in (('roles', r'^[A-Z][A-Z0-9_]*$'), ('permissions', r'^[a-z][a-z0-9_.]*:[a-z0-9_]+$'), ('scopes', r'^[a-z][a-z0-9_]*:\*$')):
+            values = payload[claim]
+            if values != sorted(set(values)) or any(not isinstance(v, str) or not re.match(shape, v) for v in values):
+                errors.append(f'JWT {claim} must be sorted unique strings of the agreed shape')
     except (AttributeError, KeyError, TypeError, ValueError) as exc:
-        errors.append(f'missing or malformed structured JWT example: {exc}')
+        errors.append(f'missing or malformed JWT example: {exc}')
     for guard in ('alt failed_attempts >= 5', 'else failed_attempts < 5', 'alt user_count != 1', 'else user_count = 1'):
         if not re.search(r'^\s*' + re.escape(guard) + r'\s*$', wsd, re.MULTILINE):
             errors.append(f'login sequence missing decision {guard}')
@@ -5302,7 +5297,9 @@ def check_login_flow() -> int:
                     'app -> app: activeRoleIds = activeRoles.role_id',
                     'app -> app: rolePermissionIds = rolePermissions.role_permission_id',
                     'app -> app: permissionIds = union of role and direct permission ids',
-                    'app -> app: Derive assignedScopeIds by exact assignment/definition and permission match'):
+                    'app -> app: Derive assignedScopeIds by exact assignment/definition and permission match',
+                    'domain -> app: user, roles, permissions, scopes',
+                    'permissions to names with the last dot as colon, scopes to lower-case code + :*'):
         if mapping not in wsd:
             errors.append(f'missing result-to-parameter mapping: {mapping}')
     if '--rendered-svg' in sys.argv:
@@ -5551,7 +5548,7 @@ def check_refresh_flow() -> int:
     if [(t,h,normalize(s)) for t,h,s in login_claims] != [(t,h,normalize(s)) for t,h,s in refresh_claims]:
         errors.append('refresh must resolve current claims using all eight canonical login queries')
     for needle in ('2026-11-07-api-review-design.md', 'permission-specific',
-                   'at exactly 10 seconds', 'updated_at', 'issuedAt'):
+                   'at exactly 10 seconds', 'updated_at', 'issuedAt', 'a fresh `user` snapshot', 'the last `.` as `:`'):
         if needle.lower() not in md.lower():
             errors.append(f'refresh spec missing {needle}')
     front = re.match(r'---\n(.*?)\n---\n', md, re.DOTALL)
@@ -6322,9 +6319,9 @@ def check_author_me_flow() -> int:
     path='e-commerce/doc/api/author/12-me/spec.md'
     md=read(path);wsd=read(str(Path(path).with_name('sequence.wsd')));errors=[]
     for needle in ('2026-11-07-api-review-design.md','Q4/Q11/Q13',"calling token's role snapshot",
-                   'Do not query author.t_user_role or author.m_role','duplicate roleIds',
-                   'roles must be an array, including explicit []','ordinal case-sensitive comparison, then by roleId',
-                   'isPlatformAdmin is true exactly when one returned role has name equal to PLATFORM_ADMIN',
+                   'Do not query author.t_user_role or author.m_role','duplicate entries',
+                   'roles must be an array of unique non-empty strings, including explicit []','ordinal case-sensitive comparison.',
+                   'isPlatformAdmin is true exactly when one returned role name equals PLATFORM_ADMIN',
                    'Do not trust an independent isPlatformAdmin token claim',
                    'Role/assignment changes after issuance do not change this token',
                    'Every refresh resolves latest ACTIVE grants','one read-only autocommit SELECT',
@@ -6349,10 +6346,10 @@ def check_author_me_flow() -> int:
     if [(t.split('.')[-1],h,normalize(s)) for t,h,s in operations]!=[(t,h,normalize(s)) for t,h,s in actual]:errors.append('me spec/sequence SQL differs')
     for needle in ('app -> infra: QUERY - Check active credential and user',
                    'infra -> app: Return ACTIVE matching token/user or no row',
-                   'Verify JWT signature/issuer/audience/exp/UUID sub and structured roles; reject duplicate roleIds',
+                   'Verify JWT signature/issuer/audience/exp/UUID sub and roles claim as unique non-empty strings (payload of 2026-11-13)',
                    'userId = verified sub; accessTokenHash = SHA-256 exact JWT',
                    'Capture fresh server UTC now before credential query; recheck JWT exp',
-                   'roles = copy roleId/name from verifiedJwt.roles; sort ordinal name then roleId',
+                   'roles = copy the role names from verifiedJwt.roles; sort ordinal',
                    'alt Token roles is empty','data.roles = []; isPlatformAdmin = false',
                    'else Returned token roles contain exact name PLATFORM_ADMIN',
                    'data.roles = sorted token roles; isPlatformAdmin = true',
@@ -6374,7 +6371,7 @@ def check_author_me_flow() -> int:
         if queries and not ordered('Verify JWT','userId = verified sub','Capture fresh server UTC now','QUERY - Check active credential and user'):
             errors.append('every credential lookup must follow verified identity and captured current time')
         if code==200:
-            if not ordered('Verify JWT','userId = verified sub','Capture fresh server UTC now','QUERY - Check active credential and user','roles = copy roleId/name','data.userId = verified sub','HTTP 200') or len(queries)!=1:
+            if not ordered('Verify JWT','userId = verified sub','Capture fresh server UTC now','QUERY - Check active credential and user','roles = copy the role names','data.userId = verified sub','HTTP 200') or len(queries)!=1:
                 errors.append('me success must verify JWT and live credential/user before mapping token roles')
             if any('data.roles = []' in e for e in trace):modes['empty']+=1
             elif any(e.endswith('isPlatformAdmin = true') for e in trace):modes['admin']+=1
@@ -6391,8 +6388,8 @@ def check_author_me_flow() -> int:
             if status['code']!=code or code==500 and 'bizCode' in status:errors.append(f'incorrect me {title} envelope')
             if code==200:
                 data=obj['data'];roles=data['roles']
-                if set(data)!={'userId','isPlatformAdmin','roles'} or any(set(r)!={'roleId','name'} for r in roles):errors.append('me examples must preserve the three response fields and roleId/name only')
-                if roles!=sorted(roles,key=lambda r:(r['name'],r['roleId'])) or data['isPlatformAdmin']!=any(r['name']=='PLATFORM_ADMIN' for r in roles):errors.append('me example role ordering/admin flag is inconsistent')
+                if set(data)!={'userId','isPlatformAdmin','roles'} or any(type(r) is not str for r in roles):errors.append('me examples must have the three response fields and roles as name strings only')
+                if roles!=sorted(roles) or data['isPlatformAdmin']!=('PLATFORM_ADMIN' in roles):errors.append('me example role ordering/admin flag is inconsistent')
         except (TypeError,KeyError,ValueError):errors.append(f'missing me {title} example')
     errors+=json_blocks_parse(md);errors+=table_lines_aligned(md)
     if '--rendered-svg' in sys.argv:
