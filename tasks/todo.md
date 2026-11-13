@@ -1488,4 +1488,3 @@ Status: Complete in the branch, waiting for review. Assignment: agent `tommy`, d
 - [x] Move the JWT checks, the lock order, the Idempotency-Key, the failed `COMMIT`, the state table of the webhook and the order of the checks into a note of `sequence.wsd`; no SQL and no behavior is changed.
 - [x] The `payment-spec` and `campaign-spec` checkers search the spec and its sequence note; adjust the needles; run every checker, strict SQL parity and the render check.
 - [x] Open the PR with `commit-and-pr`, tell the lead SA when CI is green, then suspend. Next: `sales`.
-
