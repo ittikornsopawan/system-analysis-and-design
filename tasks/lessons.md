@@ -5,6 +5,13 @@ description: Repository-wide and project-specific lessons captured from user cor
 
 # Lessons
 
+### 2026-11-14 — Define the Head of Technology as the final quality gate
+
+- **Correction**: The owner clarified that the Head of Technology is second only to the owner, reviews only after all work is complete and the lead/manager submits a final report, and may fail work that does not meet quality. A failure must include a concrete rework plan explaining what to change, why, and how.
+- **Root cause**: The first role draft described broad advisory review but omitted the reporting hierarchy, completion gate, binding pass/fail decision, and required remediation plan.
+- **Corrected behavior**: Make the role the final technical-quality authority below the owner; reject incomplete submissions without a verdict; require a complete lead/manager handoff before final review; issue a clear PASS or FAIL; and make each FAIL include actionable changes, rationale, implementation direction, and re-review evidence.
+- **Preventive resource**: `.agents/agents/head-of-technology.md` now defines this workflow and its boundaries. Verify the role against each owner-stated requirement and confirm the registry still places Barry below only the owner while preserving the explicit no-`delegate-delivery` decision.
+
 ### 2026-11-09 — Preserve structure during whole-document translation
 
 - **Error**: Draft translation review found remaining Thai and displaced headings/table rows after several replacements used incorrect numeric line offsets.
