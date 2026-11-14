@@ -62,6 +62,13 @@ activate page
                     page -> user: Ask the user to sign in again
                 else Verified JWT
                     app -> app: userId = verified sub
+                    note over app, infra
+                        - Execution order: validate the request (400) -> existence and ownership of the shipping (404) -> status of the shipping (409) -> write the shipping
+                          and, when needed, the order in one transaction. The shipping is first read without a lock only to find its order, then the order row is locked
+                          (`SELECT ... FOR UPDATE`) and the shipping row is locked and read again (`QUERY - Lock the shipping`, `FOR UPDATE`), the status is checked on that
+                          second read and not on the first, all before any row of `shipping.*` or `sales.*` is changed, and the update of the shipping repeats the status
+                          `SHIPPED` in its `WHERE` (approved by the product owner on 2026-11-08).
+                    end note
                     app -> infra: BEGIN READ COMMITTED
                     activate infra
                     alt Work completes before commit
@@ -293,6 +300,23 @@ alt No order has an old SHIPPED parcel
     app -> app: Nothing to do until the next run
 else Orders found
     loop For every order of the batch in order_id order, one transaction each
+        note over app, infra
+            - The job finds the candidates without a lock: the orders that pass the conditions (1), (2), (4) and (5) above and have a `SHIPPED` shipping at least
+              `completion_days` days old (this is also the condition (3)), at most one batch each time, in `order_id` order. The scan applies every condition and
+              not only the age because an order that can never qualify (a partial shipment that cannot be finished, or a shipping that stays `PENDING`) keeps its
+              old `SHIPPED` shipping for ever: with the age alone it would be a candidate in every run and, in `order_id` order, would fill the batch before an
+              order with a larger id that does qualify, which then would never be selected (the job starves). The scan is only a filter, the conditions are
+              checked again under the lock. The job then works on one order at a time, one transaction for each order: it locks the order row first (`SELECT ...
+              FOR UPDATE`), checks the five conditions again under the lock and skips the order when it does not qualify any more, changes the `SHIPPED` shippings
+              of the order to `DELIVERED` (`updated_by` = `system`, `delivered_at` = the time of the job, the update repeats the status `SHIPPED` in its `WHERE`),
+              and completes the order with the same formula as the confirm API (every item delivered in full, the order is `PROCESSING`). A failure of one order
+              does not stop the others and running the job again changes nothing that is already done.
+            - Clashes: the order row is locked first by the job, the confirm API, the update shipping status API and the payment APIs, and the one that locks later
+              checks again. A refund needs the order `PAYMENT_CONFIRMED` and a qualifying order is `PROCESSING`, so they do not meet, and when S9 puts the order
+              back to `PAYMENT_CONFIRMED` the job skips it. When the job wins against the customer, confirm answers 409 (E10006) because the shipping is already
+              `DELIVERED`. When the job wins against the shop, a `RETURNED` request answers 409 (E10006) because `DELIVERED` is final, so the shop has to record a
+              returned parcel before the seven days are over.
+        end note
         app -> infra: BEGIN READ COMMITTED
         activate infra
         alt Work completes before commit
