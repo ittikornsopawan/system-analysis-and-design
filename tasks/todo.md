@@ -1609,6 +1609,16 @@ Authority: owner decision that API specs follow `e-commerce/doc/api/template.md`
 - [x] Visible short notes in each sequence: execution/lock order after `activate app`, then notes after the validation step, after `BEGIN`, before the success response; whole bullets are kept except a first sentence that a Domain bullet states in full.
 - [x] Needles: the nine flow checkers get a second loop over the whitespace-joined sequence text; `author-spec` gets `AUTHOR_SEQUENCE_NEEDLES` and `AUTHOR_REMOVED_NEEDLES` (the `### ... Rules` headings); the Q24 guards and the claims wording of the shared inquiry helper check the sequence note; the twelve files leave `LEGACY_SPEC_TEMPLATE`.
 
+### Template alignment — consent group (01, 04–08; 02 and 03 are rewritten in their own PRs)
+
+Authority: owner decision that API specs follow `e-commerce/doc/api/template.md` and the owner's 2026-11-14 decision that every spec carries frontmatter (`status: in-review`, `approved_by: null`, `approved_at: null`, name, description), relayed by Josh (SA Lead); same method as #116 and #117. `authorized_by: josh`, delivery `open-pr`. No SQL and no behaviour change.
+
+- [x] Remove the `### ... Rules` sections and the non-object `####` blocks from consent 01, 04, 05, 06, 07, 08; short bullets under `## Domain`; visible notes in the sequences (the pending truth table and its rows stay in a note).
+- [x] Frontmatter with name and description for 06, 07 and 08 (01, 04 and 05 had it; 02 and 03 get it in their own PRs).
+- [x] Needles: the three consent flow checkers get a second loop over the sequence text; `consent-type-spec` gets static `MASTER_SEQUENCE_NEEDLES` and `MASTER_REMOVED_NEEDLES`; the pending truth table is checked in the sequence note; the six files leave `LEGACY_SPEC_TEMPLATE` (the `LEGACY_SEQUENCES` entries of 06 and 07 stay).
+- [ ] consent/02 and consent/03 follow on the new template with the owner's answers (2026-11-13) and the new JWT payload.
+- [x] Repair CI for the existing PR #120 by removing all newly conforming specs from `LEGACY_SPEC_TEMPLATE`; preflight passes all 67 checkers, `audit_all.py`, and database tests.
+- [x] Merge latest `main`, run every project checker, and verify ancestry: `origin/main` at `c3767fb`; 67/67 `check_docs.py` sub-commands, `audit_all.py` (0 findings), and `run_db_tests.sh` (ALL PASSED).
 ## e-commerce: product/01 and 03 move Option and SKU Rules
 
 Status: Done, waiting for review. Authorized by Josh (owner decision of the template cleanup, 2026-11-13).
@@ -1626,7 +1636,7 @@ Authority: owner Q18 and Q19 (2026-11-09), the new JWT payload of 2026-11-13 and
 - [x] Sequence: complete read-only flow and visible note; the type names are read after the page and before COMMIT.
 - [x] Checker: `consent-inquiry-flow` (the shared `author_inquiry_flow` now takes a path and extra heads, plus the type-name checks); consent/03 leaves `LEGACY_TOKEN_SEQUENCES` and `MD_FRONTMATTER_PENDING`.
 - [x] Repair CI for the existing PR #125 by removing consent/02 and consent/03 from `LEGACY_TOKEN_SEQUENCES` and `MD_FRONTMATTER_PENDING`; preflight passes all 68 checkers, `audit_all.py`, and database tests.
-- [ ] Merge latest `main` and run every project checker before pushing the verified update to PR #125.
+- [x] Integrate `origin/main` at `865631e`, preserve PR #120's consent/06–08 removals and PR #125's consent/03 removal from `MD_FRONTMATTER_PENDING`; preflight passes all 68 checkers, `audit_all.py` (0 findings), and `run_db_tests.sh` (ALL PASSED).
 ## e-commerce: product/10-15 template cleanup (type and brand)
 
 Status: Done, waiting for review. Authorized by Josh (owner decisions of 2026-11-13 and 2026-11-14).
@@ -1638,6 +1648,19 @@ Status: Done, waiting for review. Authorized by Josh (owner decisions of 2026-11
 5. [x] All check_docs sub-commands, audit_all, PlantUML syntax, render count and mutation tests.
 
 
+## repository-wide: Barry as Head of Technology, Josh reports to Barry (2026-11-14)
+
+Status: Delivered as one pull request from `chore/barry-head-of-technology`. The registry takes effect only after the owner merges it into origin/main.
+
+- [x] Read the bootstrap, global rules, team registry, named-agent workspace rule and design, and lessons.
+- [x] Review the work of Josh and the team on main (read-only, primary checkout) and report the findings to the owner.
+- [x] Register Barry (role `code-reviewer.md`, title Head of Technology, reports to ittikorn, no capabilities) and change Josh's `reports_to` to `barry`; Josh keeps `delegate-delivery`.
+- [x] Extend the canonical registry test and run the workspace tests and the documentation checkers.
+- [x] Fix the two needle loops of `check_docs.py` (`login-flow`, `logout-flow`) that iterated the letters of a string, by owner order after the review; removing `ambiguous` from the login spec and `Q13` from the logout spec is now rejected.
+- [x] Commit and open one pull request (owner order of 2026-11-14).
+- [ ] Owner decides: whether Barry gets `delegate-delivery`.
+
+Verification: `test_agent_workspace.py` 26 tests OK; `check_docs.py` 66/66 sub-commands OK. `run_db_tests.sh` could not start PostgreSQL in this session, so the database tests were not rerun here (unchanged by this task; the last CI run on main passed).
 
 ### Consent API02 upsert consent — claims, locks, DELETED final and the consent period
 

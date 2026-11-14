@@ -1,3 +1,11 @@
+---
+name: Consent Type Batch Upsert API Specification
+description: Defines the all-or-nothing batch upsert of consent types for a platform administrator with its SQL; read when reviewing or implementing POST v1/consent/type/upsert/batch.
+status: in-review
+approved_by: null
+approved_at: null
+---
+
 # [POST]: v1/consent/type/upsert/batch
 
 | Title       | Description                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                           |
@@ -17,6 +25,13 @@
 | UAT            | https://www.domain.com/api-uat      |
 | PRE-PRODUCTION | https://www.domain.com/api-pre-prod |
 | PRODUCTION     | https://www.domain.com/api          |
+
+- Every consent type follows the rules of the single upsert: unique name among consent types that are not DELETED, required `name`, DELETED is final, delete and archive are rejected while a consent that is not DELETED uses the consent type.
+- The consent types are processed in the request order in one transaction, so the checks of an item see the changes of the items before it.
+- `id` must not be duplicated in the request, and `name` must not be duplicated among the items that are not DELETED (400, E10001).
+- Swapping the names of two consent types in one request is rejected with 409 (E10003) at the first item, because that name is still held by the other consent type when the item is checked.
+- An item without `id` and with `rowStatus` DELETED is rejected with 400 (E10001).
+- The order of the checks, the locks and every outcome is in the sequence diagram.
 
 ---
 
@@ -46,16 +61,6 @@
 | 3   | description    | String       | OPTIONAL  | Consent Type Description (max 1000 characters), Not specified keeps the current description on update, null clears it                                                                                                                                                   | Terms that every customer accepts to use the platform |
 | 4   | isRequired     | Boolean      | OPTIONAL  | Reference data only, the consent decides whether it must be accepted, Defaults to FALSE on insert, Not specified keeps the current value on update                                                                                                                      | true                                                  |
 | 5   | rowStatus      | String       | OPTIONAL  | Row status (ACTIVE, INACTIVE, DELETED, LOCKED, ARCHIVED), Defaults to ACTIVE, Delete when DELETED, Archive when ARCHIVED, DELETED is not allowed when inserting, Delete or archive is allowed only when the consent type is not used by any consent that is not DELETED | ACTIVE                                                |
-
-### Consent Type Rules (same as the single upsert, applied per consent type)
-
-- Every consent type follows the rules of [the single upsert](../06-upsert-consent-type/spec.md#consent-type-rules): unique name among consent types that are not DELETED, required `name`, DELETED is final, delete and archive are rejected while a consent that is not DELETED uses the consent type.
-- The consent types are processed in the request order in one transaction, so the checks of an item see the changes of the items before it. When any item fails the whole request is rolled back and no consent type is changed.
-- `id` must not be duplicated in the request, and `name` must not be duplicated among the items that are not DELETED (400, E10001). The name of a DELETED item is not compared.
-- Swapping the names of two consent types in one request is rejected with 409 (E10003) at the first item, because that name is still held by the other consent type when the item is checked. Rename them in two requests.
-- An item without `id` and with `rowStatus` DELETED is rejected with 400 (E10001).
-- Permission: the same as the single upsert, only a platform administrator can call this API, any other caller gets 403 (E10009). The check is made once for the request, after the existence checks of all items and before the duplicate name and in-use checks, so the 403 message has no item position. Approved by the product owner (answered through the lead SA, 2026-11-06).
-- The response is HTTP 200 for every successful batch, including a batch that deletes.
 
 #### Example Body Parameters
 

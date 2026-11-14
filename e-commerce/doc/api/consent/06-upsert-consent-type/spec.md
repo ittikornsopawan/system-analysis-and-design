@@ -1,3 +1,11 @@
+---
+name: Consent Type Upsert API Specification
+description: Defines the consent type upsert contract (insert, update, delete, archive) for a platform administrator with its SQL; read when reviewing or implementing POST v1/consent/type/upsert.
+status: in-review
+approved_by: null
+approved_at: null
+---
+
 # [POST]: v1/consent/type/upsert
 
 | Title       | Description                                                                                                                                                                                                                                                               |
@@ -17,6 +25,13 @@
 | UAT            | https://www.domain.com/api-uat      |
 | PRE-PRODUCTION | https://www.domain.com/api-pre-prod |
 | PRODUCTION     | https://www.domain.com/api          |
+
+- `name` is unique among consent types that are not DELETED.
+- `name` is required in every request, including a delete and an archive.
+- DELETED is final: a DELETED consent type is never reopened and its `id` counts as not found (404, E10004).
+- A consent type cannot be deleted or archived while any consent that is not DELETED uses it (`consent.t_consent.consent_type_id`), 409 (E10006).
+- Permission: only a platform administrator (a user with an ACTIVE `author.t_user_role` row for the ACTIVE role `PLATFORM_ADMIN`) can change consent types.
+- The order of the checks, the locks and every outcome is in the sequence diagram.
 
 ---
 
@@ -40,16 +55,6 @@
 | 3   | description    | String       | OPTIONAL  | Consent Type Description (max 1000 characters), Not specified keeps the current description on update, null clears it                                                                                                                                                   | Terms that every customer accepts to use the platform |
 | 4   | isRequired     | Boolean      | OPTIONAL  | Reference data only, the consent decides whether it must be accepted, Defaults to FALSE on insert, Not specified keeps the current value on update                                                                                                                      | true                                                  |
 | 5   | rowStatus      | String       | OPTIONAL  | Row status (ACTIVE, INACTIVE, DELETED, LOCKED, ARCHIVED), Defaults to ACTIVE, Delete when DELETED, Archive when ARCHIVED, DELETED is not allowed when inserting, Delete or archive is allowed only when the consent type is not used by any consent that is not DELETED | ACTIVE                                                |
-
-### Consent Type Rules
-
-- `name` is unique among consent types that are not DELETED. The comparison is exact (upper and lower case are different names) and a name held by an INACTIVE, LOCKED or ARCHIVED consent type is still taken (409, E10003). The name of a DELETED consent type can be used again.
-- `name` is required in every request, including a delete and an archive. `description` and `isRequired` are optional.
-- DELETED is final: a DELETED consent type is never reopened and its `id` counts as not found (404, E10004). INACTIVE, LOCKED and ARCHIVED are reversible: an update with `rowStatus` ACTIVE opens the consent type again. `rowStatus` DELETED is rejected with 400 (E10001) when the request inserts a consent type.
-- A consent type cannot be deleted or archived while any consent that is not DELETED uses it (`consent.t_consent.consent_type_id`), 409 (E10006). INACTIVE and LOCKED are allowed even when consents use the consent type, the consents are not changed. A consent type that is not ACTIVE blocks the writes that use it, because a consent is written only with an ACTIVE consent type (404, E10005, see the consent upsert). Nothing is changed in the consents that use it and they can be edited again when this row is ACTIVE.
-- Permission: only a platform administrator (a user with an ACTIVE `author.t_user_role` row for the ACTIVE role `PLATFORM_ADMIN`) can change consent types. Any other caller gets 403 (E10009), after the existence check and before the duplicate name check. Reading is open to every caller with a valid access token (see the inquiry). Approved by the product owner (answered through the lead SA, 2026-11-06).
-- Execution order: validate the request (400) -> existence check (404) -> permission (403, E10009) -> duplicate name check (409, E10003) -> in-use check (409, E10006, only when `rowStatus` is DELETED or ARCHIVED) -> write.
-- HTTP status of the single upsert: Insert 201 Created, Update 200 Ok, Delete 204 No Content (no response body), Archive 200 Ok.
 
 #### Example Body Parameters
 
