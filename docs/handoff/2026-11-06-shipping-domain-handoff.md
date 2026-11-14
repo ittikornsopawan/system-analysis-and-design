@@ -1,3 +1,8 @@
+---
+name: "Hand-off to Tommy: shipping domain (WP3)"
+description: "Historical hand-off of 2026-11-06 from Josh to Tommy for the shipping domain (work package WP3), written as the first prompt of his session; read it only for the history of that assignment."
+---
+
 # Hand-off: โดเมน shipping (WP3) สำหรับ Tommy
 
 วันที่: 2026-11-06 · ผู้ส่งงาน: Josh (lead SA) ร่วมกับเจ้าของงาน · ผู้รับงาน: Tommy (SA)

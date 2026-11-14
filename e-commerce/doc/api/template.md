@@ -1,3 +1,11 @@
+---
+name: "<api-name>"
+description: "<api-description: the purpose of the API and when to read this spec>"
+status: in-review
+approved_by: null
+approved_at: null
+---
+
 # [<api-method>]: <api-endpoint>
 
 | Title       | Description       |

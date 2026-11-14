@@ -7,6 +7,7 @@ Each subcommand returns exit code 0 on pass and prints "FAIL: <reason>" on fail.
 import ast
 import json
 import re
+import subprocess
 import sys
 from pathlib import Path
 
@@ -62,6 +63,10 @@ def read(path: str) -> str:
     """Read a repo-relative file as UTF-8 text."""
     return (ROOT / path).read_text(encoding="utf-8")
 
+def without_frontmatter(md: str) -> str:
+    """The Markdown after its YAML frontmatter (the whole text when there is none)."""
+    return md.split("\n---\n", 1)[1].lstrip("\n") if md.startswith("---\n") and "\n---\n" in md else md
+
 
 def fail(reason: str) -> int:
     print(f"FAIL: {reason}")
@@ -103,7 +108,7 @@ def check_schema() -> int:
         except FileNotFoundError:
             errors.append(f"{path} does not exist")
             continue
-        if not md.startswith(f"# Table: product.{table}\n"):
+        if not without_frontmatter(md).startswith(f"# Table: product.{table}\n"):
             errors.append(f"{path} missing heading '# Table: product.{table}'")
     extra = {"m_product_sku": "combination_key", "m_product_image": "option_value_id"}
     for table in NEW_TABLES + list(extra):
@@ -183,7 +188,7 @@ def check_shop_schema() -> int:
         except FileNotFoundError:
             errors.append(f"{path} does not exist")
             continue
-        if not md.startswith(f"# Table: {schema}.{table}\n"):
+        if not without_frontmatter(md).startswith(f"# Table: {schema}.{table}\n"):
             errors.append(f"{path} missing heading '# Table: {schema}.{table}'")
         for bad in table_lines_aligned(md):
             errors.append(f"{path} misaligned table: {bad[:40]}")
@@ -8373,6 +8378,136 @@ def check_spec_template() -> int:
 
 
 COMMANDS["spec-template"] = check_spec_template
+
+
+# ---------------------------------------------------------------- Markdown frontmatter (.agents/rules/markdown.md)
+# The specs that still have no frontmatter. The owner decided on 2026-11-14 that they get `status: in-review`, `approved_by: null` and
+# `approved_at: null`; a file that passes must leave this list (the checker asks for it).
+MD_FRONTMATTER_PENDING = (
+    "docs/superpowers/specs/2026-11-05-product-sku-multi-level-design.md",
+    "docs/superpowers/specs/2026-11-06-cart-design.md",
+    "docs/superpowers/specs/2026-11-06-order-design.md",
+    "docs/superpowers/specs/2026-11-06-payment-design.md",
+    "docs/superpowers/specs/2026-11-06-shop-lot-pricing-and-storefront-design.md",
+    "e-commerce/doc/api/campaign/01-upsert-campaign/spec.md",
+    "e-commerce/doc/api/campaign/02-inquiry-campaign/spec.md",
+    "e-commerce/doc/api/campaign/03-inquiry-campaign-ledger/spec.md",
+    "e-commerce/doc/api/cart/01-upsert-cart-item/spec.md",
+    "e-commerce/doc/api/cart/02-upsert-cart-item-batch/spec.md",
+    "e-commerce/doc/api/cart/03-inquiry-cart/spec.md",
+    "e-commerce/doc/api/consent/02-upsert-consent/spec.md",
+    "e-commerce/doc/api/consent/03-inquiry-consent/spec.md",
+    "e-commerce/doc/api/consent/06-upsert-consent-type/spec.md",
+    "e-commerce/doc/api/consent/07-upsert-consent-type-batch/spec.md",
+    "e-commerce/doc/api/consent/08-inquiry-consent-type/spec.md",
+    "e-commerce/doc/api/payment/01-start-payment/spec.md",
+    "e-commerce/doc/api/payment/02-stripe-webhook/spec.md",
+    "e-commerce/doc/api/payment/03-inquiry-payment/spec.md",
+    "e-commerce/doc/api/product/04-upsert-product-category/spec.md",
+    "e-commerce/doc/api/product/05-inquiry-product-category/spec.md",
+    "e-commerce/doc/api/product/06-upsert-product-category-batch/spec.md",
+    "e-commerce/doc/api/product/07-upsert-product-category-attribute/spec.md",
+    "e-commerce/doc/api/product/08-inquiry-product-category-attribute/spec.md",
+    "e-commerce/doc/api/product/09-upsert-product-category-attribute-batch/spec.md",
+    "e-commerce/doc/api/product/10-upsert-product-type/spec.md",
+    "e-commerce/doc/api/product/11-upsert-product-type-batch/spec.md",
+    "e-commerce/doc/api/product/12-inquiry-product-type/spec.md",
+    "e-commerce/doc/api/product/13-upsert-product-brand/spec.md",
+    "e-commerce/doc/api/product/14-upsert-product-brand-batch/spec.md",
+    "e-commerce/doc/api/product/15-inquiry-product-brand/spec.md",
+    "e-commerce/doc/api/sales/01-inquiry-checkout/spec.md",
+    "e-commerce/doc/api/sales/02-create-order/spec.md",
+    "e-commerce/doc/api/sales/03-inquiry-order/spec.md",
+    "e-commerce/doc/api/shipping/01-create-shipping/spec.md",
+    "e-commerce/doc/api/shipping/02-update-shipping-status/spec.md",
+    "e-commerce/doc/api/shipping/03-upsert-shipping-stop/spec.md",
+    "e-commerce/doc/api/shipping/04-inquiry-shop-shipping/spec.md",
+    "e-commerce/doc/api/shipping/05-inquiry-shipping/spec.md",
+    "e-commerce/doc/api/shipping/06-confirm-delivery/spec.md",
+    "e-commerce/doc/api/shop/01-upsert-shop-product-sku/spec.md",
+    "e-commerce/doc/api/shop/02-upsert-shop-product-sku-batch/spec.md",
+    "e-commerce/doc/api/shop/03-inquiry-shop-product-sku/spec.md",
+    "e-commerce/doc/api/shop/04-inquiry-storefront-product/spec.md",
+    "e-commerce/doc/api/shop/05-upsert-shop-type/spec.md",
+    "e-commerce/doc/api/shop/06-upsert-shop-type-batch/spec.md",
+    "e-commerce/doc/api/shop/07-inquiry-shop-type/spec.md",
+    "e-commerce/doc/api/shop/08-upsert-shop/spec.md",
+    "e-commerce/doc/api/shop/09-upsert-shop-batch/spec.md",
+    "e-commerce/doc/api/shop/10-inquiry-shop/spec.md",
+    "e-commerce/doc/api/shop/11-upsert-shop-user/spec.md",
+    "e-commerce/doc/api/shop/12-upsert-shop-user-batch/spec.md",
+    "e-commerce/doc/api/shop/13-inquiry-shop-user/spec.md",
+    "e-commerce/doc/api/shop/14-inquiry-storefront-shop-product/spec.md",
+    "e-commerce/doc/api/shop/15-upsert-shop-product-review/spec.md",
+    "e-commerce/doc/api/shop/16-inquiry-storefront-product-review/spec.md",
+)
+MD_STATUSES = ("draft", "in-review", "approved", "superseded")
+
+
+def markdown_files() -> list[str]:
+    """Every tracked human-authored Markdown file (generated, vendor and ignored files such as .workspace and repository/ are not tracked)."""
+    out = subprocess.run(["git", "ls-files", "*.md"], cwd=ROOT, capture_output=True, text=True, check=True).stdout
+    return sorted(out.split())
+
+
+def is_spec_markdown(path: str) -> bool:
+    return bool(re.match(r"e-commerce/doc/api/[^/]+/[^/]+/spec\.md$", path)) or path.startswith("docs/superpowers/specs/")
+
+
+def frontmatter_errors(path: str, md: str) -> list[str]:
+    """name and description for every file, status, approved_by and approved_at for a specification."""
+    if not md.startswith("---\n") or "\n---" not in md[4:]:
+        return ["does not start with YAML frontmatter"]
+    fields = {}
+    for line in md[4:].split("\n---", 1)[0].split("\n"):
+        match = re.match(r"^([A-Za-z_][\w-]*):\s*(.*)$", line)
+        if match:
+            fields[match.group(1)] = match.group(2).strip()
+    errors = []
+    for key in ("name", "description"):
+        value = fields.get(key, "")
+        if value[:1] == '"':
+            try:
+                value = json.loads(value)
+            except ValueError:
+                errors.append(f"frontmatter {key} is not a valid quoted string")
+                continue
+        if not value:
+            errors.append(f"frontmatter has no {key}")
+    if is_spec_markdown(path):
+        status = fields.get("status")
+        if status not in MD_STATUSES:
+            errors.append(f"specification status must be one of {', '.join(MD_STATUSES)}")
+        for key in ("approved_by", "approved_at"):
+            if key not in fields:
+                errors.append(f"specification has no {key}")
+        if status in ("draft", "in-review") and (fields.get("approved_by") != "null" or fields.get("approved_at") != "null"):
+            errors.append("approved_by and approved_at stay null while the specification is not approved")
+        if status == "approved" and "null" in (fields.get("approved_by"), fields.get("approved_at")):
+            errors.append("an approved specification needs approved_by and approved_at")
+    return errors
+
+
+def check_md_frontmatter() -> int:
+    errors = []
+    paths = markdown_files()
+    for entry in MD_FRONTMATTER_PENDING:
+        if entry not in paths:
+            errors.append(f"MD_FRONTMATTER_PENDING lists {entry}, which is not a tracked Markdown file")
+    for path in paths:
+        found = frontmatter_errors(path, (ROOT / path).read_text(encoding="utf-8"))
+        if path in MD_FRONTMATTER_PENDING:
+            if not found:
+                errors.append(f"{path}: already has the frontmatter, remove it from MD_FRONTMATTER_PENDING")
+        else:
+            errors.extend(f"{path}: {error}" for error in found)
+    if errors:
+        return fail("; ".join(errors))
+    print(f"OK: md-frontmatter ({len(paths)} Markdown files; {len(MD_FRONTMATTER_PENDING)} specs without frontmatter yet)")
+    return 0
+
+
+COMMANDS["md-frontmatter"] = check_md_frontmatter
 
 
 def main(argv: list[str]) -> int:

@@ -1,3 +1,8 @@
+---
+name: "Schema doc: public.t_key"
+description: "Columns, keys, constraints and indexes of the table public.t_key. Transaction table of the `public` schema (defined in `db/migrations/up/00-common.schema.up.sql`). Read it when you write or review a migration, a query or an API spec that uses this table."
+---
+
 # Table: public.t_key
 
 Description: Transaction table of the `public` schema (defined in `db/migrations/up/00-common.schema.up.sql`).

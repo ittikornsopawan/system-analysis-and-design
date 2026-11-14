@@ -1,3 +1,8 @@
+---
+name: "API roadmap"
+description: "Roadmap of 2026-11-06 that orders the missing APIs under e-commerce/doc/api into work packages (WP); read it to see which APIs were planned, in which order and why."
+---
+
 # แผนทำ API ที่เหลือ (roadmap)
 
 วันที่: 2026-11-06 · ผู้เขียน: Josh · สถานะ: ฉบับร่าง รอเจ้าของงานเลือกลำดับและตอบคำถามหัวข้อ 6

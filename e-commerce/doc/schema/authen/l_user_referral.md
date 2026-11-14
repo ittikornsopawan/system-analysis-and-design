@@ -1,3 +1,8 @@
+---
+name: "Schema doc: authen.l_user_referral"
+description: "Columns, keys, constraints and indexes of the table authen.l_user_referral. Log table of the `authen` schema (defined in `db/migrations/up/01-authen.schema.up.sql`). Read it when you write or review a migration, a query or an API spec that uses this table."
+---
+
 # Table: authen.l_user_referral
 
 Description: Log table of the `authen` schema (defined in `db/migrations/up/01-authen.schema.up.sql`).

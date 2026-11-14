@@ -1,3 +1,8 @@
+---
+name: "Hand-off: shop domain"
+description: "Historical hand-off of 2026-11-06 from Josh to the junior SA for the remaining work of the shop domain; read it only for the history of that assignment."
+---
+
 # Hand-off: โดเมน shop (สำหรับ SA jr)
 
 วันที่: 2026-11-06 · ผู้ส่งงาน: Josh (Claude) ร่วมกับเจ้าของงาน · ผู้รับงาน: SA jr
