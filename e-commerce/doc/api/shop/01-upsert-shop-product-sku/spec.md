@@ -1,3 +1,11 @@
+---
+name: "Upsert Shop Product SKU API"
+description: "Insert, update, delete or archive a SKU of a product sold by a shop together with its lots. Read it when you implement, review or test POST v1/shop/product-sku/upsert."
+status: in-review
+approved_by: null
+approved_at: null
+---
+
 # [POST]: v1/shop/product-sku/upsert
 
 | Title       | Description                                                                                                                                                                                                                                                                                                                                                        |
@@ -17,6 +25,18 @@
 | UAT            | https://www.domain.com/api-uat      |
 | PRE-PRODUCTION | https://www.domain.com/api-pre-prod |
 | PRODUCTION     | https://www.domain.com/api          |
+
+- The system keeps one row per (shopId, productId, skuId) in `shop.t_shop_product_sku`. When `id` is not specified and that combination already exists the request is rejected with 409 (E10003). The shop product (`shop.t_shop_product`, one row per shop and product) is created automatically when it does not exist yet.
+- `skuId` must be an ACTIVE SKU of the product (`product.m_product_sku`), and `productId` must be an ACTIVE product, otherwise 404 (E10005).
+- A lot cannot be sold below its cost: `sellingPrice` must be greater than or equal to `costPrice` (400, E10001), the database enforces it with the check `ck_t_shop_product_sku_lot_price_not_below_cost`. This keeps the gross profit of an order item from being negative (approved by the product owner).
+- Price, cost and stock live on the lot only. A shop product SKU has any number of lots and at most one lot is on sale at a time (`isOnSale`). Customers see and buy at the selling price of the lot that is on sale, an order item takes all of its quantity from that one lot and cannot be larger than the remaining quantity of the lot.
+- When `lots` is specified every lot in the list is inserted when `id` is not specified, updated when `id` is specified and deleted or archived by `rowStatus`. Lots that are not in the list are kept, the system never deletes a lot by omission because lots are the cost history of sold items. When `lots` is not specified the lots are not changed.
+- More than one lot with `isOnSale = true` in the request is a 400. Setting `isOnSale = true` closes the lot that is on sale now in the same transaction (the shop switches the lot). A lot cannot be put on sale when it is not ACTIVE or its quantity is 0 (400). When the lot on sale runs out of stock the SKU is out of stock until the shop puts another lot on sale, the system never opens the next lot by itself.
+- A lot that is on sale cannot be deleted or archived (409, E10006, put another lot on sale or close it first), and a lot that is referenced by order items (`sales.t_order_item.lot_id`) cannot be deleted (409, E10006). Archiving a lot that is not on sale is allowed.
+- Deleting a shop product SKU (`rowStatus = DELETED`) soft-deletes all of its lots and is rejected with 409 (E10006) when any of its lots is referenced by order items. Archiving a shop product SKU keeps its lots but none of them can be on sale.
+- `gross_margin`, `share_margin` and `platform_margin` of a lot are calculated by the system from the costs, the selling price and the margin rates of the shop, they are not part of the request.
+- Permission: the caller (the user of the access token, never a field of the request) must be a member of the shop, an ADMIN or a STAFF in `shop.t_shop_user` that is ACTIVE, or a platform administrator (a user that has the role `PLATFORM_ADMIN`), otherwise the request is rejected with 403 (E10009) and nothing is written. The rule covers every kind of write of this API (insert, update, delete, archive and the lots). The shop must be ACTIVE (see "Check shop"), a shop that is INACTIVE, LOCKED, ARCHIVED or DELETED counts as not found (404, E10005). This permission model (the role PLATFORM_ADMIN, the members of the shop and the code E10009) was approved by the product owner, the choice that STAFF may also manage SKUs and lots is a decision of the lead SA, restrict it to ADMIN if STAFF must not change prices.
+- HTTP status of the single upsert: Insert 201 Created (a new shop product SKU), Update 200 Ok (including changes of lots only), Delete 204 No Content (no response body), Archive 200 Ok.
 
 ---
 
@@ -56,21 +76,6 @@
 | 5   | quantity       | Numeric      | MANDATORY | Remaining quantity of the lot (>= 0), Replaces the current remaining quantity when updating                                                                                                                | 50                                   |
 | 6   | isOnSale       | Boolean      | OPTIONAL  | The lot that is sold now, Defaults to FALSE, Setting TRUE closes the lot that is on sale now, The lot must be ACTIVE and its quantity must be greater than 0                                               | true                                 |
 | 7   | rowStatus      | String       | OPTIONAL  | Row status (ACTIVE, INACTIVE, DELETED, LOCKED, ARCHIVED), Defaults to ACTIVE, Delete when DELETED (HTTP 204 for the SKU only, see rules), Archive when ARCHIVED, A lot that is not ACTIVE is never on sale | ACTIVE                               |
-
-### Lot Rules
-
-- The system keeps one row per (shopId, productId, skuId) in `shop.t_shop_product_sku`. When `id` is not specified and that combination already exists the request is rejected with 409 (E10003). The shop product (`shop.t_shop_product`, one row per shop and product) is created automatically when it does not exist yet.
-- `skuId` must be an ACTIVE SKU of the product (`product.m_product_sku`), and `productId` must be an ACTIVE product, otherwise 404 (E10005).
-- A lot cannot be sold below its cost: `sellingPrice` must be greater than or equal to `costPrice` (400, E10001), the database enforces it with the check `ck_t_shop_product_sku_lot_price_not_below_cost`. This keeps the gross profit of an order item from being negative (approved by the product owner).
-- Price, cost and stock live on the lot only. A shop product SKU has any number of lots and at most one lot is on sale at a time (`isOnSale`). Customers see and buy at the selling price of the lot that is on sale, an order item takes all of its quantity from that one lot and cannot be larger than the remaining quantity of the lot.
-- When `lots` is specified every lot in the list is inserted when `id` is not specified, updated when `id` is specified and deleted or archived by `rowStatus`. Lots that are not in the list are kept, the system never deletes a lot by omission because lots are the cost history of sold items. When `lots` is not specified the lots are not changed.
-- More than one lot with `isOnSale = true` in the request is a 400. Setting `isOnSale = true` closes the lot that is on sale now in the same transaction (the shop switches the lot). A lot cannot be put on sale when it is not ACTIVE or its quantity is 0 (400). When the lot on sale runs out of stock the SKU is out of stock until the shop puts another lot on sale, the system never opens the next lot by itself.
-- A lot that is on sale cannot be deleted or archived (409, E10006, put another lot on sale or close it first), and a lot that is referenced by order items (`sales.t_order_item.lot_id`) cannot be deleted (409, E10006). Archiving a lot that is not on sale is allowed.
-- Deleting a shop product SKU (`rowStatus = DELETED`) soft-deletes all of its lots and is rejected with 409 (E10006) when any of its lots is referenced by order items. Archiving a shop product SKU keeps its lots but none of them can be on sale.
-- `gross_margin`, `share_margin` and `platform_margin` of a lot are calculated by the system from the costs, the selling price and the margin rates of the shop, they are not part of the request.
-- Permission: the caller (the user of the access token, never a field of the request) must be a member of the shop, an ADMIN or a STAFF in `shop.t_shop_user` that is ACTIVE, or a platform administrator (a user that has the role `PLATFORM_ADMIN`), otherwise the request is rejected with 403 (E10009) and nothing is written. The rule covers every kind of write of this API (insert, update, delete, archive and the lots). The shop must be ACTIVE (see "Check shop"), a shop that is INACTIVE, LOCKED, ARCHIVED or DELETED counts as not found (404, E10005). This permission model (the role PLATFORM_ADMIN, the members of the shop and the code E10009) was approved by the product owner, the choice that STAFF may also manage SKUs and lots is a decision of the lead SA, restrict it to ADMIN if STAFF must not change prices.
-- Execution order: validate the request (400) -> existence checks (404) -> permission (403) -> conflict and in-use checks (409) -> write the shop product, the shop product SKU, close the lot on sale when a lot is put on sale, then write the lots. The whole request is one transaction.
-- HTTP status of the single upsert: Insert 201 Created (a new shop product SKU), Update 200 Ok (including changes of lots only), Delete 204 No Content (no response body), Archive 200 Ok.
 
 #### Example Body Parameters
 

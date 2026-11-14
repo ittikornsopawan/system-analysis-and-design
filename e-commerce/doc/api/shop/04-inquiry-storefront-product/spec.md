@@ -1,3 +1,11 @@
+---
+name: "Inquiry Storefront Product API"
+description: "Inquiry the product page of a product sold by a shop, with levels, option values and their images, every SKU with the selling price of the lot that is on sale and the stock status, the price range and which option values are available. Read it when you implement, review or test GET v1/storefront/product."
+status: in-review
+approved_by: null
+approved_at: null
+---
+
 # [GET]: v1/storefront/product
 
 | Title       | Description                                                                                                                                                                                                                                                                                                                                                                           |
@@ -17,6 +25,12 @@
 | UAT            | https://www.domain.com/api-uat      |
 | PRE-PRODUCTION | https://www.domain.com/api-pre-prod |
 | PRODUCTION     | https://www.domain.com/api          |
+
+- Only a product that is ACTIVE, sold by a shop that is ACTIVE (`shop.m_shop`), listed by the shop (`shop.t_shop_product` ACTIVE) and has at least one SKU that is ACTIVE for the shop and for the product is returned, otherwise 404 (E10004). A shop that is INACTIVE, LOCKED, ARCHIVED or DELETED has no page, its products cannot be seen or bought (approved by the product owner). The page is found by `productId` and `shopId`, the `slug` is only part of the web address `/{productId}/{slug}`, the web page redirects to the current slug when the slug in the address is different.
+- The selling price of a SKU is the selling price of its lot that is on sale (`is_on_sale`), the stock status comes from the remaining quantity of that lot. A SKU with no lot on sale, or whose lot on sale has quantity 0, is OUT_OF_STOCK and has `sellingPrice` null. The API never returns cost price, margins or the quantity of lots that are not on sale.
+- When the customer has not selected every level yet the client uses the SKUs whose `optionValueIds` contain the selected values: the price range is the lowest and highest `sellingPrice` of those SKUs that are IN_STOCK, `priceFrom` and `priceTo` are the same range for the whole product.
+- Image shown for a selection is the image of the lowest level selected value that has an image, otherwise the product level images.
+- A product without level has one default SKU with `combinationKey` empty and `optionValueIds` empty.
 
 ---
 
@@ -131,14 +145,6 @@ curl --location --request GET 'https://www.domain.com/api-dev/v1/storefront/prod
 | 6   | sellingPrice     | Numeric               | OPTIONAL  | Sequence Diagram | data.skus[].sellingPrice     | Selling price of the lot that is on sale, Null when the SKU has no lot on sale                     | 199.00                                                                    |
 | 7   | stockStatus      | String                | MANDATORY | Sequence Diagram | data.skus[].stockStatus      | IN_STOCK when a lot is on sale and its quantity is greater than 0, otherwise OUT_OF_STOCK          | IN_STOCK                                                                  |
 | 8   | maxOrderQuantity | Numeric               | MANDATORY | Sequence Diagram | data.skus[].maxOrderQuantity | Largest quantity of one order item, The remaining quantity of the lot on sale, 0 when OUT_OF_STOCK | 80                                                                        |
-
-### Page Rules
-
-- Only a product that is ACTIVE, sold by a shop that is ACTIVE (`shop.m_shop`), listed by the shop (`shop.t_shop_product` ACTIVE) and has at least one SKU that is ACTIVE for the shop and for the product is returned, otherwise 404 (E10004). A shop that is INACTIVE, LOCKED, ARCHIVED or DELETED has no page, its products cannot be seen or bought (approved by the product owner). The page is found by `productId` and `shopId`, the `slug` is only part of the web address `/{productId}/{slug}`, the web page redirects to the current slug when the slug in the address is different.
-- The selling price of a SKU is the selling price of its lot that is on sale (`is_on_sale`), the stock status comes from the remaining quantity of that lot. A SKU with no lot on sale, or whose lot on sale has quantity 0, is OUT_OF_STOCK and has `sellingPrice` null. The API never returns cost price, margins or the quantity of lots that are not on sale.
-- When the customer has not selected every level yet the client uses the SKUs whose `optionValueIds` contain the selected values: the price range is the lowest and highest `sellingPrice` of those SKUs that are IN_STOCK, `priceFrom` and `priceTo` are the same range for the whole product.
-- Image shown for a selection is the image of the lowest level selected value that has an image, otherwise the product level images.
-- A product without level has one default SKU with `combinationKey` empty and `optionValueIds` empty.
 
 ### Example Response Parameters
 
