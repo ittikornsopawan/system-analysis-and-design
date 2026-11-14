@@ -1596,3 +1596,12 @@ Authority: owner decision that API specs follow `e-commerce/doc/api/template.md`
 - [x] Remove every `### ... Rules` section and the non-object `####` blocks; short bullets under `## Domain` (links turned into text).
 - [x] Visible short notes in each sequence: execution/lock order after `activate app`, then notes after the validation step, after `BEGIN`, before the success response; whole bullets are kept except a first sentence that a Domain bullet states in full.
 - [x] Needles: the nine flow checkers get a second loop over the whitespace-joined sequence text; `author-spec` gets `AUTHOR_SEQUENCE_NEEDLES` and `AUTHOR_REMOVED_NEEDLES` (the `### ... Rules` headings); the Q24 guards and the claims wording of the shared inquiry helper check the sequence note; the twelve files leave `LEGACY_SPEC_TEMPLATE`.
+
+### Consent API02 upsert consent — claims, locks, DELETED final and the consent period
+
+Authority: owner answers of 2026-11-13 ("ใช้คำแนะนำทั้งหมด"), the technical corrections of 2026-11-08 confirmed by Josh (SA Lead), the new JWT payload of 2026-11-13 and the template/frontmatter decisions; assignment `authorized_by: josh`, delivery `open-pr`. The spec follows the template from the start (short Domain bullets, visible note, frontmatter).
+
+- [x] Spec: frontmatter; Domain bullets; verified JWT roles claim replaces the two live-grant queries (`PLATFORM_ADMIN` exact, 403 E10009); DELETED is final (404 E10004); `expiredAt` later than `effectiveAt` (400); delete/archive not blocked by user answers; any different `consentVersion` (at most 8 characters) with the Q8 effect; `code` plainly UNIQUE including DELETED rows (409 E10003); new examples (period 400, consent type 404 E10005, 500).
+- [x] SQL: lock the caller user, current credential, lock the consent type, lock the target consent (`FOR UPDATE`, DELETED excluded), duplicate code check without a status filter and null-safe, guarded insert/update with bound server time.
+- [x] Sequence: complete flow and visible note; the lock order is caller user, consent type, consent.
+- [x] Checker: slim `consent-upsert-flow`; consent/02 leaves `ADMIN_WRITE_SPECS`, `LEGACY_SEQUENCES`, `LEGACY_TOKEN_SEQUENCES`, `LEGACY_SPEC_TEMPLATE` and `MD_FRONTMATTER_PENDING`.
