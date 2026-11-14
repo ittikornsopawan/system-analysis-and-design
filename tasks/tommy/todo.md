@@ -19,3 +19,17 @@ Assignment: agent `tommy`, delivery `open-pr`, authorized by `josh`, workspace `
 - [x] Correct the line of `.agents/skills/data-modeling/SKILL.md` that said the files copied from `assets/` have no frontmatter.
 - [x] Run every check. Evidence: `check_docs.py` 69/69 OK, `audit_all.py` 53 tables audited and 0 findings, `run_db_tests.sh` ALL PASSED.
 - [ ] Open the pull request with `commit-and-pr`, tell the lead SA when CI is green, then suspend. Next: the five specs of `docs/superpowers/specs` that still have no frontmatter, when the owner decides their status.
+
+## e-commerce: spec template and frontmatter, shop 05 to 10
+
+Owner: tommy
+Status: In review (pull request open)
+Created at: 2026-11-14T18:15:43+07:00
+Started at: 2026-11-14T18:15:43+07:00
+
+Assignment: agent `tommy`, delivery `open-pr`, authorized by `josh`, workspace `.workspace/tommy`, branch `docs/tommy-spec-template-shop-2`, scopes `e-commerce/doc/api/shop/05-upsert-shop-type` to `10-inquiry-shop`, `e-commerce/db/tests/check_docs.py`, `tasks/tommy`. This is the second of three shop PRs.
+
+- [x] Remove `### Shop Type Rules` (shop/05, shop/06), `### Shop Rules` (shop/08, shop/09) and `### Shop Inquiry Rules` (shop/10); the rules are short bullets under `## Domain`, the order of the checks is a note of `sequence.wsd`; the links to the single upsert become plain words; no SQL and no behavior is changed (the platform administrator check of the shop APIs stays as it is). Evidence: `verify_seq.py` OK for the six folders, strict SQL parity and render.
+- [x] Add the frontmatter (`status: in-review`) to the six specs; remove them from `LEGACY_SPEC_TEMPLATE` and `MD_FRONTMATTER_PENDING`; the shop type, shop and admin write checkers search the spec and its sequence note.
+- [x] Run every check. Evidence: see the pull request.
+- [ ] Open the pull request with `commit-and-pr`, tell the lead SA when CI is green, then suspend. Next: shop 11 to 16.

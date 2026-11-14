@@ -1,3 +1,11 @@
+---
+name: "Inquiry Shop API"
+description: "Inquiry the list of shops with their shop type and images, with paging, search and filters. Read it when you implement, review or test GET v1/shop."
+status: in-review
+approved_by: null
+approved_at: null
+---
+
 # [GET]: v1/shop
 
 | Title       | Description                                                                                                                                                        |
@@ -17,6 +25,12 @@
 | UAT            | https://www.domain.com/api-uat      |
 | PRE-PRODUCTION | https://www.domain.com/api-pre-prod |
 | PRODUCTION     | https://www.domain.com/api          |
+
+- Shops with `rowStatus` DELETED and images with `rowStatus` DELETED are never returned. INACTIVE, LOCKED and ARCHIVED shops and images are returned with their `rowStatus`.
+- `images` is ordered by `type` (alphabetical: BANNER, LOGO, WALLPAPER), then `seq`, then creation time, then `id` (so images with the same `seq` always come in the same order).
+- `platformMarginRate` and `shopMarginRate` are returned only for the shops that the caller is a member of (a row of `shop.t_shop_user` with the role ADMIN or STAFF that is ACTIVE) and to a platform administrator (a user that has the role `PLATFORM_ADMIN`). For every other shop of the same list both fields are null and the keys are kept. This rule was approved by the product owner.
+- The caller of the examples is an ACTIVE member of the shop `5a1b2c3d-4e5f-4a6b-8c7d-9e0f1a2b3c4d` and is not a platform administrator, so the margin rates of the other shops are null.
+- The public shop page of a customer is not served by this API (it needs no access token).
 
 ---
 
@@ -40,14 +54,6 @@
 | 4   | pageSize       | Numeric      | OPTIONAL | Number of items per page (max 100), Defaults to 10                                                     | 10                                   |
 | 5   | search         | String       | OPTIONAL | Search by shop name or shop description                                                                | fashion                              |
 | 6   | rowStatus      | String       | OPTIONAL | Row status filter (ACTIVE, INACTIVE, LOCKED, ARCHIVED), All statuses except DELETED when not specified | ACTIVE                               |
-
-### Shop Inquiry Rules
-
-- Shops with `rowStatus` DELETED and images with `rowStatus` DELETED are never returned. INACTIVE, LOCKED and ARCHIVED shops and images are returned with their `rowStatus`.
-- `images` is ordered by `type` (alphabetical: BANNER, LOGO, WALLPAPER), then `seq`, then creation time, then `id` (so images with the same `seq` always come in the same order).
-- `platformMarginRate` and `shopMarginRate` are returned only for the shops that the caller is a member of (a row of `shop.t_shop_user` with the role ADMIN or STAFF that is ACTIVE) and to a platform administrator (a user that has the role `PLATFORM_ADMIN`). For every other shop of the same list both fields are null and the keys are kept. This rule was approved by the product owner.
-- The caller of the examples is an ACTIVE member of the shop `5a1b2c3d-4e5f-4a6b-8c7d-9e0f1a2b3c4d` and is not a platform administrator, so the margin rates of the other shops are null.
-- The public shop page of a customer is not served by this API (it needs no access token).
 
 ## Example Request
 

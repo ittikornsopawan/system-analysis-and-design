@@ -1176,18 +1176,20 @@ def check_shop_type_spec() -> int:
     if errors:
         return fail("; ".join(errors))
     needles = {
-        "05": ["# [POST]: v1/shop/type/upsert", "### Shop Type Rules", "#### QUERY - Check shop in use", "AND s.row_status <> 'DELETED'",
+        "05": ["# [POST]: v1/shop/type/upsert", "- `name` is unique among shop types that are not DELETED", "#### QUERY - Check shop in use", "AND s.row_status <> 'DELETED'",
                "AND st.row_status <> 'DELETED'\nAND st.id <> '<sequence.id>'", "(../../../schema/shop/m_shop_type.md)",
                "(../../../schema/shop/m_shop.md)", "Shop type name already exists.", "Shop type is used by shops.", "Shop type not found.",
                "Row status must not be DELETED when inserting a shop type.", "E10003", "E10004", "E10006", "E90001", "Insert Shop Type Success"],
-        "06": ["# [POST]: v1/shop/type/upsert/batch", "### Shop Type Rules (same as the single upsert, applied per shop type)", "#### QUERY - Check shop in use", "shopTypes[2]: Id is duplicated with shopTypes[1].",
+        "06": ["# [POST]: v1/shop/type/upsert/batch", "- Every shop type follows the rules of the single upsert (shop/05)", "#### QUERY - Check shop in use", "shopTypes[2]: Id is duplicated with shopTypes[1].",
                "shopTypes[2]: Name is duplicated with shopTypes[0].", "Shop types must contain 1 to 100 items.", "Swapping the names",
                "shopTypes[2]: Shop type is used by shops.", "AND st.row_status <> 'DELETED'\nAND st.id <> '<sequence.shopTypes.id>'"],
         "07": ["# [GET]: v1/shop/type", "#### QUERY - Get shop types", "#### QUERY - Get total items", "rowStatus", "ILIKE",
                "Page Index and Page Size must be greater than 0", "Row status must be one of ACTIVE, INACTIVE, LOCKED, ARCHIVED."],
     }
     for key, need in needles.items():
-        for missing in missing_needles(mds[key], need):
+        # rules that moved into a note of the sequence diagram are searched there, one line per wrapped note
+        seq = re.sub(r"\n\s+", " ", read(SHOP_TYPE_SPECS[key].replace("spec.md", "sequence.wsd")))
+        for missing in missing_needles(mds[key] + "\n" + seq, need):
             errors.append(f"{SHOP_TYPE_SPECS[key]} missing: {missing!r}")
     if errors:
         return fail("; ".join(errors))
@@ -1434,7 +1436,7 @@ def check_shop_profile_spec() -> int:
     if errors:
         return fail("; ".join(errors))
     needles = {
-        "08": ["# [POST]: v1/shop/upsert", "### Shop Rules", "#### Image Object", "#### QUERY - Check shop products in use", "#### QUERY - Check shop orders in use",
+        "08": ["# [POST]: v1/shop/upsert", "- `name` is unique among shops that are not DELETED", "#### Image Object", "#### QUERY - Check shop products in use", "#### QUERY - Check shop orders in use",
                "#### INSERT - Add the caller as ADMIN of the new shop", "#### QUERY - Check platform administrator", "#### QUERY - Get next seq of the image type",
                "#### UPDATE - Delete the images of a deleted shop", "AND s.row_status <> 'DELETED'\nAND s.id <> '<sequence.id>'", "(../../../schema/shop/m_shop.md)",
                "(../../../schema/shop/m_shop_image.md)", "(../../../schema/shop/m_shop_type.md)", "(../../../schema/shop/t_shop_user.md)", "(../../../schema/sales/t_order.md)",
@@ -1443,16 +1445,17 @@ def check_shop_profile_spec() -> int:
                "The shop already has a LOGO image, update it with its id or delete it in the same request.", "A shop can have at most 10 BANNER images.",
                "Only one LOGO image and one WALLPAPER image are allowed in the request.", "never changes the lots that already exist",
                "approved by the product owner", "This permission model (the role `PLATFORM_ADMIN`, the ADMIN of the shop and the code E10009) was approved by the product owner.", "ck_m_shop_margin_rate_total", "E10003", "E10004", "E10005", "E10006", "E10009", "E90001", "Insert Shop Success"],
-        "09": ["# [POST]: v1/shop/upsert/batch", "### Shop Rules (same as the single upsert, applied per shop)", "#### Shop Object", "#### Image Object", "shops[2]: Id is duplicated with shops[1].",
+        "09": ["# [POST]: v1/shop/upsert/batch", "- Every shop follows the rules of the single upsert (shop/08)", "#### Shop Object", "#### Image Object", "shops[2]: Id is duplicated with shops[1].",
                "shops[2]: Name is duplicated with shops[0].", "Shops must contain 1 to 100 items.", "Swapping the names", "shops[2]: Shop is used by products or orders.",
                "shops[1].images[0]: Shop image not found.", "#### QUERY - Check shop orders in use", "approved by the product owner", "This permission model (the role `PLATFORM_ADMIN`, the ADMIN of the shop and the code E10009) was approved by the product owner.", "never changes the lots that already exist"],
-        "10": ["# [GET]: v1/shop", "### Shop Inquiry Rules", "#### Shop Object", "#### Image Object", "#### QUERY - Get shops", "#### QUERY - Get total items",
+        "10": ["# [GET]: v1/shop", "- Shops with `rowStatus` DELETED and images with `rowStatus` DELETED are never returned", "#### Shop Object", "#### Image Object", "#### QUERY - Get shops", "#### QUERY - Get total items",
                "#### QUERY - Get shop type names", "#### QUERY - Get shop images", "#### QUERY - Check shop members", "#### QUERY - Check platform administrator",
                "(../../../schema/shop/t_shop_user.md)", "(../../../schema/author/t_user_role.md)", "approved by the product owner", "Null when the caller is not an ACTIVE member", "ORDER BY si.type, si.seq, si.created_at, si.id", "then creation time, then `id`",
                "Row status must be one of ACTIVE, INACTIVE, LOCKED, ARCHIVED.", "Page Index and Page Size must be greater than 0", "ILIKE", "typeName"],
     }
     for key, need in needles.items():
-        for missing in missing_needles(mds[key], need):
+        seq = re.sub(r"\n\s+", " ", read(SHOP_PROFILE_SPECS[key].replace("spec.md", "sequence.wsd")))
+        for missing in missing_needles(mds[key] + "\n" + seq, need):
             errors.append(f"{SHOP_PROFILE_SPECS[key]} missing: {missing!r}")
     if errors:
         return fail("; ".join(errors))
@@ -5687,7 +5690,8 @@ def check_admin_write_spec() -> int:
     for folder, (thing, batch) in ADMIN_WRITE_SPECS.items():
         path = f"e-commerce/doc/api/{folder}/spec.md"
         try:
-            md = read(path)
+            # rules that moved into a note of the sequence diagram are searched there, one line per wrapped note
+            md = read(path) + "\n" + re.sub(r"\n\s+", " ", read(path.replace("spec.md", "sequence.wsd")))
         except FileNotFoundError:
             errors.append(f"{path} does not exist")
             continue
@@ -8452,11 +8456,6 @@ LEGACY_SPEC_TEMPLATE = (
     "shop/01-upsert-shop-product-sku",
     "shop/02-upsert-shop-product-sku-batch",
     "shop/04-inquiry-storefront-product",
-    "shop/05-upsert-shop-type",
-    "shop/06-upsert-shop-type-batch",
-    "shop/08-upsert-shop",
-    "shop/09-upsert-shop-batch",
-    "shop/10-inquiry-shop",
     "shop/11-upsert-shop-user",
     "shop/12-upsert-shop-user-batch",
     "shop/13-inquiry-shop-user",
@@ -8504,12 +8503,6 @@ MD_FRONTMATTER_PENDING = (
     "e-commerce/doc/api/shop/02-upsert-shop-product-sku-batch/spec.md",
     "e-commerce/doc/api/shop/03-inquiry-shop-product-sku/spec.md",
     "e-commerce/doc/api/shop/04-inquiry-storefront-product/spec.md",
-    "e-commerce/doc/api/shop/05-upsert-shop-type/spec.md",
-    "e-commerce/doc/api/shop/06-upsert-shop-type-batch/spec.md",
-    "e-commerce/doc/api/shop/07-inquiry-shop-type/spec.md",
-    "e-commerce/doc/api/shop/08-upsert-shop/spec.md",
-    "e-commerce/doc/api/shop/09-upsert-shop-batch/spec.md",
-    "e-commerce/doc/api/shop/10-inquiry-shop/spec.md",
     "e-commerce/doc/api/shop/11-upsert-shop-user/spec.md",
     "e-commerce/doc/api/shop/12-upsert-shop-user-batch/spec.md",
     "e-commerce/doc/api/shop/13-inquiry-shop-user/spec.md",

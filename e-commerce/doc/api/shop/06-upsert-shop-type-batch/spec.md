@@ -1,3 +1,11 @@
+---
+name: "Upsert Shop Type Batch API"
+description: "Insert, update or delete multiple shop types at the same time. Read it when you implement, review or test POST v1/shop/type/upsert/batch."
+status: in-review
+approved_by: null
+approved_at: null
+---
+
 # [POST]: v1/shop/type/upsert/batch
 
 | Title       | Description                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                            |
@@ -17,6 +25,14 @@
 | UAT            | https://www.domain.com/api-uat      |
 | PRE-PRODUCTION | https://www.domain.com/api-pre-prod |
 | PRODUCTION     | https://www.domain.com/api          |
+
+- Every shop type follows the rules of the single upsert (shop/05): unique name among shop types that are not DELETED, required `name` and `description`, DELETED is final, delete and archive are rejected while a shop that is not DELETED uses the shop type.
+- The shop types are processed in the request order in one transaction, so the checks of an item see the changes of the items before it. When any item fails the whole request is rolled back and no shop type is changed.
+- `id` must not be duplicated in the request, and `name` must not be duplicated among the items that are not DELETED (400, E10001). The name of a DELETED item is not compared.
+- Swapping the names of two shop types in one request is rejected with 409 (E10003) at the first item, because that name is still held by the other shop type when the item is checked. Rename them in two requests.
+- An item without `id` and with `rowStatus` DELETED is rejected with 400 (E10001).
+- Permission: the same as the single upsert, only a platform administrator (a user with an ACTIVE `author.t_user_role` row for the ACTIVE role `PLATFORM_ADMIN`) can call this API, any other caller gets 403 (E10009). The check is made once for the request, after the existence checks of all items and before the duplicate, in-use and other conflict checks, so the 403 message has no item position. Approved by the product owner (answered through the lead SA, 2026-11-06).
+- The response is HTTP 200 for every successful batch, including a batch that deletes.
 
 ---
 
@@ -45,17 +61,6 @@
 | 2   | name           | String       | MANDATORY | Shop Type Name (max 128 characters), Unique among shop types that are not DELETED                                                                                                                                                                                 | Fashion Store                           |
 | 3   | description    | String       | MANDATORY | Shop Type Description (max 256 characters)                                                                                                                                                                                                                        | Shops that sell clothes and accessories |
 | 4   | rowStatus      | String       | OPTIONAL  | Row status (ACTIVE, INACTIVE, DELETED, LOCKED, ARCHIVED), Defaults to ACTIVE, Delete when DELETED, Archive when ARCHIVED, DELETED is not allowed when inserting, Delete or archive is allowed only when the shop type is not used by any shop that is not DELETED | ACTIVE                                  |
-
-### Shop Type Rules (same as the single upsert, applied per shop type)
-
-- Every shop type follows the rules of [the single upsert](../05-upsert-shop-type/spec.md#shop-type-rules): unique name among shop types that are not DELETED, required `name` and `description`, DELETED is final, delete and archive are rejected while a shop that is not DELETED uses the shop type.
-- The shop types are processed in the request order in one transaction, so the checks of an item see the changes of the items before it. When any item fails the whole request is rolled back and no shop type is changed.
-- `id` must not be duplicated in the request, and `name` must not be duplicated among the items that are not DELETED (400, E10001). The name of a DELETED item is not compared.
-- Swapping the names of two shop types in one request is rejected with 409 (E10003) at the first item, because that name is still held by the other shop type when the item is checked. Rename them in two requests.
-- An item without `id` and with `rowStatus` DELETED is rejected with 400 (E10001).
-- Permission: the same as the single upsert, only a platform administrator (a user with an ACTIVE `author.t_user_role` row for the ACTIVE role `PLATFORM_ADMIN`) can call this API, any other caller gets 403 (E10009). The check is made once for the request, after the existence checks of all items and before the duplicate, in-use and other conflict checks, so the 403 message has no item position. Approved by the product owner (answered through the lead SA, 2026-11-06).
-- Order of checks: validate the request (400) -> existence checks (404) -> permission (403, E10009) -> duplicate, in-use and other conflicts (409) -> write.
-- The response is HTTP 200 for every successful batch, including a batch that deletes.
 
 #### Example Body Parameters
 

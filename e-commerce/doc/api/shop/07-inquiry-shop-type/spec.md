@@ -1,3 +1,11 @@
+---
+name: "Inquiry Shop Type API"
+description: "Inquiry the list of shop types with paging and search. Read it when you implement, review or test GET v1/shop/type."
+status: in-review
+approved_by: null
+approved_at: null
+---
+
 # [GET]: v1/shop/type
 
 | Title       | Description                                                                                                                        |
