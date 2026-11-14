@@ -1519,6 +1519,16 @@ Status: Complete in the branch, waiting for review. Assignment: agent `tommy`, d
 - [x] The `payment-spec` and `campaign-spec` checkers search the spec and its sequence note; adjust the needles; run every checker, strict SQL parity and the render check.
 - [x] Open the PR with `commit-and-pr`, tell the lead SA when CI is green, then suspend. Next: `sales`.
 
+## e-commerce: spec template, shipping
+
+Status: Complete in the branch, waiting for review. Assignment: agent `tommy`, delivery `open-pr`, authorized by `josh`, workspace `.workspace/tommy`, branch `docs/tommy-spec-template-shipping`, scopes `e-commerce/doc/api/shipping`, `e-commerce/doc/api/payment`, `e-commerce/db/tests/check_docs.py`, `tasks`.
+
+- [x] Remove the six `### ... Rules` sections of shipping/01 to 06, `### Automatic Completion Rules` and `### Automatic Completion Example` (a bold label with its table under `## Domain`); the rules become short bullets under `## Domain`; the design doc path becomes plain words.
+- [x] Move the order of the checks, the lock details, the job scan and the clashes into notes of `sequence.wsd`; no SQL and no behavior is changed.
+- [x] The roles claim sentences of the payment notes (`payment/04`, `payment/05`) follow the new JWT payload (role names).
+- [x] The `shipping-spec` checker searches the spec and its sequence note; adjust the needles; the shipping files, and the sales and authen-and-author files that already follow the template, leave `LEGACY_SPEC_TEMPLATE`.
+- [x] Open the PR with `commit-and-pr`, tell the lead SA when CI is green, then suspend. Next: `campaign`.
+
 ### Template alignment — authen-and-author group (10 specs)
 
 Authority: owner decision that API specs follow `e-commerce/doc/api/template.md`, relayed by Josh (SA Lead); assignment `authorized_by: josh`, delivery `open-pr`; same rules as the cart group (PR #106) and payment (#108). No SQL and no behaviour change.

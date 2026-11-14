@@ -56,7 +56,7 @@ activate page
                 api -> page: Bad request
                 page -> user: Display validation error
             else Valid input
-                app -> app: Verify JWT signature, issuer, audience, exp, UUID sub and the roles claim (an array of roleId and name)
+                app -> app: Verify JWT signature, issuer, audience, exp, UUID sub and the roles claim (an array of role names)
                 alt Missing, malformed or invalid JWT or roles claim
                     app -> api: HTTP 401 E10002 Invalid or expired access token.
                     api -> page: Authentication error
@@ -68,12 +68,12 @@ activate page
                           Validate the mandatory timestamp as a UTC timestamp before SQL; a missing or malformed timestamp returns 400 E10001. Missing or malformed Bearer
                           credentials or a failed JWT signature/issuer/audience/expiry/UUID sub/roles-claim validation return the same 401 E10002 `Invalid or expired access
                           token.` before SQL.
-                        - Validate the structured `roles` claim defined by login: `roles` must be an array (an empty array is valid), each object has a UUID `roleId` and a
-                          non-empty string `name`, and the `roleId`s are unique; a missing or malformed claim is a 401, never an empty list and never recovered from the
-                          database. `userId` comes only from the verified `sub`; `accessTokenHash` is the SHA-256 of the exact presented JWT. Capture the server UTC `now`
-                          immediately before the one credential query, recheck the JWT expiry at `now`, then run `QUERY - Check active credential and user`: no row (a
-                          missing, revoked or expired stored token, another owner or an inactive user) returns the same 401. The request never carries a user id, a role or a
-                          platform administrator flag that controls this lookup.
+                        - Validate the `roles` claim defined by login: `roles` must be an array of non-empty role name strings (an empty array is valid) and the names are
+                          unique; a missing or malformed claim is a 401, never an empty list and never recovered from the database. `userId` comes only from the verified
+                          `sub`; `accessTokenHash` is the SHA-256 of the exact presented JWT. Capture the server UTC `now` immediately before the one credential query,
+                          recheck the JWT expiry at `now`, then run `QUERY - Check active credential and user`: no row (a missing, revoked or expired stored token, another
+                          owner or an inactive user) returns the same 401. The request never carries a user id, a role or a platform administrator flag that controls this
+                          lookup.
                         - Execution order: validate the request and the timestamp (400) -> verify the JWT (401) -> current credential and user (401) -> existence of the shop
                           (404) -> permission (403) -> read. The inquiry has no transaction: every query is one autocommit SELECT, and the authorization result comes from the
                           verified claims and the shop membership row.

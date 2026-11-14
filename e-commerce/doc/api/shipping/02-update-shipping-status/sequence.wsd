@@ -64,6 +64,13 @@ activate page
                     page -> user: Ask the user to sign in again
                 else Verified JWT
                     app -> app: userId = verified sub
+                    note over app, infra
+                        - Execution order: validate the request (400) -> existence of the shipping (404) -> permission of the caller (403) -> status step and duplicate tracking
+                          number (409) -> write the shipping and, when needed, the order in one transaction. The shipping is first read without a lock only to find its order,
+                          then the order row is locked (`SELECT ... FOR UPDATE`) and the shipping row is locked and read again (`QUERY - Lock the shipping`, `FOR UPDATE`),
+                          the status step is checked on that second read and not on the first, all before any row of `shipping.*` or `sales.*` is changed, and the update of
+                          the shipping repeats the current status in its `WHERE` (approved by the product owner on 2026-11-08).
+                    end note
                     app -> infra: BEGIN READ COMMITTED
                     activate infra
                     alt Work completes before commit
