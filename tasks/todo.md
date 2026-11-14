@@ -1618,6 +1618,15 @@ Status: Done, waiting for review. Authorized by Josh (owner decision of the temp
 3. [x] Re-point the heading needle of `SPEC01_NEEDLES` and `SPEC03_NEEDLES` to a rule sentence; mutation tested.
 4. [x] All check_docs sub-commands, audit_all, PlantUML syntax and render count of the new note pass.
 
+### Consent API02 upsert consent — claims, locks, DELETED final and the consent period
+
+Authority: owner answers of 2026-11-13 ("ใช้คำแนะนำทั้งหมด"), the technical corrections of 2026-11-08 confirmed by Josh (SA Lead), the new JWT payload of 2026-11-13 and the template/frontmatter decisions; assignment `authorized_by: josh`, delivery `open-pr`. The spec follows the template from the start (short Domain bullets, visible note, frontmatter).
+
+- [x] Spec: frontmatter; Domain bullets; verified JWT roles claim replaces the two live-grant queries (`PLATFORM_ADMIN` exact, 403 E10009); DELETED is final (404 E10004); `expiredAt` later than `effectiveAt` (400); delete/archive not blocked by user answers; any different `consentVersion` (at most 8 characters) with the Q8 effect; `code` plainly UNIQUE including DELETED rows (409 E10003); new examples (period 400, consent type 404 E10005, 500).
+- [x] SQL: lock the caller user, current credential, lock the consent type, lock the target consent (`FOR UPDATE`, DELETED excluded), duplicate code check without a status filter and null-safe, guarded insert/update with bound server time.
+- [x] Sequence: complete flow and visible note; the lock order is caller user, consent type, consent.
+- [x] Checker: slim `consent-upsert-flow`; consent/02 leaves `ADMIN_WRITE_SPECS`, `LEGACY_SEQUENCES`, `LEGACY_TOKEN_SEQUENCES`, `LEGACY_SPEC_TEMPLATE` and `MD_FRONTMATTER_PENDING`.
+
 ## e-commerce: product/10-15 template cleanup (type and brand)
 
 Status: Done, waiting for review. Authorized by Josh (owner decisions of 2026-11-13 and 2026-11-14).
@@ -1627,6 +1636,8 @@ Status: Done, waiting for review. Authorized by Josh (owner decisions of 2026-11
 3. [x] Frontmatter (`status: in-review`) on the six specs; the six are removed from `LEGACY_SPEC_TEMPLATE` and `MD_FRONTMATTER_PENDING`.
 4. [x] `master_needles` (product-master-spec) points the moved text to `sequence.wsd` (`master_diagram_needles`); the consent type is unchanged.
 5. [x] All check_docs sub-commands, audit_all, PlantUML syntax, render count and mutation tests.
+
+
 
 ### Consent API02 upsert consent — claims, locks, DELETED final and the consent period
 
