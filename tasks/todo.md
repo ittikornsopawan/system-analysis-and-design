@@ -1609,6 +1609,26 @@ Authority: owner decision that API specs follow `e-commerce/doc/api/template.md`
 - [x] Visible short notes in each sequence: execution/lock order after `activate app`, then notes after the validation step, after `BEGIN`, before the success response; whole bullets are kept except a first sentence that a Domain bullet states in full.
 - [x] Needles: the nine flow checkers get a second loop over the whitespace-joined sequence text; `author-spec` gets `AUTHOR_SEQUENCE_NEEDLES` and `AUTHOR_REMOVED_NEEDLES` (the `### ... Rules` headings); the Q24 guards and the claims wording of the shared inquiry helper check the sequence note; the twelve files leave `LEGACY_SPEC_TEMPLATE`.
 
+## e-commerce: product/01 and 03 move Option and SKU Rules
+
+Status: Done, waiting for review. Authorized by Josh (owner decision of the template cleanup, 2026-11-13).
+
+1. [x] Remove `#### Option and SKU Rules` from product/01 and 03 (not a template section); the rules are short bullets under `## Domain`.
+2. [x] Product/03: the batch only rule (one transaction, request validation first, error of the first failing product) is a visible note in `sequence.wsd`.
+3. [x] Re-point the heading needle of `SPEC01_NEEDLES` and `SPEC03_NEEDLES` to a rule sentence; mutation tested.
+4. [x] All check_docs sub-commands, audit_all, PlantUML syntax and render count of the new note pass.
+
+## e-commerce: product/10-15 template cleanup (type and brand)
+
+Status: Done, waiting for review. Authorized by Josh (owner decisions of 2026-11-13 and 2026-11-14).
+
+1. [x] Remove the `### Product Type/Brand (Inquiry) Rules` sections; the rules are bullets under `## Domain`.
+2. [x] The permission and the order of the checks of the four upsert specs are a visible `note over app, infra` before BEGIN in `sequence.wsd`.
+3. [x] Frontmatter (`status: in-review`) on the six specs; the six are removed from `LEGACY_SPEC_TEMPLATE` and `MD_FRONTMATTER_PENDING`.
+4. [x] `master_needles` (product-master-spec) points the moved text to `sequence.wsd` (`master_diagram_needles`); the consent type is unchanged.
+5. [x] All check_docs sub-commands, audit_all, PlantUML syntax, render count and mutation tests.
+
+
 ## repository-wide: Barry as Head of Technology, Josh reports to Barry (2026-11-14)
 
 Status: Delivered as one pull request from `chore/barry-head-of-technology`. The registry takes effect only after the owner merges it into origin/main.

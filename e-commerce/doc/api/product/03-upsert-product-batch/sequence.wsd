@@ -81,6 +81,9 @@ activate page
                         counts as not found, E10004) -> permission check (403, E10009, once for the request) -> in-use check (409) -> move levels aside,
                         delete the options and values that are not in the list, update the listed options and values (renames that collide are set to temporary
                         names first), insert new options and values, images, close or reopen SKUs, then generate SKUs -> COMMIT.
+                        All products are processed in one transaction (all or nothing).
+                        The request based validation (400, including the SKU maximum) of all products runs first in the order of the request, then the database based checks (404, then 409) in the order of the request, then the writes.
+                        The error of the first failing product is returned and nothing is changed.
                     end note
                     app -> infra: BEGIN READ COMMITTED
                     activate infra
