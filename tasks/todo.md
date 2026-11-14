@@ -1658,9 +1658,19 @@ Status: Delivered as one pull request from `chore/barry-head-of-technology`. The
 - [x] Extend the canonical registry test and run the workspace tests and the documentation checkers.
 - [x] Fix the two needle loops of `check_docs.py` (`login-flow`, `logout-flow`) that iterated the letters of a string, by owner order after the review; removing `ambiguous` from the login spec and `Q13` from the logout spec is now rejected.
 - [x] Commit and open one pull request (owner order of 2026-11-14).
-- [ ] Owner decides: whether Barry gets `delegate-delivery`.
+- [x] Owner decides: Barry does not get `delegate-delivery` in this task; any later grant requires a separate explicit decision.
 
 Verification: `test_agent_workspace.py` 26 tests OK; `check_docs.py` 66/66 sub-commands OK. `run_db_tests.sh` could not start PostgreSQL in this session, so the database tests were not rerun here (unchanged by this task; the last CI run on main passed).
+
+## repository-wide: Dedicated Head of Technology role (2026-11-14)
+
+Status: Complete.
+
+- [x] Author a dedicated Head of Technology role establishing owner-second authority, a post-completion lead/manager report gate, a binding PASS/FAIL decision, and a mandatory what/why/how rework plan on FAIL.
+- [x] Register the new role for Barry, keep `capabilities: []`, and update the resource registry.
+- [x] Record the owner correction in lessons, extend the focused named-agent registry test, run applicable checks, and inspect the final diff while preserving unrelated user edits.
+
+Verification: `test_agent_workspace.py` 26 tests passed after clearing injected Git configuration; `check_docs.py md-frontmatter` passed for 257 Markdown files; `git diff --check` passed. The first test attempt was blocked by the environment's injected `safe.bareRepository=explicit` setting.
 
 ### Consent API02 upsert consent — claims, locks, DELETED final and the consent period
 
