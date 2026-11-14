@@ -1,3 +1,11 @@
+---
+name: "Upsert Shop Batch API"
+description: "Insert, update or delete multiple shops with their images at the same time. Read it when you implement, review or test POST v1/shop/upsert/batch."
+status: in-review
+approved_by: null
+approved_at: null
+---
+
 # [POST]: v1/shop/upsert/batch
 
 | Title       | Description                                                                                                                                                                                                                                                                                                                                                                                                                                                                          |
@@ -17,6 +25,22 @@
 | UAT            | https://www.domain.com/api-uat      |
 | PRE-PRODUCTION | https://www.domain.com/api-pre-prod |
 | PRODUCTION     | https://www.domain.com/api          |
+
+- Every shop follows the rules of the single upsert (shop/08).
+- `name` is unique among shops that are not DELETED. The comparison is exact (upper and lower case are different names) and a name held by an INACTIVE, LOCKED or ARCHIVED shop is still taken (409, E10003). The name of a DELETED shop can be used again.
+- `typeId`, `name` and `description` are required in every request, including a delete and an archive. `typeId` must be an ACTIVE shop type when the shop is inserted or when `typeId` changes, otherwise 404 (E10005). A shop whose shop type became INACTIVE later can still be updated while it keeps the same `typeId`.
+- `platformMarginRate` and `shopMarginRate` are percentages from 0.00 to 100.00 with at most 2 decimals (400, E10001). Their sum must not exceed 100.00 (400, E10001), the ceiling was approved by the product owner and the database enforces it with the check `ck_m_shop_margin_rate_total`.
+- Changing the margin rates of a shop never changes the lots that already exist (no retroactive effect): the margins of a lot are calculated when the lot is saved by the shop product SKU API, with the rates of the shop at that time.
+- Insert: any caller with a valid access token can create a shop, and the caller becomes the ADMIN of the new shop (a row in `shop.t_shop_user`) in the same transaction. Update, delete and archive need the caller to be an ADMIN of the shop or a platform administrator (a user that has the role `PLATFORM_ADMIN`), otherwise 403 (E10009). Only a platform administrator can send a `platformMarginRate` that differs from the current one (0.00 on insert), otherwise 403 (E10009). This permission model (the role `PLATFORM_ADMIN`, the ADMIN of the shop and the code E10009) was approved by the product owner.
+- DELETED is final: a DELETED shop is never reopened and its `id` counts as not found (404, E10004). INACTIVE, LOCKED and ARCHIVED are reversible: an update with `rowStatus` ACTIVE opens the shop again. `rowStatus` DELETED is rejected with 400 (E10001) when the request inserts a shop.
+- A shop cannot be deleted while it has a product (`shop.t_shop_product` that is not DELETED) or an order (`sales.t_order` that is not DELETED), 409 (E10006). Deleting a shop deletes (soft) all of its images. Archiving is always allowed and keeps everything.
+- Images follow the rule of the nested lists of the project: an image without `id` is inserted, an image with `id` is updated, `rowStatus` DELETED deletes it and images that are not in the list are kept. An `id` that does not belong to the shop is rejected with 404 (E10004), `id` must not be duplicated in the request, `type` and `imagePath` are required (400, E10001), and the id of a DELETED image counts as not found.
+- Images of the same type: after the request is applied the shop can have at most 1 LOGO image and 1 WALLPAPER image that are not DELETED. INACTIVE, LOCKED and ARCHIVED images still hold the place. To replace the logo, update the existing image (send its `id`) or delete it in the same request. Sending a new LOGO or WALLPAPER image without `id` while the shop has one that stays is rejected with 409 (E10003) and a message with the type. Two images of the LOGO or WALLPAPER type that are not DELETED in the same request are rejected with 400 (E10001). The shop can have at most 10 BANNER images that are not DELETED (the maximum is configurable), otherwise 400 (E10001). The `type` of an existing image can be changed when the result follows these rules.
+- The shops are processed in the request order in one transaction, so the checks of an item see the changes of the items before it. When any item fails the whole request is rolled back and no shop and no image is changed.
+- `id` must not be duplicated in the request, and `name` must not be duplicated among the items that are not DELETED (400, E10001). The name of a DELETED item is not compared. Swapping the names of two shops in one request is rejected with 409 (E10003) at the first item, because that name is still held by the other shop when the item is checked. Rename them in two requests.
+- An item without `id` and with `rowStatus` DELETED is rejected with 400 (E10001). The caller of a batch becomes the ADMIN of every shop that the batch inserts.
+- The response is HTTP 200 for every successful batch, including a batch that deletes.
+- A shop cannot be deleted while it is in a campaign that is not DELETED and has not ended (a live `campaign.t_campaign_shop` row of a campaign whose `end_at` is after now), 409 (E10006) with the campaign name in the message. Take it out of the campaign first with the upsert campaign API (a campaign that ended or was deleted does not block). Archiving is always allowed. (`docs/superpowers/specs/2026-11-06-campaign-design.md`, C13, approved by the product owner on 2026-11-06)
 
 ---
 
@@ -59,25 +83,6 @@
 | 3   | seq            | Numeric      | OPTIONAL  | Display order in the image type (integer, 0 or more), Next number of the shop and image type when not specified on insert (0 when the shop has none), Keep the current seq when not specified on update, Not unique, images with the same seq are ordered by creation time and then by id | 0                                    |
 | 4   | imagePath      | String       | MANDATORY | Image Path                                                                                                                                                                                                                                                                                | /shops/aof-fashion/logo.png          |
 | 5   | rowStatus      | String       | OPTIONAL  | Row status (ACTIVE, INACTIVE, DELETED, LOCKED, ARCHIVED), Defaults to ACTIVE, Delete when DELETED (final, never reopened)                                                                                                                                                                 | ACTIVE                               |
-
-### Shop Rules (same as the single upsert, applied per shop)
-
-- Every shop follows the rules of [the single upsert](../08-upsert-shop/spec.md#shop-rules).
-- `name` is unique among shops that are not DELETED. The comparison is exact (upper and lower case are different names) and a name held by an INACTIVE, LOCKED or ARCHIVED shop is still taken (409, E10003). The name of a DELETED shop can be used again.
-- `typeId`, `name` and `description` are required in every request, including a delete and an archive. `typeId` must be an ACTIVE shop type when the shop is inserted or when `typeId` changes, otherwise 404 (E10005). A shop whose shop type became INACTIVE later can still be updated while it keeps the same `typeId`.
-- `platformMarginRate` and `shopMarginRate` are percentages from 0.00 to 100.00 with at most 2 decimals (400, E10001). Their sum must not exceed 100.00 (400, E10001), the ceiling was approved by the product owner and the database enforces it with the check `ck_m_shop_margin_rate_total`.
-- Changing the margin rates of a shop never changes the lots that already exist (no retroactive effect): the margins of a lot are calculated when the lot is saved by the shop product SKU API, with the rates of the shop at that time.
-- Insert: any caller with a valid access token can create a shop, and the caller becomes the ADMIN of the new shop (a row in `shop.t_shop_user`) in the same transaction. Update, delete and archive need the caller to be an ADMIN of the shop or a platform administrator (a user that has the role `PLATFORM_ADMIN`), otherwise 403 (E10009). Only a platform administrator can send a `platformMarginRate` that differs from the current one (0.00 on insert), otherwise 403 (E10009). This permission model (the role `PLATFORM_ADMIN`, the ADMIN of the shop and the code E10009) was approved by the product owner.
-- DELETED is final: a DELETED shop is never reopened and its `id` counts as not found (404, E10004). INACTIVE, LOCKED and ARCHIVED are reversible: an update with `rowStatus` ACTIVE opens the shop again. `rowStatus` DELETED is rejected with 400 (E10001) when the request inserts a shop.
-- A shop cannot be deleted while it has a product (`shop.t_shop_product` that is not DELETED) or an order (`sales.t_order` that is not DELETED), 409 (E10006). Deleting a shop deletes (soft) all of its images. Archiving is always allowed and keeps everything.
-- Images follow the rule of the nested lists of the project: an image without `id` is inserted, an image with `id` is updated, `rowStatus` DELETED deletes it and images that are not in the list are kept. An `id` that does not belong to the shop is rejected with 404 (E10004), `id` must not be duplicated in the request, `type` and `imagePath` are required (400, E10001), and the id of a DELETED image counts as not found.
-- Images of the same type: after the request is applied the shop can have at most 1 LOGO image and 1 WALLPAPER image that are not DELETED. INACTIVE, LOCKED and ARCHIVED images still hold the place. To replace the logo, update the existing image (send its `id`) or delete it in the same request. Sending a new LOGO or WALLPAPER image without `id` while the shop has one that stays is rejected with 409 (E10003) and a message with the type. Two images of the LOGO or WALLPAPER type that are not DELETED in the same request are rejected with 400 (E10001). The shop can have at most 10 BANNER images that are not DELETED (the maximum is configurable), otherwise 400 (E10001). The `type` of an existing image can be changed when the result follows these rules.
-- The shops are processed in the request order in one transaction, so the checks of an item see the changes of the items before it. When any item fails the whole request is rolled back and no shop and no image is changed.
-- `id` must not be duplicated in the request, and `name` must not be duplicated among the items that are not DELETED (400, E10001). The name of a DELETED item is not compared. Swapping the names of two shops in one request is rejected with 409 (E10003) at the first item, because that name is still held by the other shop when the item is checked. Rename them in two requests.
-- An item without `id` and with `rowStatus` DELETED is rejected with 400 (E10001). The caller of a batch becomes the ADMIN of every shop that the batch inserts.
-- The response is HTTP 200 for every successful batch, including a batch that deletes.
-- A shop cannot be deleted while it is in a campaign that is not DELETED and has not ended (a live `campaign.t_campaign_shop` row of a campaign whose `end_at` is after now), 409 (E10006) with the campaign name in the message. Take it out of the campaign first with the upsert campaign API (a campaign that ended or was deleted does not block). Archiving is always allowed. (`docs/superpowers/specs/2026-11-06-campaign-design.md`, C13, approved by the product owner on 2026-11-06)
-- Execution order of each item: validate (400) -> existence checks (404) -> permission (403) -> duplicate name (409, E10003) -> in-use check (409, E10006, only when `rowStatus` is DELETED) -> write the shop, the images and the ADMIN row.
 
 #### Example Body Parameters
 

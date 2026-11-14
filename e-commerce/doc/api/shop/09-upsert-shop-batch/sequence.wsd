@@ -68,6 +68,10 @@ activate page
                     page -> user: Display authentication error
                 else Verified JWT
                     app -> app: userId = verified sub
+                    note over app, infra
+                        - Execution order of each item: validate (400) -> existence checks (404) -> permission (403) -> duplicate name (409, E10003) -> in-use check (409,
+                          E10006, only when `rowStatus` is DELETED) -> write the shop, the images and the ADMIN row.
+                    end note
                     app -> infra: BEGIN READ COMMITTED
                     activate infra
                     alt Work completes before commit
