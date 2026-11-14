@@ -5421,7 +5421,7 @@ def check_login_flow() -> int:
     md = read(path)
     wsd = read(str(Path(path).with_name('sequence.wsd')))
     errors = []
-    for needle in ('ambiguous'):
+    for needle in ('ambiguous',):
         if needle not in md:
             errors.append(f'login spec missing {needle!r}')
     seq = ' '.join(wsd.split())  # the note texts of the sequence, one line
@@ -7938,7 +7938,7 @@ COMMANDS['address-upsert-flow'] = check_address_upsert_flow
 def check_logout_flow() -> int:
     """Check fresh post-lock authorization and atomic revocation of the complete caller session."""
     path=AUTHEN_SPECS['06'];md=read(path);wsd=read(str(Path(path).with_name('sequence.wsd')));errors=[]
-    for needle in ('Q13'):
+    for needle in ('Q13',):
         if needle not in md:errors.append(f'logout rule missing {needle!r}')
     seq = ' '.join(wsd.split())  # the note texts of the sequence, one line
     for needle in ('BEGIN READ COMMITTED', 'capture fresh server UTC now after the lock', 'No token UPDATE may run before the user lock',
