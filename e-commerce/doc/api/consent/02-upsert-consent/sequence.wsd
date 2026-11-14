@@ -58,7 +58,7 @@ activate page
             alt Invalid input/header
                 break Reject this request
                     app -> api: HTTP 400 E10001
-                    api -> page: Show failure; no successful user role action
+                    api -> page: Show failure; no successful consent action
                     page -> user: Display failure; keep unsaved input
                 end break
             else Check passed
@@ -67,7 +67,7 @@ activate page
             alt Missing/invalid JWT or malformed roles
                 break Reject this request
                     app -> api: HTTP 401 E10002 Invalid or expired access token.
-                    api -> page: Show failure; no successful user role action
+                    api -> page: Show failure; no successful consent action
                     page -> user: Display failure; keep unsaved input
                 end break
             else Check passed
@@ -93,7 +93,7 @@ activate page
                     break Reject this request
                         app -> infra: ROLLBACK
                         app -> api: HTTP 401 E10002 Invalid or expired access token.
-                        api -> page: Show failure; no successful user role action
+                        api -> page: Show failure; no successful consent action
                         page -> user: Display failure; keep unsaved input
                     end break
                 else Check passed
@@ -103,7 +103,7 @@ activate page
                     break Reject this request
                         app -> infra: ROLLBACK
                         app -> api: HTTP 401 E10002 Invalid or expired access token.
-                        api -> page: Show failure; no successful user role action
+                        api -> page: Show failure; no successful consent action
                         page -> user: Display failure; keep unsaved input
                     end break
                 else Check passed
@@ -129,7 +129,7 @@ activate page
                     break Reject this request
                         app -> infra: ROLLBACK
                         app -> api: HTTP 401 E10002 Invalid or expired access token.
-                        api -> page: Show failure; no successful user role action
+                        api -> page: Show failure; no successful consent action
                         page -> user: Display failure; keep unsaved input
                     end break
                 else Check passed
@@ -155,6 +155,7 @@ activate page
                         note right of t_consent
                             SELECT
                                 c.id as consent_id,
+                                c.consent_type_id,
                                 c.consent_version,
                                 c.row_status
                             FROM consent.t_consent c
@@ -162,14 +163,14 @@ activate page
                             AND c.row_status <> 'DELETED' -- the id of a DELETED consent counts as not found
                             FOR UPDATE
                         end note
-                        t_consent -> infra: Return locked consent_id/consent_version/row_status or no row
+                        t_consent -> infra: Return locked consent_id/consent_type_id/consent_version/row_status or no row
                     deactivate t_consent
-                    infra -> app: Return locked consent_id/consent_version/row_status or no row
+                    infra -> app: Return locked consent_id/consent_type_id/consent_version/row_status or no row
                     alt Consent not found or DELETED (final)
                         break Reject this request
                             app -> infra: ROLLBACK
                             app -> api: HTTP 404 E10004 Consent not found.
-                            api -> page: Show failure; no successful user role action
+                            api -> page: Show failure; no successful consent action
                             page -> user: Display failure; keep unsaved input
                         end break
                     else Check passed
@@ -177,21 +178,22 @@ activate page
                 else id omitted (insert)
                     app -> app: No consent row to lock
                 end
-                alt Consent type missing or not ACTIVE
+                app -> app: The request gives the consent when it inserts, or sets ACTIVE on a locked consent that is not ACTIVE, or changes the consent type of an ACTIVE consent
+                alt The consent type row is missing, or the request gives the consent and the type is not ACTIVE
                     break Reject this request
                         app -> infra: ROLLBACK
                         app -> api: HTTP 404 E10005 Consent type not found or not ACTIVE.
-                        api -> page: Show failure; no successful user role action
+                        api -> page: Show failure; no successful consent action
                         page -> user: Display failure; keep unsaved input
                     end break
-                else Check passed
+                else Check passed; delete, archive, deactivate or lock needs no ACTIVE type
                 end
                 app -> app: Authorize once using only exact case-sensitive PLATFORM_ADMIN in verified JWT roles; never reload live grants
                 alt No exact PLATFORM_ADMIN role claim
                     break Reject this request
                         app -> infra: ROLLBACK
                         app -> api: HTTP 403 E10009 You do not have permission to manage consents.
-                        api -> page: Show failure; no successful user role action
+                        api -> page: Show failure; no successful consent action
                         page -> user: Display failure; keep unsaved input
                     end break
                 else Check passed
@@ -213,7 +215,7 @@ activate page
                     break Reject this request
                         app -> infra: ROLLBACK
                         app -> api: HTTP 409 E10003 Consent code already exists.
-                        api -> page: Show failure; no successful user role action
+                        api -> page: Show failure; no successful consent action
                         page -> user: Display failure; keep unsaved input
                     end break
                 else Check passed
@@ -287,7 +289,7 @@ activate page
                         break Reject this request
                             app -> infra: ROLLBACK
                             app -> api: HTTP 404 E10004 Consent not found.
-                            api -> page: Show failure; no successful user role action
+                            api -> page: Show failure; no successful consent action
                             page -> user: Display failure; keep unsaved input
                         end break
                     else Check passed

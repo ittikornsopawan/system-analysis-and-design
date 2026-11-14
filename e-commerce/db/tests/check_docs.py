@@ -7718,7 +7718,7 @@ def check_consent_upsert_flow() -> int:
     for h in (want[0],want[2],want[3]):
         if 'FOR UPDATE' not in sql.get(h,''):errors.append(f'{h} must lock with FOR UPDATE')
     if any(SEQUENCE_LOCK.search(sql.get(h,'')) for h in (want[1],want[4],want[5],want[6])) or 'NOW()' in '\n'.join(sql.values()):errors.append('only the three row locks may lock; times are bound')
-    for h,needles in {want[3]:["c.row_status <> 'DELETED'"],want[4]:["('<sequence.id>' IS NULL OR c.id <> '<sequence.id>')"],want[5]:['created_at',"'<sequence.now>'",'RETURNING id as consent_id'],want[6]:["updated_at = '<sequence.now>'","AND row_status <> 'DELETED'",'RETURNING id as consent_id']}.items():
+    for h,needles in {want[3]:["c.row_status <> 'DELETED'",'c.consent_type_id'],want[4]:["('<sequence.id>' IS NULL OR c.id <> '<sequence.id>')"],want[5]:['created_at',"'<sequence.now>'",'RETURNING id as consent_id'],want[6]:["updated_at = '<sequence.now>'","AND row_status <> 'DELETED'",'RETURNING id as consent_id']}.items():
         errors+=[f'{h} missing {n!r}' for n in needles if n not in sql.get(h,'')]
     if 'row_status' in sql.get(want[4],''):errors.append('the duplicate code check counts every status, a DELETED consent keeps its code')
     order=['app -> infra: '+h for h in want[:4]]+['Authorize once','app -> infra: QUERY - Check duplicate code','app -> infra: INSERT - Create consent','app -> infra: COMMIT']
@@ -7728,8 +7728,9 @@ def check_consent_upsert_flow() -> int:
     lines=wsd.splitlines();begin=next((i for i,l in enumerate(lines) if 'BEGIN READ COMMITTED' in l),len(lines))
     for i,l in enumerate(lines):
         if i>begin and re.search(r'app -> api: HTTP (?:400|401|403|404|408|409|500)',l) and 'app -> infra: ROLLBACK' not in lines[i-1]:errors.append(f'post-BEGIN rejection needs ROLLBACK first: {l.strip()}')
-    for n in ('HTTP 404 E10004 Consent not found.','HTTP 404 E10005 Consent type not found or not ACTIVE.','HTTP 403 E10009 You do not have permission to manage consents.','HTTP 409 E10003 Consent code already exists.','expiredAt later than effectiveAt'):
+    for n in ('HTTP 404 E10004 Consent not found.','HTTP 404 E10005 Consent type not found or not ACTIVE.','HTTP 403 E10009 You do not have permission to manage consents.','HTTP 409 E10003 Consent code already exists.','expiredAt later than effectiveAt','The request gives the consent when it inserts, or sets ACTIVE on a locked consent that is not ACTIVE, or changes the consent type of an ACTIVE consent','delete, archive, deactivate or lock needs no ACTIVE type','The consent type row is missing, or the request gives the consent and the type is not ACTIVE'):
         if n not in wsd:errors.append(f'sequence missing {n!r}')
+    if 'a consent of a type that is not ACTIVE can still be deleted, archived, deactivated or locked' not in md:errors.append('the spec must say that a consent of a closed type can still be deleted or archived (owner answer of 2026-11-14)')
     for title,code in {'Fail - Bad Request Period':400,'Fail - Not Found Consent Type':404,'Fail - Internal Server Error':500}.items():
         try:
             st=authen_json(md,title)['status']

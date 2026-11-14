@@ -28,8 +28,9 @@ approved_at: null
 
 - Governing decisions: owner-confirmed API review Q2, Q4, Q10, Q13 and the owner answers of 2026-11-13 (approved by the product owner).
 - Only a platform administrator can call it: the verified JWT `roles` claim must contain the exact role `PLATFORM_ADMIN`, otherwise 403 (E10009); the author tables are never queried.
-- DELETED is final: the id of a DELETED consent is 404 (E10004), while INACTIVE, LOCKED and ARCHIVED can return to ACTIVE; the consent type must exist and be ACTIVE, otherwise 404 (E10005).
+- DELETED is final: the id of a DELETED consent is 404 (E10004), while INACTIVE, LOCKED and ARCHIVED can return to ACTIVE; the consent type row must exist (404, E10005).
 - `code` stays plainly UNIQUE, so the code of a DELETED consent cannot be reused (409, E10003); when both are given `expiredAt` must be later than `effectiveAt` (400, E10001).
+- The consent type must be ACTIVE only when the request creates a consent, opens a consent that is not ACTIVE to ACTIVE or changes its type while it is ACTIVE (404, E10005); a consent of a type that is not ACTIVE can still be deleted, archived, deactivated or locked (owner answer of 2026-11-14, like Q23).
 - Deleting or archiving a consent that has user answers is not blocked; `consentVersion` may change to any different value of at most 8 characters, and the answers of the old version become pending again (Q8) without any user consent row being overwritten.
 - The transaction locks the caller user, then the consent type, then the target consent (`FOR UPDATE`); the order of the checks and every outcome is in the sequence diagram.
 
@@ -52,7 +53,7 @@ approved_at: null
 | --- | ------------------ | ----------------- | --------- | -------------------------------------------------------------------------------------------------------------------------------- | ------------------------------------ |
 | 1   | id                 | String: UUID      | OPTIONAL  | Consent Id, Insert when not specified, Update or Delete when specified                                                           | c1a2b3d4-e5f6-4a7b-8c9d-0e1f2a3b4c5d |
 | 2   | code               | String            | MANDATORY | Consent Code (max 64 characters), Unique among all consents including a DELETED one                                              | PRIVACY_POLICY                       |
-| 3   | consentTypeId      | String: UUID      | MANDATORY | Consent Type Id                                                                                                                  | a7b8c9d0-1e2f-4a3b-8c4d-5e6f7a8b9c0d |
+| 3   | consentTypeId      | String: UUID      | MANDATORY | Consent Type Id, An ACTIVE type when the consent is created, opened to ACTIVE or moved to another type                                                                                                                  | a7b8c9d0-1e2f-4a3b-8c4d-5e6f7a8b9c0d |
 | 4   | consentVersion     | String            | OPTIONAL  | Consent Version (max 8 characters), Defaults to 1.0.0, Any different value may be set on update                                  | 1.0.0                                |
 | 5   | consentName        | String            | MANDATORY | Consent Name (max 128 characters)                                                                                                | Privacy Policy                       |
 | 6   | consentDescription | String            | OPTIONAL  | Consent Description                                                                                                              | Privacy policy of the service        |
@@ -471,6 +472,7 @@ FOR UPDATE
 ```SQL
 SELECT
     c.id as consent_id,
+    c.consent_type_id,
     c.consent_version,
     c.row_status
 FROM consent.t_consent c
