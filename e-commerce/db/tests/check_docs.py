@@ -2792,31 +2792,31 @@ SHIPPING_SUCCESS_CODES = {
     "06": {"Success - Order Still Processing": 200, "Success - Order Completed": 200},
 }
 SHIPPING_NEEDLES = {
-    "01": ["### Create Shipping Rules", "#### QUERY - Lock the order", "FOR UPDATE", "#### UPDATE - Start processing", "AND status = 'PAYMENT_CONFIRMED'",
+    "01": ["- The caller must be an ACTIVE member of the shop of the order", "#### QUERY - Lock the order", "FOR UPDATE", "#### UPDATE - Start processing", "AND status = 'PAYMENT_CONFIRMED'",
            "#### QUERY - Get the quantity already assigned", "AND s.status IN ('PENDING', 'SHIPPED', 'DELIVERED')", "#### QUERY - Get the shipping method of the order",
            "p.status = 'COMPLETED'", "#### INSERT - Create the shipping", "#### INSERT - Add the items to the shipping", "#### Fail - Conflict Quantity",
            "#### Fail - Conflict Order Status", "#### Fail - Not Found Reference", "#### Fail - Forbidden", "E10009", "E10006",
            "validate the request (400) -> existence of the order and of the order items (404) -> permission of the caller (403)",
            "approved by the product owner", "#### QUERY - Check shop member", "#### QUERY - Check platform administrator"],
-    "02": ["### Update Shipping Status Rules", "`PENDING` -> `SHIPPED`", "`PENDING` -> `CANCELLED`", "`SHIPPED` -> `RETURNED`", "#### UPDATE - Mark the shipping as shipped",
+    "02": ["- The caller must be an ACTIVE member of the shop of the order", "`PENDING` -> `SHIPPED`", "`PENDING` -> `CANCELLED`", "`SHIPPED` -> `RETURNED`", "#### UPDATE - Mark the shipping as shipped",
            "#### UPDATE - Cancel the shipping", "#### UPDATE - Mark the shipping as returned", "AND status = 'PENDING' -- no row changed means the status changed in the meantime",
            "AND status = 'SHIPPED' -- no row changed means the status changed in the meantime", "#### QUERY - Check duplicate tracking number",
            "#### QUERY - Count the shippings that are still active", "#### UPDATE - Give the order back to PAYMENT_CONFIRMED", "AND status = 'PROCESSING'",
            "#### QUERY - Lock the order", "FOR UPDATE", "#### Fail - Conflict Tracking Number", "#### Fail - Conflict Status", "E10003", "E10006", "E10009",
            "approved by the product owner", "#### QUERY - Check shop member", "#### QUERY - Check platform administrator", "#### QUERY - Lock the shipping", "FOR UPDATE -- read again after the order row is locked", "the status step is checked on that second read", "approved by the product owner on 2026-11-08"],
-    "03": ["### Shipping Stop Rules", "#### INSERT - Create the stop", "#### UPDATE - Update, delete or archive the stop", "#### QUERY - Check duplicate stop number",
+    "03": ["- The caller must be an ACTIVE member of the shop of the order", "#### INSERT - Create the stop", "#### UPDATE - Update, delete or archive the stop", "#### QUERY - Check duplicate stop number",
            "#### QUERY - Lock the order", "FOR UPDATE", "#### Fail - Bad Request Row Status", "#### Fail - Conflict Status", "E10003", "E10006", "E10009",
            "Delete 204 No Content (no response body)", "approved by the product owner", "#### QUERY - Check shop member", "#### Fail - Not Found Shipping", "`Shipping not found.`", "approved by the product owner on 2026-11-08"],
-    "04": ["### Shop Shipping Inquiry Rules", "E10009", "#### Fail - Forbidden", "#### Fail - Not Found Reference", "#### QUERY - Check shop member",
+    "04": ["- The caller must be an ACTIVE member of the shop (", "E10009", "#### Fail - Forbidden", "#### Fail - Not Found Reference", "#### QUERY - Check shop member",
            "#### QUERY - Check platform administrator", "#### QUERY - Check shop", "ORDER BY s.created_at DESC, s.id", "o.shop_id = '<sequence.shopId>'",
            "#### QUERY - Count the shippings of the shop", "#### QUERY - Get the stops of the shippings", "o.ship_address", "approved by the product owner"],
-    "05": ["### Shipping Inquiry Rules", "ORDER BY s.created_at DESC, s.id", "o.user_id = '<sequence.userId>'", "#### QUERY - Count the shippings of the user",
+    "05": ["- Only the shippings of the orders of the user", "ORDER BY s.created_at DESC, s.id", "o.user_id = '<sequence.userId>'", "#### QUERY - Count the shippings of the user",
            "ss.row_status = 'ACTIVE'", "sh.name ILIKE", "#### QUERY - Get the stops of the shippings", "approved by the product owner"],
-    "06": ["### Confirm Delivery Rules", "#### UPDATE - Confirm the delivery", "AND status = 'SHIPPED' -- no row changed means the status changed in the meantime",
+    "06": ["- Only the owner of the order (the user of the access token) can confirm", "#### UPDATE - Confirm the delivery", "AND status = 'SHIPPED' -- no row changed means the status changed in the meantime",
            "#### UPDATE - Complete the order", "AND status = 'PROCESSING'", "#### QUERY - Get the delivered quantity of every item", "s.status = 'DELIVERED'",
            "o.user_id = '<sequence.userId>'", "#### QUERY - Lock the order", "FOR UPDATE", "#### Fail - Conflict Status", "E10006",
            "approved by the product owner",
-           "### Automatic Completion Rules", "### Automatic Completion Example", "#### QUERY - Get the orders with an old SHIPPED parcel",
+           "- A job (a scheduled task of the system", "**Automatic Completion Example**", "#### QUERY - Get the orders with an old SHIPPED parcel",
            "#### UPDATE - Confirm the delivery as the system", "#### QUERY - Check that the order qualifies", "updated_by = 'system'",
            "AND status = 'SHIPPED' -- no row changed means the shippings changed in the meantime", "`completion_days`",
            "AND s.shipped_at > NOW() AT TIME ZONE 'UTC' - INTERVAL '<sequence.completionDays> days'", "AND s2.status IN ('SHIPPED', 'DELIVERED')",
@@ -2904,7 +2904,7 @@ def check_shipping_inquiry(md: str, key: str) -> list[str]:
     for sku, found in names.items():
         if len(found) > 1:
             errors.append(f"{key}: the SKU {sku} has different names in the examples")
-    if shop_side and "shopId" not in md.split("### Shop Shipping Inquiry Rules")[0]:
+    if shop_side and "shopId" not in md.split("## Example Request")[0]:
         errors.append("04: shopId must be a query parameter")
     if not shop_side:
         params = re.search(r"### Query Parameters.*?(?=\n### )", md, re.DOTALL)
@@ -2932,7 +2932,7 @@ def check_shipping_actions(mds: dict) -> list[str]:
             if want is not None and item["quantity"] > want:
                 errors.append(f"01 '{title}': quantity {item['quantity']} is more than the {want} that was ordered")
     request = json.loads(re.search(r"### HTTP Request\n\n```HTTP\n.*?\n\n(\{.*?\})\n```", mds["01"], re.DOTALL).group(1))
-    request_part = mds["01"].split("### Create Shipping Rules")[0] + mds["01"].split("#### Example Body Parameters")[1].split("## Example Request")[0]
+    request_part = mds["01"].split("## Request Parameters")[1].split("## Example Request")[0]
     if "shippingMethod" in request or "shippingMethod" in request_part:
         errors.append("01: the request must not carry shippingMethod (it is copied from the payment)")
     first = json_examples(mds["01"], "Success - First Shipping")
@@ -3022,7 +3022,7 @@ SHIPPING_JOB_PHRASE = "Time the customer or the system confirmed the parcel (UTC
 
 def check_shipping_job_example(md: str) -> list[str]:
     """The Automatic Completion Example of spec 06: every case is judged again with the five conditions and compared with the result that is written."""
-    m = re.search(r"### Automatic Completion Example\n\n(.*?)\n\n((?:\|[^\n]*\n)+)", md, re.DOTALL)
+    m = re.search(r"\*\*Automatic Completion Example\*\*\n\n(.*?)\n\n((?:\|[^\n]*\n)+)", md, re.DOTALL)
     if not m:
         return ["06: the Automatic Completion Example table is missing"]
     day = re.search(r"runs on day (\d+) with `completion_days` (\d+)", m.group(1))
@@ -3111,13 +3111,15 @@ def check_shipping_spec() -> int:
             errors.append(f"{path} broken link {link}")
     if errors:
         return fail("; ".join(errors))
+    # rules that moved into a note of the sequence diagram are searched there, one line per wrapped note
+    full = {k: v + "\n" + re.sub(r"\n\s+", " ", read(SHIPPING_SPECS[k].replace("spec.md", "sequence.wsd"))) for k, v in mds.items()}
     for key, need in SHIPPING_NEEDLES.items():
-        for missing in missing_needles(mds[key], need):
+        for missing in missing_needles(full[key], need):
             errors.append(f"{SHIPPING_SPECS[key]} missing: {missing}")
     for key, counts in SHIPPING_COUNTS.items():
         for phrase, n in counts.items():
-            if mds[key].count(phrase) < n:
-                errors.append(f"{SHIPPING_SPECS[key]}: '{phrase[:60]}' must appear at least {n} times, found {mds[key].count(phrase)}")
+            if full[key].count(phrase) < n:
+                errors.append(f"{SHIPPING_SPECS[key]}: '{phrase[:60]}' must appear at least {n} times, found {full[key].count(phrase)}")
     for key, want in SHIPPING_SUCCESS_CODES.items():
         if success_codes(mds[key]) != want:
             errors.append(f"{SHIPPING_SPECS[key]}: success examples should be {want}, found {success_codes(mds[key])}")
@@ -3133,7 +3135,7 @@ def check_shipping_spec() -> int:
             if forbidden in md:
                 errors.append(f"{SHIPPING_SPECS[key]} must not contain '{forbidden}'")
     for key in ("01", "02", "03", "06"):
-        rules = mds[key].split("#### Example Body Parameters")[0]
+        rules = full[key]
         if "SELECT ... FOR UPDATE" not in rules:
             errors.append(f"{SHIPPING_SPECS[key]}: the rules must say that the order row is locked with SELECT ... FOR UPDATE")
     for key in ("04", "05", "06"):
@@ -3144,7 +3146,7 @@ def check_shipping_spec() -> int:
     if "There is no automatic completion" in mds["06"]:
         errors.append("06: the sentence that there is no automatic completion must not stay")
     errors.extend(check_shipping_job_example(mds["06"]))
-    errors.extend(check_shipping_scan_query(mds["06"]))
+    errors.extend(check_shipping_scan_query(full["06"]))
     errors.extend(check_shipping_inquiry(mds["04"], "04"))
     errors.extend(check_shipping_inquiry(mds["05"], "05"))
     errors.extend(check_shipping_actions(mds))
@@ -8195,17 +8197,6 @@ LEGACY_SPEC_TEMPLATE = (
     "product/13-upsert-product-brand",
     "product/14-upsert-product-brand-batch",
     "product/15-inquiry-product-brand",
-    "sales/01-inquiry-checkout",
-    "sales/02-create-order",
-    "sales/03-inquiry-order",
-    "sales/04-inquiry-shop-order",
-    "sales/05-cancel-order",
-    "shipping/01-create-shipping",
-    "shipping/02-update-shipping-status",
-    "shipping/03-upsert-shipping-stop",
-    "shipping/04-inquiry-shop-shipping",
-    "shipping/05-inquiry-shipping",
-    "shipping/06-confirm-delivery",
     "shop/01-upsert-shop-product-sku",
     "shop/02-upsert-shop-product-sku-batch",
     "shop/04-inquiry-storefront-product",

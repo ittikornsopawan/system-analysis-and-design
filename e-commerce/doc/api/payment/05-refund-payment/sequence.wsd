@@ -61,7 +61,7 @@ activate page
                 api -> page: Bad request
                 page -> user: Display validation error
             else Valid input
-                app -> app: Verify JWT signature, issuer, audience, exp, UUID sub and the roles claim (an array of roleId and name)
+                app -> app: Verify JWT signature, issuer, audience, exp, UUID sub and the roles claim (an array of role names)
                 alt Missing, malformed or invalid JWT or roles claim
                     app -> api: HTTP 401 E10002 Invalid or expired access token.
                     api -> page: Authentication error
@@ -72,9 +72,9 @@ activate page
                         - Governing behavior: owner-confirmed API review, Q2/Q4/Q10/Q13; this detailed revision remains in-review and includes no backend implementation.
                           Validate the whole request, including the mandatory UTC timestamp, before SQL (400 E10001). Missing or malformed Bearer credentials or a failed JWT
                           signature/issuer/audience/expiry/UUID sub/roles-claim validation return the same 401 E10002 `Invalid or expired access token.` before BEGIN.
-                        - Validate the structured `roles` claim defined by login: `roles` must be an array (an empty array is valid), each object has a UUID `roleId` and a
-                          non-empty string `name`, and the `roleId`s are unique; a missing or malformed claim is a 401, never an empty list and never recovered from the
-                          database. `userId` comes only from the verified `sub`; `accessTokenHash` is the SHA-256 of the exact presented JWT.
+                        - Validate the `roles` claim defined by login: `roles` must be an array of non-empty role name strings (an empty array is valid) and the names are
+                          unique; a missing or malformed claim is a 401, never an empty list and never recovered from the database. `userId` comes only from the verified
+                          `sub`; `accessTokenHash` is the SHA-256 of the exact presented JWT.
                         - Begin one READ COMMITTED transaction, lock the caller user first (`QUERY - Lock the caller user`, `FOR UPDATE`), capture the fresh server UTC `now`
                           after the lock, recheck the JWT expiry at `now`, then run `QUERY - Check current credential and user`; no row (a missing, revoked or expired stored
                           token, another owner or an inactive user) returns the same 401 and rolls back before any other row is read. Lock order: the caller user, the order
