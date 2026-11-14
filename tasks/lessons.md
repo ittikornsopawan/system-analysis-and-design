@@ -539,3 +539,11 @@ description: Repository-wide and project-specific lessons captured from user cor
 - **Corrected behavior**: Fetch and integrate the latest base immediately before publication; discard an earlier preview after the base moves. When a shared legacy registry conflicts, preserve independent removals from both branches and run the affected checker on the combined tree.
 - **Preventive skill change**: `.agents/skills/commit-and-pr/references/checklist.md` now explicitly covers stale merge previews and preserving both sides' removals from shared legacy/exception registries.
 - **Verification**: The conflict resolution retains the PR #120 removals for consent 06–08 and the PR #125 removals for consent 02–03. On the combined tree at base `865631e`, all 68 `check_docs.py` sub-commands pass, `audit_all.py` reports 0 findings, and `run_db_tests.sh` reports `ALL PASSED`.
+
+### 2026-11-14 — After a blocked `suspend`, read the pull-request state before any merge
+
+- **Correction**: `suspend` of #122 answered "GitHub has no open pull request" because the owner had merged it a moment earlier. I did not read that answer as "merged", ran `git merge origin/main` in the same session of commands while the workspace was still on the task branch, and fast-forwarded the branch past the PR head, so `park` then refused (HEAD differed from the merged head) and the lead had to approve clearing the assignment record.
+- **Root cause**: A chained command line mixed `suspend`, `prepare --resume-pr` and a merge, and the merge ran although `prepare` had failed.
+- **Corrected behavior**: Run one helper step per command and stop on a non-OK status; when `suspend` says there is no open PR, check `gh pr view <n> --json state` and use `park --pr <n>` (after `release`); never merge main into a branch whose PR is merged; chain a git merge after `prepare --resume-pr` only with `&&` and only when that step printed `resumed`.
+- **Preventive skill change**: none inside this assignment scope; proposed for `agent-workspace`: `suspend` could name `park` as the next step when the PR is already merged.
+- **Verification**: the workspace is parked on main with no assignment record, all earlier merged PRs were parked through `park --pr`, and the suspended records of #120 and #125 are cleared.
