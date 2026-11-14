@@ -63,6 +63,11 @@ def read(path: str) -> str:
     """Read a repo-relative file as UTF-8 text."""
     return (ROOT / path).read_text(encoding="utf-8")
 
+def missing_apart(spec_md: str, sequence_md: str, needles: list[str], moved: list[str]) -> list[str]:
+    """Needles in the spec, except the rules that moved into a note of the sequence diagram, which are searched in the sequence only (one line per wrapped note)."""
+    flat = re.sub(r"\n\s+", " ", sequence_md)
+    return missing_needles(spec_md, [n for n in needles if n not in moved]) + missing_needles(flat, moved)
+
 def without_frontmatter(md: str) -> str:
     """The Markdown after its YAML frontmatter (the whole text when there is none)."""
     return md.split("\n---\n", 1)[1].lstrip("\n") if md.startswith("---\n") and "\n---\n" in md else md
@@ -945,7 +950,7 @@ def check_shop_spec() -> int:
     if errors:
         return fail("; ".join(errors))
     needles = {
-        "01": ["#### Lot Object", "### Lot Rules", "#### UPDATE - Close the lot that is on sale before another lot is put on sale",
+        "01": ["#### Lot Object", "- The system keeps one row per (shopId, productId, skuId)", "#### UPDATE - Close the lot that is on sale before another lot is put on sale",
                "#### QUERY - Check lots in use", "sales.t_order_item", "Only one lot can be on sale", "E10006",
                "- Permission:", "E10009", "#### Fail - Forbidden", "#### QUERY - Check shop member",
                "#### QUERY - Check platform administrator", "-> permission (403) ->",
@@ -955,12 +960,14 @@ def check_shop_spec() -> int:
                "- Permission:", "E10009", "#### Fail - Forbidden", "#### QUERY - Check shop members",
                "#### QUERY - Check platform administrator", "-> permission (403) ->"],
         "03": ["#### Lot Object", "costPrice", "#### QUERY - Get lots", "ORDER BY l.is_on_sale DESC"],
-        "04": ["#### SKU Object", "#### Option Value Object", "### Page Rules", "stockStatus", "maxOrderQuantity",
+        "04": ["#### SKU Object", "#### Option Value Object", "- Only a product that is ACTIVE, sold by a shop", "stockStatus", "maxOrderQuantity",
                "#### QUERY - Get the lot that is on sale of each shop product SKU", "pi.option_value_id IS NULL",
                "sold by a shop that is ACTIVE", "AND s.row_status = 'ACTIVE' -- a shop that is not ACTIVE has no page"],
     }
     for key, need in needles.items():
-        for missing in missing_needles(mds[key], need):
+        # rules that moved into a note of the sequence diagram are searched there, one line per wrapped note
+        seq = re.sub(r"\n\s+", " ", read(SHOP_SPECS[key].replace("spec.md", "sequence.wsd")))
+        for missing in missing_needles(mds[key] + "\n" + seq, need):
             errors.append(f"{SHOP_SPECS[key]} missing: {missing}")
     store = mds["04"]
     for forbidden in ["costPrice", "cost_price", "grossMargin", "gross_margin", "authorization"]:
@@ -1932,7 +1939,7 @@ def check_shop_user_spec() -> int:
                 "were approved by the product owner.")
     permission = approval
     needles = {
-        "11": ["# [POST]: v1/shop/user/upsert", "### Shop User Rules", approval, permission, "#### QUERY - Check shop member", "#### QUERY - Check shop administrator",
+        "11": ["# [POST]: v1/shop/user/upsert", "- A member of a shop is a user that has a row in `shop.t_shop_user`", approval, permission, "#### QUERY - Check shop member", "#### QUERY - Check shop administrator",
                "#### QUERY - Count the ADMIN members of the shop after the write", "#### QUERY - Check duplicate member", "#### QUERY - Check platform administrator",
                "(../../../schema/shop/t_shop_user.md)", "(../../../schema/authen/m_user.md)", "(../../../schema/author/t_user_role.md)",
                "AND su.row_status <> 'DELETED'\nAND su.id <> '<sequence.id>'", "User is already a member of the shop.", "The shop must keep at least one ADMIN.",
@@ -1940,10 +1947,10 @@ def check_shop_user_spec() -> int:
                "Shop Id and User Id cannot be changed.", "Role must be ADMIN or STAFF.", "Row status must not be DELETED when inserting a shop user.",
                "A platform administrator cannot skip this rule", "can only delete or archive their own membership", "it must lock the row of the shop (`shop.m_shop`", "E10003", "E10004", "E10005", "E10006", "E10009", "E90001",
                "Insert Shop User Success"],
-        "12": ["# [POST]: v1/shop/user/upsert/batch", "### Shop User Rules (same as the single upsert, applied per shop user)", approval, permission, "#### Shop User Object",
+        "12": ["# [POST]: v1/shop/user/upsert/batch", "- A member of a shop is a user that has a row in `shop.t_shop_user`", approval, permission, "#### Shop User Object",
                "shopUsers[2]: Id is duplicated with shopUsers[1].", "shopUsers[2]: Shop Id and User Id are duplicated with shopUsers[0].", "Shop users must contain 1 to 100 items.",
                "#### QUERY - Count the ADMIN members of the shop after the write", "except the ADMIN rule that is checked once for each shop after all the items", "it must lock the row of the shop (`shop.m_shop`"],
-        "13": ["# [GET]: v1/shop/user", "### Shop User Inquiry Rules", approval, permission, "#### Shop User Object", "#### QUERY - Get shop users", "#### QUERY - Get total items",
+        "13": ["# [GET]: v1/shop/user", "- `shopId` or `userId` must be specified", approval, permission, "#### Shop User Object", "#### QUERY - Get shop users", "#### QUERY - Get total items",
                "#### QUERY - Check shop member", "#### QUERY - Check platform administrator", "ORDER BY su.created_at DESC, su.id", "(../../../schema/shop/t_shop_user.md)",
                "(../../../schema/authen/m_user.md)", "(../../../schema/author/t_user_role.md)", "Shop Id or User Id is required.",
                "You do not have permission to view the members of this shop.", "The user name and the email address of a user are never returned",
@@ -1951,7 +1958,8 @@ def check_shop_user_spec() -> int:
     }
     needles["13"] = [n if n != "list the shops of the caller" else "lists the shops of the caller" for n in needles["13"]]
     for key, need in needles.items():
-        for missing in missing_needles(mds[key], need):
+        moved = {"11": ["it must lock the row of the shop (`shop.m_shop`"], "12": ["it must lock the row of the shop (`shop.m_shop`"]}.get(key, [])
+        for missing in missing_apart(mds[key], read(SHOP_USER_SPECS[key].replace("spec.md", "sequence.wsd")), need, moved):
             errors.append(f"{SHOP_USER_SPECS[key]} missing: {missing!r}")
     if errors:
         return fail("; ".join(errors))
@@ -2145,13 +2153,13 @@ def check_shop_product_spec() -> int:
     for old in ("decided by the lead SA", "pending product owner confirmation"):
         if old in md:
             errors.append(f"{path} still says '{old}', the rules are approved by the product owner")
-    needles = ["# [GET]: v1/storefront/shop/product", "### Shop Product List Rules", approval,
+    needles = ["# [GET]: v1/storefront/shop/product", "- This API is public: it needs no access token. It never returns the cost price", approval,
                "#### Shop Object", "#### Shop Image Object", "#### Product Object", "#### QUERY - Get shop", "#### QUERY - Get products of the shop",
                "#### QUERY - Get total items", "#### QUERY - Get the category and its sub categories", "#### QUERY - Get the first image of each product",
                "#### QUERY - Get shop images", "WITH RECURSIVE categories AS", "ORDER BY v.listed_at DESC, p.id", "-- ORDER BY (v.price_from IS NULL), v.price_from, p.id",
                "-- ORDER BY (v.price_from IS NULL), v.price_from DESC, p.id", "-- ORDER BY p.name, p.id", "AND l.quantity > 0", "AND v.price_from IS NOT NULL",
                "ORDER BY pi.product_id, pi.created_at, pi.id", "(../../../schema/shop/t_shop_product.md)", "(../../../schema/shop/m_shop.md)",
-               "(../../../schema/product/m_product_category.md)", "(../../../schema/product/m_product_image.md)", "(../04-inquiry-storefront-product/spec.md)",
+               "(../../../schema/product/m_product_category.md)", "(../../../schema/product/m_product_image.md)", "shop/04",
                "Shop Id is a required field.", "Shop not found.", "Sort must be one of NEWEST, PRICE_ASC, PRICE_DESC, NAME_ASC",
                "Page Index and Page Size must be greater than 0", "Every sort ends with `productId` ascending as the tie-break",
                "A shop stops showing a product by closing all the SKUs", "public: it needs no access token", "#### Success - Price Ascending", "#### Success - In Stock Only",
@@ -2366,9 +2374,9 @@ def check_review_spec() -> int:
     if errors:
         return fail("; ".join(errors))
     approval = "The rules of this section were approved by the product owner."
-    page = "(../04-inquiry-storefront-product/spec.md)"
+    page = "shop/04"
     needles = {
-        "15": ["# [POST]: v1/shop/product-review/upsert", "### Review Rules", approval, "set by the delivery API (work package WP3)", page,
+        "15": ["# [POST]: v1/shop/product-review/upsert", "- The caller is the user of the access token, never a field of the request", approval, "set by the delivery API (work package WP3)", page,
                "#### QUERY - Get the shop product that has a product page", "#### QUERY - Check that the caller has bought the product", "#### QUERY - Check existing review",
                "#### QUERY - Check duplicate review", "o.status = 'COMPLETED'",
                "WHERE r.id = '<sequence.id>'\nAND r.user_id = '<sequence.userId>'\nAND r.row_status = 'ACTIVE'",
@@ -2378,7 +2386,7 @@ def check_review_spec() -> int:
                "Rating must be a whole number from 1 to 5.", "Comment must not be longer than 2000 characters.", "Shop Id and Product Id cannot be changed.",
                "Row status must be ACTIVE or DELETED, and must not be DELETED when inserting a review.", "There is no Archive for a customer.",
                "The rule is checked only when a review is inserted", "E10001", "E10002", "E10003", "E10004", "E10005", "E10009", "E90001", "Insert Shop Product Review Success"],
-        "16": ["# [GET]: v1/storefront/product-review", "### Review Inquiry Rules", approval, page, "#### Summary Object", "#### Breakdown Object", "#### Review Object",
+        "16": ["# [GET]: v1/storefront/product-review", "- This API is public: it needs no access token. The reviewer is shown only", approval, page, "#### Summary Object", "#### Breakdown Object", "#### Review Object",
                "#### QUERY - Get the summary of the reviews", "#### QUERY - Get the number of reviews of each rating", "#### QUERY - Get reviews", "#### QUERY - Get total items",
                "ROUND(AVG(r.rating), 2)", "ORDER BY r.created_at DESC, r.id", "-- ORDER BY r.rating DESC, r.id", "-- ORDER BY r.rating, r.id", "(../../../schema/authen/m_user.md)",
                "(../../../schema/shop/t_shop_product_review.md)", "Shop Id and Product Id are required fields.", "Product not found.", "Page Index and Page Size must be greater than 0",
@@ -2386,7 +2394,8 @@ def check_review_spec() -> int:
                "Every sort ends with `reviewId` ascending as the tie-break", "Rounded half up to 2 decimals", "#### Success - Highest", "#### Success - Rating Filter", "E10001", "E10004", "E90001"],
     }
     for key, need in needles.items():
-        for missing in missing_needles(mds[key], need):
+        moved = []
+        for missing in missing_apart(mds[key], read(REVIEW_SPECS[key].replace("spec.md", "sequence.wsd")), need, moved):
             errors.append(f"{REVIEW_SPECS[key]} missing: {missing!r}")
     for forbidden in ("authorization", "Unauthorized", "E10002", "E10009"):
         if forbidden in mds["16"]:
@@ -8449,20 +8458,11 @@ def spec_template_errors(md: str) -> list[str]:
 # Specs that do not follow the template yet. Each is exempt until its sections and links are fixed; an entry must be a spec folder and
 # must still fail, so a spec that passes has to leave the list in the same change. The count is printed in the OK line.
 LEGACY_SPEC_TEMPLATE = (
-    "shop/01-upsert-shop-product-sku",
-    "shop/02-upsert-shop-product-sku-batch",
-    "shop/04-inquiry-storefront-product",
     "shop/05-upsert-shop-type",
     "shop/06-upsert-shop-type-batch",
     "shop/08-upsert-shop",
     "shop/09-upsert-shop-batch",
     "shop/10-inquiry-shop",
-    "shop/11-upsert-shop-user",
-    "shop/12-upsert-shop-user-batch",
-    "shop/13-inquiry-shop-user",
-    "shop/14-inquiry-storefront-shop-product",
-    "shop/15-upsert-shop-product-review",
-    "shop/16-inquiry-storefront-product-review",
 )
 
 
@@ -8495,22 +8495,12 @@ COMMANDS["spec-template"] = check_spec_template
 # The specs that still have no frontmatter. The owner decided on 2026-11-14 that they get `status: in-review`, `approved_by: null` and
 # `approved_at: null`; a file that passes must leave this list (the checker asks for it).
 MD_FRONTMATTER_PENDING = (
-    "e-commerce/doc/api/shop/01-upsert-shop-product-sku/spec.md",
-    "e-commerce/doc/api/shop/02-upsert-shop-product-sku-batch/spec.md",
-    "e-commerce/doc/api/shop/03-inquiry-shop-product-sku/spec.md",
-    "e-commerce/doc/api/shop/04-inquiry-storefront-product/spec.md",
     "e-commerce/doc/api/shop/05-upsert-shop-type/spec.md",
     "e-commerce/doc/api/shop/06-upsert-shop-type-batch/spec.md",
     "e-commerce/doc/api/shop/07-inquiry-shop-type/spec.md",
     "e-commerce/doc/api/shop/08-upsert-shop/spec.md",
     "e-commerce/doc/api/shop/09-upsert-shop-batch/spec.md",
     "e-commerce/doc/api/shop/10-inquiry-shop/spec.md",
-    "e-commerce/doc/api/shop/11-upsert-shop-user/spec.md",
-    "e-commerce/doc/api/shop/12-upsert-shop-user-batch/spec.md",
-    "e-commerce/doc/api/shop/13-inquiry-shop-user/spec.md",
-    "e-commerce/doc/api/shop/14-inquiry-storefront-shop-product/spec.md",
-    "e-commerce/doc/api/shop/15-upsert-shop-product-review/spec.md",
-    "e-commerce/doc/api/shop/16-inquiry-storefront-product-review/spec.md",
 )
 MD_STATUSES = ("draft", "in-review", "approved", "superseded")
 

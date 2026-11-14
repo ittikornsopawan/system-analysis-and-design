@@ -1,3 +1,11 @@
+---
+name: "Inquiry Storefront Product Review API"
+description: "Inquiry the reviews of a product sold by a shop with the average rating and the number of reviews of each rating, with paging, rating filter and sort. Read it when you implement, review or test GET v1/storefront/product-review."
+status: in-review
+approved_by: null
+approved_at: null
+---
+
 # [GET]: v1/storefront/product-review
 
 | Title       | Description                                                                                                                                                                                  |
@@ -17,6 +25,15 @@
 | UAT            | https://www.domain.com/api-uat      |
 | PRE-PRODUCTION | https://www.domain.com/api-pre-prod |
 | PRODUCTION     | https://www.domain.com/api          |
+
+- The rules of this section were approved by the product owner.
+- This API is public: it needs no access token. The reviewer is shown only by the display name and the profile picture, never by the user name, the email address or the user id.
+- The reviews are listed only when the product page exists for the shop and the product, with the condition of the product page (shop/04): the shop is ACTIVE, the product is ACTIVE, the shop product is ACTIVE and it has at least one SKU that is ACTIVE for the shop and for the product, otherwise 404 (E10004). A product with a page and no review answers 200 with `items` empty, `ratingCount` 0, `averageRating` null and every count of `ratingBreakdown` 0.
+- Only the reviews with `rowStatus` ACTIVE are returned and counted. The summary (`averageRating`, `ratingCount`, `ratingBreakdown`) is calculated from all the ACTIVE reviews of the shop product, it does not change with the `rating` filter or the page. `totalItems` counts the reviews after the `rating` filter.
+- `averageRating` is the average of the ratings rounded half up to 2 decimals. `ratingBreakdown` has the 5 ratings from 5 down to 1, also the ones with count 0.
+- `sort`: NEWEST (default) orders by `createdAt`, newest first. HIGHEST orders by rating from 5 down to 1 and LOWEST from 1 up to 5. Every sort ends with `reviewId` ascending as the tie-break, so the pages never repeat or skip a review.
+- A review that was changed shows `updatedAt`, otherwise `updatedAt` is null. The comment of a review is optional.
+- The reviews are about the product sold by that shop: the same product of another shop has its own reviews.
 
 ---
 
@@ -39,18 +56,6 @@
 | 4   | sort           | String       | OPTIONAL  | Order of the reviews (NEWEST, HIGHEST, LOWEST), Defaults to NEWEST                          | NEWEST                               |
 | 5   | pageIndex      | Numeric      | OPTIONAL  | Page index starting from 1, Defaults to 1                                                   | 1                                    |
 | 6   | pageSize       | Numeric      | OPTIONAL  | Number of items per page (max 100), Defaults to 10                                          | 10                                   |
-
-### Review Inquiry Rules
-
-The rules of this section were approved by the product owner.
-
-- This API is public: it needs no access token. The reviewer is shown only by the display name and the profile picture, never by the user name, the email address or the user id.
-- The reviews are listed only when the product page exists for the shop and the product, with the condition of the product page ([shop/04](../04-inquiry-storefront-product/spec.md)): the shop is ACTIVE, the product is ACTIVE, the shop product is ACTIVE and it has at least one SKU that is ACTIVE for the shop and for the product, otherwise 404 (E10004). A product with a page and no review answers 200 with `items` empty, `ratingCount` 0, `averageRating` null and every count of `ratingBreakdown` 0.
-- Only the reviews with `rowStatus` ACTIVE are returned and counted. The summary (`averageRating`, `ratingCount`, `ratingBreakdown`) is calculated from all the ACTIVE reviews of the shop product, it does not change with the `rating` filter or the page. `totalItems` counts the reviews after the `rating` filter.
-- `averageRating` is the average of the ratings rounded half up to 2 decimals. `ratingBreakdown` has the 5 ratings from 5 down to 1, also the ones with count 0.
-- `sort`: NEWEST (default) orders by `createdAt`, newest first. HIGHEST orders by rating from 5 down to 1 and LOWEST from 1 up to 5. Every sort ends with `reviewId` ascending as the tie-break, so the pages never repeat or skip a review.
-- A review that was changed shows `updatedAt`, otherwise `updatedAt` is null. The comment of a review is optional.
-- The reviews are about the product sold by that shop: the same product of another shop has its own reviews.
 
 ## Example Request
 
