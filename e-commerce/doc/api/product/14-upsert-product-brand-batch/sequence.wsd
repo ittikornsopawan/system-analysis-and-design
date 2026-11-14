@@ -63,7 +63,10 @@ activate page
                     page -> user: Display authentication error
                 else Verified JWT
                     app -> app: userId = verified sub
-                    app -> infra: BEGIN READ COMMITTED
+                                        note over app, infra
+                        Permission: the same as the single upsert, only a platform administrator can call this API, any other caller gets 403 (E10009). The check is made once for the request, after the existence checks of all items and before the duplicate name and in-use checks, so the 403 message has no item position. Approved by the product owner (answered through the lead SA, 2026-11-06).
+                    end note
+app -> infra: BEGIN READ COMMITTED
                     activate infra
                     alt Work completes before commit
                             loop For each item that has an id (request order)

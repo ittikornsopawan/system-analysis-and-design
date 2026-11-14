@@ -3228,12 +3228,28 @@ def master_needles(m: dict) -> list[dict]:
     inquiry = [f"# [GET]: v1/{m['path']}", f"#### QUERY - Get {lower}s", "#### QUERY - Get total items", "ILIKE", f"### {m['title']} Inquiry Rules", f"ORDER BY {alias}.created_at DESC, {alias}.id",
                "Page Index and Page Size must be greater than 0", "Row status must be one of ACTIVE, INACTIVE, LOCKED, ARCHIVED.", "authorization",
                f"Request: `GET v1/{m['path']}?id={m['id']}`", f"WHERE {alias}.row_status <> 'DELETED'", f"Inquiry {m['title']} Success", "no role is checked"]
+    if not m["consent"]:
+        # The rules of the order of the checks and the permission are in the note of sequence.wsd (see master_diagram_needles).
+        for lst, moved in ((upsert, [f"### {m['title']} Rules", "-> permission (403, E10009) -> duplicate name check", "- Permission:"]),
+                           (batch, [f"### {m['title']} Rules (same as the single upsert, applied per {lower})", "so the 403 message has no item position", "- Permission:"]),
+                           (inquiry, [f"### {m['title']} Inquiry Rules"])):
+            for text in moved:
+                lst.remove(text)
     if m["consent"]:
         upsert.extend(["`description` and `isRequired` are optional"])
         for lst in (upsert, batch):
             lst.extend(["Name is a required field.", "is_required", "isRequired", "null clears it"])
         inquiry.extend(["isRequired", "ct.is_required", "AND ct.is_required = '<sequence.isRequired>' -- only when isRequired is specified"])
     return [{"upsert": upsert, "batch": batch, "inquiry": inquiry}]
+
+
+def master_diagram_needles(m: dict) -> dict:
+    """What the note of sequence.wsd must say for the product type and product brand (the consent type keeps these rules in its spec)."""
+    if m["consent"]:
+        return {"upsert": [], "batch": []}
+    admin = "only a platform administrator (a user with an ACTIVE author.t_user_role row for the ACTIVE role PLATFORM_ADMIN)"
+    return {"upsert": [f"Permission: {admin}", "-> permission (403, E10009) -> duplicate name check"],
+            "batch": ["Permission: the same as the single upsert, only a platform administrator", "so the 403 message has no item position"]}
 
 
 def master_counted(m: dict) -> dict:
@@ -3398,6 +3414,10 @@ def check_master_spec(names: tuple[str, ...], label: str) -> int:
             for text, times in master_counted(m)[kind]:
                 if md.count(text) != times:
                     errors.append(f"{path}: {text!r} must appear {times} time(s), found {md.count(text)}")
+            diagram_path = str(Path(path).with_name("sequence.wsd"))
+            if (ROOT / diagram_path).exists():
+                for missing in missing_needles(read(diagram_path), master_diagram_needles(m).get(kind, [])):
+                    errors.append(f"{diagram_path} missing: {missing!r}")
             for forbidden in MASTER_FORBIDDEN[kind]:
                 if forbidden in md:
                     errors.append(f"{path} must not contain {forbidden!r} (the inquiry has no role check)")
@@ -8377,12 +8397,6 @@ LEGACY_SPEC_TEMPLATE = (
     "consent/06-upsert-consent-type",
     "consent/07-upsert-consent-type-batch",
     "consent/08-inquiry-consent-type",
-    "product/10-upsert-product-type",
-    "product/11-upsert-product-type-batch",
-    "product/12-inquiry-product-type",
-    "product/13-upsert-product-brand",
-    "product/14-upsert-product-brand-batch",
-    "product/15-inquiry-product-brand",
     "shop/01-upsert-shop-product-sku",
     "shop/02-upsert-shop-product-sku-batch",
     "shop/04-inquiry-storefront-product",
@@ -8447,12 +8461,6 @@ MD_FRONTMATTER_PENDING = (
     "e-commerce/doc/api/payment/01-start-payment/spec.md",
     "e-commerce/doc/api/payment/02-stripe-webhook/spec.md",
     "e-commerce/doc/api/payment/03-inquiry-payment/spec.md",
-    "e-commerce/doc/api/product/10-upsert-product-type/spec.md",
-    "e-commerce/doc/api/product/11-upsert-product-type-batch/spec.md",
-    "e-commerce/doc/api/product/12-inquiry-product-type/spec.md",
-    "e-commerce/doc/api/product/13-upsert-product-brand/spec.md",
-    "e-commerce/doc/api/product/14-upsert-product-brand-batch/spec.md",
-    "e-commerce/doc/api/product/15-inquiry-product-brand/spec.md",
     "e-commerce/doc/api/sales/01-inquiry-checkout/spec.md",
     "e-commerce/doc/api/sales/02-create-order/spec.md",
     "e-commerce/doc/api/sales/03-inquiry-order/spec.md",
