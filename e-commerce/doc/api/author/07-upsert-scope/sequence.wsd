@@ -87,7 +87,7 @@ activate page
                 end break
             else Check passed
             end
-            app -> app: Verify JWT signature/issuer/audience/expiry/UUID sub and structured unique roleIds/name array
+            app -> app: Verify JWT signature/issuer/audience/expiry/UUID sub and the roles claim as unique non-empty strings
             alt Missing/invalid JWT or malformed roles
                 break Reject this request
                     app -> api: HTTP 401 E10002 Invalid or expired access token.
@@ -99,8 +99,7 @@ activate page
             app -> app: callerUserId = verified sub; accessTokenHash = SHA-256 exact JWT; createdBy/updatedBy = caller UUID string; omitted id = typed SQL NULL
             app -> infra: BEGIN READ COMMITTED
             note over app, infra
-                Verify JWT signature/issuer/audience/expiry/UUID sub and structured unique roles before BEGIN. roles must be
-                an array including [], each role has UUID roleId/non-empty name and roleIds are unique. Malformed/missing
+                Verify JWT signature/issuer/audience/expiry/UUID sub and the roles claim before BEGIN. roles must be an array of unique non-empty role names (JWT payload of 2026-11-13), including []. Malformed/missing
                 roles is generic 401 E10002, never [] or live-grant fallback. callerUserId = verified sub; accessTokenHash =
                 SHA-256 exact JWT. createdBy/updatedBy are the caller UUID string and now is fresh server UTC, never request
                 audit values or timestamp.

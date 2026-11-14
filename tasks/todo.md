@@ -1689,3 +1689,11 @@ Authority: owner answers of 2026-11-13 ("ใช้คำแนะนำทั้
 Authority: owner answer relayed by Josh (SA Lead); the SA Lead approved this small PR. `authorized_by: josh`, delivery `open-pr`.
 
 - [x] Record the answer in `api-review-design.md` (consent of a closed type can still be deleted or archived; ACTIVE type only when creating or opening to ACTIVE; the SA Lead's type-change condition marked as his decision) and the lesson of the stray merge.
+
+### Roles claim sweep — author 01–11 say that roles is a list of role names
+
+Authority: owner JWT payload decision of 2026-11-13 (PR #109); the SA Lead (Josh) assigned the sweep with scope the eleven author folders, `check_docs.py` and tasks; `authorized_by: josh`, delivery `open-pr`. The `roleId` fields of requests and responses (author/10 user role) are a different matter and stay.
+
+- [x] The step line of every author 01–11 sequence says `the roles claim as unique non-empty strings` (was `structured unique roleIds/name array`), the note paragraph says `roles must be an array of unique non-empty role names (JWT payload of 2026-11-13), including []` (was the UUID roleId form), and the Domain bullet of 03, 06, 09 and 11 says `the roles claim` (was `structured roles`).
+- [x] The eight flow-checker needles that expected the old step sentence now expect the new one; the new `author-roles-claim` check requires both new sentences in the eleven diagrams and rejects six old forms.
+- [x] Mutation 4/4; render of the eleven diagrams (all SQL lines visible); all documentation commands, audit and database tests.

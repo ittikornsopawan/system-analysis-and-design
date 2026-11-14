@@ -88,7 +88,7 @@ activate page
                 end break
             else Check passed
             end
-            app -> app: Verify JWT signature/issuer/audience/expiry/UUID sub and structured unique roleIds/name array
+            app -> app: Verify JWT signature/issuer/audience/expiry/UUID sub and the roles claim as unique non-empty strings
             alt Missing/invalid JWT or malformed roles
                 break Reject this request
                     app -> api: HTTP 401 E10002 Invalid or expired access token.
@@ -263,8 +263,7 @@ activate page
                         the existence check and before conflicts. Never authorize from live author.t_user_role/author.m_role
                         assignment queries, request flags, permission names or a separate isPlatformAdmin claim. Approved by the
                         product owner (Q2/Q4/Q10/Q13, 2026-11-07); this supersedes the earlier live-assignment guard.
-                        Verify Bearer JWT signature/issuer/audience/expiry/UUID sub and structured roles from login. roles must be
-                        an array (including []), every role has UUID roleId and non-empty string name, and roleIds are unique.
+                        Verify Bearer JWT signature/issuer/audience/expiry/UUID sub and the roles claim before BEGIN. roles must be an array of unique non-empty role names (JWT payload of 2026-11-13), including [].
                         Malformed/missing roles is 401, not an empty-list fallback; verify before BEGIN. Compute callerUserId from
                         verified sub and accessTokenHash as SHA-256 of the exact JWT. Missing/invalid credentials use generic 401
                         E10002 `Invalid or expired access token.`
