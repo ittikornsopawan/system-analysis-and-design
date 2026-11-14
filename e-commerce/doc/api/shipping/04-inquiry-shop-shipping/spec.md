@@ -18,6 +18,12 @@
 | PRE-PRODUCTION | https://www.domain.com/api-pre-prod |
 | PRODUCTION     | https://www.domain.com/api          |
 
+- The caller must be an ACTIVE member of the shop (a row of `shop.t_shop_user` with the role ADMIN or STAFF that is ACTIVE) or a platform administrator (a user that has the role `PLATFORM_ADMIN`), otherwise 403 (E10009). A shop that does not exist or is DELETED is not found (404, E10005). This permission model was approved by the product owner.
+- The shippings of the orders of the shop are returned, newest first by creation time, then `id`. Shippings with `rowStatus` DELETED never exist (the API does not delete a shipping). Every shipping carries its items and its stops. The stops are the ones that are not DELETED, in `stopNumber` order, with their `rowStatus`.
+- The shop sees what it needs to hand over the parcel: the copy of the shipping address that was stored when the order was created. The customer name and the profit of the items are not part of this response.
+- `search` matches the order code or the tracking number (case-insensitive, partial). Nothing found is 200 with an empty list.
+- This behaviour follows the shipping design, approved by the product owner on 2026-11-06. The payment columns that the shipping APIs read (`payment.t_payment.shipping_method`) belong to the payment design of WP2 (`docs/superpowers/specs/2026-11-06-payment-design.md`).
+
 ---
 
 ## Request Parameters
@@ -41,14 +47,6 @@
 | 5   | pageIndex      | Numeric      | OPTIONAL  | Page index starting from 1, Defaults to 1                                                                  | 1                                    |
 | 6   | pageSize       | Numeric      | OPTIONAL  | Number of items per page (max 100), Defaults to 10                                                         | 10                                   |
 | 7   | search         | String       | OPTIONAL  | Search by order code or tracking number                                                                    | TH0123                               |
-
-### Shop Shipping Inquiry Rules
-
-- The caller must be an ACTIVE member of the shop (a row of `shop.t_shop_user` with the role ADMIN or STAFF that is ACTIVE) or a platform administrator (a user that has the role `PLATFORM_ADMIN`), otherwise 403 (E10009). A shop that does not exist or is DELETED is not found (404, E10005). This permission model was approved by the product owner.
-- The shippings of the orders of the shop are returned, newest first by creation time, then `id`. Shippings with `rowStatus` DELETED never exist (the API does not delete a shipping). Every shipping carries its items and its stops. The stops are the ones that are not DELETED, in `stopNumber` order, with their `rowStatus`.
-- The shop sees what it needs to hand over the parcel: the copy of the shipping address that was stored when the order was created. The customer name and the profit of the items are not part of this response.
-- `search` matches the order code or the tracking number (case-insensitive, partial). Nothing found is 200 with an empty list.
-- This behaviour follows `docs/superpowers/specs/2026-11-06-shipping-design.md`, approved by the product owner on 2026-11-06. The payment columns that the shipping APIs read (`payment.t_payment.shipping_method`) belong to the payment design of WP2 (`docs/superpowers/specs/2026-11-06-payment-design.md`).
 
 ## Example Request
 
