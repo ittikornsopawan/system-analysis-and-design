@@ -68,6 +68,10 @@ activate page
                     page -> user: Display authentication error
                 else Verified JWT
                     app -> app: userId = verified sub
+                    note over app, infra
+                        - Execution order: validate the request (400) -> existence checks (404) -> permission (403) -> conflict and in-use checks (409) -> write the shop
+                          product, the shop product SKU, close the lot on sale when a lot is put on sale, then write the lots. The whole request is one transaction.
+                    end note
                     app -> infra: BEGIN READ COMMITTED
                     activate infra
                     alt Work completes before commit

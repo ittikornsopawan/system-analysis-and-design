@@ -33,3 +33,16 @@ Assignment: agent `tommy`, delivery `open-pr`, authorized by `josh`, workspace `
 - [x] Add the frontmatter (`status: in-review`) to the six specs; remove them from `LEGACY_SPEC_TEMPLATE` and `MD_FRONTMATTER_PENDING`; the shop user and review checkers look for each rule in the file where it lives (the moved rules in the sequence only).
 - [x] Run every check. Evidence: see the pull request.
 - [ ] Open the pull request with `commit-and-pr`, tell the lead SA when CI is green, then suspend.
+## e-commerce: spec template and frontmatter, shop 01 to 04
+
+Owner: tommy
+Status: In review (pull request open)
+Created at: 2026-11-14T18:12:52+07:00
+Started at: 2026-11-14T18:12:52+07:00
+
+Assignment: agent `tommy`, delivery `open-pr`, authorized by `josh`, workspace `.workspace/tommy`, branch `docs/tommy-spec-template-shop-1`, scopes `e-commerce/doc/api/shop/01-upsert-shop-product-sku`, `02-upsert-shop-product-sku-batch`, `03-inquiry-shop-product-sku`, `04-inquiry-storefront-product`, `e-commerce/db/tests/check_docs.py`, `tasks/tommy`. This is the first of three shop PRs (01 to 04, 05 to 10, 11 to 16).
+
+- [x] Remove `### Lot Rules` (shop/01, shop/02) and `### Page Rules` (shop/04); the rules are short bullets under `## Domain`, the order of the checks is a note of `sequence.wsd`; no SQL and no behavior is changed. Evidence: `verify_seq.py` OK for the four folders (175, 175, 45 and 84 SQL lines), strict SQL parity and render.
+- [x] Add the frontmatter (`status: in-review`) to the four specs; remove them from `LEGACY_SPEC_TEMPLATE` and `MD_FRONTMATTER_PENDING`; the shop checker searches the spec and its sequence note.
+- [x] Run every check. Evidence: see the pull request.
+- [ ] Open the pull request with `commit-and-pr`, tell the lead SA when CI is green, then suspend. Next: shop 05 to 10.
