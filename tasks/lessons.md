@@ -500,6 +500,7 @@ description: Repository-wide and project-specific lessons captured from user cor
 - **Corrected behavior**: Run `git fetch origin main:main` in the managed clone (a fast-forward of the local ref, never a checkout) before the preflight and again after each base merge, then check the PR diff with `git diff --name-status origin/main...HEAD`.
 - **Preventive skill change**: not made in this task because `.agents/skills/commit-and-pr` is outside the assignment scope; reported to the lead SA (a step in `commit-and-pr` that fetches `main:main`, or a delivery-check that reads `origin/main`).
 - **Verification**: after `git fetch origin main:main` the preflight reported `no blockers found`.
+- **Follow-up from PR #137**: The first resumed-PR preflight again found unrelated paths because local `main` had not been refreshed. Fetching `origin/main` into local `main` advanced it from `bf6d033` to `3ed244d`; the same preflight then reported `no blockers found`. The existing skill reminder was present but not followed, so a separate owner-authorized workflow update may still be useful.
 
 ### 2026-11-12 — A word substitution on a derived spec rewrote JWT wording
 
@@ -524,6 +525,8 @@ description: Repository-wide and project-specific lessons captured from user cor
 - **Corrected behavior**: A skill or a template states what the rule says, not what the files happen to contain; when a rule can be checked mechanically, add the checker in the same task. `check_docs.py md-frontmatter` now fails every tracked `*.md` without `name` and `description`, every specification without a valid `status`, `approved_by` and `approved_at`, and every file in `MD_FRONTMATTER_PENDING` that already passes.
 - **Preventive skill change**: `.agents/skills/api-contract-design/SKILL.md` and `assets/api-spec.md.tmpl` now say that a spec starts with the frontmatter of `e-commerce/doc/api/template.md`; the 59 specs that still lack it are listed by name and leave the list as they are fixed (owner decision of 2026-11-14: `status: in-review`, `approved_by: null`, `approved_at: null`).
 - **Verification**: removing `description` from a schema doc, using a status outside the four values, and naming an approver on an `in-review` spec are each rejected; the checker reports 257 Markdown files with 59 pending specs.
+- **Follow-up from PR #137**: The failed action found five newly frontmatter-complete design specs still in `MD_FRONTMATTER_PENDING`, plus six shop API specs that already had frontmatter but were added to the list. The corrected PR branch has an empty pending list and reports 263 Markdown files, 0 pending specs; rerun after final base integration.
+- **Process correction**: A successful check from the primary checkout does not verify a resumed PR branch. Prefix commands with `cd .workspace/<agent>` and verify the branch and `HEAD` before interpreting check output; PR #137 reproduced all 11 failures only in Peter's managed workspace.
 ### 2026-11-14 — Keep each sentence in one visible place and make the checker read that place
 
 - **Correction**: The SA Lead rejected PR #112's way of aligning the authen-and-author specs: the removed rules were kept as a PlantUML comment block and `read()` attached that block to every spec, so no reader of the diagram saw the rules and every checker saw sentences that the spec did not hold.

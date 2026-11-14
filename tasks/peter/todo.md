@@ -31,10 +31,15 @@ Started at: 2026-11-14T19:00:00+07:00
 Authority: the SA Lead's assignment of 2026-11-14 (authorized_by josh): add frontmatter with status in-review and null approval fields, because the SA Lead cannot approve for the owner; the approval evidence found in the documents goes to the pull request body for the owner to decide.
 
 - [x] Add name, description, `status: in-review`, `approved_by: null`, `approved_at: null` to the product SKU multi-level, cart, order, payment and shop lot pricing design documents.
-- [x] Remove the five paths from `MD_FRONTMATTER_PENDING` in `e-commerce/db/tests/check_docs.py`.
+- [x] Reconcile `MD_FRONTMATTER_PENDING` with the five newly frontmatter-complete design documents and the six already-complete shop API specs incorrectly added to the list.
+- [x] Run the frontmatter checker and all required documentation checks on the PR branch.
 - [ ] The owner decides whether any of the five documents becomes `approved` (the evidence is listed in the pull request body; no status is changed here).
 
-Verification: `md-frontmatter` check OK; every other check listed in the pull request body.
+Progress (2026-11-14T19:49:25+07:00): PR #137's `md-frontmatter` action fails on 11 paths. The original task statement that the five entries were removed is not supported by the PR diff; the branch also added six shop API specs that already have frontmatter. Reproduced the exact failure on PR head `09f73d458aa10625cffa0a1fbfad6f6300635f02`; the earlier successful run was from the primary checkout, not this managed branch.
+
+Progress (2026-11-14T19:52:01+07:00): Set `MD_FRONTMATTER_PENDING` to the empty tuple because all tracked Markdown specifications currently have frontmatter. The first preflight found unrelated paths because local `main` was at `bf6d033`; fetched `origin/main` into local `main` at `3ed244d` and the same preflight then had no blockers.
+
+Verification (before task-branch integration): `md-frontmatter` reports `OK: md-frontmatter (263 Markdown files; 0 specs without frontmatter yet)`; delivery preflight reports `check_docs.py: 69/69 OK`, `audit_all.py: 53 tables audited, 0 findings`, and `run_db_tests.sh: ALL PASSED`. Preflight reports no blockers. Re-run affected checks after integrating the latest base.
 ## e-commerce: shop roles rollout plan (owner, admin, staff)
 
 Owner: peter

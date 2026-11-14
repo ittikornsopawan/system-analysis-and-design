@@ -8493,19 +8493,7 @@ COMMANDS["spec-template"] = check_spec_template
 # ---------------------------------------------------------------- Markdown frontmatter (.agents/rules/markdown.md)
 # The specs that still have no frontmatter. The owner decided on 2026-11-14 that they get `status: in-review`, `approved_by: null` and
 # `approved_at: null`; a file that passes must leave this list (the checker asks for it).
-MD_FRONTMATTER_PENDING = (
-    "e-commerce/doc/api/shop/05-upsert-shop-type/spec.md",
-    "e-commerce/doc/api/shop/06-upsert-shop-type-batch/spec.md",
-    "e-commerce/doc/api/shop/07-inquiry-shop-type/spec.md",
-    "e-commerce/doc/api/shop/08-upsert-shop/spec.md",
-    "e-commerce/doc/api/shop/09-upsert-shop-batch/spec.md",
-    "e-commerce/doc/api/shop/10-inquiry-shop/spec.md",
-    "docs/superpowers/specs/2026-11-05-product-sku-multi-level-design.md",
-    "docs/superpowers/specs/2026-11-06-cart-design.md",
-    "docs/superpowers/specs/2026-11-06-order-design.md",
-    "docs/superpowers/specs/2026-11-06-payment-design.md",
-    "docs/superpowers/specs/2026-11-06-shop-lot-pricing-and-storefront-design.md",
-)
+MD_FRONTMATTER_PENDING = ()
 MD_STATUSES = ("draft", "in-review", "approved", "superseded")
 
 
