@@ -1,3 +1,8 @@
+---
+name: "Hand-off to Marry: WP6, WP4, WP5"
+description: "Historical hand-off of 2026-11-06 from Josh to Marry for work packages WP6, WP4 and WP5 (master tables, authen, author), written as the first prompt of her session; read it only for the history of that assignment."
+---
+
 # Hand-off ถึง Marry: ชุดงาน WP6, WP4, WP5 (master, authen, author)
 
 วันที่: 2026-11-06 · ผู้ส่งงาน: Josh (Lead SA) ตามที่เจ้าของงานสั่ง · ผู้รับงาน: Marry (SA)

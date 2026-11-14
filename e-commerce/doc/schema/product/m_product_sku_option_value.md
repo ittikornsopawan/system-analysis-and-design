@@ -1,3 +1,8 @@
+---
+name: "Schema doc: product.m_product_sku_option_value"
+description: "Columns, keys, constraints and indexes of the table product.m_product_sku_option_value. Master table of the `product` schema (defined in `db/migrations/up/03-product.schema.up.sql`). Read it when you write or review a migration, a query or an API spec that uses this table."
+---
+
 # Table: product.m_product_sku_option_value
 
 Description: Master table of the `product` schema (defined in `db/migrations/up/03-product.schema.up.sql`).

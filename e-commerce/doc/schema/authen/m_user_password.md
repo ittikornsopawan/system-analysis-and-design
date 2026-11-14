@@ -1,3 +1,8 @@
+---
+name: "Schema doc: authen.m_user_password"
+description: "Columns, keys, constraints and indexes of the table authen.m_user_password. Master table of the `authen` schema (defined in `db/migrations/up/01-authen.schema.up.sql`). Read it when you write or review a migration, a query or an API spec that uses this table."
+---
+
 # Table: authen.m_user_password
 
 Description: Master table of the `authen` schema (defined in `db/migrations/up/01-authen.schema.up.sql`).

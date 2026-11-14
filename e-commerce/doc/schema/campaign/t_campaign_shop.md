@@ -1,3 +1,8 @@
+---
+name: "Schema doc: campaign.t_campaign_shop"
+description: "Columns, keys, constraints and indexes of the table campaign.t_campaign_shop. Transaction table of the `campaign` schema (defined in `db/migrations/up/09-campaign.schema.up.sql`). Read it when you write or review a migration, a query or an API spec that uses this table."
+---
+
 # Table: campaign.t_campaign_shop
 
 Description: Transaction table of the `campaign` schema (defined in `db/migrations/up/09-campaign.schema.up.sql`).

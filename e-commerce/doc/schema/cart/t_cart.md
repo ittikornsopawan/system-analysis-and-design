@@ -1,3 +1,8 @@
+---
+name: "Schema doc: cart.t_cart"
+description: "Columns, keys, constraints and indexes of the table cart.t_cart. Transaction table of the `cart` schema (defined in `db/migrations/up/05-cart.schema.up.sql`). Read it when you write or review a migration, a query or an API spec that uses this table."
+---
+
 # Table: cart.t_cart
 
 Description: Transaction table of the `cart` schema (defined in `db/migrations/up/05-cart.schema.up.sql`).
