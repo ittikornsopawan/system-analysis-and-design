@@ -1626,3 +1626,12 @@ Authority: owner answers of 2026-11-13 ("ใช้คำแนะนำทั้
 - [x] SQL: lock the caller user, current credential, lock the consent type, lock the target consent (`FOR UPDATE`, DELETED excluded), duplicate code check without a status filter and null-safe, guarded insert/update with bound server time.
 - [x] Sequence: complete flow and visible note; the lock order is caller user, consent type, consent.
 - [x] Checker: slim `consent-upsert-flow`; consent/02 leaves `ADMIN_WRITE_SPECS`, `LEGACY_SEQUENCES`, `LEGACY_TOKEN_SEQUENCES`, `LEGACY_SPEC_TEMPLATE` and `MD_FRONTMATTER_PENDING`.
+## e-commerce: product/10-15 template cleanup (type and brand)
+
+Status: Done, waiting for review. Authorized by Josh (owner decisions of 2026-11-13 and 2026-11-14).
+
+1. [x] Remove the `### Product Type/Brand (Inquiry) Rules` sections; the rules are bullets under `## Domain`.
+2. [x] The permission and the order of the checks of the four upsert specs are a visible `note over app, infra` before BEGIN in `sequence.wsd`.
+3. [x] Frontmatter (`status: in-review`) on the six specs; the six are removed from `LEGACY_SPEC_TEMPLATE` and `MD_FRONTMATTER_PENDING`.
+4. [x] `master_needles` (product-master-spec) points the moved text to `sequence.wsd` (`master_diagram_needles`); the consent type is unchanged.
+5. [x] All check_docs sub-commands, audit_all, PlantUML syntax, render count and mutation tests.
