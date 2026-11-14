@@ -1,3 +1,11 @@
+---
+name: Upsert Product Category Attribute Batch API Specification
+description: Defines the all-or-nothing insert, update, delete and archive of several product category attributes in one request with the permission checked once and the SQL of every step; read when reviewing or implementing the attribute batch upsert.
+status: in-review
+approved_by: null
+approved_at: null
+---
+
 # [POST]: v1/product-category-attribute/upsert/batch
 
 | Title       | Description                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                             |
@@ -17,6 +25,8 @@
 | UAT            | https://www.domain.com/api-uat      |
 | PRE-PRODUCTION | https://www.domain.com/api-pre-prod |
 | PRODUCTION     | https://www.domain.com/api          |
+
+- Only a platform administrator can call this API (a user with an ACTIVE `author.t_user_role` row for the ACTIVE role `PLATFORM_ADMIN`), otherwise 403 (E10009). The check is made once for the request, so the 403 message has no item position. Approved by the product owner (answered through the lead SA, 2026-11-06). The order of the checks is in the sequence diagram.
 
 ---
 
@@ -46,11 +56,6 @@
 | 3   | name           | String       | MANDATORY | Product Category Attribute Name (max 128 characters), Unique, Must not be duplicated in the request                                                                                            | Color                                |
 | 4   | description    | String       | MANDATORY | Product Category Attribute Description (max 256 characters)                                                                                                                                    | Color of the product                 |
 | 5   | rowStatus      | String       | OPTIONAL  | Row status (ACTIVE, INACTIVE, DELETED, LOCKED, ARCHIVED), Defaults to ACTIVE, Delete when DELETED, Archive when ARCHIVED, Delete is allowed only when the attribute is not used by any product | ACTIVE                               |
-
-### Permission Rules
-
-- Permission: the same as the single upsert, only a platform administrator (a user with an ACTIVE `author.t_user_role` row for the ACTIVE role `PLATFORM_ADMIN`) can call this API, any other caller gets 403 (E10009). The check is made once for the request, after the existence checks of all items and before the duplicate, in-use and other conflict checks, so the 403 message has no item position. Approved by the product owner (answered through the lead SA, 2026-11-06).
-- Order of checks: validate the request (400) -> existence checks (404) -> permission (403, E10009) -> duplicate, in-use and other conflicts (409) -> write.
 
 #### Example Body Parameters
 
