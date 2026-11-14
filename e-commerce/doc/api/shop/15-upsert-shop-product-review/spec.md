@@ -1,3 +1,11 @@
+---
+name: "Upsert Shop Product Review API"
+description: "Insert, update or delete the review of the caller for a product sold by a shop. Read it when you implement, review or test POST v1/shop/product-review/upsert."
+status: in-review
+approved_by: null
+approved_at: null
+---
+
 # [POST]: v1/shop/product-review/upsert
 
 | Title       | Description                                                                                                                                                                                                                                             |
@@ -17,6 +25,17 @@
 | UAT            | https://www.domain.com/api-uat      |
 | PRE-PRODUCTION | https://www.domain.com/api-pre-prod |
 | PRODUCTION     | https://www.domain.com/api          |
+
+- The rules of this section were approved by the product owner. The status COMPLETED of an order is set by the delivery API (work package WP3) that has no specification yet, so the rule that only a buyer can write a review depends on that status.
+- The caller is the user of the access token, never a field of the request: a review always belongs to the caller. A caller can only change or delete a review of their own.
+- The review belongs to a shop product, the product sold by that shop. A review is written only when the product page exists for the shop and the product, with the condition of the product page (shop/04): the shop is ACTIVE, the product is ACTIVE, the shop product is ACTIVE and it has at least one SKU that is ACTIVE for the shop and for the product, otherwise 404 (E10005).
+- Only a buyer can write a review: when a review is inserted the caller must have an order with the status COMPLETED (`sales.t_order`) that has an item (`sales.t_order_item`) of the same shop and product, otherwise 403 (E10009). The rule is checked only when a review is inserted: the caller can always change or delete their own review.
+- A user can have one review for a shop product among the reviews that are not DELETED. An insert while the caller has one is rejected with 409 (E10003), the caller changes the review with its `id`. After a delete the caller can write a new review (a new row), which needs the rule of the buyer again.
+- `rating` is a whole number from 1 to 5 (400, E10001). `comment` is optional: it is trimmed, an empty comment is saved as null, and it must not be longer than 2000 characters (configurable, 400, E10001). An update replaces the comment, so a request without `comment` removes it.
+- `shopId`, `productId` and `rating` are required in every request, including a delete. `rowStatus` is ACTIVE or DELETED, `rowStatus` DELETED is rejected with 400 (E10001) when the request inserts a review, and every other status (INACTIVE, LOCKED, ARCHIVED) is rejected with 400 (E10001): the customer cannot hide or archive a review and there is no moderation yet.
+- `id` must be an ACTIVE review of the caller, otherwise 404 (E10004), also when the review belongs to another user. When it belongs to another shop product than `shopId` and `productId` the request is rejected with 400 (E10001). DELETED is final: the id of a DELETED review counts as not found, a review that is not ACTIVE cannot be changed or deleted by the customer.
+- A review can be changed at any time, the system keeps no history: `updated_at` shows that it was changed.
+- HTTP status of the upsert: Insert 201 Created, Update 200 Ok, Delete 204 No Content (no response body). There is no Archive for a customer.
 
 ---
 
@@ -41,21 +60,6 @@
 | 4   | rating         | Numeric      | MANDATORY | Rating, A whole number from 1 to 5                                                                                                                                | 4                                          |
 | 5   | comment        | String       | OPTIONAL  | Comment (max 2000 characters, configurable), Spaces at the start and the end are removed, Empty is saved as null, Not specified on update: the comment is removed | Nice shirt, the sleeves are a little long. |
 | 6   | rowStatus      | String       | OPTIONAL  | Row status (ACTIVE, DELETED), Defaults to ACTIVE, Delete when DELETED, DELETED is not allowed when inserting, Other statuses are rejected with 400                | ACTIVE                                     |
-
-### Review Rules
-
-The rules of this section were approved by the product owner. The status COMPLETED of an order is set by the delivery API (work package WP3) that has no specification yet, so the rule that only a buyer can write a review depends on that status.
-
-- The caller is the user of the access token, never a field of the request: a review always belongs to the caller. A caller can only change or delete a review of their own.
-- The review belongs to a shop product, the product sold by that shop. A review is written only when the product page exists for the shop and the product, with the condition of the product page ([shop/04](../04-inquiry-storefront-product/spec.md)): the shop is ACTIVE, the product is ACTIVE, the shop product is ACTIVE and it has at least one SKU that is ACTIVE for the shop and for the product, otherwise 404 (E10005).
-- Only a buyer can write a review: when a review is inserted the caller must have an order with the status COMPLETED (`sales.t_order`) that has an item (`sales.t_order_item`) of the same shop and product, otherwise 403 (E10009). The rule is checked only when a review is inserted: the caller can always change or delete their own review.
-- A user can have one review for a shop product among the reviews that are not DELETED. An insert while the caller has one is rejected with 409 (E10003), the caller changes the review with its `id`. After a delete the caller can write a new review (a new row), which needs the rule of the buyer again.
-- `rating` is a whole number from 1 to 5 (400, E10001). `comment` is optional: it is trimmed, an empty comment is saved as null, and it must not be longer than 2000 characters (configurable, 400, E10001). An update replaces the comment, so a request without `comment` removes it.
-- `shopId`, `productId` and `rating` are required in every request, including a delete. `rowStatus` is ACTIVE or DELETED, `rowStatus` DELETED is rejected with 400 (E10001) when the request inserts a review, and every other status (INACTIVE, LOCKED, ARCHIVED) is rejected with 400 (E10001): the customer cannot hide or archive a review and there is no moderation yet.
-- `id` must be an ACTIVE review of the caller, otherwise 404 (E10004), also when the review belongs to another user. When it belongs to another shop product than `shopId` and `productId` the request is rejected with 400 (E10001). DELETED is final: the id of a DELETED review counts as not found, a review that is not ACTIVE cannot be changed or deleted by the customer.
-- A review can be changed at any time, the system keeps no history: `updated_at` shows that it was changed.
-- Execution order: validate the request (400) -> the product page exists (404, E10005) -> the review of `id` (404, E10004) -> the buyer rule for an insert (403, E10009) -> duplicate review for an insert (409, E10003) -> write.
-- HTTP status of the upsert: Insert 201 Created, Update 200 Ok, Delete 204 No Content (no response body). There is no Archive for a customer.
 
 #### Example Body Parameters
 
