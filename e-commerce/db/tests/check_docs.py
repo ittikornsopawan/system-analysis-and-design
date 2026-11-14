@@ -4013,7 +4013,6 @@ REQUIRED_GROUPS = ("authen-and-author", "consent")
 LEGACY_SEQUENCES = (
     # authen-and-author: waiting for a retrofit to the login standard
     # consent: waiting for a retrofit to the login standard
-    "consent/02-upsert-consent",
     "consent/06-upsert-consent-type",
     "consent/07-upsert-consent-type-batch",
 )
@@ -4023,6 +4022,7 @@ LEGACY_SEQUENCES = (
 # change that adds the missing answers to the diagram.
 LEGACY_TOKEN_SEQUENCES = (
     "consent/02-upsert-consent",                    # no Verify JWT / 401 step, no 408
+    "consent/03-inquiry-consent",                   # no Verify JWT / 401 step, no 408
     "consent/06-upsert-consent-type",               # no Verify JWT / 401 step, no 408
     "consent/07-upsert-consent-type-batch",         # no Verify JWT / 401 step, no 408
     "consent/08-inquiry-consent-type",              # no Verify JWT / 401 step, no 408
@@ -5590,7 +5590,6 @@ ADMIN_WRITE_SPECS = {  # folder: (the thing it manages, batch)
     "product/06-upsert-product-category-batch": ("product categories", True),
     "product/07-upsert-product-category-attribute": ("product category attributes", False),
     "product/09-upsert-product-category-attribute-batch": ("product category attributes", True),
-    "consent/02-upsert-consent": ("consents", False),
 }
 ADMIN_WRITE_REFERENCE = "e-commerce/doc/api/shop/05-upsert-shop-type/spec.md"  # sales/05 now reads the administrator from the JWT claims
 ADMIN_WRITE_APPROVED = "Approved by the product owner (answered through the lead SA, 2026-11-06)."
@@ -7744,6 +7743,42 @@ def check_consent_inquiry_flow() -> int:
 
 
 COMMANDS['consent-inquiry-flow'] = check_consent_inquiry_flow
+def check_consent_upsert_flow() -> int:
+    """Check only what parity checks cannot: claims-only admin, caller -> type -> consent lock order, DELETED final, one decision and commit, rollbacks."""
+    path='e-commerce/doc/api/consent/02-upsert-consent/spec.md';md=read(path);wsd=read(str(Path(path).with_name('sequence.wsd')));errors=[]
+    if 'QUERY - Get the platform administrator role' in md+wsd or 'QUERY - Check platform administrator' in md+wsd or re.search(r'infra -> (?:m_role|t_user_role):',wsd):errors.append('must not read the author tables')
+    if not md.startswith('---\nname:') or 'status: in-review\napproved_by: null\napproved_at: null' not in md:errors.append('spec stays in-review until approved')
+    ops=spec_database_operations(md);heads=[h for _,h,_ in ops]
+    want=['QUERY - Lock the caller user','QUERY - Check current credential and user','QUERY - Lock the consent type','QUERY - Lock existing consent','QUERY - Check duplicate code','INSERT - Create consent','UPDATE - Update or delete consent']
+    if heads!=want:errors.append('needs the seven caller/credential/type/consent/duplicate/write SQL definitions in order')
+    sql={h:q for _,h,q in ops}
+    for h in (want[0],want[2],want[3]):
+        if 'FOR UPDATE' not in sql.get(h,''):errors.append(f'{h} must lock with FOR UPDATE')
+    if any(SEQUENCE_LOCK.search(sql.get(h,'')) for h in (want[1],want[4],want[5],want[6])) or 'NOW()' in '\n'.join(sql.values()):errors.append('only the three row locks may lock; times are bound')
+    for h,needles in {want[3]:["c.row_status <> 'DELETED'",'c.consent_type_id'],want[4]:["('<sequence.id>' IS NULL OR c.id <> '<sequence.id>')"],want[5]:['created_at',"'<sequence.now>'",'RETURNING id as consent_id'],want[6]:["updated_at = '<sequence.now>'","AND row_status <> 'DELETED'",'RETURNING id as consent_id']}.items():
+        errors+=[f'{h} missing {n!r}' for n in needles if n not in sql.get(h,'')]
+    if 'row_status' in sql.get(want[4],''):errors.append('the duplicate code check counts every status, a DELETED consent keeps its code')
+    order=['app -> infra: '+h for h in want[:4]]+['Authorize once','app -> infra: QUERY - Check duplicate code','app -> infra: INSERT - Create consent','app -> infra: COMMIT']
+    pos=[wsd.find(x) for x in order]
+    if -1 in pos or pos!=sorted(pos):errors.append('steps must run caller lock, credential, type lock, consent lock, one permission decision, duplicate, write, COMMIT')
+    if wsd.count('Authorize once')!=1 or wsd.count('app -> infra: COMMIT')!=1:errors.append('exactly one permission decision and one COMMIT')
+    lines=wsd.splitlines();begin=next((i for i,l in enumerate(lines) if 'BEGIN READ COMMITTED' in l),len(lines))
+    for i,l in enumerate(lines):
+        if i>begin and re.search(r'app -> api: HTTP (?:400|401|403|404|408|409|500)',l) and 'app -> infra: ROLLBACK' not in lines[i-1]:errors.append(f'post-BEGIN rejection needs ROLLBACK first: {l.strip()}')
+    for n in ('HTTP 404 E10004 Consent not found.','HTTP 404 E10005 Consent type not found or not ACTIVE.','HTTP 403 E10009 You do not have permission to manage consents.','HTTP 409 E10003 Consent code already exists.','expiredAt later than effectiveAt','The request gives the consent when it inserts, or sets ACTIVE on a locked consent that is not ACTIVE, or changes the consent type of an ACTIVE consent','delete, archive, deactivate or lock needs no ACTIVE type','The consent type row is missing, or the request gives the consent and the type is not ACTIVE'):
+        if n not in wsd:errors.append(f'sequence missing {n!r}')
+    if 'a consent of a type that is not ACTIVE can still be deleted, archived, deactivated or locked' not in md:errors.append('the spec must say that a consent of a closed type can still be deleted or archived (owner answer of 2026-11-14)')
+    for title,code in {'Fail - Bad Request Period':400,'Fail - Not Found Consent Type':404,'Fail - Internal Server Error':500}.items():
+        try:
+            st=authen_json(md,title)['status']
+            if st['code']!=code or (code==500)==('bizCode' in st):errors.append(f'{title} example envelope is wrong')
+        except (TypeError,KeyError,ValueError):errors.append(f'missing {title} example')
+    if errors:return fail('; '.join(errors))
+    print('OK: consent-upsert-flow (claims-only admin, caller/type/consent lock order, DELETED final, one decision and commit)')
+    return 0
+
+
+COMMANDS['consent-upsert-flow'] = check_consent_upsert_flow
 def check_user_role_upsert_flow() -> int:
     """Check only what parity checks cannot: claims-only admin, user -> role -> assignment lock order, one decision/commit, rollbacks, missing-user 404."""
     path=f'{AUTHOR_DIR}/{AUTHOR_SPECS["10"]}/spec.md';md=read(path);wsd=read(str(Path(path).with_name('sequence.wsd')));errors=[]
@@ -8374,7 +8409,6 @@ def spec_template_errors(md: str) -> list[str]:
 # must still fail, so a spec that passes has to leave the list in the same change. The count is printed in the OK line.
 LEGACY_SPEC_TEMPLATE = (
     "consent/01-inquiry-active-consent",
-    "consent/02-upsert-consent",
     "consent/04-submit-consent",
     "consent/05-inquiry-pending-consent",
     "consent/06-upsert-consent-type",
@@ -8438,6 +8472,7 @@ MD_FRONTMATTER_PENDING = (
     "e-commerce/doc/api/cart/02-upsert-cart-item-batch/spec.md",
     "e-commerce/doc/api/cart/03-inquiry-cart/spec.md",
     "e-commerce/doc/api/consent/02-upsert-consent/spec.md",
+    "e-commerce/doc/api/consent/03-inquiry-consent/spec.md",
     "e-commerce/doc/api/consent/06-upsert-consent-type/spec.md",
     "e-commerce/doc/api/consent/07-upsert-consent-type-batch/spec.md",
     "e-commerce/doc/api/consent/08-inquiry-consent-type/spec.md",
