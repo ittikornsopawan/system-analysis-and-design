@@ -66,13 +66,23 @@ activate page
                 api -> page: Bad request
                 page -> user: Display validation error
             else Valid input
-                app -> app: Verify JWT signature, issuer, audience, exp, UUID sub and the roles claim (an array of roleId and name)
+                app -> app: Verify JWT signature, issuer, audience, exp, UUID sub and the roles claim (an array of role names)
                 alt Missing, malformed or invalid JWT or roles claim
                     app -> api: HTTP 401 E10002 Invalid or expired access token.
                     api -> page: Authentication error
                     page -> user: Display authentication error
                 else Verified JWT
                     app -> app: callerUserId = verified sub; accessTokenHash = SHA-256 of the exact JWT; isPlatformAdmin = roles contains PLATFORM_ADMIN (no database query)
+                    note over app, infra
+                        Order: validate the request (400, including the SKU maximum) -> verify the JWT and its roles claim (401)
+                        -> BEGIN, lock the caller user (FOR UPDATE), fresh now, recheck of the JWT exp, current credential and user (401)
+                        -> existence checks (404, the id of a DELETED option or value counts as not found, E10004)
+                        -> permission from the roles claim (403, E10009), once for the request in a batch
+                        -> in-use check (409) -> move levels aside, delete the options and values that are not in the list,
+                        update the listed options and values (renames that collide are set to temporary names first),
+                        insert new options and values, images, close or reopen SKUs, then generate SKUs -> COMMIT.
+                        The platform administrator is read only from the verified roles claim (an array of role names); the author tables are never queried.
+                    end note
                     app -> infra: BEGIN READ COMMITTED
                     activate infra
                     alt Work completes before commit
