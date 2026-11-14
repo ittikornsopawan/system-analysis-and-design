@@ -23,42 +23,6 @@ skinparam sequence {
 
 ' Do not show participant footers at the bottom of the diagram
 hide footbox
-' --- Rules moved from spec.md by the template alignment; the checks read them together with the spec ---
-' ### Register Rules
-'
-' - Governing decisions: [owner-confirmed review](../../../../../docs/superpowers/specs/2026-11-07-api-review-design.md), Q3/Q5/Q6/Q8/Q16/Q17, approved by the product owner. This detailed endpoint revision remains in-review; no backend implementation is included. Registration is public and creates no access token or role assignment. Register does not log the user in: the user calls login.
-' - Validate mandatory headers, JSON and object shapes before SQL. `username`, `emailAddress` and `password` are non-empty strings; username is at most 128 characters, email at most 254 and syntactically valid. The password follows the password policy: 8 to 128 characters with an upper-case letter, a lower-case letter and a digit (400, E10001). `firstName`/`lastName` are at most 100 characters, `displayName` at most 128; optional scalar fields may be omitted/null. Validate dateOfBirth as a real YYYY-MM-DD date and gender as MALE/FEMALE/OTHER when non-null. Explicit null is not an omitted boolean, object or list.
-' - Sensitive fields (`username`, `emailAddress`, `firstName`, `lastName`, `phoneNumber`, `address` and address fields except title) are sent as Plain text over TLS and encrypted on the server before storage. Deterministic encryption lets username/email equality and UNIQUE constraints compare the same bytes; use the same encryption representation as login. Do not trim, lowercase or otherwise change login identifiers on registration alone. The password is never encrypted: PBKDF2-HMAC-SHA256 with a random 16 byte salt and 600,000 iterations produces passwordBytes/passwordSaltBytes. Never log plaintext sensitive input, hashes or salts.
-' - `addresses` is one optional object, never an array. If present, title/address/city/state/postalCode/country must be non-empty strings, title at most 128 characters, and isDefault if present must be boolean. The first address is always default: SQL sets TRUE whatever isDefault says. Omission creates no address row. The separate top-level address remains the optional profile field.
-' - `consents` may be omitted/empty only when there are no applicable required consents. Each supplied item must contain a UUID consentId and a non-empty consentVersion of at most 8 characters; result if present must be boolean. Reject duplicate consentIds before SQL (400 E10001), rather than picking one answer. Do not default the version to 1.0.0 or the latest version. Required consent needs explicit result=true; false or omission is not acceptance.
-' - Use one REPEATABLE READ transaction for validation reads and every write. Capture UTC now immediately before the first read; that first read establishes the transaction snapshot. All consent/type/referrer reads and duplicate checks use this same snapshot. Capture no new policy snapshot halfway through registration. A consent/type/version published after that snapshot is handled as pending for the resulting existing user (Q9); registration does not promise to accept an unseen publication at commit time. A serialization conflict rolls back and retries the entire transaction with a new snapshot/now and freshly revalidated inputs, bounded by the request timeout; no partial retry or partial writes.
-' - Read all currently effective ACTIVE consents (effective_at <= now and expired_at IS NULL or expired_at > now), then only their ACTIVE consent types. Keep consent rows whose consent_type_id belongs to that activeTypeIds set. Required means `t_consent.is_required`, not the type's is_required flag. Do not require or accept an expired, future, inactive or inactive-type consent. Empty id lists bind as empty UUID arrays, never IN ().
-' - Validate each submitted consent against that applicable set: absent/hidden consentId returns 404 E10005 `Consent or referrer not found.`; a different displayed version returns 400 E10001 `Consent version is no longer current.` Every applicable required consent must be present with result=true, otherwise 400 E10001 `All current required consents must be accepted.` No user or evidence is created on either failure.
-' - Display/read semantics (Q16): every supplied valid consent object represents the displayed version, even with result omitted. Insert is_read=TRUE and read_at=now. Map omitted result to false only for this new registration evidence; explicit false is an optional rejection. Omitted optional consent creates no row and stays pending. The authenticated submit endpoint uses the same read-only/result distinction after registration; repeated reads preserve the first read_at and any answer, as specified separately in its own review.
-' - `referrerId`, if present, must be a UUID referencing an existing user in the transaction snapshot (any lifecycle status; the existing referral relationship is historical, not a privilege grant). Missing reference returns the same 404 E10005. Omission creates no referral row. Register never grants PLATFORM_ADMIN from an email or referrer.
-' - The username and email address must not exist yet in their respective columns, across every lifecycle state, otherwise 409 E10003 `Username or email address already exists.` Their existing separate UNIQUE constraints are final protection against concurrent registrations: SQLSTATE 23505 from either m_user identifier constraint rolls back the whole transaction and maps to that same 409. Other integrity failures are not mislabeled as duplicates. Cross-field username/email collisions remain possible and login rejects ambiguous matching accounts (Q14).
-' - After every validation succeeds: create user, take returned user_id as userId, create exactly one PASSWORD row and one information row, then optional address, supplied consent rows in consentId order, and optional referral. createdBy is the server service identifier `auth-register`, not request input. Bind omitted nullable scalars as SQL NULL, never the string 'null'; bind bytes, UUIDs, booleans and timestamps as typed values. All placeholders below are parameter notation, never interpolated SQL.
-' - Lock order: this endpoint creates a new user and takes no pre-existing user FOR UPDATE lock. All writes use that new userId; repeated child consent writes are ordered by consentId. The REPEATABLE READ snapshot provides consistent policy reads; existing uniqueness/FK constraints remain authoritative for concurrent writes/deletions. A concurrent referenced-row deletion yielding FK violation rolls back and returns 404 E10005. Retry serialization conflicts as a whole; never bypass constraints or update existing consent history.
-' - COMMIT must succeed before returning 201 S10000 with data.userId. Failure of password, information, address, any consent or referral insertion rolls back user and every child together. Timeout before commit rolls back and returns 408 E90001. Unexpected pre-commit failure rolls back and returns generic 500 without inventing a bizCode. A lost response after commit does not undo registration: the client may encounter 409 on retry and should use login. No registration write is intentionally durable on a failed pre-commit response.
-'
-' #### Scenario correspondence with sequence.wsd
-'
-' | Scenario                                     | Required sequence behavior                                               | HTTP                | Durable effects                |
-' | -------------------------------------------- | ------------------------------------------------------------------------ | ------------------- | ------------------------------ |
-' | Malformed input, duplicate consent ids       | Validate before BEGIN; no SQL                                            | 400 E10001          | None                           |
-' | Existing username/email                      | Snapshot duplicate check then ROLLBACK                                   | 409 E10003          | None                           |
-' | Hidden/missing consent or referrer           | Validate references before writes; ROLLBACK                              | 404 E10005          | None                           |
-' | Stale consent version                        | Compare displayed/current versions; ROLLBACK                             | 400 E10001          | None                           |
-' | Missing/rejected/unanswered required consent | Full applicable-set coverage; ROLLBACK                                   | 400 E10001          | None                           |
-' | Valid registration                           | New user/password/information, optional children, COMMIT before response | 201 S10000          | Complete registration only     |
-' | Concurrent identifier conflict               | UNIQUE rejects insertion; ROLLBACK all                                   | 409 E10003          | None                           |
-' | Concurrent reference deletion                | FK rejects insertion; ROLLBACK all                                       | 404 E10005          | None                           |
-' | Serialization conflict                       | ROLLBACK, retry whole snapshot within timeout                            | No partial response | None until a successful commit |
-' | Timeout / unexpected error                   | ROLLBACK before response                                                 | 408 E90001 / 500    | None before commit             |
-'
-' Every SQL request returns its actual data to Application before that data is used; the same SQL appears visibly in the sequence under its execution branch.
-' --- end of the moved rules ---
-
 actor "User" as user
 box "Frontend" #F8FAFC
     participant "Registration Page" as page
@@ -102,6 +66,18 @@ else Valid input
     app -> app: Encrypt sensitive fields; random 16 byte salt; PBKDF2-HMAC-SHA256 600,000 iterations
     app -> app: createdBy = auth-register; preserve input identifier representation
     app -> infra: BEGIN REPEATABLE READ
+    note over app, infra
+        Capture UTC now immediately before the first read; that first read establishes the transaction snapshot. All
+        consent/type/referrer reads and duplicate checks use this same snapshot. Capture no new policy snapshot
+        halfway through registration. A consent/type/version published after that snapshot is handled as pending for
+        the resulting existing user (Q9); registration does not promise to accept an unseen publication at commit
+        time. A serialization conflict rolls back and retries the entire transaction with a new snapshot/now and
+        freshly revalidated inputs, bounded by the request timeout; no partial retry or partial writes.
+        `referrerId`, if present, must be a UUID referencing an existing user in the transaction snapshot (any
+        lifecycle status; the existing referral relationship is historical, not a privilege grant). Missing
+        reference returns the same 404 E10005. Omission creates no referral row. Register never grants
+        PLATFORM_ADMIN from an email or referrer.
+    end note
     alt Transaction work completes
         app -> app: Capture UTC now immediately before first read; establish one snapshot
         app -> infra: QUERY - Check existing user
@@ -352,6 +328,43 @@ else Valid input
                 end
                 app -> infra: COMMIT
                 infra -> app: Return committed registration
+                note over app, infra
+                    If present, title/address/city/state/postalCode/country must be non-empty strings, title at most 128
+                    characters, and isDefault if present must be boolean. The first address is always default: SQL sets TRUE
+                    whatever isDefault says. Omission creates no address row. The separate top-level address remains the
+                    optional profile field.
+                    Each supplied item must contain a UUID consentId and a non-empty consentVersion of at most 8 characters;
+                    result if present must be boolean. Reject duplicate consentIds before SQL (400 E10001), rather than picking
+                    one answer. Do not default the version to 1.0.0 or the latest version. Required consent needs explicit
+                    result=true; false or omission is not acceptance.
+                    Read all currently effective ACTIVE consents (effective_at <= now and expired_at IS NULL or expired_at >
+                    now), then only their ACTIVE consent types. Keep consent rows whose consent_type_id belongs to that
+                    activeTypeIds set. Required means `t_consent.is_required`, not the type's is_required flag. Do not require
+                    or accept an expired, future, inactive or inactive-type consent. Empty id lists bind as empty UUID arrays,
+                    never IN ().
+                    Display/read semantics (Q16): every supplied valid consent object represents the displayed version, even
+                    with result omitted. Insert is_read=TRUE and read_at=now. Map omitted result to false only for this new
+                    registration evidence; explicit false is an optional rejection. Omitted optional consent creates no row and
+                    stays pending. The authenticated submit endpoint uses the same read-only/result distinction after
+                    registration; repeated reads preserve the first read_at and any answer, as specified separately in its own
+                    review.
+                    The username and email address must not exist yet in their respective columns, across every lifecycle state,
+                    otherwise 409 E10003 `Username or email address already exists.` Their existing separate UNIQUE constraints
+                    are final protection against concurrent registrations: SQLSTATE 23505 from either m_user identifier
+                    constraint rolls back the whole transaction and maps to that same 409. Other integrity failures are not
+                    mislabeled as duplicates. Cross-field username/email collisions remain possible and login rejects ambiguous
+                    matching accounts (Q14).
+                    After every validation succeeds: create user, take returned user_id as userId, create exactly one PASSWORD
+                    row and one information row, then optional address, supplied consent rows in consentId order, and optional
+                    referral. createdBy is the server service identifier `auth-register`, not request input. Bind omitted
+                    nullable scalars as SQL NULL, never the string 'null'; bind bytes, UUIDs, booleans and timestamps as typed
+                    values. All placeholders below are parameter notation, never interpolated SQL.
+                    COMMIT must succeed before returning 201 S10000 with data.userId. Failure of password, information, address,
+                    any consent or referral insertion rolls back user and every child together. Timeout before commit rolls back
+                    and returns 408 E90001. Unexpected pre-commit failure rolls back and returns generic 500 without inventing a
+                    bizCode. A lost response after commit does not undo registration: the client may encounter 409 on retry and
+                    should use login. No registration write is intentionally durable on a failed pre-commit response.
+                end note
                 app -> api: HTTP 201 S10000 Register Success; data.userId = userId
                 api -> page: Return userId only
                 page -> user: Registered; proceed to login

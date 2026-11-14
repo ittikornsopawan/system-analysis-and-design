@@ -59,17 +59,9 @@ def require(md: str, needles: list[str]) -> list[str]:
     return [needle for needle in needles if needle not in md]
 
 
-MOVED_RULES = re.compile(r"^' --- Rules moved[^\n]*\n(.*?)^' --- end of the moved rules ---$", re.MULTILINE | re.DOTALL)
-
-
 def read(path: str) -> str:
-    """Read a repo-relative file as UTF-8 text; a spec.md also yields the rules that the template alignment moved into its sequence.wsd."""
-    text = (ROOT / path).read_text(encoding="utf-8")
-    if path.endswith("/spec.md") and (ROOT / path).with_name("sequence.wsd").exists():
-        moved = MOVED_RULES.search((ROOT / path).with_name("sequence.wsd").read_text(encoding="utf-8"))
-        if moved:
-            text += "\n" + "\n".join(line[2:] if line.startswith("' ") else line[1:] for line in moved.group(1).splitlines()) + "\n"
-    return text
+    """Read a repo-relative file as UTF-8 text."""
+    return (ROOT / path).read_text(encoding="utf-8")
 
 def without_frontmatter(md: str) -> str:
     """The Markdown after its YAML frontmatter (the whole text when there is none)."""
@@ -3531,51 +3523,158 @@ AUTHEN_LOCK = "FOR UPDATE -- every authen API locks the user row first"
 AUTHEN_POLICY = "Password must be 8 to 128 characters and contain an upper-case letter, a lower-case letter and a digit."
 AUTHEN_ADDRESS_ID = "d4e5f6a7-b8c9-4d0e-9f1a-2b3c4d5e6f7a"
 AUTHEN_NEEDLES = {
-    "01": ["### Register Rules", "#### Fail - Bad Request Password", "TRUE, -- the first address of a user is the default address, whatever isDefault says",
-           "PBKDF2-HMAC-SHA256", "Plain text over TLS", AUTHEN_POLICY],
-    "02": ["### Login Rules", "(../../../schema/authen/l_user_login_attempt.md)", "#### QUERY - Count failed attempts", "#### INSERT - Record attempt",
-           "#### INSERT - Create access token", "#### INSERT - Create refresh token", "5 `FAILED` attempts in the last 15 minutes", '"expiresIn": 900', "**Only `FAILED` rows are counted.**", "recorded as `REFUSED`, which is not counted",
-           "The block therefore ends by itself as soon as the 5th most recent failure is older than 15 minutes", "The `FAILED` and `REFUSED` rows are committed although the answer is 401",
-           "record `REFUSED` and answer 401 when there are 5", "record `FAILED` and answer 401 when it does not match or the user is not found", "record `SUCCESS`",
-           "AND la.result = 'FAILED' -- refused attempts are never counted", "'<sequence.result>' -- SUCCESS, FAILED or REFUSED",
-           "One answer for every failure", "Invalid username or password.", "SHA-256 (32 bytes), never as the token itself",
-           "Lock order:", AUTHEN_LOCK, "14 days", "'<sequence.sessionId>', -- a new session id for every login",
-           "**Authorization claims:**", "`roles`, `permissions` and `scopes`", "author.t_user_role", "author.m_role",
-           "author.t_role_permission", "author.t_role_permission_scope", "author.t_user_permission", "author.t_permission_scope",
-           "author.m_permission", "author.m_scope", "A user with no assigned role or permission can still log in"],
-    "03": ["# [POST]: v1/auth/reset-password", "### Reset Password Rules", "The answer is always 200 with the same message",
-           "If the email address is registered, a reset link has been sent.", "Throttle:", "3 times per hour", "uq_t_user_reset_password_user_id_active", "Lock order:",
-           "#### QUERY - Lock the user", AUTHEN_LOCK, "#### QUERY - Count the requests of the last hour", "#### UPDATE - Make the old reset token INACTIVE",
-           "#### INSERT - Create reset token", "WHERE u.email_address = '<sequence.emailAddressBytes>'\nAND u.row_status = 'ACTIVE'", "'<sequence.resetTokenHash>'",
-           "30 minutes", "(../../../schema/authen/t_user_reset_password.md)", "(../../../schema/authen/m_user.md)", "Email Address is required and must be a valid email address.",
-           "E10001", "E90001", "AND rp.created_at > '<sequence.windowStart>'", "AND row_status = 'ACTIVE'"],
-    "04": ["# [POST]: v1/auth/create-new-password", "### Create New Password Rules", "Reset token is invalid or expired.", "New password must be different from the current password.",
-           AUTHEN_POLICY, "AND row_status = 'ACTIVE'\nAND expired_at > '<sequence.now>'\nRETURNING id as reset_id", "#### UPDATE - Close the access tokens of the user",
-           "#### UPDATE - Close the refresh tokens of the user", "#### UPDATE - Make the current password INACTIVE", "#### INSERT - Create password", "PBKDF2-HMAC-SHA256",
-           "600,000", "Password storage: PBKDF2-HMAC-SHA256 with a random 16 byte salt and 600,000 iterations", "uq_m_user_password_user_id_password", AUTHEN_LOCK, "Lock order:", "(../../../schema/authen/m_user_password.md)",
-           "WHERE user_id = '<sequence.userId>'\nAND row_status = 'ACTIVE'", "AND up.row_type = 'PASSWORD'\nAND up.row_status = 'ACTIVE'", "E10001", "E90001"],
-    "05": ["# [POST]: v1/auth/refresh-token", "### Refresh Token Rules", "Invalid or expired refresh token.", "**Rotation:**", "**Reuse:**", "When the row became INACTIVE less than 10 seconds ago (configurable)", "**The closing of the session is committed although the answer is 401:**",
-           "written in its own transaction that is committed before the answer is sent", "any other user gets 401 and **nothing has changed**, the refresh token is not made INACTIVE",
-           "when the row was a reuse older than 10 seconds the session is closed and committed first", "are one transaction: when any of them fails nothing is saved",
-           "RETURNING session_id -- no row means the answer is 401", "#### INSERT - Create refresh token", "#### INSERT - Create access token",
-           "#### UPDATE - Close the refresh tokens of the session (reuse)", "#### UPDATE - Close the access tokens of the session (reuse)", AUTHEN_LOCK, "Lock order:",
-           '"expiresIn": 900', "AND row_status = 'ACTIVE'\nAND expired_at > '<sequence.now>'\nRETURNING session_id", "SHA-256 (32 bytes), never as the token itself",
+    "01": ["#### Fail - Bad Request Password",
+           "TRUE, -- the first address of a user is the default address, whatever isDefault says",
+           "PBKDF2-HMAC-SHA256",
+           "Plain text over TLS",
+           AUTHEN_POLICY],
+    "02": ["(../../../schema/authen/l_user_login_attempt.md)",
+           "#### QUERY - Count failed attempts",
+           "#### INSERT - Record attempt",
+           "#### INSERT - Create access token",
+           "#### INSERT - Create refresh token",
+           '"expiresIn": 900',
+           "AND la.result = 'FAILED' -- refused attempts are never counted",
+           "'<sequence.result>' -- SUCCESS, FAILED or REFUSED",
+           "One answer for every failure",
+           "Invalid username or password.",
+           AUTHEN_LOCK,
+           "14 days",
+           "'<sequence.sessionId>', -- a new session id for every login",
+           "author.t_user_role",
+           "author.m_role",
+           "author.t_role_permission",
+           "author.t_role_permission_scope",
+           "author.t_user_permission",
+           "author.t_permission_scope",
+           "author.m_permission",
+           "author.m_scope"],
+    "03": ["# [POST]: v1/auth/reset-password",
+           "The answer is always 200 with the same message",
+           "If the email address is registered, a reset link has been sent.",
+           "Throttle:",
+           "3 times per hour",
+           "#### QUERY - Lock the user",
+           AUTHEN_LOCK,
+           "#### QUERY - Count the requests of the last hour",
+           "#### UPDATE - Make the old reset token INACTIVE",
+           "#### INSERT - Create reset token",
+           "WHERE u.email_address = '<sequence.emailAddressBytes>'\nAND u.row_status = 'ACTIVE'",
+           "'<sequence.resetTokenHash>'",
+           "30 minutes",
+           "(../../../schema/authen/t_user_reset_password.md)",
+           "(../../../schema/authen/m_user.md)",
+           "Email Address is required and must be a valid email address.",
+           "E10001",
+           "E90001",
+           "AND rp.created_at > '<sequence.windowStart>'",
+           "AND row_status = 'ACTIVE'"],
+    "04": ["# [POST]: v1/auth/create-new-password",
+           "Reset token is invalid or expired.",
+           "New password must be different from the current password.",
+           AUTHEN_POLICY,
+           "AND row_status = 'ACTIVE'\nAND expired_at > '<sequence.now>'\nRETURNING id as reset_id",
+           "#### UPDATE - Close the access tokens of the user",
+           "#### UPDATE - Close the refresh tokens of the user",
+           "#### UPDATE - Make the current password INACTIVE",
+           "#### INSERT - Create password",
+           "PBKDF2-HMAC-SHA256",
+           "600,000",
+           AUTHEN_LOCK,
+           "(../../../schema/authen/m_user_password.md)",
+           "WHERE user_id = '<sequence.userId>'\nAND row_status = 'ACTIVE'",
+           "AND up.row_type = 'PASSWORD'\nAND up.row_status = 'ACTIVE'",
+           "E10001",
+           "E90001"],
+    "05": ["# [POST]: v1/auth/refresh-token",
+           "Invalid or expired refresh token.",
+           "**Rotation:**",
+           "RETURNING session_id -- no row means the answer is 401",
+           "#### INSERT - Create refresh token",
+           "#### INSERT - Create access token",
+           "#### UPDATE - Close the refresh tokens of the session (reuse)",
+           "#### UPDATE - Close the access tokens of the session (reuse)",
+           AUTHEN_LOCK,
+           '"expiresIn": 900',
+           "AND row_status = 'ACTIVE'\nAND expired_at > '<sequence.now>'\nRETURNING session_id",
            "WHERE session_id = '<sequence.sessionId>'\nAND user_id = '<sequence.userId>'\nAND row_status = 'ACTIVE'"],
-    "06": ["# [POST]: v1/auth/logout", "### Logout Rules", "every ACTIVE access token and refresh token that has the same `session_id`", "#### UPDATE - Close the access tokens of the session",
-           "#### UPDATE - Close the refresh tokens of the session", "WHERE session_id = '<sequence.sessionId>'\nAND user_id = '<sequence.userId>'\nAND row_status = 'ACTIVE'",
-           "Logout Success", AUTHEN_LOCK, "Lock order:", "Sessions of other devices are not changed."],
-    "07": ["# [POST]: v1/user/profile/upsert", "### User Profile Rules", "Username, Email Address and Password cannot be changed here.", "-- only when firstName is specified (null clears it)",
-           "-- only when lastName is specified (null clears it)", "-- only when displayName is specified (null clears it)", "-- only when profilePicturePath is specified (null clears it)",
-           "-- only when phoneNumber is specified (null clears it)", "-- only when address is specified (null clears it)", "-- only when dateOfBirth is specified (null clears it)",
-           "-- only when gender is specified (null clears it)", AUTHEN_LOCK, "uq_m_user_information_user_id", "Lock order:", "never read from the request"],
-    "08": ["# [GET]: v1/user/profile", "### User Profile Inquiry Rules", "AND u.row_status = 'ACTIVE'", "never returned", "WHERE u.id = '<sequence.userId>'",
+    "06": ["# [POST]: v1/auth/logout",
+           "every ACTIVE access token and refresh token that has the same `session_id`",
+           "#### UPDATE - Close the access tokens of the session",
+           "#### UPDATE - Close the refresh tokens of the session",
+           "WHERE session_id = '<sequence.sessionId>'\nAND user_id = '<sequence.userId>'\nAND row_status = 'ACTIVE'",
+           "Logout Success",
+           AUTHEN_LOCK],
+    "07": ["# [POST]: v1/user/profile/upsert",
+           "Username, Email Address and Password cannot be changed here.",
+           "-- only when firstName is specified (null clears it)",
+           "-- only when lastName is specified (null clears it)",
+           "-- only when displayName is specified (null clears it)",
+           "-- only when profilePicturePath is specified (null clears it)",
+           "-- only when phoneNumber is specified (null clears it)",
+           "-- only when address is specified (null clears it)",
+           "-- only when dateOfBirth is specified (null clears it)",
+           "-- only when gender is specified (null clears it)",
+           AUTHEN_LOCK,
+           "never read from the request"],
+    "08": ["# [GET]: v1/user/profile",
+           "AND u.row_status = 'ACTIVE'",
+           "WHERE u.id = '<sequence.userId>'",
            "WHERE ui.user_id = '<sequence.userId>'"],
-    "09": ["# [POST]: v1/user/address/upsert", "### User Address Rules", "uq_t_user_address_user_id_default", "A user can have at most 10 addresses.", "A default address must be ACTIVE.",
-           "User address not found.", "#### UPDATE - Clear the old default", "#### UPDATE - Promote another default address", "AND ua.user_id = '<sequence.userId>'", "Lock order:", AUTHEN_LOCK,
-           "Delete 204 No Content", "AND ua.row_status <> 'DELETED' -- an address of another user or a DELETED address counts as not found",
-           "AND is_default\nAND row_status <> 'DELETED'", "Row status must not be DELETED when inserting a user address."],
-    "10": ["# [GET]: v1/user/address", "### User Address Inquiry Rules", "ORDER BY ua.is_default DESC, ua.created_at DESC, ua.id",
-           "Row status must be one of ACTIVE, INACTIVE.", "Page Index and Page Size must be greater than 0", "Request: `GET v1/user/address?id=%s`" % AUTHEN_ADDRESS_ID],
+    "09": ["# [POST]: v1/user/address/upsert",
+           "uq_t_user_address_user_id_default",
+           "A user can have at most 10 addresses.",
+           "A default address must be ACTIVE.",
+           "User address not found.",
+           "#### UPDATE - Clear the old default",
+           "#### UPDATE - Promote another default address",
+           "AND ua.user_id = '<sequence.userId>'",
+           AUTHEN_LOCK,
+           "AND ua.row_status <> 'DELETED' -- an address of another user or a DELETED address counts as not found",
+           "AND is_default\nAND row_status <> 'DELETED'",
+           "Row status must not be DELETED when inserting a user address."],
+    "10": ["# [GET]: v1/user/address",
+           "ORDER BY ua.is_default DESC, ua.created_at DESC, ua.id",
+           "Row status must be one of ACTIVE, INACTIVE.",
+           "Page Index and Page Size must be greater than 0",
+           "Request: `GET v1/user/address?id=%s`" % AUTHEN_ADDRESS_ID],
+}
+# Sentences that live in a note of the sequence diagram (the rules the template alignment moved out of the spec)
+AUTHEN_SEQUENCE_NEEDLES = {
+    "02": ['5 `FAILED` attempts in the last 15 minutes',
+           '**Only `FAILED` rows are counted.**',
+           'recorded as `REFUSED`, which is not counted',
+           'The block therefore ends by itself as soon as the 5th most recent failure is older than 15 minutes',
+           'The `FAILED` and `REFUSED` rows are committed although the answer is 401',
+           'record `REFUSED` and answer 401 when there are 5',
+           'record `FAILED` and answer 401 when it does not match or the user is not found',
+           'record `SUCCESS`',
+           'SHA-256 (32 bytes), never as the token itself',
+           'Lock order:',
+           '**Authorization claims:**',
+           '`roles`, `permissions` and `scopes`',
+           'A user with no assigned role or permission can still log in'],
+    "03": ['uq_t_user_reset_password_user_id_active',
+           'Lock order:'],
+    "04": ['Password storage: PBKDF2-HMAC-SHA256 with a random 16 byte salt and 600,000 iterations',
+           'uq_m_user_password_user_id_password',
+           'Lock order:'],
+    "05": ['**Reuse:**',
+           'When the row became INACTIVE less than 10 seconds ago (configurable)',
+           '**The closing of the session is committed although the answer is 401:**',
+           'written in its own transaction that is committed before the answer is sent',
+           'any other user gets 401 and **nothing has changed**, the refresh token is not made INACTIVE',
+           'when the row was a reuse older than 10 seconds the session is closed and committed first',
+           'are one transaction: when any of them fails nothing is saved',
+           'Lock order:',
+           'SHA-256 (32 bytes), never as the token itself'],
+    "06": ['Lock order:',
+           'Sessions of other devices are not changed.'],
+    "07": ['uq_m_user_information_user_id',
+           'Lock order:'],
+    "08": ['never returned'],
+    "09": ['Lock order:',
+           'Delete 204 No Content'],
 }
 AUTHEN_COUNTED = {
     "10": [("WHERE ua.user_id = '<sequence.userId>'\nAND ua.row_status <> 'DELETED'", 2), ("AND ('<sequence.searchPattern>' IS NULL OR ua.title ILIKE '<sequence.searchPattern>') -- only when search is specified", 2),
@@ -3748,6 +3847,9 @@ def check_authen_spec() -> int:
             errors.append(f"{path} has no sequence.wsd beside it")
         for missing in missing_needles(md, AUTHEN_NEEDLES.get(key, [])):
             errors.append(f"{path} missing: {missing!r}")
+        sequence_note = " ".join((ROOT / path).with_name("sequence.wsd").read_text(encoding="utf-8").split()) if (ROOT / path).with_name("sequence.wsd").exists() else ""
+        for missing in missing_needles(sequence_note, AUTHEN_SEQUENCE_NEEDLES.get(key, [])):
+            errors.append(f"{path} sequence note missing: {missing!r}")
         for text, times in AUTHEN_COUNTED.get(key, []):
             if md.count(text) != times:
                 errors.append(f"{path}: {text!r} must appear {times} time(s), found {md.count(text)}")
@@ -4920,6 +5022,64 @@ def author_inquiry_errors(m, md: str) -> list[str]:
     return errors
 
 
+# Needles whose sentence now lives in a note of the sequence diagram (moved there by the template alignment) and needles whose text is gone by design
+AUTHOR_SEQUENCE_NEEDLES = {
+    "01": ['Permission: only a platform administrator from the verified JWT roles claim',
+           'Approved by the product owner',
+           '-> permission (403, E10009) ->',
+           'The value of a DELETED role can be used again.',
+           'Delete 204 No Content'],
+    "02": ['Approved by the product owner',
+           'The 403 message has no item position'],
+    "03": ['use exact PLATFORM_ADMIN in verified JWT role claims',
+           'Approved by the product owner'],
+    "04": ['Permission: only a platform administrator from verified JWT roles',
+           'Approved by the product owner',
+           '-> permission (403, E10009) ->',
+           'The value of a DELETED permission can be used again.',
+           'Delete 204 No Content',
+           'Scopes that are not listed are kept.'],
+    "05": ['Approved by the product owner',
+           'The 403 message has no item position'],
+    "06": ['use exact PLATFORM_ADMIN in verified JWT role claims',
+           'Approved by the product owner'],
+    "07": ['Approved by the product owner',
+           '-> permission (403, E10009) ->',
+           'The value of a DELETED scope can be used again.',
+           'Delete 204 No Content'],
+    "08": ['Approved by the product owner',
+           'The 403 message has no item position'],
+    "09": ['use exact PLATFORM_ADMIN in verified JWT role claims',
+           'Approved by the product owner'],
+    "10": ['Lock order is users (ascending id) -> the role of the request',
+           'Only a platform administrator from the verified JWT roles claim',
+           'exact case-sensitive role name PLATFORM_ADMIN',
+           'Approved by the product owner',
+           'uq_t_user_role_user_id_role_id',
+           'Taking the role away (`rowStatus` DELETED, ARCHIVED, INACTIVE or LOCKED) works whatever the status of the user and of the role is',
+           'The last administrator rule below still applies in full.',
+           'a missing target user is 404 (E10005) `User not found.`, also when the request takes the role away'],
+    "11": ['use exact PLATFORM_ADMIN in verified JWT role claims'],
+    "12": ['Any caller with a valid access token can call this API',
+           'Do not query author.t_user_role or author.m_role'],
+}
+AUTHOR_REMOVED_NEEDLES = {
+    "01": ['### Role Rules'],
+    "02": ['### Role Rules (same as the single upsert, applied per role)'],
+    "03": ['### Role Inquiry Rules'],
+    "04": ['### Permission Rules'],
+    "05": ['### Permission Rules (same as the single upsert, applied per permission)'],
+    "06": ['### Permission Inquiry Rules'],
+    "07": ['### Scope Rules'],
+    "08": ['### Scope Rules (same as the single upsert, applied per scope)'],
+    "09": ['### Scope Inquiry Rules'],
+    "10": ['### User Role Rules',
+           '### Credential, Lock and Transaction Rules'],
+    "11": ['### User Role Inquiry Rules'],
+    "12": ['### Me Rules'],
+}
+
+
 def author_example_errors(key: str, md: str) -> list[str]:
     errors = []
     masters = {v[0]: (v, False) for v in AUTHOR_MASTERS.values()}
@@ -4997,8 +5157,12 @@ def check_author_spec() -> int:
         if not (ROOT / path).with_name("sequence.wsd").exists():
             errors.append(f"{path} has no sequence.wsd beside it")
         need = author_needles(key) if key in ("01", "02", "03", "04", "05", "06", "07", "08", "09") else AUTHOR_OTHER_NEEDLES[key]
-        for missing in missing_needles(md, need):
+        in_sequence = AUTHOR_SEQUENCE_NEEDLES.get(key, [])
+        for missing in missing_needles(md, [x for x in need if x not in in_sequence and x not in AUTHOR_REMOVED_NEEDLES.get(key, [])]):
             errors.append(f"{path} missing: {missing!r}")
+        sequence_note = " ".join((ROOT / path).with_name("sequence.wsd").read_text(encoding="utf-8").split())
+        for missing in missing_needles(sequence_note, in_sequence):
+            errors.append(f"{path} sequence note missing: {missing!r}")
         for forbidden in AUTHOR_FORBIDDEN_TEXT.get(key, []):
             if forbidden in md:
                 errors.append(f"{path} must not contain {forbidden!r}")
@@ -5216,11 +5380,14 @@ def check_login_flow() -> int:
     md = read(path)
     wsd = read(str(Path(path).with_name('sequence.wsd')))
     errors = []
-    for needle in ('2026-11-07-api-review-design.md', '**Only `FAILED` rows are counted.**',
-                   'constant-time', 'permission-specific', 'ambiguous', 'PBKDF2-HMAC-SHA256 with 600,000 iterations',
-                   'No role, permission or scope definition creates a grant on its own.'):
+    for needle in ('ambiguous'):
         if needle not in md:
             errors.append(f'login spec missing {needle!r}')
+    seq = ' '.join(wsd.split())  # the note texts of the sequence, one line
+    for needle in ('**Only `FAILED` rows are counted.**', 'constant-time', 'permission-specific', 'PBKDF2-HMAC-SHA256 with 600,000 iterations',
+            'No role, permission or scope definition creates a grant on its own.'):
+        if needle not in seq:
+            errors.append(f'login sequence note missing {needle!r}')
     if not md.startswith('---\n'):
         errors.append('login spec requires approval metadata')
     else:
@@ -5581,10 +5748,13 @@ def check_refresh_flow() -> int:
     refresh_claims = [o for o in operations if o[0].startswith('author.')]
     if [(t,h,normalize(s)) for t,h,s in login_claims] != [(t,h,normalize(s)) for t,h,s in refresh_claims]:
         errors.append('refresh must resolve current claims using all eight canonical login queries')
-    for needle in ('2026-11-07-api-review-design.md', 'permission-specific',
-                   'at exactly 10 seconds', 'updated_at', 'issuedAt', 'a fresh `user` snapshot', 'the last `.` as `:`'):
+    for needle in ('permission-specific', 'updated_at', 'issuedAt'):
         if needle.lower() not in md.lower():
             errors.append(f'refresh spec missing {needle}')
+    seq = ' '.join(wsd.split())  # the note texts of the sequence, one line
+    for needle in ('at exactly 10 seconds', 'a fresh `user` snapshot', 'the last `.` as `:`'):
+        if needle.lower() not in seq.lower():
+            errors.append(f'refresh sequence note missing {needle!r}')
     front = re.match(r'---\n(.*?)\n---\n', md, re.DOTALL)
     if not front:
         errors.append('refresh spec needs approval metadata')
@@ -5696,18 +5866,19 @@ def check_register_flow() -> int:
     md = read(path)
     wsd = read(str(Path(path).with_name('sequence.wsd')))
     errors = []
-    for needle in ('2026-11-07-api-review-design.md', 'REPEATABLE READ', 'first read establishes the transaction snapshot',
-                   'Required means `t_consent.is_required`', 'Reject duplicate consentIds before SQL',
-                   'result=true', 'every supplied valid consent object represents the displayed version',
-                   'Omitted optional consent creates no row', 'SQLSTATE 23505', 'rolls back the whole transaction',
-                   'Serialization', '600,000 iterations', 'random 16 byte salt', 'Register does not log the user in',
-                   'not request input', 'never the string', 'one optional object, never an array',
-                   'keeps its original read', 'consentVersion'):
+    for needle in ('REPEATABLE READ', 'one optional object, never an array', 'consentVersion'):
         # The prior read timestamp belongs to authenticated submit, but must be explained here too.
         if needle == 'keeps its original read':
             needle = 'repeated reads preserve the first read_at'
         if needle not in md:
             errors.append(f'register rules missing {needle!r}')
+    seq = ' '.join(wsd.split())  # the note texts of the sequence, one line
+    for needle in ('first read establishes the transaction snapshot', 'Required means `t_consent.is_required`', 'Reject duplicate consentIds before SQL', 'result=true',
+            'every supplied valid consent object represents the displayed version', 'Omitted optional consent creates no row', 'SQLSTATE 23505',
+            'rolls back the whole transaction', 'Serialization', '600,000 iterations', 'random 16 byte salt', 'not request input', 'never the string',
+            'repeated reads preserve the first read_at'):
+        if needle not in seq:
+            errors.append(f'register sequence note missing {needle!r}')
     fm = md.split('---', 2)[1] if md.startswith('---\n') else ''
     state = re.search(r'^status: (draft|in-review|approved)$', fm, re.M)
     if not state:
@@ -6141,14 +6312,15 @@ COMMANDS['active-consent-flow'] = check_active_consent_flow
 def check_address_inquiry_flow() -> int:
     """Check current-caller address count/page consistency and safe bound filters."""
     path=AUTHEN_SPECS['10'];md=read(path);wsd=read(str(Path(path).with_name('sequence.wsd')));errors=[]
-    for needle in ('status: in-review','approved_by: null','approved_at: null','2026-11-07-api-review-design.md',
-                   'Count and page share the same repeatable-read snapshot','exact same userId/non-DELETED/id/searchPattern/rowStatus predicates',
-                   'offset outside nonnegative BIGINT','entire pattern as text','existing case-insensitive ILIKE wildcard semantics',
-                   'other user\'s address returns an empty list','An id filter is still paginated',
-                   'skip the list query','items=[] while totalItems/totalPages remain positive',
-                   'exactly five data keys','Require the returned page row count','COMMIT only after complete decryption/mapping succeeds',
-                   'Scenario correspondence with sequence.wsd'):
+    for needle in ('status: in-review', 'approved_by: null', 'approved_at: null', 'Count and page share the same repeatable-read snapshot'):
         if needle not in md:errors.append(f'address-inquiry spec missing {needle!r}')
+    seq = ' '.join(wsd.split())  # the note texts of the sequence, one line
+    for needle in ('exact same userId/non-DELETED/id/searchPattern/rowStatus predicates', 'offset outside nonnegative BIGINT', 'entire pattern as text',
+            'existing case-insensitive ILIKE wildcard semantics', "other user's address returns an empty list", 'An id filter is still paginated',
+            'skip the list query', 'items=[] while totalItems/totalPages remain positive', 'exactly five data keys', 'Require the returned page row count',
+            'COMMIT only after complete decryption/mapping succeeds'):
+        if needle not in seq:
+            errors.append(f'address-inquiry sequence note missing {needle!r}')
     operations=spec_database_operations(md);expected=('QUERY - Check current credential and user','QUERY - Get total items','QUERY - Get user addresses')
     if tuple(h for _,h,_ in operations)!=expected:errors.append('inquiry needs current credential, identical-filter count and optional page in execution order')
     sql={h:re.sub(r'--[^\n]*','',s) for _,h,s in operations}
@@ -6257,14 +6429,15 @@ COMMANDS['address-inquiry-flow'] = check_address_inquiry_flow
 def check_profile_inquiry_flow() -> int:
     """Check own-profile live credential projection, read consistency and complete nullable output."""
     path=AUTHEN_SPECS['08'];md=read(path);wsd=read(str(Path(path).with_name('sequence.wsd')));errors=[]
-    for needle in ('status: in-review','approved_by: null','approved_at: null','2026-11-07-api-review-design.md',
-                   'Q20 is approved by the product owner','คืน null สำหรับค่าว่างเดิม (แนะนำ)',
-                   'Read user and information from the same repeatable-read snapshot','No id/userId/query filters or body are accepted',
-                   'all ten data keys every time','explicit JSON null, never an omitted key',
-                   'response normalization only','No information row is a normal state, not 404',
-                   'No user/credential lock','COMMIT the read-only transaction only after mapping succeeds',
-                   'Unexpected mapping/decryption failure','Scenario correspondence with sequence.wsd'):
+    for needle in ('status: in-review', 'approved_by: null', 'approved_at: null', 'Read user and information from the same repeatable-read snapshot'):
         if needle not in md:errors.append(f'profile-inquiry spec missing {needle!r}')
+    seq = ' '.join(wsd.split())  # the note texts of the sequence, one line
+    for needle in ('Q20 is approved by the product owner', 'คืน null สำหรับค่าว่างเดิม (แนะนำ)', 'No id/userId/query filters or body are accepted',
+            'all ten data keys every time', 'explicit JSON null, never an omitted key', 'response normalization only',
+            'No information row is a normal state, not 404', 'No user/credential lock', 'COMMIT the read-only transaction only after mapping succeeds',
+            'Unexpected mapping/decryption failure'):
+        if needle not in seq:
+            errors.append(f'profile-inquiry sequence note missing {needle!r}')
     operations=spec_database_operations(md);expected=('QUERY - Get user','QUERY - Get information')
     if tuple(h for _,h,_ in operations)!=expected:errors.append('inquiry needs exactly the joined user/credential query then own information query')
     sql={h:re.sub(r'--[^\n]*','',s) for _,h,s in operations}
@@ -6352,16 +6525,16 @@ def check_author_me_flow() -> int:
     """Check the calling-token role snapshot while preserving live credential/user revocation."""
     path='e-commerce/doc/api/author/12-me/spec.md'
     md=read(path);wsd=read(str(Path(path).with_name('sequence.wsd')));errors=[]
-    for needle in ('2026-11-07-api-review-design.md','Q4/Q11/Q13',"calling token's role snapshot",
-                   'Do not query author.t_user_role or author.m_role','duplicate entries',
-                   'roles must be an array of unique non-empty strings, including explicit []','ordinal case-sensitive comparison.',
-                   'isPlatformAdmin is true exactly when one returned role name equals PLATFORM_ADMIN',
-                   'Do not trust an independent isPlatformAdmin token claim',
-                   'Role/assignment changes after issuance do not change this token',
-                   'Every refresh resolves latest ACTIVE grants','one read-only autocommit SELECT',
-                   'stored token for that hash/userId and an ACTIVE user','There is no 403',
-                   'Permissions and scopes are not returned'):
+    for needle in ('Q4/Q11/Q13', "calling token's role snapshot", 'one read-only autocommit SELECT'):
         if needle not in md:errors.append(f'me rule missing {needle!r}')
+    seq = ' '.join(wsd.split())  # the note texts of the sequence, one line
+    for needle in ('Do not query author.t_user_role or author.m_role', 'duplicate entries', 'roles must be an array of unique non-empty strings, including explicit []',
+            'ordinal case-sensitive comparison.', 'isPlatformAdmin is true exactly when one returned role name equals PLATFORM_ADMIN',
+            'Do not trust an independent isPlatformAdmin token claim', 'Role/assignment changes after issuance do not change this token',
+            'Every refresh resolves latest ACTIVE grants', 'stored token for that hash/userId and an ACTIVE user', 'There is no 403',
+            'Permissions and scopes are not returned'):
+        if needle not in seq:
+            errors.append(f'me sequence note missing {needle!r}')
     front=re.match(r'---\n(.*?)\n---\n',md,re.S);fm=front[1] if front else ''
     state=re.search(r'^status: (draft|in-review|approved)$',fm,re.M)
     if not state:errors.append('me requires approval metadata')
@@ -6447,11 +6620,19 @@ COMMANDS['author-me-flow'] = check_author_me_flow
 def check_permission_upsert_flow() -> int:
     """Check scoped permission parent/link phases, owner Q22/Q23 and atomic rollback."""
     path=f'{AUTHOR_DIR}/{AUTHOR_SPECS["04"]}/spec.md';md=read(path);wsd=read(str(Path(path).with_name('sequence.wsd')));errors=[]
-    for n in ('status: in-review','approved_by: null','approved_at: null','Q22/Q23 approved by the product owner','malformed/missing roles is generic 401','exact PLATFORM_ADMIN','scopes omitted or [] means no link change','duplicate parsed child ids','Lock order: caller user -> existing permission','beforeDefinitionCount > 0 and finalDefinitionCount = 0','already-unscoped permission','all child reference/duplicate/in-use checks precede any parent/child write','Capture beforeDefinitionCount as every non-DELETED definition','After all parent/child writes','final whole-request invariant','Map exactly data.permissionId','uq_m_permission_name','uq_t_permission_scope_permission_id_scope_id','Scenario correspondence with sequence.wsd','ใช่ ปฏิเสธจนถอน grant เดิมครบ','ใช่ อนุญาตถอน link ของ scope ที่ปิดแล้ว'):
+    for n in ('status: in-review', 'approved_by: null', 'approved_at: null'):
         if n not in md:errors.append(f'permission spec missing {n!r}')
+    seq = ' '.join(wsd.split())  # the note texts of the sequence, one line
+    for n in ('malformed/missing roles is generic 401', 'exact PLATFORM_ADMIN', 'scopes omitted or [] means no link change', 'duplicate parsed child ids',
+            'Lock order: caller user -> existing permission', 'beforeDefinitionCount > 0 and finalDefinitionCount = 0', 'already-unscoped permission',
+            'all child reference/duplicate/in-use checks precede any parent/child write', 'Capture beforeDefinitionCount as every non-DELETED definition',
+            'After all parent/child writes', 'final whole-request invariant', 'Map exactly data.permissionId', 'uq_m_permission_name',
+            'uq_t_permission_scope_permission_id_scope_id', 'ใช่ ปฏิเสธจนถอน grant เดิมครบ', 'ใช่ อนุญาตถอน link ของ scope ที่ปิดแล้ว'):
+        if n not in seq:
+            errors.append(f'permission sequence note missing {n!r}')
     for n in ('QUERY - Get the platform administrator role','QUERY - Check platform administrator'):
         if n in md or n in wsd:errors.append('permission caller authorization may not reload live grants')
-    if 'Q24 approved by the product owner' not in md or 'rowStatus = DELETED and finalDefinitionCount > 0' not in md:errors.append('permission spec must define owner Q24 final deletion guard')
+    if 'Q24 approved by the product owner' not in ' '.join(wsd.split()) or 'rowStatus = DELETED and finalDefinitionCount > 0' not in ' '.join(wsd.split()):errors.append('permission sequence note must define owner Q24 final deletion guard')
     q24='alt Parent rowStatus = DELETED and finalDefinitionCount > 0 (Q24)'
     passed='Q24 passed: parent is not DELETED or finalDefinitionCount = 0'
     if q24 not in wsd or passed not in wsd:errors.append('permission sequence must enforce Q24 after final count')
@@ -6582,11 +6763,24 @@ COMMANDS['permission-upsert-flow'] = check_permission_upsert_flow
 def check_permission_batch_flow() -> int:
     """Check scoped permission parent/link phases, owner Q22/Q23/Q24 and atomic rollback."""
     path=f'{AUTHOR_DIR}/{AUTHOR_SPECS["05"]}/spec.md';md=read(path);wsd=read(str(Path(path).with_name('sequence.wsd')));errors=[]
-    for n in ('status: in-review', 'approved_by: null', 'approved_at: null', 'Q22/Q23 approved by the product owner', 'permissions must be an array of 1..100', 'Reject duplicate parsed canonical parent ids', 'malformed/missing roles is generic 401', 'Lock order: caller user -> all existing target permissions ordered by id', 'Check all supplied target ids in original request order before permission', 'Authorize once from exact PLATFORM_ADMIN', 'activeScopeIds contains only scopeIds requested ACTIVE anywhere', 'Map each returned child id to its stored permission_id and scope_id', 'optional permissions.id, callerUserId and derived permissionId are distinct', 'scopes omitted or [] means no link change', 'Every child precheck precedes the current parent', 'Capture beforeDefinitionCount as every non-DELETED definition', 'beforeDefinitionCount > 0 and finalDefinitionCount = 0', "Because parent ids cannot repeat and child ownership is enforced, this post-item state is that permission's final whole-request state; no later item may alter its definitions.", 'exactly index/permissionId/action', 'one COMMIT after the outer loop', 'Every item-specific 400/404/409 has permissions[i] prefix', 'uq_m_permission_name', 'uq_t_permission_scope_permission_id_scope_id', 'Scenario correspondence with sequence.wsd', 'ใช่ ปฏิเสธจนถอน grant เดิมครบ', 'ใช่ อนุญาตถอน link ของ scope ที่ปิดแล้ว'):
+    for n in ('status: in-review', 'approved_by: null', 'approved_at: null', 'Q22/Q23 (approved by the product owner)'):
         if n not in md:errors.append(f'permission batch spec missing {n!r}')
+    seq = ' '.join(wsd.split())  # the note texts of the sequence, one line
+    for n in ('permissions must be an array of 1..100', 'Reject duplicate parsed canonical parent ids',
+            'malformed/missing roles is generic 401', 'Lock order: caller user -> all existing target permissions ordered by id',
+            'Check all supplied target ids in original request order before permission', 'Authorize once from exact PLATFORM_ADMIN',
+            'activeScopeIds contains only scopeIds requested ACTIVE anywhere', 'Map each returned child id to its stored permission_id and scope_id',
+            'optional permissions.id, callerUserId and derived permissionId are distinct', 'scopes omitted or [] means no link change',
+            'Every child precheck precedes the current parent', 'Capture beforeDefinitionCount as every non-DELETED definition',
+            'beforeDefinitionCount > 0 and finalDefinitionCount = 0',
+            "Because parent ids cannot repeat and child ownership is enforced, this post-item state is that permission's final whole-request state; no later item may alter its definitions.",
+            'exactly index/permissionId/action', 'one COMMIT after the outer loop', 'Every item-specific 400/404/409 has permissions[i] prefix',
+            'uq_m_permission_name', 'uq_t_permission_scope_permission_id_scope_id', 'ใช่ ปฏิเสธจนถอน grant เดิมครบ', 'ใช่ อนุญาตถอน link ของ scope ที่ปิดแล้ว'):
+        if n not in seq:
+            errors.append(f'permission batch sequence note missing {n!r}')
     for n in ('QUERY - Get the platform administrator role','QUERY - Check platform administrator'):
         if n in md or n in wsd:errors.append('permission caller authorization may not reload live grants')
-    if 'Q24 approved by the product owner' not in md or 'rowStatus = DELETED and finalDefinitionCount > 0' not in md:errors.append('permission batch spec must define owner Q24 final deletion guard')
+    if 'Q24 approved by the product owner' not in ' '.join(wsd.split()) or 'rowStatus = DELETED and finalDefinitionCount > 0' not in ' '.join(wsd.split()):errors.append('permission batch sequence note must define owner Q24 final deletion guard')
     q24='alt Current permission rowStatus = DELETED and finalDefinitionCount > 0 (Q24)'
     passed='Q24 passed for permissions[i]: rowStatus is not DELETED or finalDefinitionCount = 0'
     if q24 not in wsd or passed not in wsd:errors.append('permission batch sequence must enforce Q24 after final count')
@@ -6728,8 +6922,20 @@ COMMANDS['permission-batch-flow'] = check_permission_batch_flow
 def check_permission_inquiry_flow() -> int:
     """Check token-claim administration and consistent filtered current role metadata."""
     path=f'{AUTHOR_DIR}/{AUTHOR_SPECS["06"]}/spec.md';md=read(path);wsd=read(str(Path(path).with_name('sequence.wsd')));errors=[]
-    for n in ('status: in-review', 'approved_by: null', 'approved_at: null', '2026-11-07-api-review-design.md', 'exact PLATFORM_ADMIN in verified JWT role claims', 'positive signed 64-bit integers', 'nonnegative BIGINT', 'one bound text searchPattern', 'Missing/malformed roles is generic 401', 'Grant withdrawal after token issuance leaves the old privilege usable', 'Count first and optionally fetch the page in the same read-only repeatable-read snapshot', 'identical non-DELETED/id/searchPattern/rowStatus WHERE predicates', 'an offset beyond the range returns items=[] with positive totals/pages', 'Sort by name then id ascending', 'exactly permissionId/name/description/scopes/rowStatus', 'exactly five data keys', 'integer quotient/remainder', 'Map the full response before COMMIT', 'distinct UUID[] of that page', 'An empty page skips both definition and master queries', 'A page with no definitions maps scopes=[]', 'including INACTIVE/LOCKED/ARCHIVED/DELETED masters', 'Metadata is matched by immutable scope_id', 'exactly permissionScopeId/scopeId/scope/scopeName/rowStatus', "rowStatus is the definition's status", 'derive master rank', 'Credential/count/page/definition/master SELECTs share the same read-only repeatable-read snapshot', 'No per-permission or per-scope SQL queries', 'Scenario correspondence with sequence.wsd'):
+    for n in ('status: in-review', 'approved_by: null', 'approved_at: null'):
         if n not in md:errors.append(f'permission-inquiry spec missing {n!r}')
+    seq = ' '.join(wsd.split())  # the note texts of the sequence, one line
+    for n in ('2026-11-07-api-review-design.md', 'exact PLATFORM_ADMIN in verified JWT role claims', 'positive signed 64-bit integers', 'nonnegative BIGINT',
+            'one bound text searchPattern', 'Missing/malformed roles is generic 401', 'Grant withdrawal after token issuance leaves the old privilege usable',
+            'Count first and optionally fetch the page in the same read-only repeatable-read snapshot',
+            'identical non-DELETED/id/searchPattern/rowStatus WHERE predicates', 'an offset beyond the range returns items=[] with positive totals/pages',
+            'Sort by name then id ascending', 'exactly permissionId/name/description/scopes/rowStatus', 'exactly five data keys', 'integer quotient/remainder',
+            'Map the full response before COMMIT', 'distinct UUID[] of that page', 'An empty page skips both definition and master queries',
+            'A page with no definitions maps scopes=[]', 'including INACTIVE/LOCKED/ARCHIVED/DELETED masters', 'Metadata is matched by immutable scope_id',
+            'exactly permissionScopeId/scopeId/scope/scopeName/rowStatus', "rowStatus is the definition's status", 'derive master rank',
+            'Credential/count/page/definition/master SELECTs share the same read-only repeatable-read snapshot', 'No per-permission or per-scope SQL queries'):
+        if n not in seq:
+            errors.append(f'permission-inquiry sequence note missing {n!r}')
     for n in ('QUERY - Get the platform administrator role','QUERY - Check platform administrator'):
         if n in md or n in wsd:errors.append('permission inquiry authorization must not reload current assignments')
     ops=spec_database_operations(md);heads=('QUERY - Check current credential and user','QUERY - Get total items','QUERY - Get permissions','QUERY - Get the scopes of the permissions','QUERY - Get scope')
@@ -6867,8 +7073,17 @@ COMMANDS['permission-inquiry-flow'] = check_permission_inquiry_flow
 def check_scope_upsert_flow() -> int:
     """Check verified-claim scope administration and guarded master/definition lifecycle."""
     path=f'{AUTHOR_DIR}/{AUTHOR_SPECS["07"]}/spec.md';md=read(path);wsd=read(str(Path(path).with_name('sequence.wsd')));errors=[]
-    for n in ('status: in-review','approved_by: null','approved_at: null','2026-11-07-api-review-design.md','Permission: only a platform administrator from the verified JWT roles claim','exact case-sensitive role name PLATFORM_ADMIN','Malformed/missing roles is generic 401','Grant withdrawal alone does not revoke','Capture fresh server UTC now after caller lock','lock the non-DELETED scope FOR UPDATE','Duplicate scope exclusion is null-safe','Existing scope codes, including seed codes, remain editable','Lock order is caller user -> target scope -> usage reads/write','regardless of its parent permission\'s lifecycle','No parent/master/grant JOIN or ACTIVE-only filter may hide usage','Insert-ARCHIVED is allowed','zero returned rows is 404 E10004','exactly data.scopeId from RETURNING','SQLSTATE 23505 from uq_m_scope_scope','Scenario correspondence with sequence.wsd'):
+    for n in ('status: in-review', 'approved_by: null', 'approved_at: null', 'Permission: only a platform administrator from the verified JWT roles claim',
+            'exact case-sensitive role name PLATFORM_ADMIN'):
         if n not in md:errors.append(f'scope-upsert spec missing {n!r}')
+    seq = ' '.join(wsd.split())  # the note texts of the sequence, one line
+    for n in ('Malformed/missing roles is generic 401', 'Grant withdrawal alone does not revoke', 'Capture fresh server UTC now after caller lock',
+            'lock the non-DELETED scope FOR UPDATE', 'Duplicate scope exclusion is null-safe', 'Existing scope codes, including seed codes, remain editable',
+            'Lock order is caller user -> target scope -> usage reads/write', "regardless of its parent permission's lifecycle",
+            'No parent/master/grant JOIN or ACTIVE-only filter may hide usage', 'Insert-ARCHIVED is allowed', 'zero returned rows is 404 E10004',
+            'exactly data.scopeId from RETURNING', 'SQLSTATE 23505 from uq_m_scope_scope'):
+        if n not in seq:
+            errors.append(f'scope-upsert sequence note missing {n!r}')
     for n in ('QUERY - Get the platform administrator role','QUERY - Check platform administrator'):
         if n in md or n in wsd:errors.append('scope upsert must not reload live caller grants')
     ops=spec_database_operations(md);heads=('QUERY - Lock the caller user','QUERY - Check current credential and user','QUERY - Check existing scope','QUERY - Check duplicate scope','QUERY - Check permission scope in use','INSERT - Create scope','UPDATE - Update or delete scope')
@@ -6965,8 +7180,19 @@ COMMANDS['scope-upsert-flow'] = check_scope_upsert_flow
 def check_scope_batch_flow() -> int:
     """Verify whole-batch preflight, sorted target locks before usage checks and ordered atomic scope mutations; unroll one representative item."""
     path=f'{AUTHOR_DIR}/{AUTHOR_SPECS["08"]}/spec.md';md=read(path);wsd=read(str(Path(path).with_name('sequence.wsd')));errors=[]
-    for n in ('status: in-review','approved_by: null','approved_at: null','2026-11-07-api-review-design.md','Validate the whole request before SQL','Compare parsed canonical UUIDs','exact case-sensitive PLATFORM_ADMIN','all target existence checks','after all target existence checks and before any conflict or write','with one SELECT FOR UPDATE','before any in-use check or write','any non-DELETED permission-scope definition is 409 E10006','no parent/master/grant JOIN or ACTIVE-only filter may hide usage','Withdrawal of a grant alone does not invalidate','first missing/DELETED target in original request order','Each item\'s conflict reads see preceding item writes','reversing those items returns duplicate 409','does not apply a final-state recode plan','exactly one result per input item in the same order','batch never sends per-item 201/204 or partial success','SQLSTATE 23505','uq_m_scope_scope','lock order is caller user -> target scopes ascending by id -> usage reads/writes','Scenario correspondence with sequence.wsd'):
+    for n in ('status: in-review', 'approved_by: null', 'approved_at: null', 'Validate the whole request before SQL', 'Compare parsed canonical UUIDs',
+            'exact case-sensitive PLATFORM_ADMIN'):
         if n not in md:errors.append(f'scope-batch spec missing {n!r}')
+    seq = ' '.join(wsd.split())  # the note texts of the sequence, one line
+    for n in ('all target existence checks', 'after all target existence checks and before any conflict or write', 'with one SELECT FOR UPDATE',
+            'before any in-use check or write', 'any non-DELETED permission-scope definition is 409 E10006',
+            'no parent/master/grant JOIN or ACTIVE-only filter may hide usage', 'Withdrawal of a grant alone does not invalidate',
+            'first missing/DELETED target in original request order', "Each item's conflict reads see preceding item writes",
+            'reversing those items returns duplicate 409', 'does not apply a final-state recode plan', 'exactly one result per input item in the same order',
+            'batch never sends per-item 201/204 or partial success', 'SQLSTATE 23505', 'uq_m_scope_scope',
+            'lock order is caller user -> target scopes ascending by id -> usage reads/writes'):
+        if n not in seq:
+            errors.append(f'scope-batch sequence note missing {n!r}')
     for n in ('QUERY - Get the platform administrator role','QUERY - Check platform administrator'):
         if n in md or n in wsd:errors.append('batch caller authorization must not reload live assignments')
     ops=spec_database_operations(md);heads=('QUERY - Lock the caller user','QUERY - Check current credential and user','QUERY - Lock existing scopes','QUERY - Check duplicate scope','QUERY - Check permission scope in use','INSERT - Create scope','UPDATE - Update or delete scope')
@@ -7081,14 +7307,17 @@ COMMANDS['scope-batch-flow'] = check_scope_batch_flow
 def check_role_upsert_flow() -> int:
     """Verify role upsert claim authorization independently of live business-invariant reads."""
     path=f'{AUTHOR_DIR}/{AUTHOR_SPECS["01"]}/spec.md';md=read(path);wsd=read(str(Path(path).with_name('sequence.wsd')));errors=[]
-    for n in ('status: in-review','approved_by: null','approved_at: null','2026-11-07-api-review-design.md',
-              'Permission: only a platform administrator from the verified JWT roles claim','exact case-sensitive role name PLATFORM_ADMIN',
-              'Malformed/missing roles is 401','Grant withdrawal alone does not invalidate','fresh server UTC now after that lock',
-              'Lock order is caller user -> target role -> binding checks/write','Reference/assignment writers must lock and recheck their target role',
-              'must not be presented as certification of an unmigrated cross-API writer','Duplicate name exclusion is null-safe','lock the non-DELETED target role FOR UPDATE',
-              'Insert-ARCHIVED is allowed (201 insert)','zero returned rows is 404 E10004','exactly roleId from RETURNING',
-              'SQLSTATE 23505','uq_m_role_name','Scenario correspondence with sequence.wsd'):
+    for n in ('status: in-review', 'approved_by: null', 'approved_at: null'):
         if n not in md:errors.append(f'role-upsert spec missing {n!r}')
+    seq = ' '.join(wsd.split())  # the note texts of the sequence, one line
+    for n in ('Permission: only a platform administrator from the verified JWT roles claim', 'exact case-sensitive role name PLATFORM_ADMIN',
+            'Malformed/missing roles is 401', 'Grant withdrawal alone does not invalidate', 'fresh server UTC now after that lock',
+            'Lock order is caller user -> target role -> binding checks/write', 'Reference/assignment writers must lock and recheck their target role',
+            'must not be presented as certification of an unmigrated cross-API writer', 'Duplicate name exclusion is null-safe',
+            'lock the non-DELETED target role FOR UPDATE', 'Insert-ARCHIVED is allowed (201 insert)', 'zero returned rows is 404 E10004',
+            'exactly roleId from RETURNING', 'SQLSTATE 23505', 'uq_m_role_name'):
+        if n not in seq:
+            errors.append(f'role-upsert sequence note missing {n!r}')
     for n in ('QUERY - Get the platform administrator role','QUERY - Check platform administrator'):
         if n in md or n in wsd:errors.append('role-upsert may not reload live caller grants')
     ops=spec_database_operations(md);heads=('QUERY - Lock the caller user','QUERY - Check current credential and user','QUERY - Check existing role','QUERY - Check system role','QUERY - Check duplicate name','QUERY - Check user in use','QUERY - Check role permission in use','INSERT - Create role','UPDATE - Update or delete role')
@@ -7191,8 +7420,16 @@ COMMANDS['role-upsert-flow'] = check_role_upsert_flow
 def check_role_batch_flow() -> int:
     """Verify whole-batch preflight and ordered atomic role mutations; unroll one representative item."""
     path=f'{AUTHOR_DIR}/{AUTHOR_SPECS["02"]}/spec.md';md=read(path);wsd=read(str(Path(path).with_name('sequence.wsd')));errors=[]
-    for n in ('status: in-review','approved_by: null','approved_at: null','2026-11-07-api-review-design.md','Validate the whole request before SQL','Compare parsed canonical UUIDs','exact case-sensitive PLATFORM_ADMIN','all target existence checks','after all target existence checks and before any conflict or write','with one SELECT FOR UPDATE','Withdrawal of a grant alone does not invalidate','first missing/DELETED target in original request order','Each item\'s conflict reads see preceding item writes','reversing those items returns duplicate 409','does not apply a final-state rename plan','exactly one result per input item in the same order','batch never sends per-item 201/204 or partial success','SQLSTATE 23505','uq_m_role_name','reference/assignment writers must lock and recheck','Scenario correspondence with sequence.wsd'):
+    for n in ('status: in-review', 'approved_by: null', 'approved_at: null', 'Validate the whole request before SQL', 'exact case-sensitive PLATFORM_ADMIN'):
         if n not in md:errors.append(f'role-batch spec missing {n!r}')
+    seq = ' '.join(wsd.split())  # the note texts of the sequence, one line
+    for n in ('Compare parsed canonical UUIDs', 'all target existence checks', 'after all target existence checks and before any conflict or write',
+            'with one SELECT FOR UPDATE', 'Withdrawal of a grant alone does not invalidate', 'first missing/DELETED target in original request order',
+            "Each item's conflict reads see preceding item writes", 'reversing those items returns duplicate 409', 'does not apply a final-state rename plan',
+            'exactly one result per input item in the same order', 'batch never sends per-item 201/204 or partial success', 'SQLSTATE 23505', 'uq_m_role_name',
+            'reference/assignment writers must lock and recheck'):
+        if n not in seq:
+            errors.append(f'role-batch sequence note missing {n!r}')
     for n in ('QUERY - Get the platform administrator role','QUERY - Check platform administrator'):
         if n in md or n in wsd:errors.append('batch caller authorization must not reload live assignments')
     ops=spec_database_operations(md);heads=('QUERY - Lock the caller user','QUERY - Check current credential and user','QUERY - Lock existing roles','QUERY - Check system role','QUERY - Check duplicate name','QUERY - Check user in use','QUERY - Check role permission in use','INSERT - Create role','UPDATE - Update or delete role')
@@ -7308,8 +7545,16 @@ COMMANDS['role-batch-flow'] = check_role_batch_flow
 def check_role_inquiry_flow() -> int:
     """Check token-claim administration and consistent filtered current role metadata."""
     path=f'{AUTHOR_DIR}/{AUTHOR_SPECS["03"]}/spec.md';md=read(path);wsd=read(str(Path(path).with_name('sequence.wsd')));errors=[]
-    for n in ('status: in-review','approved_by: null','approved_at: null','2026-11-07-api-review-design.md','exact PLATFORM_ADMIN in verified JWT role claims','positive signed 64-bit integers','nonnegative BIGINT','one bound text searchPattern','Missing/malformed roles is generic 401','Grant withdrawal after token issuance leaves the old privilege usable','same read-only repeatable-read snapshot','identical non-DELETED/id/searchPattern/rowStatus WHERE predicates','an offset beyond the range returns items=[] with positive totals/pages','Sort by name then id ascending','exactly roleId/name/description/rowStatus','exactly five data keys','integer quotient/remainder','Map the full response before COMMIT','Scenario correspondence with sequence.wsd'):
+    for n in ('status: in-review', 'approved_by: null', 'approved_at: null'):
         if n not in md:errors.append(f'role-inquiry spec missing {n!r}')
+    seq = ' '.join(wsd.split())  # the note texts of the sequence, one line
+    for n in ('2026-11-07-api-review-design.md', 'exact PLATFORM_ADMIN in verified JWT role claims', 'positive signed 64-bit integers', 'nonnegative BIGINT',
+            'one bound text searchPattern', 'Missing/malformed roles is generic 401', 'Grant withdrawal after token issuance leaves the old privilege usable',
+            'same read-only repeatable-read snapshot', 'identical non-DELETED/id/searchPattern/rowStatus WHERE predicates',
+            'an offset beyond the range returns items=[] with positive totals/pages', 'Sort by name then id ascending',
+            'exactly roleId/name/description/rowStatus', 'exactly five data keys', 'integer quotient/remainder', 'Map the full response before COMMIT'):
+        if n not in seq:
+            errors.append(f'role-inquiry sequence note missing {n!r}')
     for n in ('QUERY - Get the platform administrator role','QUERY - Check platform administrator'):
         if n in md or n in wsd:errors.append('role inquiry authorization must not reload current assignments')
     ops=spec_database_operations(md);heads=('QUERY - Check current credential and user','QUERY - Get total items','QUERY - Get roles')
@@ -7427,7 +7672,8 @@ def author_inquiry_flow(key: str, page_head: str, columns: str, forbidden: str) 
     if not md.startswith('---\nname:') or 'status: in-review\napproved_by: null\napproved_at: null' not in md:errors.append('spec stays in-review until approved')
     page=next((q for _,k,q in ops if k==page_head),'');proj=re.search(r'SELECT\s+(.*?)\s+FROM\s',page,re.S)
     if not proj or normalize(proj[1])!=normalize(columns):errors.append('page returns exactly the documented columns')
-    errors+=[f'claims wording missing {n!r}' for n in ('verify JWT/roles (401)','verified token roles') if n not in md]
+    errors+=[f'claims wording missing {n!r}' for n in ('verified token roles',) if n not in md]
+    errors+=[f'claims wording missing in the sequence note {n!r}' for n in ('verify JWT/roles (401)',) if n not in ' '.join(wsd.split())]
     if forbidden not in wsd or 'skip page query' not in wsd:errors.append('403 text and zero-count page skip must be drawn')
     if errors:return fail('; '.join(errors))
     print(f'OK: {AUTHOR_SPECS[key][3:]}-flow (claims-only admin, read-only snapshot, ordered count/page, one commit)')
@@ -7485,15 +7731,16 @@ COMMANDS['user-role-upsert-flow'] = check_user_role_upsert_flow
 def check_address_upsert_flow() -> int:
     """Check caller-scoped address lifecycle, quota and atomic default transitions."""
     path=AUTHEN_SPECS['09'];md=read(path);wsd=read(str(Path(path).with_name('sequence.wsd')));errors=[]
-    for needle in ('status: in-review','approved_by: null','approved_at: null','2026-11-07-api-review-design.md',
-                   'Q21 approved by the product owner','ตอบ 400 เมื่อ Delete ส่ง true (แนะนำ)',
-                   'mandatory non-blank strings for insert, update and delete','first ACTIVE, not the first physical/historical row',
-                   'False or omitted preserves an existing ACTIVE','limit is configurable and applies only to insert',
-                   'Count every non-DELETED row regardless of lifecycle','fresh server UTC now','id = SQL NULL',
-                   'Compute shouldPromote = wasDefault AND new rowStatus is not ACTIVE','Clear-before-write',
-                   'zero rows means 404 with full ROLLBACK','Delete 204 No Content has no response body',
-                   'All target/default changes are one transaction','Scenario correspondence with sequence.wsd'):
+    for needle in ('status: in-review', 'approved_by: null', 'approved_at: null'):
         if needle not in md:errors.append(f'address-upsert spec missing {needle!r}')
+    seq = ' '.join(wsd.split())  # the note texts of the sequence, one line
+    for needle in ('Q21 approved by the product owner', 'ตอบ 400 เมื่อ Delete ส่ง true (แนะนำ)', 'mandatory non-blank strings for insert, update and delete',
+            'first ACTIVE, not the first physical/historical row', 'False or omitted preserves an existing ACTIVE',
+            'limit is configurable and applies only to insert', 'Count every non-DELETED row regardless of lifecycle', 'fresh server UTC now', 'id = SQL NULL',
+            'Compute shouldPromote = wasDefault AND new rowStatus is not ACTIVE', 'Clear-before-write', 'zero rows means 404 with full ROLLBACK',
+            'Delete 204 No Content has no response body', 'All target/default changes are one transaction'):
+        if needle not in seq:
+            errors.append(f'address-upsert sequence note missing {needle!r}')
     operations=spec_database_operations(md)
     expected=('QUERY - Lock the user','QUERY - Check the current access token','QUERY - Check existing address','QUERY - Count addresses','QUERY - Check an ACTIVE address exists','UPDATE - Clear the old default','INSERT - Create user address','UPDATE - Update or delete user address','UPDATE - Promote another default address')
     if tuple(h for _,h,_ in operations)!=expected:errors.append('address contract needs nine SQL definitions in orchestration/branch order')
@@ -7595,15 +7842,16 @@ COMMANDS['address-upsert-flow'] = check_address_upsert_flow
 def check_logout_flow() -> int:
     """Check fresh post-lock authorization and atomic revocation of the complete caller session."""
     path=AUTHEN_SPECS['06'];md=read(path);wsd=read(str(Path(path).with_name('sequence.wsd')));errors=[]
-    for needle in ('2026-11-07-api-review-design.md','Q13','BEGIN READ COMMITTED',
-                   'capture fresh server UTC now after the lock','No token UPDATE may run before the user lock',
-                   'sessionId comes only from the post-lock access-token row',
-                   'Sessions of other devices are not changed.','Other users are unaffected',
-                   'If refresh commits first','If logout commits first','A second concurrent logout waits',
-                   'Both token-table changes are one transaction','Zero refresh rows is allowed',
-                   'unexpected zero access-row update','COMMIT must succeed before 200',
-                   'A lost response after commit does not undo logout'):
+    for needle in ('Q13'):
         if needle not in md:errors.append(f'logout rule missing {needle!r}')
+    seq = ' '.join(wsd.split())  # the note texts of the sequence, one line
+    for needle in ('BEGIN READ COMMITTED', 'capture fresh server UTC now after the lock', 'No token UPDATE may run before the user lock',
+            'sessionId comes only from the post-lock access-token row', 'Sessions of other devices are not changed.', 'Other users are unaffected',
+            'If refresh commits first', 'If logout commits first', 'A second concurrent logout waits', 'Both token-table changes are one transaction',
+            'Zero refresh rows is allowed', 'unexpected zero access-row update', 'COMMIT must succeed before 200',
+            'A lost response after commit does not undo logout'):
+        if needle not in seq:
+            errors.append(f'logout sequence note missing {needle!r}')
     fm=md.split('---',2)[1] if md.startswith('---\n') else ''
     state=re.search(r'^status: (draft|in-review|approved)$',fm,re.M)
     if not state:errors.append('logout needs approval metadata')
@@ -7689,13 +7937,14 @@ COMMANDS['logout-flow'] = check_logout_flow
 def check_profile_upsert_flow() -> int:
     """Check own-user credential gating, presence/null semantics and mutually exclusive writes."""
     path=AUTHEN_SPECS['07'];md=read(path);wsd=read(str(Path(path).with_name('sequence.wsd')));errors=[]
-    for needle in ('status: in-review','approved_by: null','approved_at: null','2026-11-07-api-review-design.md',
-                   'A body {} is valid','JSON key presence, never truthiness','explicit null clears them',
-                   'Skip the m_user UPDATE entirely','Skip information lookup/INSERT/UPDATE',
-                   'fresh server UTC now','expiry during lock wait','one transaction','COMMIT must succeed before 200',
-                   'Preserve existing non-DELETED row_status','DELETED information is historical',
-                   'on or before today\'s UTC date','Scenario correspondence with sequence.wsd'):
+    for needle in ('status: in-review', 'approved_by: null', 'approved_at: null', 'explicit null clears them', "on or before today's UTC date"):
         if needle not in md:errors.append(f'profile-upsert spec missing {needle!r}')
+    seq = ' '.join(wsd.split())  # the note texts of the sequence, one line
+    for needle in ('A body {} is valid', 'JSON key presence, never truthiness', 'Skip the m_user UPDATE entirely', 'Skip information lookup/INSERT/UPDATE',
+            'fresh server UTC now', 'expiry during lock wait', 'one transaction', 'COMMIT must succeed before 200', 'Preserve existing non-DELETED row_status',
+            'DELETED information is historical'):
+        if needle not in seq:
+            errors.append(f'profile-upsert sequence note missing {needle!r}')
     operations=spec_database_operations(md)
     expected=('QUERY - Lock the user','QUERY - Check the current access token','UPDATE - Update user','QUERY - Check existing information','INSERT - Create information','UPDATE - Update information')
     if tuple(h for _,h,_ in operations)!=expected:errors.append('profile SQL needs user lock, current token, optional user write and distinct information branches')
@@ -7790,14 +8039,16 @@ COMMANDS['profile-upsert-flow'] = check_profile_upsert_flow
 def check_create_password_flow() -> int:
     """Check reset single-use serialization, password replacement and all-session revocation."""
     path=AUTHEN_SPECS['04'];md=read(path);wsd=read(str(Path(path).with_name('sequence.wsd')));errors=[]
-    for needle in ('status: in-review','approved_by: null','approved_at: null','2026-11-07-api-review-design.md',
-                   'lookup is only a routing hint','fresh server UTC now after the lock','No reset/password/token UPDATE may run before the user lock',
-                   'resetId, userId, resetTokenHash, ACTIVE status','constant time','random 16 byte salt and 600,000 iterations',
-                   'reset token stays usable until it expires','TEMPORARY_PASSWORD and prior history rows are unchanged',
-                   'every session','Zero access/refresh rows is allowed','COMMIT must succeed before 200',
-                   'A lookup timeout/failure before BEGIN','A missing current password is an internal consistency failure',
-                   'A second reset waits','A refresh/login that commits first','Scenario correspondence with sequence.wsd'):
+    for needle in ('status: in-review', 'approved_by: null', 'approved_at: null', 'lookup is only a routing hint'):
         if needle not in md:errors.append(f'create-password spec missing {needle!r}')
+    seq = ' '.join(wsd.split())  # the note texts of the sequence, one line
+    for needle in ('fresh server UTC now after the lock', 'No reset/password/token UPDATE may run before the user lock',
+            'resetId, userId, resetTokenHash, ACTIVE status', 'constant time', 'random 16 byte salt and 600,000 iterations',
+            'reset token stays usable until it expires', 'TEMPORARY_PASSWORD and prior history rows are unchanged', 'every session',
+            'Zero access/refresh rows is allowed', 'COMMIT must succeed before 200', 'A lookup timeout/failure before BEGIN',
+            'A missing current password is an internal consistency failure', 'A second reset waits', 'A refresh/login that commits first'):
+        if needle not in seq:
+            errors.append(f'create-password sequence note missing {needle!r}')
     operations=spec_database_operations(md)
     expected=('QUERY - Find the reset token','QUERY - Lock the user','UPDATE - Use the reset token once','QUERY - Get current password','UPDATE - Make the current password INACTIVE','INSERT - Create password','UPDATE - Close the access tokens of the user','UPDATE - Close the refresh tokens of the user')
     if tuple(h for _,h,_ in operations)!=expected:errors.append('reset SQL must follow routing, user lock, consume, password comparison/replacement, both revocations')
@@ -7891,14 +8142,14 @@ COMMANDS['create-password-flow'] = check_create_password_flow
 def check_reset_request_flow() -> int:
     """Check uniform public issuance outcomes, fresh throttling and atomic replacement."""
     path=AUTHEN_SPECS['03'];md=read(path);wsd=read(str(Path(path).with_name('sequence.wsd')));errors=[]
-    for needle in ('status: in-review','approved_by: null','approved_at: null','2026-11-07-api-review-design.md',
-                   'Do not trim, lowercase or normalize','same configured response-latency policy','32-byte token',
-                   'hash the exact encoded token','whatever their status','equality is outside the window',
-                   'requests >= 3','requests < 3','fresh server UTC now after the lock',
-                   'explicit created_at','zero old rows is valid','one transaction','COMMIT before email handoff',
-                   'Sending is outside this spec','No post-commit email failure may roll back',
-                   'Do not change password, access/refresh tokens','Scenario correspondence with sequence.wsd'):
+    for needle in ('status: in-review', 'approved_by: null', 'approved_at: null', '32-byte token', 'hash the exact encoded token', 'whatever their status'):
         if needle not in md:errors.append(f'reset-request spec missing {needle!r}')
+    seq = ' '.join(wsd.split())  # the note texts of the sequence, one line
+    for needle in ('Do not trim, lowercase or normalize', 'same configured response-latency policy', 'equality is outside the window', 'requests >= 3', 'requests < 3',
+            'fresh server UTC now after the lock', 'explicit created_at', 'zero old rows is valid', 'one transaction', 'COMMIT before email handoff',
+            'Sending is outside this spec', 'No post-commit email failure may roll back', 'Do not change password, access/refresh tokens'):
+        if needle not in seq:
+            errors.append(f'reset-request sequence note missing {needle!r}')
     operations=spec_database_operations(md)
     expected=('QUERY - Find the active user by email address','QUERY - Lock the user','QUERY - Count the requests of the last hour','UPDATE - Make the old reset token INACTIVE','INSERT - Create reset token')
     if tuple(h for _,h,_ in operations)!=expected:errors.append('reset request SQL must follow routing, user lock, fresh history count, old closure, new insert')
@@ -8070,18 +8321,6 @@ def spec_template_errors(md: str) -> list[str]:
 # Specs that do not follow the template yet. Each is exempt until its sections and links are fixed; an entry must be a spec folder and
 # must still fail, so a spec that passes has to leave the list in the same change. The count is printed in the OK line.
 LEGACY_SPEC_TEMPLATE = (
-    "author/01-upsert-role",
-    "author/02-upsert-role-batch",
-    "author/03-inquiry-role",
-    "author/04-upsert-permission",
-    "author/05-upsert-permission-batch",
-    "author/06-inquiry-permission",
-    "author/07-upsert-scope",
-    "author/08-upsert-scope-batch",
-    "author/09-inquiry-scope",
-    "author/10-upsert-user-role",
-    "author/11-inquiry-user-role",
-    "author/12-me",
     "consent/01-inquiry-active-consent",
     "consent/02-upsert-consent",
     "consent/04-submit-consent",
