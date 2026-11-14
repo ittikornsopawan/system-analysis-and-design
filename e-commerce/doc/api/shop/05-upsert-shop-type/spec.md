@@ -1,3 +1,11 @@
+---
+name: "Upsert Shop Type API"
+description: "Insert, update or delete a shop type. Read it when you implement, review or test POST v1/shop/type/upsert."
+status: in-review
+approved_by: null
+approved_at: null
+---
+
 # [POST]: v1/shop/type/upsert
 
 | Title       | Description                                                                                                                                                                                                                                                            |
@@ -17,6 +25,13 @@
 | UAT            | https://www.domain.com/api-uat      |
 | PRE-PRODUCTION | https://www.domain.com/api-pre-prod |
 | PRODUCTION     | https://www.domain.com/api          |
+
+- `name` is unique among shop types that are not DELETED. The comparison is exact (upper and lower case are different names) and a name held by an INACTIVE, LOCKED or ARCHIVED shop type is still taken (409, E10003). The name of a DELETED shop type can be used again.
+- `name` and `description` are required in every request, including a delete and an archive.
+- DELETED is final: a DELETED shop type is never reopened and its `id` counts as not found (404, E10004). INACTIVE, LOCKED and ARCHIVED are reversible: an update with `rowStatus` ACTIVE opens the shop type again. `rowStatus` DELETED is rejected with 400 (E10001) when the request inserts a shop type.
+- A shop type cannot be deleted or archived while any shop that is not DELETED uses it (`shop.m_shop.type_id`), 409 (E10006). INACTIVE and LOCKED are allowed even when shops use the shop type, the shops are not changed. Whether a shop can be created with a shop type that is not ACTIVE is a rule of the shop API.
+- Permission: only a platform administrator (a user with an ACTIVE `author.t_user_role` row for the ACTIVE role `PLATFORM_ADMIN`) can call this API, any other caller gets 403 (E10009), after the existence checks and before the duplicate, in-use and other conflict checks and before anything is written. Reading is not changed by this rule. Approved by the product owner (answered through the lead SA, 2026-11-06).
+- HTTP status of the single upsert: Insert 201 Created, Update 200 Ok, Delete 204 No Content (no response body), Archive 200 Ok.
 
 ---
 
@@ -39,16 +54,6 @@
 | 2   | name           | String       | MANDATORY | Shop Type Name (max 128 characters), Unique among shop types that are not DELETED                                                                                                                                                                                 | Fashion Store                           |
 | 3   | description    | String       | MANDATORY | Shop Type Description (max 256 characters)                                                                                                                                                                                                                        | Shops that sell clothes and accessories |
 | 4   | rowStatus      | String       | OPTIONAL  | Row status (ACTIVE, INACTIVE, DELETED, LOCKED, ARCHIVED), Defaults to ACTIVE, Delete when DELETED, Archive when ARCHIVED, DELETED is not allowed when inserting, Delete or archive is allowed only when the shop type is not used by any shop that is not DELETED | ACTIVE                                  |
-
-### Shop Type Rules
-
-- `name` is unique among shop types that are not DELETED. The comparison is exact (upper and lower case are different names) and a name held by an INACTIVE, LOCKED or ARCHIVED shop type is still taken (409, E10003). The name of a DELETED shop type can be used again.
-- `name` and `description` are required in every request, including a delete and an archive.
-- DELETED is final: a DELETED shop type is never reopened and its `id` counts as not found (404, E10004). INACTIVE, LOCKED and ARCHIVED are reversible: an update with `rowStatus` ACTIVE opens the shop type again. `rowStatus` DELETED is rejected with 400 (E10001) when the request inserts a shop type.
-- A shop type cannot be deleted or archived while any shop that is not DELETED uses it (`shop.m_shop.type_id`), 409 (E10006). INACTIVE and LOCKED are allowed even when shops use the shop type, the shops are not changed. Whether a shop can be created with a shop type that is not ACTIVE is a rule of the shop API.
-- Permission: only a platform administrator (a user with an ACTIVE `author.t_user_role` row for the ACTIVE role `PLATFORM_ADMIN`) can call this API, any other caller gets 403 (E10009), after the existence checks and before the duplicate, in-use and other conflict checks and before anything is written. Reading is not changed by this rule. Approved by the product owner (answered through the lead SA, 2026-11-06).
-- Execution order: validate the request (400) -> existence check (404) -> permission (403, E10009) -> duplicate name check (409, E10003) -> in-use check (409, E10006, only when `rowStatus` is DELETED or ARCHIVED) -> write.
-- HTTP status of the single upsert: Insert 201 Created, Update 200 Ok, Delete 204 No Content (no response body), Archive 200 Ok.
 
 #### Example Body Parameters
 

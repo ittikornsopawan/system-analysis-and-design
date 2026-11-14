@@ -63,6 +63,10 @@ activate page
                     page -> user: Display authentication error
                 else Verified JWT
                     app -> app: userId = verified sub
+                    note over app, infra
+                        - Order of checks: validate the request (400) -> existence checks (404) -> permission (403, E10009) -> duplicate, in-use and other conflicts (409) ->
+                          write.
+                    end note
                     app -> infra: BEGIN READ COMMITTED
                     activate infra
                     alt Work completes before commit
