@@ -8417,17 +8417,6 @@ def spec_template_errors(md: str) -> list[str]:
 # Specs that do not follow the template yet. Each is exempt until its sections and links are fixed; an entry must be a spec folder and
 # must still fail, so a spec that passes has to leave the list in the same change. The count is printed in the OK line.
 LEGACY_SPEC_TEMPLATE = (
-    "consent/02-upsert-consent",
-    "product/04-upsert-product-category",
-    "product/06-upsert-product-category-batch",
-    "product/07-upsert-product-category-attribute",
-    "product/09-upsert-product-category-attribute-batch",
-    "consent/01-inquiry-active-consent",
-    "consent/04-submit-consent",
-    "consent/05-inquiry-pending-consent",
-    "consent/06-upsert-consent-type",
-    "consent/07-upsert-consent-type-batch",
-    "consent/08-inquiry-consent-type",
     "shop/01-upsert-shop-product-sku",
     "shop/02-upsert-shop-product-sku-batch",
     "shop/04-inquiry-storefront-product",
