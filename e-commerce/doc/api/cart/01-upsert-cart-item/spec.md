@@ -1,3 +1,11 @@
+---
+name: "Upsert Cart Item API"
+description: "Add, update or delete a line of the cart of the logged-in customer. Read it when you implement, review or test POST v1/cart/item/upsert."
+status: in-review
+approved_by: null
+approved_at: null
+---
+
 # [POST]: v1/cart/item/upsert
 
 | Title       | Description                                                                                                                                                                                                                                                                                                                   |

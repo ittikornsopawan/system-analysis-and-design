@@ -1,3 +1,11 @@
+---
+name: "Inquiry Cart API"
+description: "Inquiry the cart of the logged-in customer grouped by shop, every line with the current selling price of the lot that is on sale, the stock status of the line and the totals. Read it when you implement, review or test GET v1/cart."
+status: in-review
+approved_by: null
+approved_at: null
+---
+
 # [GET]: v1/cart
 
 | Title       | Description                                                                                                                                                                                                                         |

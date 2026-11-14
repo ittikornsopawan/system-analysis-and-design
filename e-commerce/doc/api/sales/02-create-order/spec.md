@@ -1,3 +1,11 @@
+---
+name: "Create Order API"
+description: "Create the orders of the logged-in customer from the cart, one order for each shop. Read it when you implement, review or test POST v1/order."
+status: in-review
+approved_by: null
+approved_at: null
+---
+
 # [POST]: v1/order
 
 | Title       | Description                                                                                                                                                                                                                                                                                                                                                        |

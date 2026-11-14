@@ -1,3 +1,11 @@
+---
+name: "Stripe Webhook API"
+description: "Receive the events of Stripe about a payment. Read it when you implement, review or test POST v1/payment/webhook/stripe."
+status: in-review
+approved_by: null
+approved_at: null
+---
+
 # [POST]: v1/payment/webhook/stripe
 
 | Title       | Description                                                                                                                                                                                                                                                                     |

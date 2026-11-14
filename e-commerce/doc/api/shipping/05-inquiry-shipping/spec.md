@@ -1,3 +1,11 @@
+---
+name: "Inquiry Shipping API"
+description: "Inquiry the shippings of the orders of the logged-in customer with the shop, the items, the carrier, the tracking number and the stops. Read it when you implement, review or test GET v1/shipping."
+status: in-review
+approved_by: null
+approved_at: null
+---
+
 # [GET]: v1/shipping
 
 | Title       | Description                                                                                                                                                                                                   |

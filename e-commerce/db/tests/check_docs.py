@@ -8500,24 +8500,6 @@ MD_FRONTMATTER_PENDING = (
     "docs/superpowers/specs/2026-11-06-order-design.md",
     "docs/superpowers/specs/2026-11-06-payment-design.md",
     "docs/superpowers/specs/2026-11-06-shop-lot-pricing-and-storefront-design.md",
-    "e-commerce/doc/api/campaign/01-upsert-campaign/spec.md",
-    "e-commerce/doc/api/campaign/02-inquiry-campaign/spec.md",
-    "e-commerce/doc/api/campaign/03-inquiry-campaign-ledger/spec.md",
-    "e-commerce/doc/api/cart/01-upsert-cart-item/spec.md",
-    "e-commerce/doc/api/cart/02-upsert-cart-item-batch/spec.md",
-    "e-commerce/doc/api/cart/03-inquiry-cart/spec.md",
-    "e-commerce/doc/api/payment/01-start-payment/spec.md",
-    "e-commerce/doc/api/payment/02-stripe-webhook/spec.md",
-    "e-commerce/doc/api/payment/03-inquiry-payment/spec.md",
-    "e-commerce/doc/api/sales/01-inquiry-checkout/spec.md",
-    "e-commerce/doc/api/sales/02-create-order/spec.md",
-    "e-commerce/doc/api/sales/03-inquiry-order/spec.md",
-    "e-commerce/doc/api/shipping/01-create-shipping/spec.md",
-    "e-commerce/doc/api/shipping/02-update-shipping-status/spec.md",
-    "e-commerce/doc/api/shipping/03-upsert-shipping-stop/spec.md",
-    "e-commerce/doc/api/shipping/04-inquiry-shop-shipping/spec.md",
-    "e-commerce/doc/api/shipping/05-inquiry-shipping/spec.md",
-    "e-commerce/doc/api/shipping/06-confirm-delivery/spec.md",
     "e-commerce/doc/api/shop/01-upsert-shop-product-sku/spec.md",
     "e-commerce/doc/api/shop/02-upsert-shop-product-sku-batch/spec.md",
     "e-commerce/doc/api/shop/03-inquiry-shop-product-sku/spec.md",
@@ -8540,8 +8522,10 @@ MD_STATUSES = ("draft", "in-review", "approved", "superseded")
 
 def markdown_files() -> list[str]:
     """Every tracked human-authored Markdown file (generated, vendor and ignored files such as .workspace and repository/ are not tracked)."""
-    out = subprocess.run(["git", "ls-files", "*.md"], cwd=ROOT, capture_output=True, text=True, check=True).stdout
-    return sorted(out.split())
+    result = subprocess.run(["git", "ls-files", "*.md"], cwd=ROOT, capture_output=True, text=True)
+    if result.returncode != 0:
+        raise RuntimeError("md-frontmatter needs a git checkout: `git ls-files` failed: " + result.stderr.strip())
+    return sorted(result.stdout.split())
 
 
 def is_spec_markdown(path: str) -> bool:
@@ -8584,7 +8568,10 @@ def frontmatter_errors(path: str, md: str) -> list[str]:
 
 def check_md_frontmatter() -> int:
     errors = []
-    paths = markdown_files()
+    try:
+        paths = markdown_files()
+    except (OSError, RuntimeError) as error:
+        return fail(str(error))
     for entry in MD_FRONTMATTER_PENDING:
         if entry not in paths:
             errors.append(f"MD_FRONTMATTER_PENDING lists {entry}, which is not a tracked Markdown file")

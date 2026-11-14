@@ -1,3 +1,11 @@
+---
+name: "Upsert Cart Item Batch API"
+description: "Add, update or delete several lines of the cart of the logged-in customer at the same time, for example to move a guest cart into the cart of the user after login. Read it when you implement, review or test POST v1/cart/item/upsert/batch."
+status: in-review
+approved_by: null
+approved_at: null
+---
+
 # [POST]: v1/cart/item/upsert/batch
 
 | Title       | Description                                                                                                                                                                                                                                                                                                                                                                                                                                                              |
