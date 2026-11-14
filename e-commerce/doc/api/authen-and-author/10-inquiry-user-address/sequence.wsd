@@ -26,35 +26,6 @@ skinparam sequence {
 ' Do not show participant footers at the bottom of the diagram
 hide footbox
 
-' --- Rules moved from spec.md by the template alignment; the checks read them together with the spec ---
-' ### User Address Inquiry Rules
-'
-' - Governing behavior: WP4 U19 and [owner-confirmed review](../../../../../docs/superpowers/specs/2026-11-07-api-review-design.md), Q13 current credentials and Q15 delivery, approved by the product owner. This detailed revision remains in-review; no backend/schema implementation is included.
-' - The addresses are the ones of the caller: userId comes only from verified JWT sub, never a query/body value. No administrator override or live role query is used. The id of another user's address returns an empty list, as does a missing/DELETED id; do not expose ownership or return 404. Reject unknown/repeated query keys, non-empty body or invalid mandatory UTC timestamp with 400 E10001 before SQL. Generate requestId when omitted.
-' - The accepted query keys are id/pageIndex/pageSize/search/rowStatus. If supplied, id must be a non-empty UUID. pageIndex/pageSize must be positive signed 64-bit integers; default 1/10 only when omitted, pageSize at most 100. Before SQL reject numeric parse/overflow and offset outside nonnegative BIGINT as 400; compute offset = (pageIndex - 1) * pageSize with checked arithmetic and bind it. Explicit empty/null-like/invalid numerics or rowStatus are not silently defaulted. Row status must be one of ACTIVE, INACTIVE.
-' - search is an optional single string; empty string is valid. It matches title only, because address fields are encrypted. Preserve the existing case-insensitive ILIKE wildcard semantics: prepare searchPattern = percent + search + percent on the server, including existing percent/underscore LIKE behavior, then bind the entire pattern as text. Never concatenate client text into SQL. Omitted searchPattern/id/rowStatus bind typed SQL NULL; null-safe OR predicates disable only their corresponding filter. An id filter is still paginated and combined with search/status, not an unpaged alternate API.
-' - Verify Bearer JWT signature/issuer/audience/expiry/UUID sub before BEGIN; missing/invalid JWT is generic 401 E10002 `Invalid or expired access token.` without SQL. Derive accessTokenHash as SHA-256 of the exact JWT and userId from verified sub. BEGIN REPEATABLE READ READ ONLY, capture fresh server UTC now immediately before the joined token/user check and recheck JWT expiry. Require matching hash/userId, ACTIVE stored token, expiry > now and ACTIVE user. A missing/inactive user or revoked/expired/mismatched token is the same 401 after ROLLBACK, before any address query.
-' - Count and page share the same repeatable-read snapshot as the credential query. No user/address locks or write SQL run. Count first, with the exact same userId/non-DELETED/id/searchPattern/rowStatus predicates as the list query; never mix count and rows from different transactions or filters. When totalItems = 0 skip the list query and return items=[] and totalPages=0. Otherwise fetch the requested page; an offset beyond the range may return items=[] while totalItems/totalPages remain positive. There is no 404 for an empty page.
-' - Addresses with rowStatus DELETED are never returned. With rowStatus omitted, preserve existing visibility of every non-DELETED status; an explicit filter accepts only ACTIVE or INACTIVE. Sorted by is_default DESC (the default first), then created_at DESC, then id ASC. The unique tie-break stabilizes one snapshot's order; a later request can observe newer committed data, so pagination is not a frozen cursor across separate calls.
-' - Map each row to exactly userAddressId/title/isDefault/address/city/state/postalCode/country/rowStatus. Decrypt the five sensitive fields server-side over TLS; title/default/status/id are copied. Never return userId, token/hash/salt, audit timestamps or other users' data. A missing page is an empty array, not null. Return exactly five data keys: items/pageIndex/pageSize/totalItems/totalPages, echo validated page values and calculate totalPages = 0 when count is 0, otherwise ceiling(totalItems / pageSize), with checked integer arithmetic.
-' - This inquiry does not create/modify addresses, default flags, tokens, read markers or audit fields. COMMIT only after complete decryption/mapping succeeds, then 200 S10000 `Inquiry User Address Success`. On timeout before commit ROLLBACK then 408 E90001; unexpected SQL/decryption/mapping failure ROLLBACK then generic 500 without bizCode. Require the returned page row count to equal min(pageSize, max(0, totalItems - offset)); an unexpected mismatch is an internal 500 with rollback. Do not return partially mapped rows. No 403/404/409 is added.
-' - Execution order: validate query/body/timestamp and checked pagination -> verify JWT -> derive caller/hash/typed filters -> BEGIN REPEATABLE READ READ ONLY -> fresh now/JWT expiry check -> joined current credential/user -> total count -> optional page when positive -> map each item and all pagination fields -> COMMIT -> 200. Every SQL result returns to Application before branching or mapping.
-'
-' #### Scenario correspondence with sequence.wsd
-'
-' | Scenario                                                    | Sequence behavior                                                         | HTTP             | Result/side effects     |
-' | ----------------------------------------------------------- | ------------------------------------------------------------------------- | ---------------- | ----------------------- |
-' | Invalid filters/page bounds/timestamp/body                  | No SQL/BEGIN                                                              | 400 E10001       | None                    |
-' | Invalid JWT                                                 | No SQL/BEGIN                                                              | 401 E10002       | None                    |
-' | JWT expires before joined read / current token-user invalid | ROLLBACK before address queries                                           | 401 E10002       | None                    |
-' | No matching own non-DELETED row                             | Count=0, skip page SQL, map empty list/zero pages                         | 200 S10000       | No writes               |
-' | Positive count and nonempty page                            | Same-filter/snapshot page, map nine fields; decrypt five sensitive fields | 200 S10000       | Five pagination keys    |
-' | Page beyond range                                           | Keep positive count/pages, items=[]                                       | 200 S10000       | No 404                  |
-' | Other user's id / DELETED id                                | Own-scope count=0                                                         | 200 S10000       | No ownership disclosure |
-' | Concurrent address write between reads                      | Count/page use one repeatable-read snapshot                               | 200 S10000       | Consistent count/list   |
-' | Timeout / unexpected mapping/SQL failure                    | ROLLBACK, no partial data                                                 | 408 E90001 / 500 | None                    |
-' --- end of the moved rules ---
-
 actor "User" as user
 box "Frontend" #F8FAFC
     participant "Inquiry User Address Page" as page
@@ -83,6 +54,23 @@ activate app
         COMMIT -> 200. Every SQL result returns to Application before branching or mapping.
     end note
 app -> app: Generate requestId; validate timestamp/known single query keys/no body, UUID, positive signed 64-bit integers/pageSize <= 100 and ACTIVE/INACTIVE filter
+note over app, infra
+    No administrator override or live role query is used. The id of another user's address returns an empty
+    list, as does a missing/DELETED id; do not expose ownership or return 404. Reject unknown/repeated query
+    keys, non-empty body or invalid mandatory UTC timestamp with 400 E10001 before SQL. Generate requestId when
+    omitted.
+    If supplied, id must be a non-empty UUID. pageIndex/pageSize must be positive signed 64-bit integers;
+    default 1/10 only when omitted, pageSize at most 100. Before SQL reject numeric parse/overflow and offset
+    outside nonnegative BIGINT as 400; compute offset = (pageIndex - 1) * pageSize with checked arithmetic and
+    bind it. Explicit empty/null-like/invalid numerics or rowStatus are not silently defaulted. Row status must
+    be one of ACTIVE, INACTIVE.
+    It matches title only, because address fields are encrypted. Preserve the existing case-insensitive ILIKE
+    wildcard semantics: prepare searchPattern = percent + search + percent on the server, including existing
+    percent/underscore LIKE behavior, then bind the entire pattern as text. Never concatenate client text into
+    SQL. Omitted searchPattern/id/rowStatus bind typed SQL NULL; null-safe OR predicates disable only their
+    corresponding filter. An id filter is still paginated and combined with search/status, not an unpaged
+    alternate API.
+end note
 app -> app: Default omitted pageIndex/pageSize to 1/10; checked offset = (pageIndex - 1) * pageSize; reject BIGINT overflow
 alt Invalid input or pagination overflow
     app -> api: HTTP 400 E10001
@@ -96,6 +84,12 @@ else Valid input
         app -> app: userId = verified sub; accessTokenHash = SHA-256 exact JWT
         app -> app: Bind omitted id/rowStatus/searchPattern as typed SQL NULL; searchPattern = percent + supplied search + percent, preserve ILIKE wildcards
         app -> infra: BEGIN REPEATABLE READ READ ONLY
+        note over app, infra
+            Derive accessTokenHash as SHA-256 of the exact JWT and userId from verified sub. BEGIN REPEATABLE READ READ
+            ONLY, capture fresh server UTC now immediately before the joined token/user check and recheck JWT expiry.
+            Require matching hash/userId, ACTIVE stored token, expiry > now and ACTIVE user. A missing/inactive user or
+            revoked/expired/mismatched token is the same 401 after ROLLBACK, before any address query.
+        end note
         alt Read and mapping work completes
             app -> app: Capture fresh server UTC now immediately before credential read; recheck JWT exp
             alt JWT still unexpired at fresh now
@@ -173,6 +167,29 @@ else Valid input
                     app -> app: data = items/pageIndex/pageSize/totalItems/totalPages; explicit empty array; exclude userId/token/hash/audit
                     app -> infra: COMMIT
                     infra -> app: Return committed consistent read-only page
+                    note over app, infra
+                        No user/address locks or write SQL run. Count first, with the exact same
+                        userId/non-DELETED/id/searchPattern/rowStatus predicates as the list query; never mix count and rows from
+                        different transactions or filters. When totalItems = 0 skip the list query and return items=[] and
+                        totalPages=0. Otherwise fetch the requested page; an offset beyond the range may return items=[] while
+                        totalItems/totalPages remain positive. There is no 404 for an empty page.
+                        Addresses with rowStatus DELETED are never returned. With rowStatus omitted, preserve existing visibility of
+                        every non-DELETED status; an explicit filter accepts only ACTIVE or INACTIVE. Sorted by is_default DESC (the
+                        default first), then created_at DESC, then id ASC. The unique tie-break stabilizes one snapshot's order; a
+                        later request can observe newer committed data, so pagination is not a frozen cursor across separate calls.
+                        Map each row to exactly userAddressId/title/isDefault/address/city/state/postalCode/country/rowStatus.
+                        Decrypt the five sensitive fields server-side over TLS; title/default/status/id are copied. Never return
+                        userId, token/hash/salt, audit timestamps or other users' data. A missing page is an empty array, not null.
+                        Return exactly five data keys: items/pageIndex/pageSize/totalItems/totalPages, echo validated page values
+                        and calculate totalPages = 0 when count is 0, otherwise ceiling(totalItems / pageSize), with checked integer
+                        arithmetic.
+                        This inquiry does not create/modify addresses, default flags, tokens, read markers or audit fields. COMMIT
+                        only after complete decryption/mapping succeeds, then 200 S10000 `Inquiry User Address Success`. On timeout
+                        before commit ROLLBACK then 408 E90001; unexpected SQL/decryption/mapping failure ROLLBACK then generic 500
+                        without bizCode. Require the returned page row count to equal min(pageSize, max(0, totalItems - offset)); an
+                        unexpected mismatch is an internal 500 with rollback. Do not return partially mapped rows. No 403/404/409 is
+                        added.
+                    end note
                     app -> api: HTTP 200 S10000 Inquiry User Address Success; all five pagination keys
                     api -> page: Show own address page and totals
                     page -> user: Display addresses or empty page

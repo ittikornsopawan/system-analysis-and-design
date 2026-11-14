@@ -1562,6 +1562,14 @@ Status: Implemented in the managed workspace of Marry on branch `docs/marry-prod
 - [x] Merged `main` three times (the pull requests #113 and #115 pruned the exemption list; the result of `main` is kept and the product entries are removed): 43 specs remain in `LEGACY_SPEC_TEMPLATE`.
 - [ ] Final run, push, tell the lead, suspend.
 
+### Template alignment rework — visible notes instead of the comment block (authen-and-author)
+
+Authority: SA Lead review of PR #112 (merged first): the comment block and the `read()` that attached it are rejected; each sentence has one home and a needle checks the file that holds it. Assignment `authorized_by: josh`, delivery `open-pr`. No SQL and no behaviour change.
+
+- [x] Turn the `' --- Rules moved ...` block of the ten sequences into short visible notes at the step where the rule applies (validation, BEGIN/locks, outcome, claim building), without the sentences already in the Domain bullets, the Scenario tables and Acceptance criteria that the diagram or the SQL already show, and the rules of the removed Governing bullet that the Domain bullet carries.
+- [x] Delete `MOVED_RULES` and give `read()` back its plain body.
+- [x] Move each needle to the file that holds its text: the ten flow checkers get a second loop over the note texts of the sequence (whitespace joined), `authen-spec` gets `AUTHEN_SEQUENCE_NEEDLES`; needles whose text is gone by design are dropped (the design-document file name, the `### ... Rules` headings, `Scenario correspondence with sequence.wsd`).
+- [x] Take the ten files out of `LEGACY_SPEC_TEMPLATE` (Marry's checker is on main).
 ## e-commerce: spec template, campaign
 
 Status: Complete in the branch, waiting for review. Assignment: agent `tommy`, delivery `open-pr`, authorized by `josh`, workspace `.workspace/tommy`, branch `docs/tommy-spec-template-campaign`, scopes `e-commerce/doc/api/campaign`, `e-commerce/db/tests/check_docs.py`, `tasks`.
@@ -1582,3 +1590,11 @@ Status: Implemented in the managed workspace of Marry on branch `docs/marry-prod
 - [x] `LEGACY_SPEC_TEMPLATE`: 04, 06, 07, 09 removed (39 remain).
 - [x] 11 of 11 mutations caught; 65 sub-commands pass; PlantUML passes for the four diagrams.
 - [ ] Merge `main`, run every check, push, open the pull request, tell the lead at once, then product/01 and 03 `Option and SKU Rules`.
+
+### Template alignment — author group (12 specs)
+
+Authority: owner decision that API specs follow `e-commerce/doc/api/template.md`, relayed by Josh (SA Lead); same method as the reworked authen-and-author PR (#116): each sentence has one home and each needle checks that file. `authorized_by: josh`, delivery `open-pr`. No SQL and no behaviour change.
+
+- [x] Remove every `### ... Rules` section and the non-object `####` blocks; short bullets under `## Domain` (links turned into text).
+- [x] Visible short notes in each sequence: execution/lock order after `activate app`, then notes after the validation step, after `BEGIN`, before the success response; whole bullets are kept except a first sentence that a Domain bullet states in full.
+- [x] Needles: the nine flow checkers get a second loop over the whitespace-joined sequence text; `author-spec` gets `AUTHOR_SEQUENCE_NEEDLES` and `AUTHOR_REMOVED_NEEDLES` (the `### ... Rules` headings); the Q24 guards and the claims wording of the shared inquiry helper check the sequence note; the twelve files leave `LEGACY_SPEC_TEMPLATE`.

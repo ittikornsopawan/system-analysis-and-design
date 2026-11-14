@@ -49,7 +49,35 @@ activate page
     activate api
         api -> app: [**UpsertScopeCommandHandler**] Process request
         activate app
+            note over app, infra
+                Execution order: validate the request (400) -> verify JWT (401) -> begin transaction (READ COMMITTED) ->
+                caller user lock -> fresh current credentials (401) -> locked target existence (404, only when id supplied)
+                -> permission (403, E10009) -> duplicate check (409 E10003) -> existing-target in-use check for
+                DELETED/ARCHIVED (409 E10006) -> guarded write -> complete mapping -> COMMIT -> response. Every post-BEGIN
+                rejection rolls back.
+                Lock order is caller user -> target scope -> usage reads/write. Reference writers adding/retaining an ACTIVE
+                permission-scope definition must lock/recheck their permission parents and then scope masters ordered by id
+                before link mutation, as in the separately delivered permission APIs. A soft master status is not protected
+                by a foreign key alone. Q23 withdrawal may skip master ACTIVE validation and only reduces usage; it does not
+                authorize creating a link to a closed master. These reference SQL tests do not certify unmigrated writers or
+                backend implementations.
+            end note
             app -> app: Generate requestId; validate JSON object/known unique keys/no query, UTC timestamp, optional non-null UUID id, scope code ^[A-Z][A-Z0-9_]{0,63}$, nonblank name/description and 64/64/256 limits; preserve text
+            note over app, infra
+                HTTP status of the single upsert: Insert 201 Created, Update 200 Ok, Delete 204 No Content (no response
+                body), Archive 200 Ok.
+                Validate one JSON object allowing only id/scope/name/description/rowStatus, no repeated/unknown body/query
+                keys, JSON content type and mandatory UTC timestamp before SQL. id is optional only by omission and is a
+                non-null UUID when supplied. Required scope/name/description are non-null nonblank strings, maximum
+                64/64/256 characters; scope matches ^[A-Z][A-Z0-9_]{0,63}$. Preserve supplied text without
+                trimming/case-normalization. Parent status defaults to ACTIVE only when omitted and otherwise is
+                ACTIVE/INACTIVE/DELETED/LOCKED/ARCHIVED; insert-DELETED is 400 E10001. All required fields remain mandatory
+                on delete/archive. Generate requestId when omitted.
+                Map exactly data.scopeId from RETURNING before COMMIT. Insert is 201 S10000 Insert Scope Success, existing
+                delete is 204 with no body/status/data, existing archive is 200 S10000 Archive Scope Success, and other
+                existing updates are 200 S10000 Update Scope Success. Exclude caller/token/audit/definition/grant rows. No
+                partial result or success before commit.
+            end note
             app -> app: Default status ACTIVE only when omitted; reject invalid/null status and insert-DELETED; all required fields remain required on delete/archive
             alt Invalid input/header
                 break Reject this request
@@ -70,6 +98,22 @@ activate page
             end
             app -> app: callerUserId = verified sub; accessTokenHash = SHA-256 exact JWT; createdBy/updatedBy = caller UUID string; omitted id = typed SQL NULL
             app -> infra: BEGIN READ COMMITTED
+            note over app, infra
+                Verify JWT signature/issuer/audience/expiry/UUID sub and structured unique roles before BEGIN. roles must be
+                an array including [], each role has UUID roleId/non-empty name and roleIds are unique. Malformed/missing
+                roles is generic 401 E10002, never [] or live-grant fallback. callerUserId = verified sub; accessTokenHash =
+                SHA-256 exact JWT. createdBy/updatedBy are the caller UUID string and now is fresh server UTC, never request
+                audit values or timestamp.
+                Begin READ COMMITTED and lock caller user first. Missing caller is 401 with rollback. Capture fresh server
+                UTC now after caller lock and recheck JWT exp; require matching hash/caller, ACTIVE token/user and strict
+                expired_at > now. Revoked/inactive/expired/mismatched credentials are generic 401 before any target scope
+                lookup. Logout/reset share this user-first lock. Grant withdrawal alone does not revoke current old claims;
+                refresh resolves latest rights.
+                For supplied id lock the non-DELETED scope FOR UPDATE, then reject missing/DELETED as 404 E10004 before
+                permission. Do not reopen a deleted target. Authorize only exact PLATFORM_ADMIN in verified JWT roles after
+                current credentials/optional target existence. [] or any other valid role name gives 403 E10009 You do not
+                have permission to manage scopes.; do not query live caller role grants or infer authority from scope code.
+            end note
             activate infra
             alt Work completes before commit
                 note over app, infra
@@ -254,6 +298,39 @@ activate page
                             app -> app: data = exactly scopeId from RETURNING; exclude caller/token/audit/definitions/grants
                             app -> infra: COMMIT
                             infra -> app: Return committed scope action
+                            note over app, infra
+                                Detailed revision remains in-review; no schema/backend implementation.
+                                The comparison is exact and a value held by an INACTIVE, LOCKED or ARCHIVED scope is still taken (409,
+                                E10003). The value of a DELETED scope can be used again.
+                                Every field that is not optional is required in every request, including a delete and an archive.
+                                INACTIVE, LOCKED and ARCHIVED are reversible: an update with `rowStatus` ACTIVE opens the scope again.
+                                `rowStatus` DELETED is rejected with 400 (E10001) when the request inserts a scope. A scope that is not
+                                ACTIVE is excluded from newly resolved login/refresh claims; an already-issued access token keeps its
+                                previous claims until expiry (Q4/Q7).
+                                INACTIVE and LOCKED are allowed, the rows that use it are not changed.
+                                A valid non-admin claim returns 403 E10009 after optional target existence and before conflicts. No live
+                                caller-assignment or request-flag fallback. Approved by the product owner (Q2/Q4/Q10/Q13); this supersedes
+                                the earlier live-grant guard.
+                                Duplicate scope exclusion is null-safe: omitted insert id binds typed SQL NULL, not a string or zero UUID.
+                                The current row can keep its code. Scope-code uniqueness spans every non-DELETED master, including
+                                INACTIVE/LOCKED/ARCHIVED; a DELETED master's code can be reused by a new id. Existing scope codes, including
+                                seed codes, remain editable under the original contract; no reserved-code or immutability rule is added.
+                                Labels/description remain editable and no permission definition or grant history is rewritten.
+                                Check t_permission_scope usage only for an existing target requested DELETED/ARCHIVED. Any non-DELETED
+                                definition, including INACTIVE/LOCKED/ARCHIVED, blocks with 409 E10006 Scope is used by permissions.,
+                                regardless of its parent permission's lifecycle. No parent/master/grant JOIN or ACTIVE-only filter may hide
+                                usage. INACTIVE/LOCKED or ordinary metadata/code updates retain links and are allowed; they affect newly
+                                resolved claims only. Insert-ARCHIVED is allowed and returns 201 INSERT, with no target/in-use check.
+                                Bind all values. INSERT explicitly sets created_at and must return exactly one scope_id UUID;
+                                missing/malformed result is generic 500. UPDATE guards id and non-DELETED status; zero returned rows is 404
+                                E10004 with whole-request rollback. The returned existing scope_id must equal the requested id. Preserve
+                                created_by/created_at on UPDATE. Any SQL/result/mapping failure restores provisional
+                                status/code/name/description/audit changes.
+                                SQLSTATE 23505 from uq_m_scope_scope is the final concurrent uniqueness guard and maps to 409 E10003 Scope
+                                scope already exists. after full rollback. Preserve this existing business message. Other SQL/result/mapping
+                                errors roll back and return generic 500 without bizCode. Timeout before COMMIT rolls back and returns 408
+                                E90001. No retry is promised for an unknown commit result.
+                            end note
                             app -> api: HTTP 200 S10000 Archive Scope Success; exactly scopeId
                             api -> page: Show committed scope action
                             page -> user: Display the committed scope action
