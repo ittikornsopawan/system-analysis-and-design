@@ -1548,6 +1548,20 @@ Status: Complete in the branch, waiting for review. Assignment: agent `tommy`, d
 - [x] The `order-spec` checker searches the spec and its sequence note; adjust the needles; run every checker, strict SQL parity and the render check.
 - [x] Open the PR with `commit-and-pr`, tell the lead SA when CI is green, then suspend. Next: `shipping`, with the roles sentence of the payment notes.
 
+## e-commerce: product/01-03 follow the spec template (template PR1)
+
+Status: Implemented in the managed workspace of Marry on branch `docs/marry-product-spec-template`. Scope: `product/01-upsert-product`, `02-inquiry-product`, `03-upsert-product-batch`, `check_docs.py` and `tasks/`. First of six template pull requests of the lead (product 01-03, 04-09, 10-15, shop 01-04, 05-10, 11-16).
+
+- [x] Measured with `spec-template`: product/02 and 03 already pass it (never listed); product/01 failed only on two links (the review design document and the login spec). 02 is unchanged. 03 has a `#### Permission Rules` section, which the checker allows but the owner's intent removes: on the review of the lead its permission and order text moved the same way as product/01 (a short Domain bullet in the spec, a visible note in its diagram) while it keeps the live role queries (its JWT migration is paused).
+- [x] product/01: the `#### Permission Rules` section and the long "Execution order" bullet leave the spec; two short bullets under `## Domain` say who may call it (the exact role `PLATFORM_ADMIN` in the verified `roles` claim, now an array of role names as in the new login payload; never the author tables; 401 for a missing or malformed claim; approval Q2, Q4, Q10, Q13) and that the caller is locked first; the order of the checks and the locks is a visible `note over app, infra` in the diagram at the step where it starts (no PlantUML comment). The two links are gone. SQL is unchanged.
+- [x] `admin-write-spec` for the migrated spec checks the new Domain wording and the order text directly in `sequence.wsd` (the JWT step, the lock, the claims permission, the author tables), and needs E10009 twice (rule and example).
+- [x] `LEGACY_SPEC_TEMPLATE`: product/01 and 15 entries that passed on `main` (authen 01-10 and sales 01-05, fixed by other pull requests) are removed; 52 remain.
+- [x] Proof: 9 of 9 mutations caught (each phrase of the diagram note and of the Domain bullets, an added `### Permission Rules`, a link to another spec and to the design document); 65 sub-commands pass; PlantUML passes and the note is drawn.
+- [x] Review of the lead: product/03 done the same way (needles of `admin-write-spec` for it now check its diagram, `ADMIN_WRITE_RULE_IN_DIAGRAM`), 8 of 8 mutations caught.
+- [x] Frontmatter (owner decision of 2026-11-14): product/01, 02 and 03 get `name`, `description`, `status: in-review`, `approved_by: null`, `approved_at: null`, as the rule `markdown.md` asks; the `md-frontmatter` checker of the lead's colleague is not merged yet.
+- [x] Merged `main` three times (the pull requests #113 and #115 pruned the exemption list; the result of `main` is kept and the product entries are removed): 43 specs remain in `LEGACY_SPEC_TEMPLATE`.
+- [ ] Final run, push, tell the lead, suspend.
+
 ## e-commerce: spec template, campaign
 
 Status: Complete in the branch, waiting for review. Assignment: agent `tommy`, delivery `open-pr`, authorized by `josh`, workspace `.workspace/tommy`, branch `docs/tommy-spec-template-campaign`, scopes `e-commerce/doc/api/campaign`, `e-commerce/db/tests/check_docs.py`, `tasks`.

@@ -73,6 +73,15 @@ activate page
                     page -> user: Display authentication error
                 else Verified JWT
                     app -> app: userId = verified sub
+                    note over app, infra
+                        Permission: the same as the single upsert, only a platform administrator (a user with an ACTIVE author.t_user_role row for the ACTIVE role PLATFORM_ADMIN)
+                        can call this API, any other caller gets 403 (E10009). The check is made once for the request, after the existence checks of all items
+                        and before the duplicate, in-use and other conflict checks, so the 403 message has no item position.
+                        Order of each product: validate the request (400, including the SKU maximum) -> existence checks (404, the id of a DELETED option or value
+                        counts as not found, E10004) -> permission check (403, E10009, once for the request) -> in-use check (409) -> move levels aside,
+                        delete the options and values that are not in the list, update the listed options and values (renames that collide are set to temporary
+                        names first), insert new options and values, images, close or reopen SKUs, then generate SKUs -> COMMIT.
+                    end note
                     app -> infra: BEGIN READ COMMITTED
                     activate infra
                     alt Work completes before commit

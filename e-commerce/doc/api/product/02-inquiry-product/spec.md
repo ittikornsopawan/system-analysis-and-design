@@ -1,3 +1,11 @@
+---
+name: Inquiry Product API Specification
+description: Defines the product list inquiry with paging, search and category filter, inquiry by id, and the options, images and SKUs returned for each product; read when reviewing or implementing the product inquiry.
+status: in-review
+approved_by: null
+approved_at: null
+---
+
 # [GET]: v1/product
 
 | Title       | Description                                                                                                                                                                                                                                                                                                                                                                               |
