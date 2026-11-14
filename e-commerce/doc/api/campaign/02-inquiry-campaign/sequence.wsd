@@ -68,6 +68,9 @@ activate page
                     page -> user: Ask the user to sign in again
                 else Verified JWT
                     app -> app: userId = verified sub
+                    note over app, infra
+                        - Execution order: validate the request (400) -> existence of the shop (404) -> permission (403) -> read.
+                    end note
                     app -> infra: Execute database operations
                     activate infra
                     alt Work completes
