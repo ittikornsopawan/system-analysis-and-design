@@ -1559,3 +1559,12 @@ Status: Implemented in the managed workspace of Marry on branch `docs/marry-prod
 - [x] Proof: 9 of 9 mutations caught (each phrase of the diagram note and of the Domain bullets, an added `### Permission Rules`, a link to another spec and to the design document); 65 sub-commands pass; PlantUML passes and the note is drawn.
 - [x] Review of the lead: product/03 done the same way (needles of `admin-write-spec` for it now check its diagram, `ADMIN_WRITE_RULE_IN_DIAGRAM`), 8 of 8 mutations caught.
 - [ ] Merge `main` (the lead's pull request that also prunes the list lands first; keep its result), run every check, push, tell the lead, suspend.
+
+## e-commerce: spec template, campaign
+
+Status: Complete in the branch, waiting for review. Assignment: agent `tommy`, delivery `open-pr`, authorized by `josh`, workspace `.workspace/tommy`, branch `docs/tommy-spec-template-campaign`, scopes `e-commerce/doc/api/campaign`, `e-commerce/db/tests/check_docs.py`, `tasks`.
+
+- [x] Remove `### Campaign Rules`, `### Campaign Inquiry Rules` and `### Campaign Ledger Inquiry Rules`; the rules become short bullets under `## Domain`; the design doc path becomes plain words.
+- [x] Move the deleted children statements and the order of the checks into notes of `sequence.wsd`; no SQL and no behavior is changed.
+- [x] The `campaign-spec` checker searches the spec and its sequence note; adjust the needles; the campaign files leave `LEGACY_SPEC_TEMPLATE`; the sales and authen-and-author entries that already follow the template are removed too (the same lines as the shipping PR, so `spec-template` passes on this branch).
+- [x] Open the PR with `commit-and-pr`, tell the lead SA when CI is green, then suspend. This is the last group of the template alignment.

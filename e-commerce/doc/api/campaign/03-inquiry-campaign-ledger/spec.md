@@ -18,6 +18,11 @@
 | PRE-PRODUCTION | https://www.domain.com/api-pre-prod |
 | PRODUCTION     | https://www.domain.com/api          |
 
+- Only a platform administrator (a user that has the role `PLATFORM_ADMIN`) can call this API, any other user gets 403 (E10009). This permission model was approved by the product owner.
+- The ledger of the budget of the campaign: every time an order takes the budget there is a `RESERVE` row, and every time the budget goes back (the order was cancelled or expired, or the payment was refunded) a `RELEASE` row. `usage` is the amount of the entry, always positive, the direction is `entryType`. `remaining` is the remaining amount of the budget after that entry. `reference` lists the order items and the discount each of them got. The system writes the rows, this API only reads them.
+- The invariant `budget - remaining = sum of RESERVE usage - sum of RELEASE usage` holds for the budget at any time, the entry with the newest `createdAt` shows the current `remaining` of the budget. Entries are ordered by `created_at` (newest first) then `id`. A campaign that does not exist or is DELETED is not found (404, E10004). Nothing found is 200 with an empty list.
+- This behaviour follows the campaign design, approved by the product owner on 2026-11-06 (the proposals to the delivered specs in its section 4 are decided by the lead SA).
+
 ---
 
 ## Request Parameters
@@ -39,14 +44,6 @@
 | 3   | orderId        | String: UUID | OPTIONAL  | Order Id                                           | d1e2f3a4-1b2c-4d3e-9f4a-5b6c7d8e9f01 |
 | 4   | pageIndex      | Numeric      | OPTIONAL  | Page index starting from 1, Defaults to 1          | 1                                    |
 | 5   | pageSize       | Numeric      | OPTIONAL  | Number of items per page (max 100), Defaults to 10 | 10                                   |
-
-### Campaign Ledger Inquiry Rules
-
-- Only a platform administrator (a user that has the role `PLATFORM_ADMIN`) can call this API, any other user gets 403 (E10009). This permission model was approved by the product owner.
-- The ledger of the budget of the campaign: every time an order takes the budget there is a `RESERVE` row, and every time the budget goes back (the order was cancelled or expired, or the payment was refunded) a `RELEASE` row. `usage` is the amount of the entry, always positive, the direction is `entryType`. `remaining` is the remaining amount of the budget after that entry. `reference` lists the order items and the discount each of them got. The system writes the rows, this API only reads them.
-- The invariant `budget - remaining = sum of RESERVE usage - sum of RELEASE usage` holds for the budget at any time, the entry with the newest `createdAt` shows the current `remaining` of the budget. Entries are ordered by `created_at` (newest first) then `id`. A campaign that does not exist or is DELETED is not found (404, E10004). Nothing found is 200 with an empty list.
-- Execution order: validate the request (400) -> existence of the campaign (404) -> permission (403) -> read.
-- This behaviour follows `docs/superpowers/specs/2026-11-06-campaign-design.md`, approved by the product owner on 2026-11-06 (the proposals to the delivered specs in its section 4 are decided by the lead SA).
 
 ## Example Request
 
