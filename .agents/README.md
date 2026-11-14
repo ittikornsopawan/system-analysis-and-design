@@ -42,6 +42,7 @@ This directory is the source of truth for repository-specific agent resources. R
 
 | Resource | Status | Intended phase |
 | --- | --- | --- |
+| `agents/head-of-technology.md` | ready | Cross-Project technology oversight and independent review of each team's technical work, quality gates, and process |
 | `agents/product-owner.md` | ready | Product goals, value, priority, scope, and acceptance outcomes |
 | `agents/business-analyst.md` | ready | Stakeholder needs, processes, business rules, and Requirements |
 | `agents/system-analyst.md` | ready | Specification completeness, system behavior, SQL analysis, traceability, and approval readiness |

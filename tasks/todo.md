@@ -1635,7 +1635,7 @@ Status: Delivered as one pull request from `chore/barry-head-of-technology`. The
 
 - [x] Read the bootstrap, global rules, team registry, named-agent workspace rule and design, and lessons.
 - [x] Review the work of Josh and the team on main (read-only, primary checkout) and report the findings to the owner.
-- [x] Register Barry (role `code-reviewer.md`, title Head of Technology, reports to ittikorn, no capabilities) and change Josh's `reports_to` to `barry`; Josh keeps `delegate-delivery`.
+- [x] Register Barry (role `head-of-technology.md`, written by owner order after the SA Lead's review found `code-reviewer.md` too narrow; registered in `.agents/README.md`; title Head of Technology, reports to ittikorn, no capabilities) and change Josh's `reports_to` to `barry`; Josh keeps `delegate-delivery`.
 - [x] Extend the canonical registry test and run the workspace tests and the documentation checkers.
 - [x] Fix the two needle loops of `check_docs.py` (`login-flow`, `logout-flow`) that iterated the letters of a string, by owner order after the review; removing `ambiguous` from the login spec and `Q13` from the logout spec is now rejected.
 - [x] Commit and open one pull request (owner order of 2026-11-14).
