@@ -1546,4 +1546,3 @@ Status: Complete in the branch, waiting for review. Assignment: agent `tommy`, d
 - [x] Move the deleted children statements and the order of the checks into notes of `sequence.wsd`; no SQL and no behavior is changed.
 - [x] The `campaign-spec` checker searches the spec and its sequence note; adjust the needles; the campaign files leave `LEGACY_SPEC_TEMPLATE`; the sales and authen-and-author entries that already follow the template are removed too (the same lines as the shipping PR, so `spec-template` passes on this branch).
 - [x] Open the PR with `commit-and-pr`, tell the lead SA when CI is green, then suspend. This is the last group of the template alignment.
-
