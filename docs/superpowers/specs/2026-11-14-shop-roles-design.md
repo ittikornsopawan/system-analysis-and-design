@@ -1,14 +1,14 @@
 ---
-name: Shop Roles Design (draft)
-description: Draft design of the shop roles owner, admin and staff with fixed permissions: where the role is stored, the fixed permission table per shop API, the minimum rules, who creates and changes owners, the form in the JWT and the impact on schema, tests and specs, with a recommendation, a cost if wrong and an owner question for each point; read before changing shop.t_shop_user, the shop APIs or the owner rows of the permission matrix.
-status: draft
+name: Shop Roles Design
+description: Design of the shop roles owner, admin and staff with fixed permissions, with the owner answers of 2026-11-14: where the role is stored, the fixed permission table per shop API, the minimum rules, who creates and changes owners, the form in the JWT and the impact on schema, tests and specs, with a recommendation, a cost if wrong and an owner question for each point; read before changing shop.t_shop_user, the shop APIs or the owner rows of the permission matrix.
+status: in-review
 approved_by: null
 approved_at: null
 ---
 
-# Shop roles: owner, admin, staff (draft for the owner's decision)
+# Shop roles: owner, admin, staff (in review)
 
-Date: 2026-11-14 · Author: Peter (SA) · Reviewer: Josh (SA Lead) · Status: **draft, nothing is approved and no schema, specification, checker, test or matrix row is changed by this document.**
+Date: 2026-11-14 · Author: Peter (SA) · Reviewer: Josh (SA Lead) · Status: **in review. The owner answered the questions on 2026-11-14 as recommended; the owner changes the status to approved. No schema, specification, checker, test or matrix row is changed by this document.**
 
 ## Why this document exists
 
@@ -23,9 +23,9 @@ The owner asked for a scope that says "the caller must be the owner of the shop"
 - Tests: `04-shop-user.test.sql` (the role constraint and the ADMIN rule); the seed has no shop.
 - JWT (decision of 2026-11-13): `scopes` are flat `<code>:*` with no shop instance, so the token cannot say which shop a user belongs to or in which role.
 
-## Decisions to take
+## Decisions
 
-Each point has a recommendation, the reason, the cost if it is wrong and the question for the owner.
+Each point has the recommendation, the reason, the cost if it is wrong and the owner answer of 2026-11-14 (relayed by the SA Lead).
 
 ### D1. Where the role is stored
 
@@ -34,7 +34,7 @@ Each point has a recommendation, the reason, the cost if it is wrong and the que
 - **Cost:** every `role IN ('ADMIN', 'STAFF')` becomes `role IN ('OWNER', 'ADMIN', 'STAFF')` and every `role = 'ADMIN'` becomes `role IN ('OWNER', 'ADMIN')` in the seventeen specs above and their sequences (mechanical SQL changes, one API per PR), plus the role constraint, the schema document and the test.
 - **Alternative with a smaller blast radius:** keep `ADMIN` and `STAFF` and add `is_owner BOOLEAN NOT NULL DEFAULT FALSE` to `t_shop_user` (an owner is an ADMIN row with the flag). Member and administrator checks stay unchanged and only the owner-only checks add `AND su.is_owner`. It reads as "an admin with a flag" rather than a separate role, so it is weaker on the owner's wording.
 - **If wrong:** a separate table `shop.t_shop_owner` would make owners independent of membership and add a join to every owner check; not recommended.
-- **Question Q1:** `OWNER` as a third value of `t_shop_user.role` (recommended), or the flag `is_owner` on an ADMIN row to touch fewer specs?
+- **Owner answer (2026-11-14):** `OWNER` is the third value of `shop.t_shop_user.role`; the `is_owner` flag is not used.
 
 ### D2. Fixed permission of OWNER, ADMIN and STAFF per shop API
 
@@ -60,31 +60,31 @@ Proposed defaults. "today" is the behaviour of the delivered specs; a star marks
 
 - **Why these defaults:** keep today's behaviour wherever the owner has not asked for a difference; the starred rows are the ones that need a role difference to exist at all: only owners delete a shop and manage owners, admins no longer manage other admins, and a refund (money) needs OWNER or ADMIN.
 - **If wrong:** each row is one condition in one API (text, SQL and sequence of that API); a flatter table (admins keep managing admins) removes the star on that row.
-- **Question Q2:** is the table right as a starting point, and which rows should change? (the starred rows are the proposals)
+- **Owner answer (2026-11-14):** the table above is used as written: only owners delete a shop and manage owners, admins manage staff and not other admins, a refund needs an owner or an admin, everything else stays as today.
 
 ### D3. Minimum rules
 
 - **Recommendation:** a shop must keep **at least one ACTIVE OWNER** (409 E10006, rolled back), checked on the state after the write, with the shop row locked as the ADMIN rule is today; a platform administrator cannot skip it. The old rule "at least one ACTIVE ADMIN" becomes redundant, because an ACTIVE OWNER always has admin power, so it is **replaced** by the owner rule.
 - **If wrong:** keeping both rules adds one count query to `shop/11` and `shop/12`; dropping the owner rule lets a shop have no owner.
-- **Question Q3:** a shop must keep at least one ACTIVE OWNER and this replaces the "at least one ACTIVE ADMIN" rule?
+- **Owner answer (2026-11-14):** a shop must keep at least one ACTIVE OWNER and this replaces the rule of at least one ACTIVE ADMIN.
 
 ### D4. Who is the owner when a shop is created
 
 - **Recommendation:** the caller of the insert (the verified `sub`) becomes an OWNER in the same transaction, in place of the ADMIN row of today (`INSERT - Add the caller as ADMIN of the new shop` becomes an OWNER row). The request never carries a role. No existing shop needs a backfill: the project has no production data and the seed has no shop.
 - **If wrong:** creating a shop for another user needs an optional member list in the insert, which is a new body field of `shop/08` and `shop/09`.
-- **Question Q4:** the creator of a shop is its OWNER?
+- **Owner answer (2026-11-14):** the creator of a shop is its OWNER, in place of ADMIN.
 
 ### D5. Who adds or removes an owner, and can an owner leave
 
 - **Recommendation:** an OWNER (any ACTIVE owner of the shop) or a platform administrator adds an owner, and only by changing the role of an **existing ACTIVE member** (admin or staff) to OWNER, so ownership is never given to someone who is not already in the shop; no acceptance step. An ADMIN cannot create or remove owners. An OWNER can change another owner to ADMIN or remove another owner, and **can leave the shop or demote themselves only while another ACTIVE OWNER remains** (409 E10006 otherwise).
 - **If wrong:** an acceptance step needs a pending state (columns or a table) and one more endpoint; letting a platform administrator alone manage owners moves the owner check from the owner to the platform.
-- **Question Q5:** owners and platform administrators manage owners, only from existing members, and an owner can leave while another ACTIVE owner remains?
+- **Owner answer (2026-11-14):** owners and platform administrators add an owner only by promoting an existing member, and an owner can leave or demote themselves only while another ACTIVE owner remains.
 
 ### D6. Role in the JWT or checked at the API
 
 - **Recommendation:** **checked at the API**, not in the token. The role is per shop and changes while a 15-minute token lives, and the new payload has no shop instance (`shop:*` only). Every shop API already reads `shop.t_shop_user` inside its transaction for the member check; it will read the role from the same row and apply the fixed table of D2. The matrix keeps the data boundary `shop` and gets a **role condition** on the rows of D2 (for example "OWNER of the target shop"); no `owner:*` claim is issued.
 - **If wrong:** putting roles in the token needs per-shop values (`owner:<shopId>`), which the owner excluded when choosing `<code>:*`, grows the token with the number of shops and goes stale at a role change; that is a new JWT decision.
-- **Question Q6:** the shop role is read from the database by each API and not carried in the JWT?
+- **Owner answer (2026-11-14):** the shop role is checked in the database by each API and is not carried in the JWT.
 
 ### D7. Impact if the design is approved
 
@@ -93,18 +93,20 @@ Proposed defaults. "today" is the behaviour of the delivered specs; a star marks
 - **Specifications and sequences, one API per PR:** the mechanical role-set change in the seventeen specs of D1; real rule changes in `shop/08` and `shop/09` (insert writes an OWNER; delete and archive owner-only), `shop/11` and `shop/12` (the tiers of D2, the owner rule, who changes owners), `payment/05` only if the refund row of D2 is accepted; the matrix rows (role conditions).
 - **Not touched:** `author`, `consent`, `authen`, the seed, the login and refresh payload, `sales/01–03`, `payment/01–03`, `cart`, `campaign/01`, `campaign/03`.
 - **Order of work after approval:** schema and tests, then `shop/11` and `shop/12`, then `shop/08` and `shop/09`, then the mechanical SQL changes of the other fourteen specs (grouped by folder, one PR each), then `payment/05` if accepted, then the matrix.
-- **Question Q7:** the impact and the order of work are acceptable?
+- **Decision of the SA Lead (2026-11-14):** the question was not asked separately; the impact and the order of work above are followed.
 
-## Questions for the owner
+## Owner answers (2026-11-14)
 
-1. Q1: `OWNER` as a third value of `shop.t_shop_user.role` (recommended), or an `is_owner` flag on an ADMIN row?
-2. Q2: is the permission table of D2 the right starting point; which starred rows change (only owners delete a shop and manage owners, admins do not manage other admins, refund needs OWNER or ADMIN)?
-3. Q3: a shop must keep at least one ACTIVE OWNER and this replaces the "at least one ACTIVE ADMIN" rule? (recommended: yes)
-4. Q4: the creator of a shop is its OWNER, in place of ADMIN? (recommended: yes)
-5. Q5: owners and platform administrators manage owners, only by promoting an existing member, and an owner can leave or demote themselves only while another ACTIVE owner remains? (recommended: yes)
-6. Q6: the shop role is checked in the database by each API, not carried in the JWT? (recommended: yes)
-7. Q7: the impact and the order of work in D7 are acceptable?
+The owner answered Q1 to Q6 as recommended; the answers are recorded under each decision above and summarised here. Q7 follows the SA Lead's decision.
 
-## What this draft does not do
+1. Q1: `OWNER` is the third value of `shop.t_shop_user.role`.
+2. Q2: the permission table of D2 is used as written.
+3. Q3: at least one ACTIVE OWNER replaces at least one ACTIVE ADMIN.
+4. Q4: the creator of a shop is its OWNER.
+5. Q5: owners and platform administrators add owners by promoting existing members; an owner leaves or demotes themselves only while another ACTIVE owner remains.
+6. Q6: the shop role is checked in the database, not in the JWT.
+7. Q7: the order of work of D7 is followed (SA Lead).
 
-It does not change `shop.t_shop_user`, a specification, a sequence, a checker, a test, the seed or the matrix, and it does not start the order of work above. It is read together with [the review design record](2026-11-07-api-review-design.md), whose decisions it does not change.
+## What this document does not do
+
+It does not change `shop.t_shop_user`, a specification, a sequence, a checker, a test, the seed or the matrix, and it does not start the order of work above: the work starts only after the owner approves this document. It is read together with [the review design record](2026-11-07-api-review-design.md), whose decisions it does not change.

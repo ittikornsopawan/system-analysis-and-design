@@ -945,7 +945,7 @@ def check_shop_spec() -> int:
     if errors:
         return fail("; ".join(errors))
     needles = {
-        "01": ["#### Lot Object", "### Lot Rules", "#### UPDATE - Close the lot that is on sale before another lot is put on sale",
+        "01": ["#### Lot Object", "- The system keeps one row per (shopId, productId, skuId)", "#### UPDATE - Close the lot that is on sale before another lot is put on sale",
                "#### QUERY - Check lots in use", "sales.t_order_item", "Only one lot can be on sale", "E10006",
                "- Permission:", "E10009", "#### Fail - Forbidden", "#### QUERY - Check shop member",
                "#### QUERY - Check platform administrator", "-> permission (403) ->",
@@ -955,12 +955,14 @@ def check_shop_spec() -> int:
                "- Permission:", "E10009", "#### Fail - Forbidden", "#### QUERY - Check shop members",
                "#### QUERY - Check platform administrator", "-> permission (403) ->"],
         "03": ["#### Lot Object", "costPrice", "#### QUERY - Get lots", "ORDER BY l.is_on_sale DESC"],
-        "04": ["#### SKU Object", "#### Option Value Object", "### Page Rules", "stockStatus", "maxOrderQuantity",
+        "04": ["#### SKU Object", "#### Option Value Object", "- Only a product that is ACTIVE, sold by a shop", "stockStatus", "maxOrderQuantity",
                "#### QUERY - Get the lot that is on sale of each shop product SKU", "pi.option_value_id IS NULL",
                "sold by a shop that is ACTIVE", "AND s.row_status = 'ACTIVE' -- a shop that is not ACTIVE has no page"],
     }
     for key, need in needles.items():
-        for missing in missing_needles(mds[key], need):
+        # rules that moved into a note of the sequence diagram are searched there, one line per wrapped note
+        seq = re.sub(r"\n\s+", " ", read(SHOP_SPECS[key].replace("spec.md", "sequence.wsd")))
+        for missing in missing_needles(mds[key] + "\n" + seq, need):
             errors.append(f"{SHOP_SPECS[key]} missing: {missing}")
     store = mds["04"]
     for forbidden in ["costPrice", "cost_price", "grossMargin", "gross_margin", "authorization"]:
@@ -8449,9 +8451,6 @@ def spec_template_errors(md: str) -> list[str]:
 # Specs that do not follow the template yet. Each is exempt until its sections and links are fixed; an entry must be a spec folder and
 # must still fail, so a spec that passes has to leave the list in the same change. The count is printed in the OK line.
 LEGACY_SPEC_TEMPLATE = (
-    "shop/01-upsert-shop-product-sku",
-    "shop/02-upsert-shop-product-sku-batch",
-    "shop/04-inquiry-storefront-product",
     "shop/05-upsert-shop-type",
     "shop/06-upsert-shop-type-batch",
     "shop/08-upsert-shop",
@@ -8499,6 +8498,11 @@ MD_FRONTMATTER_PENDING = (
     "e-commerce/doc/api/shop/02-upsert-shop-product-sku-batch/spec.md",
     "e-commerce/doc/api/shop/03-inquiry-shop-product-sku/spec.md",
     "e-commerce/doc/api/shop/04-inquiry-storefront-product/spec.md",
+    "docs/superpowers/specs/2026-11-05-product-sku-multi-level-design.md",
+    "docs/superpowers/specs/2026-11-06-cart-design.md",
+    "docs/superpowers/specs/2026-11-06-order-design.md",
+    "docs/superpowers/specs/2026-11-06-payment-design.md",
+    "docs/superpowers/specs/2026-11-06-shop-lot-pricing-and-storefront-design.md",
     "e-commerce/doc/api/shop/05-upsert-shop-type/spec.md",
     "e-commerce/doc/api/shop/06-upsert-shop-type-batch/spec.md",
     "e-commerce/doc/api/shop/07-inquiry-shop-type/spec.md",
