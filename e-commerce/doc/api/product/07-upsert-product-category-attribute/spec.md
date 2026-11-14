@@ -1,3 +1,11 @@
+---
+name: Upsert Product Category Attribute API Specification
+description: Defines the insert, update, delete and archive of one attribute of a product category with the platform administrator permission, the in-use check and the SQL of every step; read when reviewing or implementing the attribute upsert.
+status: in-review
+approved_by: null
+approved_at: null
+---
+
 # [POST]: v1/product-category-attribute/upsert
 
 | Title       | Description                                                                                                                                                                                                                                                                             |
@@ -17,6 +25,8 @@
 | UAT            | https://www.domain.com/api-uat      |
 | PRE-PRODUCTION | https://www.domain.com/api-pre-prod |
 | PRODUCTION     | https://www.domain.com/api          |
+
+- Only a platform administrator can call this API (a user with an ACTIVE `author.t_user_role` row for the ACTIVE role `PLATFORM_ADMIN`), otherwise 403 (E10009). Reading is not changed by this rule. Approved by the product owner (answered through the lead SA, 2026-11-06). The order of the checks is in the sequence diagram.
 
 ---
 
@@ -40,11 +50,6 @@
 | 3   | name           | String       | MANDATORY | Product Category Attribute Name (max 128 characters), Unique                                                                                                                                   | Color                                |
 | 4   | description    | String       | MANDATORY | Product Category Attribute Description (max 256 characters)                                                                                                                                    | Color of the product                 |
 | 5   | rowStatus      | String       | OPTIONAL  | Row status (ACTIVE, INACTIVE, DELETED, LOCKED, ARCHIVED), Defaults to ACTIVE, Delete when DELETED, Archive when ARCHIVED, Delete is allowed only when the attribute is not used by any product | ACTIVE                               |
-
-### Permission Rules
-
-- Permission: only a platform administrator (a user with an ACTIVE `author.t_user_role` row for the ACTIVE role `PLATFORM_ADMIN`) can call this API, any other caller gets 403 (E10009), after the existence checks and before the duplicate, in-use and other conflict checks and before anything is written. Reading is not changed by this rule. Approved by the product owner (answered through the lead SA, 2026-11-06).
-- Order of checks: validate the request (400) -> existence checks (404) -> permission (403, E10009) -> duplicate, in-use and other conflicts (409) -> write.
 
 #### Example Body Parameters
 

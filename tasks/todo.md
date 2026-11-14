@@ -1570,3 +1570,15 @@ Status: Complete in the branch, waiting for review. Assignment: agent `tommy`, d
 - [x] Move the deleted children statements and the order of the checks into notes of `sequence.wsd`; no SQL and no behavior is changed.
 - [x] The `campaign-spec` checker searches the spec and its sequence note; adjust the needles; the campaign files leave `LEGACY_SPEC_TEMPLATE`; the sales and authen-and-author entries that already follow the template are removed too (the same lines as the shipping PR, so `spec-template` passes on this branch).
 - [x] Open the PR with `commit-and-pr`, tell the lead SA when CI is green, then suspend. This is the last group of the template alignment.
+
+## e-commerce: product/04-09 follow the spec template (template PR2)
+
+Status: Implemented in the managed workspace of Marry on branch `docs/marry-product-category-spec-template`. Scope: `product/04` to `09` (category and category attribute), `check_docs.py` and `tasks/`. Second of the lead's six template pull requests. The `Option and SKU Rules` sections of product/01 and 03 follow in a small pull request (the scope of this one was fixed before the lead asked; the lead chose that order).
+
+- [x] Measured: 04, 06, 07 and 09 had `### Campaign Rules` and/or `### Permission Rules`; 05 and 08 (inquiries) already passed. All six lacked frontmatter.
+- [x] 04, 06, 07, 09: the two sections leave the spec; under `## Domain`: who may call it (the exact role `PLATFORM_ADMIN` read from the database as before, approval of 2026-11-06, the 403 without an item position for the batches), and for 04 and 06 the campaign rule; the permission rule, the order of the checks and the campaign rule are a visible `note over app, infra` in each diagram. SQL is unchanged and the live role queries stay (JWT migration paused).
+- [x] `ADMIN_WRITE_RULE_IN_DIAGRAM` is now a table of the phrases each diagram note must say, per spec (single, batch, campaign, product/03); the spec keeps its short Domain bullets and the queries.
+- [x] Frontmatter (`name`, `description`, `status: in-review`, `approved_by: null`, `approved_at: null`) on all six specs.
+- [x] `LEGACY_SPEC_TEMPLATE`: 04, 06, 07, 09 removed (39 remain).
+- [x] 11 of 11 mutations caught; 65 sub-commands pass; PlantUML passes for the four diagrams.
+- [ ] Merge `main`, run every check, push, open the pull request, tell the lead at once, then product/01 and 03 `Option and SKU Rules`.

@@ -1,3 +1,11 @@
+---
+name: Inquiry Product Category Attribute API Specification
+description: Defines the attribute list inquiry of product categories with paging, search and category filter and the category of each attribute; read when reviewing or implementing the attribute inquiry.
+status: in-review
+approved_by: null
+approved_at: null
+---
+
 # [GET]: v1/product-category-attribute
 
 | Title       | Description                                                                                                                                                                           |
