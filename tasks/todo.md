@@ -1642,3 +1642,15 @@ Status: Delivered as one pull request from `chore/barry-head-of-technology`. The
 - [ ] Owner decides: whether Barry gets `delegate-delivery`.
 
 Verification: `test_agent_workspace.py` 26 tests OK; `check_docs.py` 66/66 sub-commands OK. `run_db_tests.sh` could not start PostgreSQL in this session, so the database tests were not rerun here (unchanged by this task; the last CI run on main passed).
+
+### Consent API02 upsert consent — claims, locks, DELETED final and the consent period
+
+Authority: owner answers of 2026-11-13 ("ใช้คำแนะนำทั้งหมด"), the technical corrections of 2026-11-08 confirmed by Josh (SA Lead), the new JWT payload of 2026-11-13 and the template/frontmatter decisions; assignment `authorized_by: josh`, delivery `open-pr`. The spec follows the template from the start (short Domain bullets, visible note, frontmatter).
+
+- [x] Spec: frontmatter; Domain bullets; verified JWT roles claim replaces the two live-grant queries (`PLATFORM_ADMIN` exact, 403 E10009); DELETED is final (404 E10004); `expiredAt` later than `effectiveAt` (400); delete/archive not blocked by user answers; any different `consentVersion` (at most 8 characters) with the Q8 effect; `code` plainly UNIQUE including DELETED rows (409 E10003); new examples (period 400, consent type 404 E10005, 500).
+- [x] SQL: lock the caller user, current credential, lock the consent type, lock the target consent (`FOR UPDATE`, DELETED excluded), duplicate code check without a status filter and null-safe, guarded insert/update with bound server time.
+- [x] Sequence: complete flow and visible note; the lock order is caller user, consent type, consent.
+- [x] Checker: slim `consent-upsert-flow`; consent/02 leaves `ADMIN_WRITE_SPECS`, `LEGACY_SEQUENCES`, `LEGACY_TOKEN_SEQUENCES`, `LEGACY_SPEC_TEMPLATE` and `MD_FRONTMATTER_PENDING`.
+
+- [x] Consent/02 owner answer of 2026-11-14 (relayed by Josh): a consent of a type that is not ACTIVE can still be deleted, archived, deactivated or locked; the type must be ACTIVE only when the request creates a consent, opens one that is not ACTIVE to ACTIVE or changes the type of an ACTIVE consent (like Q23). Spec Domain bullets, the lock query (now returns the stored `consent_type_id`), the sequence decision and branch, the `consent-upsert-flow` needles and four more mutations (21/21) follow it.
+- [ ] Record the answer in `api-review-design.md` (outside this assignment's scope; a separate small PR).
