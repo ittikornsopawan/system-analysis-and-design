@@ -3,12 +3,20 @@ authorized_user: ittikorn
 default_branch: main
 workspace_root: .workspace
 agents:
+  - name: barry
+    enabled: true
+    role: .agents/agents/code-reviewer.md
+    title: Head of Technology
+    scope: repository-wide
+    reports_to: ittikorn
+    workspace_key: barry
+    capabilities: []
   - name: josh
     enabled: true
     role: .agents/agents/system-analyst.md
     title: SA Lead
     scope: repository-wide
-    reports_to: ittikorn
+    reports_to: barry
     workspace_key: josh
     capabilities:
       - delegate-delivery

@@ -1596,3 +1596,17 @@ Authority: owner decision that API specs follow `e-commerce/doc/api/template.md`
 - [x] Remove every `### ... Rules` section and the non-object `####` blocks; short bullets under `## Domain` (links turned into text).
 - [x] Visible short notes in each sequence: execution/lock order after `activate app`, then notes after the validation step, after `BEGIN`, before the success response; whole bullets are kept except a first sentence that a Domain bullet states in full.
 - [x] Needles: the nine flow checkers get a second loop over the whitespace-joined sequence text; `author-spec` gets `AUTHOR_SEQUENCE_NEEDLES` and `AUTHOR_REMOVED_NEEDLES` (the `### ... Rules` headings); the Q24 guards and the claims wording of the shared inquiry helper check the sequence note; the twelve files leave `LEGACY_SPEC_TEMPLATE`.
+
+## repository-wide: Barry as Head of Technology, Josh reports to Barry (2026-11-14)
+
+Status: Delivered as one pull request from `chore/barry-head-of-technology`. The registry takes effect only after the owner merges it into origin/main.
+
+- [x] Read the bootstrap, global rules, team registry, named-agent workspace rule and design, and lessons.
+- [x] Review the work of Josh and the team on main (read-only, primary checkout) and report the findings to the owner.
+- [x] Register Barry (role `code-reviewer.md`, title Head of Technology, reports to ittikorn, no capabilities) and change Josh's `reports_to` to `barry`; Josh keeps `delegate-delivery`.
+- [x] Extend the canonical registry test and run the workspace tests and the documentation checkers.
+- [x] Fix the two needle loops of `check_docs.py` (`login-flow`, `logout-flow`) that iterated the letters of a string, by owner order after the review; removing `ambiguous` from the login spec and `Q13` from the logout spec is now rejected.
+- [x] Commit and open one pull request (owner order of 2026-11-14).
+- [ ] Owner decides: whether Barry gets `delegate-delivery`.
+
+Verification: `test_agent_workspace.py` 26 tests OK; `check_docs.py` 66/66 sub-commands OK. `run_db_tests.sh` could not start PostgreSQL in this session, so the database tests were not rerun here (unchanged by this task; the last CI run on main passed).
