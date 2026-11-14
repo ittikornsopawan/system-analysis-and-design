@@ -1629,6 +1629,19 @@ Status: Done, waiting for review. Authorized by Josh (owner decisions of 2026-11
 5. [x] All check_docs sub-commands, audit_all, PlantUML syntax, render count and mutation tests.
 
 
+## repository-wide: Barry as Head of Technology, Josh reports to Barry (2026-11-14)
+
+Status: Delivered as one pull request from `chore/barry-head-of-technology`. The registry takes effect only after the owner merges it into origin/main.
+
+- [x] Read the bootstrap, global rules, team registry, named-agent workspace rule and design, and lessons.
+- [x] Review the work of Josh and the team on main (read-only, primary checkout) and report the findings to the owner.
+- [x] Register Barry (role `code-reviewer.md`, title Head of Technology, reports to ittikorn, no capabilities) and change Josh's `reports_to` to `barry`; Josh keeps `delegate-delivery`.
+- [x] Extend the canonical registry test and run the workspace tests and the documentation checkers.
+- [x] Fix the two needle loops of `check_docs.py` (`login-flow`, `logout-flow`) that iterated the letters of a string, by owner order after the review; removing `ambiguous` from the login spec and `Q13` from the logout spec is now rejected.
+- [x] Commit and open one pull request (owner order of 2026-11-14).
+- [ ] Owner decides: whether Barry gets `delegate-delivery`.
+
+Verification: `test_agent_workspace.py` 26 tests OK; `check_docs.py` 66/66 sub-commands OK. `run_db_tests.sh` could not start PostgreSQL in this session, so the database tests were not rerun here (unchanged by this task; the last CI run on main passed).
 
 ### Consent API02 upsert consent — claims, locks, DELETED final and the consent period
 
