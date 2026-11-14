@@ -1,3 +1,11 @@
+---
+name: Upsert Product Type Batch API Specification
+description: Defines the insert, update, delete and archive of several product types in one transaction, the platform administrator permission, the duplicate and in-use checks and the SQL of every step; read when reviewing or implementing the product type batch upsert.
+status: in-review
+approved_by: null
+approved_at: null
+---
+
 # [POST]: v1/product-type/upsert/batch
 
 | Title       | Description                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                           |
@@ -17,6 +25,14 @@
 | UAT            | https://www.domain.com/api-uat      |
 | PRE-PRODUCTION | https://www.domain.com/api-pre-prod |
 | PRODUCTION     | https://www.domain.com/api          |
+
+- Only a platform administrator (a user with an ACTIVE `author.t_user_role` row for the ACTIVE role `PLATFORM_ADMIN`) can call this API, any other caller gets 403 (E10009). Reading is open to every caller with a valid access token. Approved by the product owner (answered through the lead SA, 2026-11-06). The order of the checks is in the sequence diagram.
+- Every product type follows the rules of the single upsert: unique name among product types that are not DELETED, required name and description, DELETED is final, delete and archive are rejected while a product that is not DELETED uses the product type.
+- The product types are processed in the request order in one transaction, so the checks of an item see the changes of the items before it. When any item fails the whole request is rolled back and no product type is changed.
+- `id` must not be duplicated in the request, and `name` must not be duplicated among the items that are not DELETED (400, E10001). The name of a DELETED item is not compared.
+- Swapping the names of two product types in one request is rejected with 409 (E10003) at the first item, because that name is still held by the other product type when the item is checked. Rename them in two requests.
+- An item without `id` and with `rowStatus` DELETED is rejected with 400 (E10001).
+- The response is HTTP 200 for every successful batch, including a batch that deletes.
 
 ---
 
@@ -45,16 +61,6 @@
 | 2   | name           | String       | MANDATORY | Product Type Name (max 128 characters), Unique among product types that are not DELETED                                                                                                                                                                                 | Electronics                                     |
 | 3   | description    | String       | MANDATORY | Product Type Description (max 256 characters)                                                                                                                                                                                                                           | Devices and accessories that run on electricity |
 | 4   | rowStatus      | String       | OPTIONAL  | Row status (ACTIVE, INACTIVE, DELETED, LOCKED, ARCHIVED), Defaults to ACTIVE, Delete when DELETED, Archive when ARCHIVED, DELETED is not allowed when inserting, Delete or archive is allowed only when the product type is not used by any product that is not DELETED | ACTIVE                                          |
-
-### Product Type Rules (same as the single upsert, applied per product type)
-
-- Every product type follows the rules of [the single upsert](../10-upsert-product-type/spec.md#product-type-rules): unique name among product types that are not DELETED, required `name` and `description`, DELETED is final, delete and archive are rejected while a product that is not DELETED uses the product type.
-- The product types are processed in the request order in one transaction, so the checks of an item see the changes of the items before it. When any item fails the whole request is rolled back and no product type is changed.
-- `id` must not be duplicated in the request, and `name` must not be duplicated among the items that are not DELETED (400, E10001). The name of a DELETED item is not compared.
-- Swapping the names of two product types in one request is rejected with 409 (E10003) at the first item, because that name is still held by the other product type when the item is checked. Rename them in two requests.
-- An item without `id` and with `rowStatus` DELETED is rejected with 400 (E10001).
-- Permission: the same as the single upsert, only a platform administrator can call this API, any other caller gets 403 (E10009). The check is made once for the request, after the existence checks of all items and before the duplicate name and in-use checks, so the 403 message has no item position. Approved by the product owner (answered through the lead SA, 2026-11-06).
-- The response is HTTP 200 for every successful batch, including a batch that deletes.
 
 #### Example Body Parameters
 

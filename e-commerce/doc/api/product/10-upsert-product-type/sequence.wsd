@@ -63,7 +63,11 @@ activate page
                     page -> user: Display authentication error
                 else Verified JWT
                     app -> app: userId = verified sub
-                    app -> infra: BEGIN READ COMMITTED
+                                        note over app, infra
+                        Permission: only a platform administrator (a user with an ACTIVE author.t_user_role row for the ACTIVE role PLATFORM_ADMIN) can change product types. Any other caller gets 403 (E10009), after the existence check and before the duplicate name check. Reading is open to every caller with a valid access token (see the inquiry). Approved by the product owner (answered through the lead SA, 2026-11-06).
+                        Execution order: validate the request (400) -> existence check (404) -> permission (403, E10009) -> duplicate name check (409, E10003) -> in-use check (409, E10006, only when rowStatus is DELETED or ARCHIVED) -> write.
+                    end note
+app -> infra: BEGIN READ COMMITTED
                     activate infra
                     alt Work completes before commit
                             alt id is specified

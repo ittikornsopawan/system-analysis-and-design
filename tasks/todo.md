@@ -1617,3 +1617,13 @@ Status: Done, waiting for review. Authorized by Josh (owner decision of the temp
 2. [x] Product/03: the batch only rule (one transaction, request validation first, error of the first failing product) is a visible note in `sequence.wsd`.
 3. [x] Re-point the heading needle of `SPEC01_NEEDLES` and `SPEC03_NEEDLES` to a rule sentence; mutation tested.
 4. [x] All check_docs sub-commands, audit_all, PlantUML syntax and render count of the new note pass.
+
+## e-commerce: product/10-15 template cleanup (type and brand)
+
+Status: Done, waiting for review. Authorized by Josh (owner decisions of 2026-11-13 and 2026-11-14).
+
+1. [x] Remove the `### Product Type/Brand (Inquiry) Rules` sections; the rules are bullets under `## Domain`.
+2. [x] The permission and the order of the checks of the four upsert specs are a visible `note over app, infra` before BEGIN in `sequence.wsd`.
+3. [x] Frontmatter (`status: in-review`) on the six specs; the six are removed from `LEGACY_SPEC_TEMPLATE` and `MD_FRONTMATTER_PENDING`.
+4. [x] `master_needles` (product-master-spec) points the moved text to `sequence.wsd` (`master_diagram_needles`); the consent type is unchanged.
+5. [x] All check_docs sub-commands, audit_all, PlantUML syntax, render count and mutation tests.
