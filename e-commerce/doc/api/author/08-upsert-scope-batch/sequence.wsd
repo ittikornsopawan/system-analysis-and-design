@@ -76,7 +76,7 @@ activate page
                 end break
             else Check passed
             end
-            app -> app: Verify JWT signature/issuer/audience/expiry/UUID sub and structured unique roleIds/name array
+            app -> app: Verify JWT signature/issuer/audience/expiry/UUID sub and the roles claim as unique non-empty strings
             alt Missing/invalid JWT or malformed roles
                 break Reject this whole request
                     app -> api: HTTP 401 E10002 Invalid or expired access token.
@@ -94,8 +94,7 @@ activate page
                 without `id` and with `rowStatus` DELETED is rejected with 400 (E10001). The response is HTTP 200 for every
                 successful batch, including a batch that deletes. The 403 message has no item position (the permission is
                 the caller's, not the item's).
-                Verify JWT signature/issuer/audience/expiry/UUID sub and structured roles before BEGIN. roles must be an
-                array (including []), each object has UUID roleId and non-empty string name, and roleIds are unique;
+                Verify JWT signature/issuer/audience/expiry/UUID sub and the roles claim before BEGIN. roles must be an array of unique non-empty role names (JWT payload of 2026-11-13), including [];
                 missing/malformed claims are generic 401 E10002, not an empty-role fallback. Derive callerUserId only from
                 verified sub, accessTokenHash as SHA-256 of the exact JWT, createdBy/updatedBy as caller UUID string. Never
                 use request flags or a separate isPlatformAdmin claim to grant permission.

@@ -90,7 +90,7 @@ activate page
                 end break
             else Check passed
             end
-            app -> app: Verify JWT signature/issuer/audience/expiry/UUID sub and structured unique roleIds/name array
+            app -> app: Verify JWT signature/issuer/audience/expiry/UUID sub and the roles claim as unique non-empty strings
             alt Missing/invalid JWT or malformed roles
                 break Reject entire batch
                     app -> api: HTTP 401 E10002 Invalid or expired access token.
@@ -108,8 +108,7 @@ activate page
                 E10001). An item without `id` and with `rowStatus` DELETED is rejected with 400 (E10001). The response is
                 HTTP 200 for every successful batch, including a batch that deletes. The 403 message has no item position
                 (the permission is the caller's, not the item's).
-                Verify JWT signature/issuer/audience/expiry/UUID sub and structured unique roles before BEGIN. roles is an
-                array including [], each object has UUID roleId/non-empty name and roleIds are unique; malformed/missing
+                Verify JWT signature/issuer/audience/expiry/UUID sub and the roles claim before BEGIN. roles must be an array of unique non-empty role names (JWT payload of 2026-11-13), including []; malformed/missing
                 roles is generic 401 E10002, never [] fallback. callerUserId = verified sub, accessTokenHash = SHA-256 exact
                 JWT, createdBy/updatedBy = caller UUID string; never accept request audit values or flags as authority.
                 Begin one READ COMMITTED transaction, lock caller user first, capture fresh server UTC now after that lock

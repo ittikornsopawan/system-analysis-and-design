@@ -1683,3 +1683,11 @@ Authority: owner answers of 2026-11-13 ("ใช้คำแนะนำทั้
 
 - [x] Consent/02 owner answer of 2026-11-14 (relayed by Josh): a consent of a type that is not ACTIVE can still be deleted, archived, deactivated or locked; the type must be ACTIVE only when the request creates a consent, opens one that is not ACTIVE to ACTIVE or changes the type of an ACTIVE consent (like Q23). Spec Domain bullets, the lock query (now returns the stored `consent_type_id`), the sequence decision and branch, the `consent-upsert-flow` needles and four more mutations (21/21) follow it.
 - [ ] Record the answer in `api-review-design.md` (outside this assignment's scope; a separate small PR).
+
+### Roles claim sweep — author 01–11 say that roles is a list of role names
+
+Authority: owner JWT payload decision of 2026-11-13 (PR #109); the SA Lead (Josh) assigned the sweep with scope the eleven author folders, `check_docs.py` and tasks; `authorized_by: josh`, delivery `open-pr`. The `roleId` fields of requests and responses (author/10 user role) are a different matter and stay.
+
+- [x] The step line of every author 01–11 sequence says `the roles claim as unique non-empty strings` (was `structured unique roleIds/name array`), the note paragraph says `roles must be an array of unique non-empty role names (JWT payload of 2026-11-13), including []` (was the UUID roleId form), and the Domain bullet of 03, 06, 09 and 11 says `the roles claim` (was `structured roles`).
+- [x] The eight flow-checker needles that expected the old step sentence now expect the new one; the new `author-roles-claim` check requires both new sentences in the eleven diagrams and rejects six old forms.
+- [x] Mutation 4/4; render of the eleven diagrams (all SQL lines visible); all documentation commands, audit and database tests.

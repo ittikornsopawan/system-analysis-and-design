@@ -29,7 +29,7 @@ approved_at: null
 - Only a platform administrator can read permissions (403, E10009), because they describe the security model.
 - Validate timestamp as mandatory UTC and accept only single id/pageIndex/pageSize/search/rowStatus query keys, with no body.
 - search matches name OR description with existing case-insensitive ILIKE wildcard semantics.
-- Verify Bearer JWT signature/issuer/audience/expiry/UUID sub and structured roles before BEGIN.
+- Verify Bearer JWT signature/issuer/audience/expiry/UUID sub and the roles claim before BEGIN.
 - Begin REPEATABLE READ READ ONLY, capture fresh server UTC now immediately before the joined current credential/user read and recheck JWT exp.
 - The order of the checks, the locks and every outcome is in the sequence diagram.
 

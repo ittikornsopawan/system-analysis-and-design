@@ -29,7 +29,7 @@ approved_at: null
 - Only a platform administrator can read the roles of users (403, E10009), because they describe who holds which authority.
 - Validate timestamp as mandatory UTC and accept only single id/userId/roleId/pageIndex/pageSize/rowStatus query keys, with no body.
 - The four nullable filters id/userId/roleId/rowStatus disable only themselves and combine by AND; every supplied value is bound and never interpolated into SQL.
-- Verify Bearer JWT signature/issuer/audience/expiry/UUID sub and structured roles before BEGIN.
+- Verify Bearer JWT signature/issuer/audience/expiry/UUID sub and the roles claim before BEGIN.
 - Begin REPEATABLE READ READ ONLY, capture fresh server UTC now immediately before the joined current credential/user read and recheck JWT exp.
 - The order of the checks, the locks and every outcome is in the sequence diagram.
 
