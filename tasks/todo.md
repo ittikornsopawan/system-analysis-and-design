@@ -1537,3 +1537,12 @@ Status: Complete in the branch, waiting for review. Assignment: agent `tommy`, d
 - [x] The roles claim sentences follow the new JWT payload (role names), as recorded in the API review design.
 - [x] The `order-spec` checker searches the spec and its sequence note; adjust the needles; run every checker, strict SQL parity and the render check.
 - [x] Open the PR with `commit-and-pr`, tell the lead SA when CI is green, then suspend. Next: `shipping`, with the roles sentence of the payment notes.
+
+### Template alignment rework — visible notes instead of the comment block (authen-and-author)
+
+Authority: SA Lead review of PR #112 (merged first): the comment block and the `read()` that attached it are rejected; each sentence has one home and a needle checks the file that holds it. Assignment `authorized_by: josh`, delivery `open-pr`. No SQL and no behaviour change.
+
+- [x] Turn the `' --- Rules moved ...` block of the ten sequences into short visible notes at the step where the rule applies (validation, BEGIN/locks, outcome, claim building), without the sentences already in the Domain bullets, the Scenario tables and Acceptance criteria that the diagram or the SQL already show, and the rules of the removed Governing bullet that the Domain bullet carries.
+- [x] Delete `MOVED_RULES` and give `read()` back its plain body.
+- [x] Move each needle to the file that holds its text: the ten flow checkers get a second loop over the note texts of the sequence (whitespace joined), `authen-spec` gets `AUTHEN_SEQUENCE_NEEDLES`; needles whose text is gone by design are dropped (the design-document file name, the `### ... Rules` headings, `Scenario correspondence with sequence.wsd`).
+- [x] Take the ten files out of `LEGACY_SPEC_TEMPLATE` (Marry's checker is on main).
