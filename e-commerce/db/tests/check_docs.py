@@ -4044,7 +4044,6 @@ LEGACY_SEQUENCES = (
 # must still fail at least one of them: a file that passes both has to leave this list. Remove an entry in the same
 # change that adds the missing answers to the diagram.
 LEGACY_TOKEN_SEQUENCES = (
-    "consent/03-inquiry-consent",                   # no Verify JWT / 401 step, no 408
     "consent/06-upsert-consent-type",               # no Verify JWT / 401 step, no 408
     "consent/07-upsert-consent-type-batch",         # no Verify JWT / 401 step, no 408
     "consent/08-inquiry-consent-type",              # no Verify JWT / 401 step, no 408
@@ -7710,12 +7709,12 @@ def check_role_inquiry_flow() -> int:
 COMMANDS['role-inquiry-flow'] = check_role_inquiry_flow
 
 
-def author_inquiry_flow(key: str, page_head: str, columns: str, forbidden: str) -> int:
+def author_inquiry_flow(key: str, page_head: str, columns: str, forbidden: str, path: str = '', tail_heads: tuple = ()) -> int:
     """Check only what parity checks cannot: claims-based admin, read-only snapshot, step order, one commit, identical count/page FROM and WHERE."""
-    path=f'{AUTHOR_DIR}/{AUTHOR_SPECS[key]}/spec.md';md=read(path);wsd=read(str(Path(path).with_name('sequence.wsd')));errors=[]
+    path=path or f'{AUTHOR_DIR}/{AUTHOR_SPECS[key]}/spec.md';md=read(path);wsd=read(str(Path(path).with_name('sequence.wsd')));errors=[]
     if 'QUERY - Get the platform administrator role' in md+wsd or 'QUERY - Check platform administrator' in md+wsd:errors.append('must not reload live grants')
     ops=spec_database_operations(md);heads=[h for _,h,_ in ops]
-    if heads!=['QUERY - Check current credential and user','QUERY - Get total items',page_head]:errors.append('needs credential/count/page SQL in order')
+    if heads!=['QUERY - Check current credential and user','QUERY - Get total items',page_head,*tail_heads]:errors.append('needs credential/count/page SQL in order')
     sql='\n'.join(q for _,_,q in ops)
     if SEQUENCE_LOCK.search(sql) or re.search(r'\b(?:INSERT|UPDATE|DELETE)\b',sql):errors.append('inquiry must be read-only without locks')
     where=lambda h:next((normalize(re.search(r'\bFROM\b(.*?)(?:\bORDER BY\b|\bLIMIT\b|$)',q,re.S)[1]) for _,k,q in ops if k==h),None)
@@ -7752,6 +7751,22 @@ def check_user_role_inquiry_flow() -> int:
 COMMANDS['user-role-inquiry-flow'] = check_user_role_inquiry_flow
 
 
+def check_consent_inquiry_flow() -> int:
+    """Consent management list: the shared inquiry invariants plus the consent type names read after the page, for every type status."""
+    path='e-commerce/doc/api/consent/03-inquiry-consent/spec.md'
+    if author_inquiry_flow('03','QUERY - Get consents','c.id as consent_id, c.code, c.consent_type_id, c.consent_version, c.consent_name, c.consent_description, c.effective_at, c.expired_at, c.is_required, c.row_status, c.body','You do not have permission to read consents.',path,('QUERY - Get consent type',)):return 1
+    md=read(path);wsd=read(str(Path(path).with_name('sequence.wsd')));sql={h:q for _,h,q in spec_database_operations(md)};errors=[]
+    type_sql=sql.get('QUERY - Get consent type','');page_sql=sql.get('QUERY - Get consents','')
+    if "ANY ('<sequence.consentTypeIds>'::UUID[])" not in type_sql or 'row_status' in type_sql:errors.append('consent type names are read with a bound typed UUID[] and no status filter (Q19)')
+    if 'ORDER BY c.created_at DESC, c.id' not in page_sql or "c.row_status <> 'DELETED'" not in page_sql or 'expired_at' in page_sql.split('WHERE',1)[-1] or 'effective_at' in page_sql.split('WHERE',1)[-1]:errors.append('the page keeps every non-DELETED consent, expired ones included, ordered by created_at descending then id')
+    pos=[wsd.find(x) for x in ('app -> infra: QUERY - Get consents','app -> infra: QUERY - Get consent type','app -> infra: COMMIT')]
+    if -1 in pos or pos!=sorted(pos):errors.append('the consent type names are read after the page and before COMMIT')
+    if errors:return fail('; '.join(errors))
+    print('OK: consent-inquiry-flow (administrator-only list of every non-DELETED consent with type names of any status)')
+    return 0
+
+
+COMMANDS['consent-inquiry-flow'] = check_consent_inquiry_flow
 def check_consent_upsert_flow() -> int:
     """Check only what parity checks cannot: claims-only admin, caller -> type -> consent lock order, DELETED final, one decision and commit, rollbacks."""
     path='e-commerce/doc/api/consent/02-upsert-consent/spec.md';md=read(path);wsd=read(str(Path(path).with_name('sequence.wsd')));errors=[]
@@ -8474,7 +8489,6 @@ MD_FRONTMATTER_PENDING = (
     "e-commerce/doc/api/cart/01-upsert-cart-item/spec.md",
     "e-commerce/doc/api/cart/02-upsert-cart-item-batch/spec.md",
     "e-commerce/doc/api/cart/03-inquiry-cart/spec.md",
-    "e-commerce/doc/api/consent/03-inquiry-consent/spec.md",
     "e-commerce/doc/api/payment/01-start-payment/spec.md",
     "e-commerce/doc/api/payment/02-stripe-webhook/spec.md",
     "e-commerce/doc/api/payment/03-inquiry-payment/spec.md",
