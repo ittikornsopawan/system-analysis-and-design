@@ -1,3 +1,11 @@
+---
+name: "Product SKU Multi-level Design"
+description: "ออกแบบตัวเลือกสินค้าแบบหลาย level (ลาย ไซส์ สี ไม่เกิน 3 level และขยายได้โดยแก้ config) ให้ SKU แต่ละตัวอ้างอิงตัวเลือกที่มา รวมกติกา R6-R12 อ่านก่อนแก้โครงสร้าง product.m_product_sku"
+status: in-review
+approved_by: null
+approved_at: null
+---
+
 # Product SKU แบบหลาย level (Multi-level SKU)
 
 วันที่: 2026-11-05 · สถานะ: ฉบับอนุมัติแล้ว (มีการตัดสินระหว่างลงมือทำ R6-R12 รอเจ้าของงานตรวจ)

@@ -8495,11 +8495,6 @@ COMMANDS["spec-template"] = check_spec_template
 # The specs that still have no frontmatter. The owner decided on 2026-11-14 that they get `status: in-review`, `approved_by: null` and
 # `approved_at: null`; a file that passes must leave this list (the checker asks for it).
 MD_FRONTMATTER_PENDING = (
-    "docs/superpowers/specs/2026-11-05-product-sku-multi-level-design.md",
-    "docs/superpowers/specs/2026-11-06-cart-design.md",
-    "docs/superpowers/specs/2026-11-06-order-design.md",
-    "docs/superpowers/specs/2026-11-06-payment-design.md",
-    "docs/superpowers/specs/2026-11-06-shop-lot-pricing-and-storefront-design.md",
     "e-commerce/doc/api/shop/01-upsert-shop-product-sku/spec.md",
     "e-commerce/doc/api/shop/02-upsert-shop-product-sku-batch/spec.md",
     "e-commerce/doc/api/shop/03-inquiry-shop-product-sku/spec.md",

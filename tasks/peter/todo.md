@@ -19,3 +19,18 @@ Authority: the owner's answers of 2026-11-14 (relayed by Josh, SA Lead): the sho
 - [ ] The SA Lead sends the seven questions to the owner and returns the answers; only then is a schema or specification change planned (work not started, held for the owner's approval).
 
 Verification: `md-frontmatter` check OK for the new design file and this task file; no other file is changed.
+
+## e-commerce: frontmatter for five design documents
+
+Owner: peter
+Status: In progress
+Created at: 2026-11-14T19:00:00+07:00
+Started at: 2026-11-14T19:00:00+07:00
+
+Authority: the SA Lead's assignment of 2026-11-14 (authorized_by josh): add frontmatter with status in-review and null approval fields, because the SA Lead cannot approve for the owner; the approval evidence found in the documents goes to the pull request body for the owner to decide.
+
+- [x] Add name, description, `status: in-review`, `approved_by: null`, `approved_at: null` to the product SKU multi-level, cart, order, payment and shop lot pricing design documents.
+- [x] Remove the five paths from `MD_FRONTMATTER_PENDING` in `e-commerce/db/tests/check_docs.py`.
+- [ ] The owner decides whether any of the five documents becomes `approved` (the evidence is listed in the pull request body; no status is changed here).
+
+Verification: `md-frontmatter` check OK; every other check listed in the pull request body.
