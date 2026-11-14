@@ -1,3 +1,11 @@
+---
+name: Upsert Product Category API Specification
+description: Defines the insert, update, delete and archive of one product category with its parent, the platform administrator permission, the in-use and campaign checks and the SQL of every step; read when reviewing or implementing the product category upsert.
+status: in-review
+approved_by: null
+approved_at: null
+---
+
 # [POST]: v1/product-category/upsert
 
 | Title       | Description                                                                                                                                                                                                                                                                   |
@@ -17,6 +25,9 @@
 | UAT            | https://www.domain.com/api-uat      |
 | PRE-PRODUCTION | https://www.domain.com/api-pre-prod |
 | PRODUCTION     | https://www.domain.com/api          |
+
+- Only a platform administrator can call this API (a user with an ACTIVE `author.t_user_role` row for the ACTIVE role `PLATFORM_ADMIN`), otherwise 403 (E10009). Reading is not changed by this rule. Approved by the product owner (answered through the lead SA, 2026-11-06). The order of the checks is in the sequence diagram.
+- A product category cannot be deleted while it is in a campaign that is not DELETED and has not ended (409, E10006, with the campaign name in the message); archiving is always allowed. Approved by the product owner on 2026-11-06 (campaign design, C13).
 
 ---
 
@@ -41,15 +52,6 @@
 | 4   | description    | String       | MANDATORY | Product Category Description (max 256 characters)                                                                                                                                                             | Accessories for computers and laptops |
 | 5   | slug           | String       | OPTIONAL  | URL friendly name (max 128 characters, a-z, 0-9 and hyphen), Used in the web URL /{id}/{slug}, Generated from name when not specified on insert, Keep the current slug when not specified on update           | computer-accessories                  |
 | 6   | rowStatus      | String       | OPTIONAL  | Row status (ACTIVE, INACTIVE, DELETED, LOCKED, ARCHIVED), Defaults to ACTIVE, Delete when DELETED, Archive when ARCHIVED, Delete is allowed only when the category is not used by any product or sub category | ACTIVE                                |
-
-### Campaign Rules
-
-- A product category cannot be deleted while it is in a campaign that is not DELETED and has not ended (a live `campaign.t_campaign_product` row of a campaign whose `end_at` is after now), 409 (E10006) with the campaign name in the message. Take it out of the campaign first with the upsert campaign API (a campaign that ended or was deleted does not block). Archiving is always allowed. (`docs/superpowers/specs/2026-11-06-campaign-design.md`, C13, approved by the product owner on 2026-11-06)
-
-### Permission Rules
-
-- Permission: only a platform administrator (a user with an ACTIVE `author.t_user_role` row for the ACTIVE role `PLATFORM_ADMIN`) can call this API, any other caller gets 403 (E10009), after the existence checks and before the duplicate, in-use and other conflict checks and before anything is written. Reading is not changed by this rule. Approved by the product owner (answered through the lead SA, 2026-11-06).
-- Order of checks: validate the request (400) -> existence checks (404) -> permission (403, E10009) -> duplicate, in-use and other conflicts (409) -> write.
 
 #### Example Body Parameters
 

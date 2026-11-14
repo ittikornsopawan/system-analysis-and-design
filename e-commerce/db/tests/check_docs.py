@@ -5602,7 +5602,19 @@ ADMIN_WRITE_APPROVED = "Approved by the product owner (answered through the lead
 # current credential check take their place. Add a folder here in the pull request that migrates it.
 ADMIN_WRITE_JWT_CLAIMS = {"product/01-upsert-product"}
 # Specs that still use the live role queries but keep their rule and order text in the visible note of the diagram, not in the spec.
-ADMIN_WRITE_RULE_IN_DIAGRAM = {"product/03-upsert-product-batch"}
+_IN_DIAGRAM_SINGLE = ("only a platform administrator (a user with an ACTIVE author.t_user_role row for the ACTIVE role PLATFORM_ADMIN)", "any other caller gets 403 (E10009)",
+                      "Order of checks: validate the request (400) -> existence checks (404) -> permission (403, E10009) -> duplicate, in-use and other conflicts (409) -> write")
+_IN_DIAGRAM_CAMPAIGN = ("A product category cannot be deleted while it is in a campaign that is not DELETED and has not ended (a live campaign.t_campaign_product row of a campaign "
+                        "whose end_at is after now), 409 (E10006) with the campaign name in the message.")
+_IN_DIAGRAM_BATCH = _IN_DIAGRAM_SINGLE + ("the same as the single upsert, only a platform administrator", "so the 403 message has no item position")
+ADMIN_WRITE_RULE_IN_DIAGRAM = {  # folder: the phrases that the visible note of its diagram must say
+    "product/03-upsert-product-batch": ("the same as the single upsert, only a platform administrator", "ACTIVE role PLATFORM_ADMIN", "any other caller gets 403 (E10009)",
+                                        "so the 403 message has no item position", "permission check (403, E10009, once for the request) -> in-use check (409)"),
+    "product/04-upsert-product-category": _IN_DIAGRAM_SINGLE + (_IN_DIAGRAM_CAMPAIGN,),
+    "product/06-upsert-product-category-batch": _IN_DIAGRAM_BATCH + (_IN_DIAGRAM_CAMPAIGN,),
+    "product/07-upsert-product-category-attribute": _IN_DIAGRAM_SINGLE,
+    "product/09-upsert-product-category-attribute-batch": _IN_DIAGRAM_BATCH,
+}
 ADMIN_WRITE_CLAIMS_RULE = "the verified JWT `roles` claim (an array of role names, an empty array is valid) must contain the exact case-sensitive role `PLATFORM_ADMIN`"
 ADMIN_WRITE_RULE_BATCH = ("Permission: the same as the single upsert, only a platform administrator (a user with an ACTIVE `author.t_user_role` row for the ACTIVE role `PLATFORM_ADMIN`) "
                           "can call this API, any other caller gets 403 (E10009)")
@@ -5687,19 +5699,22 @@ def check_admin_write_spec() -> int:
                     errors.append(f"{path}: the live platform administrator query must be gone, found {gone!r}")
         in_diagram = folder in ADMIN_WRITE_RULE_IN_DIAGRAM
         if in_diagram:
-            need = [ADMIN_WRITE_APPROVED, "Only a platform administrator can call this API", "so the 403 message has no item position", "The order of the checks is in the sequence diagram",
+            need = [ADMIN_WRITE_APPROVED, "Only a platform administrator can call this API", "The order of the checks is in the sequence diagram",
                     "#### QUERY - Get the platform administrator role", "#### QUERY - Check platform administrator", "(../../../schema/author/m_role.md)",
                     "(../../../schema/author/t_user_role.md)", f"You do not have permission to manage {thing}."]
             note = read(str(Path(path).with_name("sequence.wsd")))
-            for phrase in ("the same as the single upsert, only a platform administrator", "ACTIVE role PLATFORM_ADMIN", "any other caller gets 403 (E10009)",
-                           "so the 403 message has no item position", "permission check (403, E10009, once for the request) -> in-use check (409)"):
+            if batch:
+                need += ["so the 403 message has no item position"]
+            if _IN_DIAGRAM_CAMPAIGN in ADMIN_WRITE_RULE_IN_DIAGRAM[folder]:
+                need += ["A product category cannot be deleted while it is in a campaign that is not DELETED and has not ended (409, E10006, with the campaign name in the message)"]
+            for phrase in ADMIN_WRITE_RULE_IN_DIAGRAM[folder]:
                 if phrase not in note:
                     errors.append(f"{path}: the visible note of the diagram must say {phrase!r}")
         if batch and not in_diagram:
             need += ["so the 403 message has no item position", "the same as the single upsert, only a platform administrator"]
         if folder.startswith("product/0") and folder.split("/")[1].startswith(("01", "03")):
             need += []
-        elif folder != "shop/05-upsert-shop-type" and not claims:
+        elif folder != "shop/05-upsert-shop-type" and not claims and not in_diagram:
             need += ["- Order of checks: validate the request (400) -> existence checks (404) -> permission (403, E10009) -> duplicate, in-use and other conflicts (409) -> write."]
         if folder == "shop/05-upsert-shop-type":
             need += ["existence check (404) -> permission (403, E10009) -> duplicate name check"]
@@ -8352,6 +8367,11 @@ LEGACY_SPEC_TEMPLATE = (
     "product/06-upsert-product-category-batch",
     "product/07-upsert-product-category-attribute",
     "product/09-upsert-product-category-attribute-batch",
+    "consent/04-submit-consent",
+    "consent/05-inquiry-pending-consent",
+    "consent/06-upsert-consent-type",
+    "consent/07-upsert-consent-type-batch",
+    "consent/08-inquiry-consent-type",
     "product/10-upsert-product-type",
     "product/11-upsert-product-type-batch",
     "product/12-inquiry-product-type",
@@ -8420,12 +8440,6 @@ MD_FRONTMATTER_PENDING = (
     "e-commerce/doc/api/payment/01-start-payment/spec.md",
     "e-commerce/doc/api/payment/02-stripe-webhook/spec.md",
     "e-commerce/doc/api/payment/03-inquiry-payment/spec.md",
-    "e-commerce/doc/api/product/04-upsert-product-category/spec.md",
-    "e-commerce/doc/api/product/05-inquiry-product-category/spec.md",
-    "e-commerce/doc/api/product/06-upsert-product-category-batch/spec.md",
-    "e-commerce/doc/api/product/07-upsert-product-category-attribute/spec.md",
-    "e-commerce/doc/api/product/08-inquiry-product-category-attribute/spec.md",
-    "e-commerce/doc/api/product/09-upsert-product-category-attribute-batch/spec.md",
     "e-commerce/doc/api/product/10-upsert-product-type/spec.md",
     "e-commerce/doc/api/product/11-upsert-product-type-batch/spec.md",
     "e-commerce/doc/api/product/12-inquiry-product-type/spec.md",
