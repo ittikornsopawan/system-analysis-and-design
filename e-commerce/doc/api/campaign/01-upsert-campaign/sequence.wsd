@@ -70,6 +70,13 @@ activate page
                     page -> user: Ask the user to sign in again
                 else Verified JWT
                     app -> app: userId = verified sub
+                    note over app, infra
+                        - When a campaign is deleted, its discount, shops and products are soft-deleted with it by `UPDATE - Delete the discount of a deleted campaign`, `UPDATE
+                          - Delete the shops of a deleted campaign` and `UPDATE - Delete the products of a deleted campaign`, one statement for all the rows of the campaign,
+                          in the same transaction as `UPDATE - Delete the budget of a deleted campaign` (approved by the product owner on 2026-11-08).
+                        - Execution order: validate the request (400) -> existence of the campaign, the children and the shops, products and categories (404) -> permission
+                          (403) -> duplicate name, duplicate child, budget below used and in-use checks (409) -> write the campaign and its children in one transaction.
+                    end note
                     app -> infra: BEGIN READ COMMITTED
                     activate infra
                     alt Work completes before commit
