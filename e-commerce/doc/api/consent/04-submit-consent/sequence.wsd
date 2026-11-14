@@ -45,6 +45,25 @@ page -> api: POST v1/consent/submit (displayed version, isRead=true, optional re
 activate api
 api -> app: [**SubmitConsentCommandHandler**] Process request
 activate app
+note over app, infra
+    Omission of result means read-only; null, a string or a number is not an omitted boolean. Duplicate
+    consentIds return 400 E10001; do not apply the same consent twice or pick one answer. Invalid body/ordinary
+    headers return 400 before BEGIN. Missing/malformed/invalid Bearer credentials return the same 401 E10002
+    `Invalid or expired access token.`
+    Use typed bound UUID arrays, timestamps and booleans, never string-concatenated SQL.
+    userId/createdBy/updatedBy are the authenticated server-derived user id. Each item maps its
+    query/INSERT/UPDATE result to consentId, consentVersion, isRead, readAt and result. Return data.consents in
+    original request order, even though processing is sorted. No stored token/hash or internal evidence id is
+    returned.
+end note
+    note over app, infra
+        Lock order: BEGIN READ COMMITTED -> lock ACTIVE authen.m_user by verified userId FOR UPDATE -> capture fresh
+        UTC now after the lock -> recheck JWT expiry and the ACTIVE stored access-token hash/user/expiry -> validate
+        the complete current consent set -> process evidence in ascending consentId order -> COMMIT before 200.
+        Logout/reset and other writes for this user take the same user lock. A waiter must check token revocation
+        after acquiring the lock; do not authorize from a pre-lock snapshot or transaction-start NOW(). Missing
+        user/token or expired JWT returns 401 after ROLLBACK, with no evidence changes.
+    end note
 app -> app: Create request context and requestId
 app -> domain: Validate non-empty consents, UUID/version/isRead=true, result presence/type, duplicate ids
 domain -> app: Return validation
@@ -59,6 +78,26 @@ else Valid body
     else Verified JWT
         app -> app: userId = verified sub; accessTokenHash = SHA-256 exact JWT; consentIds = unique submitted ids
         app -> infra: BEGIN READ COMMITTED
+        note over app, infra
+            Compare the complete returned id set with the request before any evidence write. A
+            hidden/missing/future/expired consent or inactive type returns 404 E10004 `Consent not found.` A displayed
+            version unequal to the returned current version returns the existing 409 E10003 `Consent version is not the
+            current version.` Reject the whole batch, never a partial success. Eligibility is evaluated at that one
+            validation snapshot; later policy publications affect subsequent calls while existing evidence is retained.
+            Existing evidence is keyed logically by (userId, consentId, consentVersion). The schema has no unique
+            constraint; serialize all calls under the user lock so concurrent display/answer requests cannot both
+            insert. For legacy multiple ACTIVE rows, select the newest created_at, then greatest id as a deterministic
+            canonical row. Update/return only that row; preserve all older rows and all other versions. Pending/inquiry
+            must use the same canonical choice when their own API review is delivered; do not infer acceptance from any
+            arbitrary older duplicate. Register creates a new user and cannot race an authenticated request for that
+            same uncommitted user.
+            All evidence writes are one transaction. A later item/DB failure rolls back earlier item changes. Timeout
+            before COMMIT rolls back and returns 408 E90001; unexpected failure rolls back and returns generic 500
+            without a new bizCode. Return 200 only after COMMIT succeeds, including all-no-op batches. Lost response
+            after commit does not undo evidence; retrying the same displayed version preserves its first read timestamp
+            and is a no-op when the answer is unchanged. Old versions and inactive-type evidence are never deleted or
+            rewritten by this call.
+        end note
         alt Transaction work completes
             app -> infra: QUERY - Lock the user
             infra -> m_user: QUERY - Lock the user
@@ -220,6 +259,29 @@ else Valid body
                         end loop
                         app -> infra: COMMIT
                         infra -> app: Return committed batch
+                        note over app, infra
+                            This detailed revision remains in-review and includes no backend implementation.
+                            Answering later calls the same endpoint with result=true or false. An existing answer survives a read-only
+                            request. An already-read version keeps its original read_at: do not write read state again. An already-read
+                            read-only request, or the same explicit answer on already-read evidence, performs no UPDATE at all
+                            (including audit columns). An answer change may update result while preserving read state/timestamp.
+                            No body userId or token-supplied role changes the target user. Any ACTIVE authenticated user may submit
+                            their own consents; no administrator role is required and no assignment-table lookup authorizes this
+                            endpoint.
+                            A new evidence row stores result=false when result was omitted, is_read=TRUE and read_at=now. Optional
+                            rejection is also read. Required rejection/read-only is allowed for an existing user and stays pending until
+                            both read and accepted (Q8/Q9); this API adds no service-access gate.
+                            For an existing unread row, mark it read once and set read_at=now; preserve its current result when result
+                            is omitted. For an already-read row, preserve read_at even when NULL in legacy data; do not invent a
+                            first-read time. For an explicit answer change, update result only as part of the guarded evidence update.
+                            resultSpecified records presence independently of its boolean value, so explicit false is never treated as
+                            omission. The SQL predicate prevents no-op UPDATEs; Application skips the UPDATE entirely when already read
+                            and result is omitted/unchanged.
+                            New-row INSERT, existing-row UPDATE and no-op are mutually exclusive per item. UPDATE guards id, user_id,
+                            consent_id, consent_version and ACTIVE state; an unexpected zero-row guarded update is an internal
+                            consistency failure, causing whole-batch ROLLBACK and generic 500, not a partial 200. An empty id array
+                            never reaches SQL because the request is invalid.
+                        end note
                         app -> api: HTTP 200 S10000 Submit Consent Success; data.consents = original request order
                         api -> page: Return consentId, consentVersion, isRead, readAt, result
                     end

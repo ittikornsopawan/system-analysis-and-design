@@ -26,6 +26,14 @@ approved_at: null
 | PRE-PRODUCTION | https://www.domain.com/api-pre-prod |
 | PRODUCTION     | https://www.domain.com/api          |
 
+- Governing decisions: owner-confirmed API review Q3/Q8/Q9/Q13/Q16/Q17 (approved by the product owner).
+- This GET has no body or query parameters.
+- Use BEGIN ISOLATION LEVEL REPEATABLE READ READ ONLY.
+- Credential eligibility is checked at the first database snapshot.
+- Visible consents must be ACTIVE, effective_at <= now, not expired (expired_at IS NULL or expired_at > now), and reference an ACTIVE consent type.
+- Select the canonical ACTIVE evidence row for (userId, consentId, current consentVersion): newest created_at, then greatest id.
+- The order of the checks, the locks and every outcome is in the sequence diagram.
+
 ---
 
 ## Request Parameters
@@ -37,42 +45,6 @@ approved_at: null
 | 1   | authorization  | String    | MANDATORY | Access token with token type, User is identified from the access token | Bearer eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9... |
 | 2   | timestamp      | DateTime  | MANDATORY | Request timestamp                                                      | 2026-11-05T12:42:00.123Z                       |
 | 3   | requestId      | String    | OPTIONAL  | API Request Id                                                         | req-9b1deb4d-3b7d-4bad-9bdd-2b0d7b3dcb6d       |
-
-### Pending Consent Rules
-
-- Governing decisions: [owner-confirmed review](../../../../../docs/superpowers/specs/2026-11-07-api-review-design.md), Q3/Q8/Q9/Q13/Q16/Q17, approved by the product owner. This detailed endpoint revision remains in-review; it includes no backend implementation.
-- This GET has no body or query parameters. Validate the mandatory timestamp as a UTC timestamp before SQL; invalid/missing timestamp returns 400 E10001. Generate requestId when omitted. Missing/malformed/invalid Bearer credentials return the same 401 E10002 `Invalid or expired access token.` Verify JWT signature, issuer, audience, exp and UUID sub; derive userId only from verified sub and accessTokenHash as SHA-256 (32 bytes) of the exact JWT. This endpoint requires no administrator role or assignment-table query and only returns that user's pending state.
-- Use BEGIN ISOLATION LEVEL REPEATABLE READ READ ONLY. Capture UTC now immediately before the first credential query, which establishes the transaction snapshot. Check the stored access token hash, verified userId, ACTIVE token, unexpired stored expiry and ACTIVE user together; recheck JWT expiry at now. Failure rolls back and returns 401 before consent queries. Every later policy/evidence/type query uses this same snapshot and now, so a type name, version or submission cannot change halfway through the response. No FOR UPDATE, advisory lock or evidence write is needed for this inquiry.
-- Credential eligibility is checked at the first database snapshot. A request whose credential/user was revoked before that snapshot is rejected; an already-authorized in-flight read may finish against its established snapshot. This does not revive a revoked token or authorize a later request. This read-only snapshot must not be reused by submission, which takes the user lock and rechecks fresh token state as specified in its own API review.
-- Visible consents must be ACTIVE, effective_at <= now, not expired (expired_at IS NULL or expired_at > now), and reference an ACTIVE consent type. A consent with an inactive/locked/archived/deleted type is hidden even if the consent itself is ACTIVE. Required means c.is_required, not a type default.
-- Select the canonical ACTIVE evidence row for (userId, consentId, current consentVersion): newest created_at, then greatest id. Only that row determines pending; do not let any older accepted duplicate hide a newer rejection or unread row. Evidence for another user, another version or a non-ACTIVE row never clears pending. The same canonical rule is specified by submit-consent's separate review; older/history rows are retained.
-- Required consent is complete only when the canonical current-version row has BOTH is_read=true AND result=true. Missing evidence, unread acceptance, read-only/default false and explicit rejection all remain pending. Optional consent is complete once canonical current-version is_read=true, regardless of result. An unread optional acceptance still remains pending. No evidence means pending for either kind. A new current version is pending even if an older version was accepted.
-- For the non-empty pending list, collect pending consentIds and distinct consentTypeIds, then load latest ACTIVE recorded version across all versions and the type names. Both queries use typed UUID arrays and the same snapshot. Latest recorded version means newest created_at, then greatest id, including a read-only record; submittedVersion does not itself prove acceptance and may equal the current version while a required consent is still pending. Map no evidence to explicit null, never a default version or empty string.
-- Keep pending results ordered by effective_at ASC, id ASC. Map each row to consentId, code, consentTypeId, consentTypeName, consentVersion, submittedVersion, consentName, consentDescription, effectiveAt, expiredAt, isRequired and body; preserve this order after merging query results. Type names are mandatory: the same snapshot's ACTIVE-type predicate and lookup guarantee the referenced name. A missing type-name mapping is an internal consistency failure, not a partly populated success. Do not silently expose hidden types to fill that name.
-- If no pending rows exist, skip history/type lookups and return 200 S10000 with data.consents=[] after COMMIT. There is no 404 for an empty list. The SQL's NOT COALESCE handles missing evidence as pending; never treat NULL as acceptance. Parameters are typed bound values, not interpolated strings.
-- This GET never marks a consent read, changes result/read_at or writes any history. The frontend calls submit-consent with the displayed version and isRead=true when it actually displays that consent; it adds result later on that same endpoint (Q16/Q17). Merely fetching this list creates no read evidence. Required pending does not block login or other APIs (Q9).
-- Finish the read-only transaction with COMMIT before 200. On timeout before commit, ROLLBACK then 408 E90001; on unexpected pre-commit failure (including incomplete response mapping), ROLLBACK then generic 500 with no new bizCode. No pending/credential/error path inserts, updates or deletes data; no response includes stored token hashes or internal evidence ids.
-
-#### Scenario correspondence with sequence.wsd
-
-| Scenario                                                | Sequence behavior                                                    | HTTP             | Writes |
-| ------------------------------------------------------- | -------------------------------------------------------------------- | ---------------- | ------ |
-| Invalid timestamp                                       | No transaction or SQL                                                | 400 E10001       | None   |
-| Missing/invalid JWT                                     | No transaction or SQL                                                | 401 E10002       | None   |
-| Inactive/revoked/expired credential or user at snapshot | Credential lookup, ROLLBACK; no policy lookup                        | 401 E10002       | None   |
-| Pending rows                                            | One coherent policy/evidence/type snapshot, complete mapping, COMMIT | 200 S10000       | None   |
-| No pending rows                                         | Skip history/type queries, COMMIT, explicit empty array              | 200 S10000       | None   |
-| Timeout / unexpected failure                            | ROLLBACK before response                                             | 408 E90001 / 500 | None   |
-
-#### Pending truth table for a visible current consent
-
-| Canonical evidence                             | Required | Optional |
-| ---------------------------------------------- | -------- | -------- |
-| None, other version/user, or non-ACTIVE only   | Pending  | Pending  |
-| isRead=false, result=false                     | Pending  | Pending  |
-| isRead=false, result=true                      | Pending  | Pending  |
-| isRead=true, result=false (read-only/rejected) | Pending  | Complete |
-| isRead=true, result=true                       | Complete | Complete |
 
 ## Example Request
 

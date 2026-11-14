@@ -52,6 +52,9 @@ activate page
     activate api
         api -> app: [**UpsertConsentTypeBatchCommandHandler**] Process request
         activate app
+            note over app, infra
+                When any item fails the whole request is rolled back and no consent type is changed.
+            end note
             app -> app: Validate request parameters and business rules
             alt If request is invalid
                 app -> api: Return error response
@@ -173,6 +176,20 @@ activate page
                 api -> page: Return success response
                 page -> user: Display success result
             end alt
+        note over app, infra
+            Every consent type follows the rules of [the single
+            upsert](../06-upsert-consent-type/spec.md#consent-type-rules): unique name among consent types that are not
+            DELETED, required `name`, DELETED is final, delete and archive are rejected while a consent that is not
+            DELETED uses the consent type.
+            The name of a DELETED item is not compared.
+            Rename them in two requests.
+            An item without `id` and with `rowStatus` DELETED is rejected with 400 (E10001).
+            Permission: the same as the single upsert, only a platform administrator can call this API, any other caller
+            gets 403 (E10009). The check is made once for the request, after the existence checks of all items and
+            before the duplicate name and in-use checks, so the 403 message has no item position. Approved by the
+            product owner (answered through the lead SA, 2026-11-06).
+            The response is HTTP 200 for every successful batch, including a batch that deletes.
+        end note
         deactivate app
     deactivate api
 deactivate page

@@ -1570,3 +1570,12 @@ Status: Complete in the branch, waiting for review. Assignment: agent `tommy`, d
 - [x] Move the deleted children statements and the order of the checks into notes of `sequence.wsd`; no SQL and no behavior is changed.
 - [x] The `campaign-spec` checker searches the spec and its sequence note; adjust the needles; the campaign files leave `LEGACY_SPEC_TEMPLATE`; the sales and authen-and-author entries that already follow the template are removed too (the same lines as the shipping PR, so `spec-template` passes on this branch).
 - [x] Open the PR with `commit-and-pr`, tell the lead SA when CI is green, then suspend. This is the last group of the template alignment.
+
+### Template alignment — consent group (01, 04–08; 02 and 03 are rewritten in their own PRs)
+
+Authority: owner decision that API specs follow `e-commerce/doc/api/template.md` and the owner's 2026-11-14 decision that every spec carries frontmatter (`status: in-review`, `approved_by: null`, `approved_at: null`, name, description), relayed by Josh (SA Lead); same method as #116 and #117. `authorized_by: josh`, delivery `open-pr`. No SQL and no behaviour change.
+
+- [x] Remove the `### ... Rules` sections and the non-object `####` blocks from consent 01, 04, 05, 06, 07, 08; short bullets under `## Domain`; visible notes in the sequences (the pending truth table and its rows stay in a note).
+- [x] Frontmatter with name and description for 06, 07 and 08 (01, 04 and 05 had it; 02 and 03 get it in their own PRs).
+- [x] Needles: the three consent flow checkers get a second loop over the sequence text; `consent-type-spec` gets static `MASTER_SEQUENCE_NEEDLES` and `MASTER_REMOVED_NEEDLES`; the pending truth table is checked in the sequence note; the six files leave `LEGACY_SPEC_TEMPLATE` (the `LEGACY_SEQUENCES` entries of 06 and 07 stay).
+- [ ] consent/02 and consent/03 follow on the new template with the owner's answers (2026-11-13) and the new JWT payload.
