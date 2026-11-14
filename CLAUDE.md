@@ -113,21 +113,24 @@ Each top-level project is self-contained. Before changing files, identify the ac
 
 #### 8. Plan First
 
-- Write every non-trivial plan to `tasks/todo.md` as ordered, checkable tasks before implementation begins.
+- Load `.agents/rules/task-management.md` and resolve the task folder before planning: use `tasks/owner/` for work directly owned by the repository owner, or `tasks/<workspace_key>/` for a named-agent assignment resolved from `.agents/team/agents.yaml`.
+- Write every non-trivial plan to the accountable owner's `todo.md` as ordered, checkable tasks before implementation begins.
 - Include spec updates, implementation, tests, verification, and documentation when they are part of the scope.
-- Keep `tasks/todo.md` aligned with the approved approach as scope or evidence changes.
+- Keep the task owner's `todo.md` aligned with the approved approach as scope or evidence changes. Do not add new tasks to the legacy root `tasks/todo.md`.
+- Let assignments already started in the legacy root file finish there. Do not migrate legacy entries until all unresolved items have evidence-based completion or owner-approved closure.
 
 #### 9. Verify the Plan and Track Progress
 
-- Confirm the active scope, governing spec when applicable, applicable rules, dependencies, and approval state before executing `tasks/todo.md`.
+- Confirm the active scope, governing spec when applicable, applicable rules, dependencies, task owner, and approval state before executing the task plan.
 - Check in with the user before implementation when the plan or governing spec requires approval.
-- Mark tasks in `tasks/todo.md` as work progresses and expose blockers as soon as they are known.
+- Record task status and required timestamps in the owner's `todo.md`; for blocked work, record when it was blocked, why, what it is waiting on, and the next action.
 - Mark an item complete only when its completion criterion and required verification are satisfied.
 
 #### 10. Explain Changes and Document Results
 
 - Provide concise progress updates at meaningful milestones for long-running work.
 - Explain what changed, why it changed, and which approved requirement or spec governs the change.
+- Move verified completed records to the task owner's `success-task.md`; move cancelled or superseded records to `archive.md` with a closure time and reason.
 - End with a handoff covering changed files, verification results, remaining risks, and follow-up work.
 
 #### 11. Capture Lessons

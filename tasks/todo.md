@@ -325,8 +325,8 @@ Status: Verified and ready for commit/push/PR; actual delivery state is derived 
 - [x] Read commit-and-pr and its exact formats/checklist; select the completed diagram package and preserve the unstarted additional-view work.
 - [x] Persist the direct owner's delivery grant for the active assignment; run delivery preflight and resolve or explicitly obtain approval for findings.
 - [x] Recheck source/model consistency, HTML, editable PNGs, Markdown frontmatter/links and the exact staged diff.
-- [ ] Commit the chosen paths, push the existing task branch and open one PR against main; attach it to this chat and inspect its status once.
-- [ ] Release the editing-session lock and hand off the PR; additional views wait for this PR's reconciliation under the named-agent lifecycle.
+- [x] Commit the chosen paths, push the existing task branch and open one PR against main; attach it to this chat and inspect its status once.
+- [x] Release the editing-session lock and hand off the PR; additional views wait for this PR's reconciliation under the named-agent lifecycle.
 
 PR preparation verification (2026-11-07): delivery-check recognizes the direct owner authorization and all 23 paths remain in scope (21 diagram package files plus tasks/todo.md and tasks/lessons.md). Preflight reports no blockers. Refreshed origin/main revealed merged WP3b; the lifecycle/runtime note/research/explanation now include guarded seven-day completion instead of the superseded no-job rule. Native exports use scale 1.5 (2378 x 1682) and compressed compatible mxfile metadata; final PNG sizes are 1014302, 824217 and 829340 bytes, all below 1 MiB. Every final image was visually reviewed; packaged extraction equals source and native PNG reopening/re-export preserves exact IDAT data. Three HTML self-checks and all 12 authored Markdown frontmatters/local links pass. Geometry/evidence checks pass. Backend/API/database checks are outside this diagram-only change. Additional architecture-package views are unstarted and excluded from this delivery.
 
@@ -370,8 +370,8 @@ Ittikorn's current instruction, "เปิด pr มา", authorizes commit, pus
 
 - [x] Load commit-and-pr formats/checklist, verify the same managed workspace and current origin/main registry, record the direct grant and acquire an editing-session lock.
 - [x] Verify the 15-view artifacts/Markdown, select all80 task paths, run delivery preflight and inspect the staged diff.
-- [ ] Commit once with the fixed format, verify merge compatibility, push the existing branch and open a PR against main.
-- [ ] Inspect the PR status once, release the editing-session lock and hand off the PR for owner review.
+- [x] Commit once with the fixed format, verify merge compatibility, push the existing branch and open a PR against main.
+- [x] Inspect the PR status once, release the editing-session lock and hand off the PR for owner review.
 
 PR preflight (2026-11-08): 80 paths (78 diagram files +2 task records), no deletions, managed delivery authorized, no blockers. All15 source/geometry checks and HTML checks pass; PNG dimensions/sizes/CRC/extraction/source XML and saved native round trips pass15/15. All27 Markdown frontmatters and276 local links pass. No backend/API/schema paths changed; runtime/provider/load/restore tests are outside this documentation-only delivery.
 
@@ -396,7 +396,7 @@ The owner's current instruction "แยก folder แล้วเปิด pr �
 - [x] Verify the existing workspace/branch/assignment, record the direct delivery grant, reacquire the editing-session lock and snapshot the21Domain files before moving.
 - [x] Move the complete Domain package into its own folder, add a local index and update generators/links/commands without changing diagram pixels or database evidence.
 - [x] Recheck53-table/75-FK coverage, source/HTML/Markdown/PNG parity, old diagram preservation and delivery preflight; inspect the exact staged files.
-- [ ] Commit one reviewed package, verify merge compatibility, push the existing branch, open/attach the PR and inspect its status once. Release the session lock after delivery; actual state is derived from Git/GitHub.
+- [x] Commit one reviewed package, verify merge compatibility, push the existing branch, open/attach the PR and inspect its status once. Release the session lock after delivery; actual state is derived from Git/GitHub.
 
 Delivery preparation:25files (22dedicatedDomain files, parentREADME, sharedPNGhelper andtaskrecord). Preflight hasno blockers; all4PNG/draw.io pairs andsourceinventory match pre-move SHA-256. All53tables/75FKs,4HTML/SVG checks,PNGIR/native roundtrips,8Markdown frontmatters,328local links andprior45artifact preservation pass. No backend/API/schema implementation; no excluded task files.
 
@@ -721,7 +721,7 @@ Status: Implemented in the managed workspace of Marry on branch `feat/marry-sequ
 - [x] Lead review of PR #27, fix 1: a locking statement (`FOR UPDATE`, `pg_advisory_xact_lock`) must come after BEGIN.
 - [x] Lead review of PR #27, fix 2: every `HTTP 4xx/5xx` answer after the first BEGIN follows ROLLBACK or COMMIT in its own block (by indentation, so the ROLLBACK of a sibling branch does not count).
 - [x] Lead review of PR #27, fix 3: fail when no spec is found or a required group has no spec; mutation-test the three fixes and rerun every check.
-- [ ] Push the fixes to the same branch, tell the lead; hold the lock until the merge, then release and park.
+- [x] Push the fixes to the same branch, tell the lead; hold the lock until the merge, then release and park.
 
 Verification: `api-sequence-spec` prints `OK: api-sequence-spec (83 specs; ... 10 legacy without the login standard)`; harness 35 of 35 caught; special cases 10 of 10 as expected after the BEGIN case was rebuilt (see the lesson of 2026-11-07); 40 of 40 sub-commands OK; audit 53 tables, 0 findings; database tests ALL PASSED.
 
@@ -750,7 +750,7 @@ Status: Implemented in the managed workspace of Marry on branch `feat/marry-sequ
 - [x] Update `api-conventions.md` (intro and steps 1 and 2 of the sequence section): move blocks to the order of the work and into every branch that needs them, and move the participants with them.
 - [x] Mutation and control tests: 35 cases of `mutation_harness.py` and 14 cases on `02-login` plus 4 direct cases for the same-heading rule.
 - [x] Run every `check_docs.py` sub-command (40), `audit_all.py`, `run_db_tests.sh` and `test_sequence_skeleton.py`; 65 skeletons from the generator are checked on a copy.
-- [ ] Preflight, commit, push, open the pull request, tell the lead; hold the lock until the merge, then release and park.
+- [x] Preflight, commit, push, open the pull request, tell the lead; hold the lock until the merge, then release and park.
 
 Verification: `api-sequence-spec` prints `OK: api-sequence-spec (83 specs; ... 10 legacy without the login standard)`; the 18 diagrams of the earlier round pass; on a copy of the repository the 65 skeletons of the generator fail only with `TODO(author)` (0 other errors); harness 35 of 35 caught; on `02-login` these fail as they must: a block removed, one letter of the SQL changed, an extra block with a new heading, an extra block with the same heading and other SQL, a changed heading, a participant missing, an extra participant, a participant declared twice, participants in the wrong order, two blocks swapped with the participants left in the old order, a write moved before BEGIN; these pass as they must: two blocks swapped together with their participants, one block repeated right after itself, one block repeated in another branch; 40 of 40 sub-commands OK; audit 53 tables, 0 findings; database tests ALL PASSED; `test_sequence_skeleton.py` 11 tests OK.
 
@@ -762,7 +762,7 @@ Status: Implemented in the managed workspace of Marry on branch `fix/marry-rejec
 - [x] Two tests in `test_agent_workspace.py`: a comma (alone or in one of several values) blocks and leaves no branch and no `.state` file; separate `--scope` flags are recorded one by one.
 - [x] One sentence in `SKILL.md` next to the `prepare` example.
 - [x] Mutation tests: 7 of 7 caught (check removed, only the first value checked, only `", "` checked, message without the instruction, message without the example, scopes collapsed into one, comma accepted as one scope).
-- [ ] Preflight, commit, push, open the pull request, tell the lead; hold the lock until the merge, then release and park.
+- [x] Preflight, commit, push, open the pull request, tell the lead; hold the lock until the merge, then release and park.
 
 Verification: `python3 .agents/skills/agent-workspace/tests/test_agent_workspace.py` runs 15 tests OK (13 before).
 
@@ -855,7 +855,7 @@ Folders: `product/02-inquiry-product`, `05-inquiry-product-category`, `08-inquir
 - [x] Keep every SQL block letter for letter; run `api-sequence-spec` (OK, 83 specs, product 5/15 and shop 5/16 filled) and `grep TODO(author)` on the ten folders (nothing).
 - [x] PlantUML: `-checkonly` and `-syntax` pass for all ten; the SVGs show every SQL line except five lines with two `--` (three in `shop/14`, two in `shop/16`), which PlantUML draws struck through; the spec is not changed in this round and the lead is told.
 - [x] After the repair of `check_docs.py` was merged (929012e): merge `main` into the branch (no force push; the only conflict was the end of this file, both sections kept), rerun every checker and the preflight.
-- [ ] Push, open the pull request, tell the lead; hold the lock until the merge, then release and park.
+- [x] Push, open the pull request, tell the lead; hold the lock until the merge, then release and park.
 
 Verification: 45 of 45 `check_docs.py` sub-commands OK, `api-sequence-spec` OK (83 specs, product 5/15 and shop 5/16 filled), audit 53 tables 0 findings, database tests ALL PASSED. `test_sequence_skeleton.py` fails on `main` already (the test compares the block order of the hand-written diagrams with the skeleton; 4 files of `main` and now also `product/02` and `shop/04`, where blocks run in the order of the work); the test is outside this assignment and the lead is told.
 
@@ -1015,7 +1015,7 @@ Status: Implemented in the managed workspace of Marry on branch `docs/marry-rewo
 - [x] Find the five lines (three in `shop/14`, two in `shop/16`) in `spec.md` and `sequence.wsd`, and every other user of them: `check_docs.py` (`shop-spec`) uses the start of each line (`-- ORDER BY ... , p.id`) as a needle, so the form `-- sort X: ORDER BY ...` would break it.
 - [x] Reword the five lines in one form with one `--`: `-- ORDER BY p.name, p.id (sort NAME_ASC)`; the needles stay valid and the sequence equals the spec letter for letter.
 - [x] Check: 45 of 45 `check_docs.py` sub-commands, `api-sequence-spec`, `audit_all.py`, database tests, `test_sequence_skeleton.py` (12 tests); the skeleton script prints no struck-through warning for any spec; no `sequence.wsd` of the repository has a SQL line with two `--`; the rendered SVGs show 115 of 115 (`shop/14`) and 57 of 57 (`shop/16`) SQL lines with no strike-through mark.
-- [ ] Preflight, commit, push, open the pull request, tell the lead; hold the lock until the merge, then release and park.
+- [x] Preflight, commit, push, open the pull request, tell the lead; hold the lock until the merge, then release and park.
 
 ## e-commerce: Sequence diagrams of 10 product write APIs (set A)
 
@@ -1027,7 +1027,7 @@ Folders (`e-commerce/doc/api/product/`): `01-upsert-product`, `03-upsert-product
 - [x] Batch diagrams: loops in request order inside one transaction (all or nothing), the existence checks of all items first, the permission check once, then the per-item conflict checks and writes; the errors carry `items[i]`. `09` checks categories, existing attributes and attributes in use for all items in one query each, because the spec writes those blocks in the plural.
 - [x] Every SQL block is copied letter for letter and used exactly once; blocks are put in the order of the work and the participants follow the first use.
 - [x] Checks: `api-sequence-spec` (`product` 15/15), PlantUML `-checkonly` and `-syntax` for all ten, SVG: every SQL line visible and no strike-through, mutation test of the new files (see the pull request).
-- [ ] Merge `main` into the branch, run every checker and the preflight, push, open the pull request, tell the lead; hold the lock until the merge, then release and park.
+- [x] Merge `main` into the branch, run every checker and the preflight, push, open the pull request, tell the lead; hold the lock until the merge, then release and park.
 
 ## repository-wide: Sequence diagrams of the remaining customer APIs (set B)
 
@@ -1050,7 +1050,7 @@ Folders (`e-commerce/doc/api/shop/`): `01-upsert-shop-product-sku`, `02-upsert-s
 - [x] Inquiries (`10`, `13`): 400 -> 401 -> reads -> 200, with no transaction; `10` returns an empty list when nothing matches (the margin rates of other shops are masked in the Domain step by the rule of the spec); `13` answers 403 E10009 before the reads when the caller may not read the requested shop or user.
 - [x] Every SQL block is copied letter for letter and used once, in the order of the work; the participants follow the first use.
 - [x] Checks: `api-sequence-spec` (`shop` 16/16), PlantUML `-checkonly` and `-syntax`, SVG (every SQL line visible, no strike-through), mutation tests of the new files (see the pull request).
-- [ ] Merge `main` into the branch, run every checker and the preflight, push, open the pull request, tell the lead; hold the lock until the merge, then release and park.
+- [x] Merge `main` into the branch, run every checker and the preflight, push, open the pull request, tell the lead; hold the lock until the merge, then release and park.
 
 ## repository-wide: Sequence diagrams of the shop and operations APIs (set C)
 
@@ -1086,7 +1086,7 @@ Status: Implemented in the managed workspace of Marry on branch `test/marry-enfo
 - [x] `LEGACY_TOKEN_SEQUENCES`: 11 older diagrams (`authen-and-author` 03, 04, 07, 08, 09, 10 and `consent` 02, 03, 06, 07, 08) are exempt from rules 1 and 2; an entry must be a real spec folder and must still fail one of the two rules, so a diagram that is fixed has to leave the list; the count is printed in the OK line. `consent/04` passed both rules and is not listed.
 - [x] Mutation tests: 15 cases of the harness on the three rules and the list, 13 cases that check which message fires (10 must fail, 3 controls must pass); the earlier mutation sets still behave (see the pull request).
 - [x] Run every `check_docs.py` sub-command, `audit_all.py`, `run_db_tests.sh`, `test_sequence_skeleton.py`.
-- [ ] Merge `main` into the branch, preflight, push, open the pull request, tell the lead; hold the lock until the merge, then release and park.
+- [x] Merge `main` into the branch, preflight, push, open the pull request, tell the lead; hold the lock until the merge, then release and park.
 
 ## e-commerce: Cart upsert (cart/01, 02) — 404 for an inactive SKU, ON CONFLICT merge, line limit after the write (M1)
 
@@ -1099,7 +1099,7 @@ Status: Implemented in the managed workspace of Marry on branch `docs/marry-cart
 - [x] Proof on PostgreSQL 17 with the real migrations (throw-away cluster): insert, merge, merge over the stock (no row), re-add after a soft delete (new line) and the count behave as designed; without the predicate PostgreSQL rejects the statement.
 - [x] Mutation tests: 24 of 24 caught (each new clause removed from the spec and from the diagram, the 404 rule, the limit rule).
 - [x] Lesson of the notice before the owner merges (see `tasks/lessons.md`).
-- [ ] Merge `main`, preflight, push, open the pull request, tell the lead at once; hold the lock until the merge, then release and park.
+- [x] Merge `main`, preflight, push, open the pull request, tell the lead at once; hold the lock until the merge, then release and park.
 
 ## e-commerce: Spec risks T1 (payment and sales)
 
@@ -1114,7 +1114,7 @@ Status: Complete in the branch, waiting for review. Assignment: agent `tommy`, d
 - [x] Follow-up decided by the lead after the review (the owner merged #58 before it was pushed, so it is a second pull request): the transaction of `cart/01` and `cart/02` starts with `QUERY - Lock the user` (`authen.m_user`, `WHERE u.id = <verified userId> AND u.row_status = 'ACTIVE' FOR UPDATE`, as every authen API does) so that the merge, the stock rule and the 100-line count are exact for two requests of the same user; a missing or inactive user answers 401 (E10002) after a ROLLBACK. Spec and diagram change together; needles guard the query, its `FOR UPDATE` line and the rule; 10 of 10 mutations caught and BEGIN moved after the lock is rejected; proved on PostgreSQL 17 (the lock returns the row of an ACTIVE user, no row for a missing one, and a second transaction of the same user waits for the first).
 - [x] Repair of `main` found while checking M1 (`api-sequence-spec` was red at 31327ab): `authen-and-author/03-reset-password` and `07-upsert-user-profile` pass the checks since PR #56 and #57, so they leave `LEGACY_SEQUENCES` and `LEGACY_TOKEN_SEQUENCES` (decision of the lead).
 - [x] Found while rendering the changed diagrams: the INSERT of `cart/01` and `cart/02` merged in #58 had its value lines (`'<sequence.userId>',`) written with a bare leading quote, which PlantUML draws as a comment, so six lines were missing from the picture while the checker (which reads raw text) passed. They are written `&#39;` now, as the skeleton script does; every SQL line shows at least as often as in the spec. The same defect is in four older diagrams outside this assignment (`authen-and-author/09` 10 lines, `consent/02` 11, `consent/06` 5, `consent/07` 5), reported to the lead.
-- [ ] Merge `main`, preflight, push, open the follow-up pull request, tell the lead at once; hold the lock until the merge, then release and park.
+- [x] Merge `main`, preflight, push, open the follow-up pull request, tell the lead at once; hold the lock until the merge, then release and park.
 
 ## e-commerce: Curate four presentation diagrams from the owner handoff
 
@@ -1150,7 +1150,7 @@ Authority: Ittikorn requested resolving branch conflicts in this chat, specifica
 - [x] Preserve output_dir support and new artifact routing in the shared PNG finalizer.
 - [x] Adapt Domain imports/HTML navigation to the scripts/ layout; preserve all incoming domain models and PNGs, and retain Domain entries in the guide.
 - [x] Verify the original fifteen diagrams plus four Domain diagrams, source/editable PNG parity, local links and Markdown frontmatter; resolve all index conflicts.
-- [ ] Run preflight, inspect the merge diff and record verification; commit the resolved merge and push to PR #64, then confirm its mergeability.
+- [x] Run preflight, inspect the merge diff and record verification; commit the resolved merge and push to PR #64, then confirm its mergeability.
 
 ## e-commerce: Peter API review — role batch upsert (API 16, 2026-11-08)
 
@@ -1362,7 +1362,7 @@ Status: Implemented in the managed workspace of Marry on branch `feat/marry-susp
 - [x] `prepare` accepts open pull requests when every one is suspended (one active task as before); `prepare --resume-pr` restores a suspended record (no other active task, fast-forward only); `park --pr` closes a suspended record after the merge is verified, whichever branch is checked out; `status` lists the records.
 - [x] Rule, `agent-workspace` skill and one sentence of `commit-and-pr` say so.
 - [x] 24 tests (9 new) cover the blocking cases (no pull request, wrong head, dirty, not pushed, wrong token, no lock, resume with another task or with metadata left on main, park before the merge, mismatched head) and 16 mutations are caught.
-- [ ] Merge `main`, run every check, push, open the pull request, tell the lead at once, check that `checks` is green.
+- [x] Merge `main`, run every check, push, open the pull request, tell the lead at once, check that `checks` is green.
 
 ### Author API08 scope batch — claims, sorted target locks and atomic writes
 
@@ -1410,7 +1410,7 @@ Status: Implemented in the managed workspace of Marry on branch `docs/marry-prod
 - [x] Order: validate (400) -> verify the JWT and its `roles` claim (401) -> BEGIN, `QUERY - Lock the caller user` (`FOR UPDATE`), fresh `now`, recheck of the JWT expiry, `QUERY - Check current credential and user` (401) -> existence checks (404) -> permission from the claim (403, E10009) -> conflicts (409) -> writes -> COMMIT. SQL of the two new blocks is the SQL of `author/08`.
 - [x] `admin-write-spec`: `ADMIN_WRITE_JWT_CLAIMS` lists the migrated specs; they must carry the claims rule, the two new blocks and the order text, must not carry the old queries, and their diagram must run BEGIN -> lock -> credential -> existence -> claims permission -> conflict -> write and must not read the author tables. Other specs are unchanged.
 - [x] Proof: 12 mutations of the spec, the diagram and the new order caught (one first miss because a phrase stood in two places; each place has its own needle now), control passes; PlantUML passes and all 457 SQL lines are drawn; 62 sub-commands, audit and skeleton test pass.
-- [ ] Merge `main`, run every check, push, open the pull request, tell the lead at once, suspend the assignment, check that `checks` is green.
+- [x] Merge `main`, run every check, push, open the pull request, tell the lead at once, suspend the assignment, check that `checks` is green.
 
 ## e-commerce: JWT claims, sales/05-cancel-order
 
@@ -1443,7 +1443,7 @@ Status: Implemented in the managed workspace of Marry on branch `test/marry-reje
 - [x] Rule: inside a PlantUML note, a line that starts with a bare quote (after the indentation) is drawn as a comment, so the SQL line is missing from the picture; the checker fails it and says to write `&#39;`. It applies to every non-empty diagram, the legacy ones included. A real comment line outside a note is not flagged.
 - [x] Re-scan of `main` (4796ac2): 21 such lines were left, all in `consent` (`02` 11, `06` 5, `07` 5); `authen-and-author/09` had been fixed already. The 21 lines are written `&#39;`; only the encoding changes, no SQL and no spec.
 - [x] Proof: mutations 5 of 5 caught (a bare quote put back in `cart/01`, `cart/02` and the three consent diagrams) and one control passes; PlantUML `-checkonly` passes for the three diagrams and every SQL line appears in the picture at least as often as in the spec.
-- [ ] Merge `main`, run every check, push, open the pull request, tell the lead at once, suspend the assignment, check that `checks` is green.
+- [x] Merge `main`, run every check, push, open the pull request, tell the lead at once, suspend the assignment, check that `checks` is green.
 ## e-commerce: JWT claims, payment/05 (refund payment)
 
 Status: Complete in the branch, waiting for review. Assignment: agent `tommy`, delivery `open-pr`, authorized by `josh`, workspace `.workspace/tommy`, branch `fix/tommy-jwt-claims-payment-05`, scopes `payment/05-refund-payment`, `e-commerce/db/tests/check_docs.py` (needles only) and `tasks`. Governing: `docs/superpowers/specs/2026-11-07-api-review-design.md` (Q2, Q4, Q10, Q13).
@@ -1478,7 +1478,7 @@ Status: Implemented in the managed workspace of Marry on branch `fix/marry-park-
 - [x] Cause: the owner presses "update branch" on GitHub, so the merged head is ahead of the local branch of a suspended task; `resume` accepted a fast-forward but `park` of the suspended record blocked with "local task branch does not match the merged pull-request head".
 - [x] Fix: when the local branch differs from the merged head, `park` fetches the merged head (the branch, or `refs/pull/<n>/head` when the branch was deleted) and accepts the local branch only when it is an ancestor of the merged head; a diverged branch blocks as before and keeps the record and the branch. The remote branch may equal the merged head.
 - [x] Tests: 26 (2 new): a branch the owner updated is parked, a diverged branch blocks and is kept; 3 of 3 mutations caught (the ancestor test, the fetch and the remote tolerance). A fourth check (the fetched ref equals the merged head) was removed because the ancestor test already fails without the object.
-- [ ] Merge `main`, run every check, push, open the pull request, tell the lead at once, suspend, close the record of PR 99 with the fixed script.
+- [x] Merge `main`, run every check, push, open the pull request, tell the lead at once, suspend, close the record of PR 99 with the fixed script.
 
 ## e-commerce: spec template, cart
 
@@ -1498,7 +1498,7 @@ Status: Implemented in the managed workspace of Marry on branch `test/marry-spec
 - [x] `LEGACY_SPEC_TEMPLATE`: the specs that do not pass are named (73 of 83 when measured, 68 after the five payment specs fixed on `main` meanwhile left the list); an entry must be a spec folder and must still fail, so a spec that passes leaves the list in the same change; the OK line prints how many are left. The work of fixing product and shop specs follows this pull request.
 - [x] Guidance: one sentence in `template.md` (and its snapshot `assets/api-spec.md.tmpl`), the new section "Template sections and links" in `references/spec-structure.md`, the correction of the two passages that told authors to add `### ... Rules` and `### Allow Scope` sections, and the rule "ask the owner before adding a section" in `SKILL.md`.
 - [x] Mutation tests: 9 of 9 caught (an extra `###` and `##` section, a link to another spec, to a design document and to `permission-scope.md`, an anchor to nothing, an entry removed from, added to and invented in the list) and 5 controls pass (`####` and `#####` headings, an own anchor, an external URL, a schema link).
-- [ ] Merge `main`, run every check, push, open the pull request, tell the lead at once, suspend, then close the records of PR 99 and 107 with the script on `main`.
+- [x] Merge `main`, run every check, push, open the pull request, tell the lead at once, suspend, then close the records of PR 99 and 107 with the script on `main`.
 
 ### JWT payload contract — new access-token claims in login, refresh, me and the permission matrix
 
@@ -1537,7 +1537,7 @@ Authority: owner decision that API specs follow `e-commerce/doc/api/template.md`
 - [x] Short bullets under `## Domain` (first sentences of the removed rules, links turned into text) and a rendered note with the order of the checks and the lock order in every sequence.
 - [x] The full removed rule text stays in each `sequence.wsd` as a PlantUML comment block (`' --- Rules moved ...`); `read()` in `check_docs.py` returns a spec together with that block, so every existing needle keeps protecting the rules without changing any flow check.
 - [x] Verify: headings and links of the 10 specs, all 64 documentation commands, audit, database tests, render of the 10 diagrams (all SQL lines visible), mutation of the moved text (4/4).
-- [ ] Open for Marry's `spec-template` checker: take the ten files out of its exception list when it merges.
+- [x] Open for Marry's `spec-template` checker: take the ten files out of its exception list when it merges.
 ## e-commerce: spec template, sales
 
 Status: Complete in the branch, waiting for review. Assignment: agent `tommy`, delivery `open-pr`, authorized by `josh`, workspace `.workspace/tommy`, branch `docs/tommy-spec-template-sales`, scopes `e-commerce/doc/api/sales`, `e-commerce/db/tests/check_docs.py`, `tasks`.
@@ -1560,7 +1560,7 @@ Status: Implemented in the managed workspace of Marry on branch `docs/marry-prod
 - [x] Review of the lead: product/03 done the same way (needles of `admin-write-spec` for it now check its diagram, `ADMIN_WRITE_RULE_IN_DIAGRAM`), 8 of 8 mutations caught.
 - [x] Frontmatter (owner decision of 2026-11-14): product/01, 02 and 03 get `name`, `description`, `status: in-review`, `approved_by: null`, `approved_at: null`, as the rule `markdown.md` asks; the `md-frontmatter` checker of the lead's colleague is not merged yet.
 - [x] Merged `main` three times (the pull requests #113 and #115 pruned the exemption list; the result of `main` is kept and the product entries are removed): 43 specs remain in `LEGACY_SPEC_TEMPLATE`.
-- [ ] Final run, push, tell the lead, suspend.
+- [x] Final run, push, tell the lead, suspend.
 
 ### Template alignment rework — visible notes instead of the comment block (authen-and-author)
 
@@ -1589,7 +1589,7 @@ Status: Implemented in the managed workspace of Marry on branch `docs/marry-prod
 - [x] Frontmatter (`name`, `description`, `status: in-review`, `approved_by: null`, `approved_at: null`) on all six specs.
 - [x] `LEGACY_SPEC_TEMPLATE`: 04, 06, 07, 09 removed (39 remain).
 - [x] 11 of 11 mutations caught; 65 sub-commands pass; PlantUML passes for the four diagrams.
-- [ ] Merge `main`, run every check, push, open the pull request, tell the lead at once, then product/01 and 03 `Option and SKU Rules`.
+- [x] Merge `main`, run every check, push, open the pull request, tell the lead at once, then product/01 and 03 `Option and SKU Rules`.
 
 ## e-commerce: Markdown frontmatter checker and repair
 
@@ -1616,7 +1616,7 @@ Authority: owner decision that API specs follow `e-commerce/doc/api/template.md`
 - [x] Remove the `### ... Rules` sections and the non-object `####` blocks from consent 01, 04, 05, 06, 07, 08; short bullets under `## Domain`; visible notes in the sequences (the pending truth table and its rows stay in a note).
 - [x] Frontmatter with name and description for 06, 07 and 08 (01, 04 and 05 had it; 02 and 03 get it in their own PRs).
 - [x] Needles: the three consent flow checkers get a second loop over the sequence text; `consent-type-spec` gets static `MASTER_SEQUENCE_NEEDLES` and `MASTER_REMOVED_NEEDLES`; the pending truth table is checked in the sequence note; the six files leave `LEGACY_SPEC_TEMPLATE` (the `LEGACY_SEQUENCES` entries of 06 and 07 stay).
-- [ ] consent/02 and consent/03 follow on the new template with the owner's answers (2026-11-13) and the new JWT payload.
+- [x] consent/02 and consent/03 follow on the new template with the owner's answers (2026-11-13) and the new JWT payload.
 - [x] Repair CI for the existing PR #120 by removing all newly conforming specs from `LEGACY_SPEC_TEMPLATE`; preflight passes all 67 checkers, `audit_all.py`, and database tests.
 - [x] Merge latest `main`, run every project checker, and verify ancestry: `origin/main` at `c3767fb`; 67/67 `check_docs.py` sub-commands, `audit_all.py` (0 findings), and `run_db_tests.sh` (ALL PASSED).
 ## e-commerce: product/01 and 03 move Option and SKU Rules

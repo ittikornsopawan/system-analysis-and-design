@@ -16,7 +16,7 @@ Load `.agents/README.md`, applicable rules and the active project's knowledge wh
 3. Establish source approval from its metadata and recorded owner decisions. Approved means `status: approved` with populated `approved_by` and `approved_at` under repository rules. Draft/unapproved specs can support provisional test design, visibly labeled as such; generating cases does not approve behavior. A contradiction between rules, examples, SQL, sequence or contract is a gap to resolve, rather than a choice the author may silently make.
 4. Start a coverage matrix from an understood rule and write one representative detailed case. Then expand the inventory and cases until every scoped obligation and material decision branch is accounted for; keep uncovered rows explicit while drafting rather than waiting for a fully planned suite before producing an artifact. Cite source headings/anchors; assign clearly labeled local obligation IDs when the spec has none. A list of HTTP status codes alone is insufficient coverage.
 
-Proceed with the understood portions while material uncertainties remain isolated. Ask about missing specs and unresolved expected outcomes before writing dependent assertions; use the clarification contract below. Track non-trivial work in `tasks/todo.md`.
+Proceed with the understood portions while material uncertainties remain isolated. Ask about missing specs and unresolved expected outcomes before writing dependent assertions; use the clarification contract below. Track non-trivial work in the accountable task owner's `todo.md` as resolved by `.agents/rules/task-management.md`.
 
 ## Derive and write the cases
 

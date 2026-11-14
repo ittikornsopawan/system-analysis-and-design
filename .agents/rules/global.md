@@ -10,6 +10,7 @@ description: Mandatory repository-wide rules Claude and Codex must load and foll
 - Apply this rule to every task in the repository.
 - Determine the active scope before editing: use the project named by the user, then referenced paths, then the current working directory; use `repository-wide` for root, `.agents/`, or cross-project work; ask when multiple project candidates remain.
 - Read `.agents/README.md` before loading resources, then load every global and scoped rule that applies to the project, path, role, or task type.
+- For task planning or status changes, load `.agents/rules/task-management.md` and resolve the canonical task folder before writing a task record.
 - Treat resources marked `placeholder` as unavailable.
 - Keep changes inside the active project or repository-wide task scope unless the user explicitly expands it.
 
