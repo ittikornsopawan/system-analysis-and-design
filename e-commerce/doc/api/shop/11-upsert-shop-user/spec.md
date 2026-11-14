@@ -1,3 +1,11 @@
+---
+name: "Upsert Shop User API"
+description: "Insert, update or delete a member of a shop. Read it when you implement, review or test POST v1/shop/user/upsert."
+status: in-review
+approved_by: null
+approved_at: null
+---
+
 # [POST]: v1/shop/user/upsert
 
 | Title       | Description                                                                                                                                                                                                                        |
@@ -17,6 +25,16 @@
 | UAT            | https://www.domain.com/api-uat      |
 | PRE-PRODUCTION | https://www.domain.com/api-pre-prod |
 | PRODUCTION     | https://www.domain.com/api          |
+
+- The rules of this section, including the permission model (the ADMIN of the shop or a platform administrator, 403 E10009), were approved by the product owner.
+- A member of a shop is a user that has a row in `shop.t_shop_user` with the role ADMIN or STAFF that is ACTIVE, in a shop that is ACTIVE. The queries "Check shop member" and "Check shop members" of the shop product SKU APIs use this definition. INACTIVE, LOCKED, ARCHIVED and DELETED rows are not members. The caller is the user of the access token, never a field of the request.
+- Adding a member takes effect at once: the user does not accept an invitation and is not notified.
+- A user can be a member of a shop once among the rows that are not DELETED (409, E10003). A row that is INACTIVE, LOCKED or ARCHIVED still holds the place, an update with `rowStatus` ACTIVE opens it again. After a delete the user can be added to the shop again, which creates a new row.
+- `shopId` and `userId` are required in every request and cannot be changed by an update: when they differ from the row of `id` the request is rejected with 400 (E10001). The shop must be ACTIVE and the user must be ACTIVE, otherwise 404 (E10005).
+- DELETED is final: a DELETED shop user is never reopened and its `id` counts as not found (404, E10004). `rowStatus` DELETED is rejected with 400 (E10001) when the request inserts a shop user. `role` is ADMIN or STAFF (400, E10001).
+- Permission: an ADMIN of the shop or a platform administrator (a user that has the role `PLATFORM_ADMIN`) can add members and can change the role or the row status of every member, otherwise 403 (E10009). A caller that is only a STAFF member can only delete or archive their own membership (leave the shop), every other change is 403 (E10009). A platform administrator that is not a member of the shop is not counted in the ADMIN rule below.
+- The shop must keep at least one ADMIN that is ACTIVE. A request that leaves the shop without one is rejected with 409 (E10006): this covers deleting or archiving the last ADMIN, changing it to STAFF, setting it to INACTIVE, LOCKED or ARCHIVED, and leaving the shop. A platform administrator cannot skip this rule. The rule is checked on the state after the whole request is applied, so an ADMIN can be replaced in one request, and the whole request is rolled back when it fails.
+- HTTP status of the single upsert: Insert 201 Created, Update 200 Ok, Delete 204 No Content (no response body), Archive 200 Ok.
 
 ---
 
@@ -40,21 +58,6 @@
 | 3   | userId         | String: UUID | MANDATORY | User Id, Must be an existing ACTIVE user, Cannot be changed on update (it must be the user of the shop user)                                                                                                          | 9f1e2d3c-4b5a-4c6d-8e7f-0a1b2c3d4e5f |
 | 4   | role           | String       | OPTIONAL  | Role in the shop (ADMIN, STAFF), STAFF when not specified on insert, Keep the current role when not specified on update                                                                                               | STAFF                                |
 | 5   | rowStatus      | String       | OPTIONAL  | Row status (ACTIVE, INACTIVE, DELETED, LOCKED, ARCHIVED), Defaults to ACTIVE, Delete when DELETED, Archive when ARCHIVED, DELETED is not allowed when inserting, The shop must keep at least one ADMIN that is ACTIVE | ACTIVE                               |
-
-### Shop User Rules
-
-The rules of this section, including the permission model (the ADMIN of the shop or a platform administrator, 403 E10009), were approved by the product owner.
-
-- A member of a shop is a user that has a row in `shop.t_shop_user` with the role ADMIN or STAFF that is ACTIVE, in a shop that is ACTIVE. The queries "Check shop member" and "Check shop members" of the shop product SKU APIs use this definition. INACTIVE, LOCKED, ARCHIVED and DELETED rows are not members. The caller is the user of the access token, never a field of the request.
-- Adding a member takes effect at once: the user does not accept an invitation and is not notified.
-- A user can be a member of a shop once among the rows that are not DELETED (409, E10003). A row that is INACTIVE, LOCKED or ARCHIVED still holds the place, an update with `rowStatus` ACTIVE opens it again. After a delete the user can be added to the shop again, which creates a new row.
-- `shopId` and `userId` are required in every request and cannot be changed by an update: when they differ from the row of `id` the request is rejected with 400 (E10001). The shop must be ACTIVE and the user must be ACTIVE, otherwise 404 (E10005).
-- DELETED is final: a DELETED shop user is never reopened and its `id` counts as not found (404, E10004). `rowStatus` DELETED is rejected with 400 (E10001) when the request inserts a shop user. `role` is ADMIN or STAFF (400, E10001).
-- Permission: an ADMIN of the shop or a platform administrator (a user that has the role `PLATFORM_ADMIN`) can add members and can change the role or the row status of every member, otherwise 403 (E10009). A caller that is only a STAFF member can only delete or archive their own membership (leave the shop), every other change is 403 (E10009). A platform administrator that is not a member of the shop is not counted in the ADMIN rule below.
-- The shop must keep at least one ADMIN that is ACTIVE. A request that leaves the shop without one is rejected with 409 (E10006): this covers deleting or archiving the last ADMIN, changing it to STAFF, setting it to INACTIVE, LOCKED or ARCHIVED, and leaving the shop. A platform administrator cannot skip this rule. The rule is checked on the state after the whole request is applied, so an ADMIN can be replaced in one request, and the whole request is rolled back when it fails.
-- Concurrency: when the service checks the rule of the last ADMIN it must lock the row of the shop (`shop.m_shop`, for example with `SELECT ... FOR UPDATE`) in the same transaction, so that two requests that leave the shop at the same time cannot leave it without an ADMIN. The lock is part of the service, no SQL of it is written in this document.
-- Execution order: validate the request (400) -> existence checks (404) -> permission (403) -> duplicate member check (409, E10003) -> write -> ADMIN rule on the result (409, E10006, the request is rolled back).
-- HTTP status of the single upsert: Insert 201 Created, Update 200 Ok, Delete 204 No Content (no response body), Archive 200 Ok.
 
 #### Example Body Parameters
 

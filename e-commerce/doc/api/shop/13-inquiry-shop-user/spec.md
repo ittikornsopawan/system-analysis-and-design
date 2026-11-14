@@ -1,3 +1,11 @@
+---
+name: "Inquiry Shop User API"
+description: "Inquiry the members of a shop, or the shops of the caller, with paging, search and filters. Read it when you implement, review or test GET v1/shop/user."
+status: in-review
+approved_by: null
+approved_at: null
+---
+
 # [GET]: v1/shop/user
 
 | Title       | Description                                                                                                                                                             |
@@ -17,6 +25,14 @@
 | UAT            | https://www.domain.com/api-uat      |
 | PRE-PRODUCTION | https://www.domain.com/api-pre-prod |
 | PRODUCTION     | https://www.domain.com/api          |
+
+- The rules of this section, including the permission model (the ADMIN of the shop or a platform administrator, 403 E10009), were approved by the product owner.
+- `shopId` or `userId` must be specified (400, E10001). With `shopId` the caller must be a member of the shop (see the definition of a member in the upsert (shop/11)) or a platform administrator, otherwise 403 (E10009), also when the shop does not exist.
+- A `userId` that is not the caller can be used only by a platform administrator, otherwise 403 (E10009). `userId` of the caller without `shopId` lists the shops of the caller ("my shops"), there is no separate endpoint.
+- Shop users with `rowStatus` DELETED and shop users of a shop that is DELETED are never returned. INACTIVE, LOCKED and ARCHIVED rows are returned with their `rowStatus`.
+- The user is described by `displayName` and `profilePicturePath` only. The user name and the email address of a user are never returned (they are personal data that is stored encrypted).
+- The caller of the examples is the user `3e4f5a6b-7c8d-4e9f-8a0b-1c2d3e4f5a6b`, an ACTIVE ADMIN of the shop `5a1b2c3d-4e5f-4a6b-8c7d-9e0f1a2b3c4d` and an ACTIVE STAFF of the shop `9e0f1a2b-3c4d-4e5f-8a6b-7c8d9e0f1a2c`, and is not a platform administrator.
+- The list is ordered by creation time (newest first) and then by `id`.
 
 ---
 
@@ -42,17 +58,6 @@
 | 6   | pageIndex      | Numeric      | OPTIONAL | Page index starting from 1, Defaults to 1                                                                                     | 1                                    |
 | 7   | pageSize       | Numeric      | OPTIONAL | Number of items per page (max 100), Defaults to 10                                                                            | 10                                   |
 | 8   | search         | String       | OPTIONAL | Search by the display name of the user                                                                                        | aof                                  |
-
-### Shop User Inquiry Rules
-
-The rules of this section, including the permission model (the ADMIN of the shop or a platform administrator, 403 E10009), were approved by the product owner.
-
-- `shopId` or `userId` must be specified (400, E10001). With `shopId` the caller must be a member of the shop (see the definition of a member in [the upsert](../11-upsert-shop-user/spec.md#shop-user-rules)) or a platform administrator, otherwise 403 (E10009), also when the shop does not exist.
-- A `userId` that is not the caller can be used only by a platform administrator, otherwise 403 (E10009). `userId` of the caller without `shopId` lists the shops of the caller ("my shops"), there is no separate endpoint.
-- Shop users with `rowStatus` DELETED and shop users of a shop that is DELETED are never returned. INACTIVE, LOCKED and ARCHIVED rows are returned with their `rowStatus`.
-- The user is described by `displayName` and `profilePicturePath` only. The user name and the email address of a user are never returned (they are personal data that is stored encrypted).
-- The caller of the examples is the user `3e4f5a6b-7c8d-4e9f-8a0b-1c2d3e4f5a6b`, an ACTIVE ADMIN of the shop `5a1b2c3d-4e5f-4a6b-8c7d-9e0f1a2b3c4d` and an ACTIVE STAFF of the shop `9e0f1a2b-3c4d-4e5f-8a6b-7c8d9e0f1a2c`, and is not a platform administrator.
-- The list is ordered by creation time (newest first) and then by `id`.
 
 ## Example Request
 
