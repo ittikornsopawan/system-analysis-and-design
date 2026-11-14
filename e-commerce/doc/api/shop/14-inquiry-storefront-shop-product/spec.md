@@ -1,3 +1,11 @@
+---
+name: "Inquiry Storefront Shop Product API"
+description: "Inquiry the products of a shop for the page of the shop, with the first image, the price range and the stock status of each product and the shop itself (name, description, shop type and images), with paging, search, category filter, stock filter and sort. Read it when you implement, review or test GET v1/storefront/shop/product."
+status: in-review
+approved_by: null
+approved_at: null
+---
+
 # [GET]: v1/storefront/shop/product
 
 | Title       | Description                                                                                                                                                                                                                                                                                           |
@@ -17,6 +25,18 @@
 | UAT            | https://www.domain.com/api-uat      |
 | PRE-PRODUCTION | https://www.domain.com/api-pre-prod |
 | PRODUCTION     | https://www.domain.com/api          |
+
+- The rules of this section, including the rule that a shop that is not ACTIVE has no page, were approved by the product owner.
+- This API is public: it needs no access token. It never returns the cost price, the margins, the margin rates of the shop, the quantity of a lot or the users of the shop.
+- The shop must be ACTIVE, otherwise 404 (E10004). A shop that is INACTIVE, LOCKED, ARCHIVED or DELETED has no page, its products cannot be seen (approved by the product owner). A shop that is ACTIVE and has no product to show answers 200 with `items` empty.
+- A product is listed when it is ACTIVE (`product.m_product`), listed by the shop (`shop.t_shop_product` ACTIVE) and has at least one SKU that is ACTIVE for the shop and for the product. This is the same condition as the product page (shop/04), so every product of the list has a page.
+- The price and the stock come from the lot that is on sale of each SKU, as on the product page: a SKU is in stock when its lot on sale (`is_on_sale`, ACTIVE) has a quantity greater than 0. `priceFrom` and `priceTo` are the lowest and the highest selling price of the SKUs that are in stock, `stockStatus` is IN_STOCK when at least one SKU is in stock. A product with no SKU in stock is still listed with `stockStatus` OUT_OF_STOCK and `priceFrom` and `priceTo` null, and `inStock` true hides it.
+- `sort`: NEWEST (default) lists the products by the time the shop listed them (`shop.t_shop_product.created_at`), newest first. PRICE_ASC and PRICE_DESC order by `priceFrom` and the products that are out of stock come last in both. NAME_ASC orders by the product name. Every sort ends with `productId` ascending as the tie-break, so the pages never repeat or skip a product.
+- `categoryId` selects the products of the category and of all its sub categories (a recursive query on `product.m_product_category`), a category that does not exist gives an empty list. `search` matches the product name or the product description (ILIKE). `totalItems` counts the products after the filters.
+- `imagePath` is the first image of the product among the images of the product level that are ACTIVE, ordered by creation time and then `id`. The images of the option values are not used.
+- The shop block has the name, the description, the shop type name and the images of the shop that are ACTIVE, in the order type, seq, creation time and id (the shop type name is returned also when the shop type is not ACTIVE). It has no margin and no member.
+- The status of a shop product is not changed by any API (the shop product is created by the shop product SKU API). A shop stops showing a product by closing all the SKUs of the product with that API.
+- The list is a picture of the stock at the time it is read, it does not reserve anything.
 
 ---
 
@@ -40,21 +60,6 @@
 | 5   | sort           | String       | OPTIONAL  | Order of the list (NEWEST, PRICE_ASC, PRICE_DESC, NAME_ASC), Defaults to NEWEST                              | NEWEST                               |
 | 6   | pageIndex      | Numeric      | OPTIONAL  | Page index starting from 1, Defaults to 1                                                                    | 1                                    |
 | 7   | pageSize       | Numeric      | OPTIONAL  | Number of items per page (max 100), Defaults to 10                                                           | 10                                   |
-
-### Shop Product List Rules
-
-The rules of this section, including the rule that a shop that is not ACTIVE has no page, were approved by the product owner.
-
-- This API is public: it needs no access token. It never returns the cost price, the margins, the margin rates of the shop, the quantity of a lot or the users of the shop.
-- The shop must be ACTIVE, otherwise 404 (E10004). A shop that is INACTIVE, LOCKED, ARCHIVED or DELETED has no page, its products cannot be seen (approved by the product owner). A shop that is ACTIVE and has no product to show answers 200 with `items` empty.
-- A product is listed when it is ACTIVE (`product.m_product`), listed by the shop (`shop.t_shop_product` ACTIVE) and has at least one SKU that is ACTIVE for the shop and for the product. This is the same condition as the product page ([shop/04](../04-inquiry-storefront-product/spec.md)), so every product of the list has a page.
-- The price and the stock come from the lot that is on sale of each SKU, as on the product page: a SKU is in stock when its lot on sale (`is_on_sale`, ACTIVE) has a quantity greater than 0. `priceFrom` and `priceTo` are the lowest and the highest selling price of the SKUs that are in stock, `stockStatus` is IN_STOCK when at least one SKU is in stock. A product with no SKU in stock is still listed with `stockStatus` OUT_OF_STOCK and `priceFrom` and `priceTo` null, and `inStock` true hides it.
-- `sort`: NEWEST (default) lists the products by the time the shop listed them (`shop.t_shop_product.created_at`), newest first. PRICE_ASC and PRICE_DESC order by `priceFrom` and the products that are out of stock come last in both. NAME_ASC orders by the product name. Every sort ends with `productId` ascending as the tie-break, so the pages never repeat or skip a product.
-- `categoryId` selects the products of the category and of all its sub categories (a recursive query on `product.m_product_category`), a category that does not exist gives an empty list. `search` matches the product name or the product description (ILIKE). `totalItems` counts the products after the filters.
-- `imagePath` is the first image of the product among the images of the product level that are ACTIVE, ordered by creation time and then `id`. The images of the option values are not used.
-- The shop block has the name, the description, the shop type name and the images of the shop that are ACTIVE, in the order type, seq, creation time and id (the shop type name is returned also when the shop type is not ACTIVE). It has no margin and no member.
-- The status of a shop product is not changed by any API (the shop product is created by the shop product SKU API). A shop stops showing a product by closing all the SKUs of the product with that API.
-- The list is a picture of the stock at the time it is read, it does not reserve anything.
 
 ## Example Request
 

@@ -62,6 +62,10 @@ activate page
                     page -> user: Ask the user to sign in again
                 else Verified JWT
                     app -> app: userId = verified sub
+                    note over app, infra
+                        - Execution order: validate the request (400) -> the product page exists (404, E10005) -> the review of `id` (404, E10004) -> the buyer rule for an
+                          insert (403, E10009) -> duplicate review for an insert (409, E10003) -> write.
+                    end note
                     app -> infra: BEGIN READ COMMITTED
                     activate infra
                     alt Work completes before commit

@@ -64,6 +64,13 @@ activate page
                     page -> user: Display authentication error
                 else Verified JWT
                     app -> app: userId = verified sub
+                    note over app, infra
+                        - Concurrency: when the service checks the rule of the last ADMIN it must lock the row of the shop (`shop.m_shop`, for example with `SELECT ... FOR
+                          UPDATE`) in the same transaction, so that two requests that leave the shop at the same time cannot leave it without an ADMIN. The lock is part of
+                          the service, no SQL of it is written in this document.
+                        - Execution order: validate the request (400) -> existence checks (404) -> permission (403) -> duplicate member check (409, E10003) -> write -> ADMIN
+                          rule on the result (409, E10006, the request is rolled back).
+                    end note
                     app -> infra: BEGIN READ COMMITTED
                     activate infra
                     alt Work completes before commit
