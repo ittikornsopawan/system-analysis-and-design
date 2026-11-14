@@ -1,3 +1,11 @@
+---
+name: "Inquiry Campaign Ledger API"
+description: "Inquiry the budget ledger of a campaign (the reservations and the releases with the order and the discount of each item). Read it when you implement, review or test GET v1/campaign/ledger."
+status: in-review
+approved_by: null
+approved_at: null
+---
+
 # [GET]: v1/campaign/ledger
 
 | Title       | Description                                                                                                                                                         |

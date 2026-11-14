@@ -1,3 +1,11 @@
+---
+name: "Inquiry Payment API"
+description: "Inquiry the payments of the logged-in customer, newest first. Read it when you implement, review or test GET v1/payment."
+status: in-review
+approved_by: null
+approved_at: null
+---
+
 # [GET]: v1/payment
 
 | Title       | Description                                                                                                                                                                                            |

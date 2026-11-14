@@ -1,3 +1,11 @@
+---
+name: "Inquiry Order API"
+description: "Inquiry the orders of the logged-in customer with their items, newest first. Read it when you implement, review or test GET v1/order."
+status: in-review
+approved_by: null
+approved_at: null
+---
+
 # [GET]: v1/order
 
 | Title       | Description                                                                                                                                                                         |

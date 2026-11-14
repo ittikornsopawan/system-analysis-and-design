@@ -1,3 +1,11 @@
+---
+name: "Start Payment API"
+description: "Start the payment of an order that is waiting for payment through Stripe. Read it when you implement, review or test POST v1/payment."
+status: in-review
+approved_by: null
+approved_at: null
+---
+
 # [POST]: v1/payment
 
 | Title       | Description                                                                                                                                                                                                                                                                                                                                                                       |

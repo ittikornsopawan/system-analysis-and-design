@@ -1,3 +1,11 @@
+---
+name: "Update Shipping Status API"
+description: "Hand a parcel to the carrier with the carrier name and the tracking number, cancel a parcel that is not handed over yet or record a parcel that came back. Read it when you implement, review or test POST v1/shop/shipping/status."
+status: in-review
+approved_by: null
+approved_at: null
+---
+
 # [POST]: v1/shop/shipping/status
 
 | Title       | Description                                                                                                                                                                                                                                                                                                                  |

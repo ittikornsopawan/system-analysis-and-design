@@ -28,7 +28,7 @@ Load first: `.agents/README.md`, `.agents/rules/global.md`, `.agents/knowledge/p
 
 ## Templates
 
-The files in `assets/` end in `.tmpl` on purpose: they are copied verbatim into project files (which have no frontmatter) and the extension keeps them outside the Markdown frontmatter rule. Copy one to its real name and fill the `<...>` placeholders. `assets/schema-doc.md.tmpl` is a snapshot of `e-commerce/doc/schema/template.md`, which stays the project's source of truth.
+The files in `assets/` end in `.tmpl` on purpose: they are copied verbatim into project files, and the extension keeps their placeholder frontmatter out of the Markdown frontmatter rule (`.agents/rules/markdown.md`). Copy one to its real name and fill the `<...>` placeholders, the frontmatter included (`name` and `description` must state the real document). `assets/schema-doc.md.tmpl` is a snapshot of `e-commerce/doc/schema/template.md`, which stays the project's source of truth.
 
 ## Outputs
 
