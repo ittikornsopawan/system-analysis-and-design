@@ -1,3 +1,11 @@
+---
+name: "Payment Design WP2"
+description: "ออกแบบการชำระเงินผ่าน Stripe (WP2): บัตรเครดิตและ PromptPay รับผลทาง webhook คืนเงินเต็มจำนวน ค่าส่งและลำดับล็อกออเดอร์ กติกา R51-R72 อ่านก่อนแก้ API payment"
+status: in-review
+approved_by: null
+approved_at: null
+---
+
 # ชำระเงิน (payment) — WP2
 
 วันที่: 2026-11-06 · สถานะ: ทำตามคำสั่งของเจ้าของงาน ("เริ่มทำ payment ได้เลย", ต่อ Stripe) การตัดสินใจระหว่างทางรอตรวจ (หัวข้อสุดท้าย)
