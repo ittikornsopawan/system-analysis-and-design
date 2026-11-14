@@ -1,3 +1,11 @@
+---
+name: Upsert Product Type API Specification
+description: Defines the insert, update, delete and archive of one product type, the platform administrator permission, the in-use check and the SQL of every step; read when reviewing or implementing the product type upsert.
+status: in-review
+approved_by: null
+approved_at: null
+---
+
 # [POST]: v1/product-type/upsert
 
 | Title       | Description                                                                                                                                                                                                                                                               |
@@ -17,6 +25,13 @@
 | UAT            | https://www.domain.com/api-uat      |
 | PRE-PRODUCTION | https://www.domain.com/api-pre-prod |
 | PRODUCTION     | https://www.domain.com/api          |
+
+- Only a platform administrator (a user with an ACTIVE `author.t_user_role` row for the ACTIVE role `PLATFORM_ADMIN`) can call this API, any other caller gets 403 (E10009). Reading is open to every caller with a valid access token. Approved by the product owner (answered through the lead SA, 2026-11-06). The order of the checks is in the sequence diagram.
+- `name` is unique among product types that are not DELETED. The comparison is exact (upper and lower case are different names) and a name held by an INACTIVE, LOCKED or ARCHIVED product type is still taken (409, E10003). The name of a DELETED product type can be used again.
+- `name` and `description` are required in every request, including a delete and an archive.
+- DELETED is final: a DELETED product type is never reopened and its `id` counts as not found (404, E10004). INACTIVE, LOCKED and ARCHIVED are reversible: an update with `rowStatus` ACTIVE opens the product type again. `rowStatus` DELETED is rejected with 400 (E10001) when the request inserts a product type.
+- A product type cannot be deleted or archived while any product that is not DELETED uses it (`product.m_product.type_id`), 409 (E10006). INACTIVE and LOCKED are allowed even when products use the product type, the products are not changed. A product type that is not ACTIVE blocks the writes that use it, because a product is written only with an ACTIVE product type (404, E10005, see the product upsert). Nothing is changed in the products that use it and they can be edited again when this row is ACTIVE.
+- HTTP status of the single upsert: Insert 201 Created, Update 200 Ok, Delete 204 No Content (no response body), Archive 200 Ok.
 
 ---
 
@@ -39,16 +54,6 @@
 | 2   | name           | String       | MANDATORY | Product Type Name (max 128 characters), Unique among product types that are not DELETED                                                                                                                                                                                 | Electronics                                     |
 | 3   | description    | String       | MANDATORY | Product Type Description (max 256 characters)                                                                                                                                                                                                                           | Devices and accessories that run on electricity |
 | 4   | rowStatus      | String       | OPTIONAL  | Row status (ACTIVE, INACTIVE, DELETED, LOCKED, ARCHIVED), Defaults to ACTIVE, Delete when DELETED, Archive when ARCHIVED, DELETED is not allowed when inserting, Delete or archive is allowed only when the product type is not used by any product that is not DELETED | ACTIVE                                          |
-
-### Product Type Rules
-
-- `name` is unique among product types that are not DELETED. The comparison is exact (upper and lower case are different names) and a name held by an INACTIVE, LOCKED or ARCHIVED product type is still taken (409, E10003). The name of a DELETED product type can be used again.
-- `name` and `description` are required in every request, including a delete and an archive.
-- DELETED is final: a DELETED product type is never reopened and its `id` counts as not found (404, E10004). INACTIVE, LOCKED and ARCHIVED are reversible: an update with `rowStatus` ACTIVE opens the product type again. `rowStatus` DELETED is rejected with 400 (E10001) when the request inserts a product type.
-- A product type cannot be deleted or archived while any product that is not DELETED uses it (`product.m_product.type_id`), 409 (E10006). INACTIVE and LOCKED are allowed even when products use the product type, the products are not changed. A product type that is not ACTIVE blocks the writes that use it, because a product is written only with an ACTIVE product type (404, E10005, see the product upsert). Nothing is changed in the products that use it and they can be edited again when this row is ACTIVE.
-- Permission: only a platform administrator (a user with an ACTIVE `author.t_user_role` row for the ACTIVE role `PLATFORM_ADMIN`) can change product types. Any other caller gets 403 (E10009), after the existence check and before the duplicate name check. Reading is open to every caller with a valid access token (see the inquiry). Approved by the product owner (answered through the lead SA, 2026-11-06).
-- Execution order: validate the request (400) -> existence check (404) -> permission (403, E10009) -> duplicate name check (409, E10003) -> in-use check (409, E10006, only when `rowStatus` is DELETED or ARCHIVED) -> write.
-- HTTP status of the single upsert: Insert 201 Created, Update 200 Ok, Delete 204 No Content (no response body), Archive 200 Ok.
 
 #### Example Body Parameters
 

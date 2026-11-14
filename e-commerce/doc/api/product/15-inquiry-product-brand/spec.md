@@ -1,3 +1,11 @@
+---
+name: Inquiry Product Brand API Specification
+description: Defines the paged list and the by-id read of product brands, the filters, the sort order and the SQL of every step; read when reviewing or implementing the product brand inquiry.
+status: in-review
+approved_by: null
+approved_at: null
+---
+
 # [GET]: v1/product-brand
 
 | Title       | Description                                                                                                                                |
@@ -17,6 +25,10 @@
 | UAT            | https://www.domain.com/api-uat      |
 | PRE-PRODUCTION | https://www.domain.com/api-pre-prod |
 | PRODUCTION     | https://www.domain.com/api          |
+
+- Any caller with a valid access token can read product brands, no role is checked (the data is only names and descriptions). Approved by the product owner (answered through the lead SA, 2026-11-06).
+- Product brands with `rowStatus` DELETED are never returned. Without the `rowStatus` filter every other status is returned.
+- Sorted by `created_at` descending and then by `id`, so that the pages never repeat or skip a row.
 
 ---
 
@@ -39,12 +51,6 @@
 | 3   | pageSize       | Numeric      | OPTIONAL | Number of items per page (max 100), Defaults to 10                                                     | 10                                   |
 | 4   | search         | String       | OPTIONAL | Search by product brand name or product brand description                                              | acme                                 |
 | 5   | rowStatus      | String       | OPTIONAL | Row status filter (ACTIVE, INACTIVE, LOCKED, ARCHIVED), All statuses except DELETED when not specified | ACTIVE                               |
-
-### Product Brand Inquiry Rules
-
-- Any caller with a valid access token can read product brands, no role is checked (the data is only names and descriptions). Approved by the product owner (answered through the lead SA, 2026-11-06).
-- Product brands with `rowStatus` DELETED are never returned. Without the `rowStatus` filter every other status is returned.
-- Sorted by `created_at` descending and then by `id`, so that the pages never repeat or skip a row.
 
 ## Example Request
 
