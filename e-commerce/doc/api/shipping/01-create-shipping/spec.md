@@ -18,6 +18,15 @@
 | PRE-PRODUCTION | https://www.domain.com/api-pre-prod |
 | PRODUCTION     | https://www.domain.com/api          |
 
+- The caller must be an ACTIVE member of the shop of the order (a row of `shop.t_shop_user` with the role ADMIN or STAFF that is ACTIVE) or a platform administrator (a user that has the role `PLATFORM_ADMIN`), otherwise 403 (E10009). This permission model was approved by the product owner.
+- A shipping can only be created for an order that is `PAYMENT_CONFIRMED` or `PROCESSING` (a later parcel of an order that is already being shipped), otherwise 409 (E10006) with the current status in the message. This API only reads the status of the order, it knows nothing about the payment provider.
+- An order can be shipped in several parcels. For every order item the quantity that is already in a shipping with the status `PENDING`, `SHIPPED` or `DELIVERED` counts as assigned (a `CANCELLED` or `RETURNED` parcel frees its quantity). `quantity` plus the assigned quantity must not be more than the quantity of the order item, otherwise 409 (E10006). The check runs while the order row is locked, so two requests at the same time cannot assign the same quantity twice.
+- Every `orderItemId` must be an item of the order that is not DELETED, otherwise 404 (E10005) with the position, `items[1]: ...`. The same `orderItemId` twice in the request, an empty `items` list, more than 100 items or a quantity that is not a positive integer is 400 (E10001).
+- The new shipping has the status `PENDING`. `shippingMethod` is not a field of the request: it is copied from the payment of the order that has the status `COMPLETED` (`payment.t_payment.shipping_method`, chosen by the customer when the payment started), so every parcel of the order uses the method the customer paid for. The carrier name and the tracking number are given later by the update status API.
+- When the order is `PAYMENT_CONFIRMED` it becomes `PROCESSING` in the same transaction. The order row is the only row of the `sales` schema that this API changes (the columns `status`, `updated_by` and `updated_at`).
+- The address of the parcel is not copied: the shop reads the shipping address that the order stored when it was created (`sales.t_order.ship_*`).
+- This behaviour follows the shipping design, approved by the product owner on 2026-11-06. The payment columns that the shipping APIs read (`payment.t_payment.shipping_method`) belong to the payment design of WP2 (`docs/superpowers/specs/2026-11-06-payment-design.md`).
+
 ---
 
 ## Request Parameters
@@ -44,18 +53,6 @@
 | --- | -------------- | ------------ | --------- | ---------------------------------------------------------------------------------- | ------------------------------------ |
 | 1   | orderItemId    | String: UUID | MANDATORY | Order Item Id of the order                                                         | e1f2a3b4-3c4d-4e5f-9a6b-7c8d9e0f1a21 |
 | 2   | quantity       | Numeric      | MANDATORY | Quantity in this parcel, an integer from 1 up to the quantity that is left to ship | 2                                    |
-
-### Create Shipping Rules
-
-- The caller must be an ACTIVE member of the shop of the order (a row of `shop.t_shop_user` with the role ADMIN or STAFF that is ACTIVE) or a platform administrator (a user that has the role `PLATFORM_ADMIN`), otherwise 403 (E10009). This permission model was approved by the product owner.
-- A shipping can only be created for an order that is `PAYMENT_CONFIRMED` or `PROCESSING` (a later parcel of an order that is already being shipped), otherwise 409 (E10006) with the current status in the message. This API only reads the status of the order, it knows nothing about the payment provider.
-- An order can be shipped in several parcels. For every order item the quantity that is already in a shipping with the status `PENDING`, `SHIPPED` or `DELIVERED` counts as assigned (a `CANCELLED` or `RETURNED` parcel frees its quantity). `quantity` plus the assigned quantity must not be more than the quantity of the order item, otherwise 409 (E10006). The check runs while the order row is locked, so two requests at the same time cannot assign the same quantity twice.
-- Every `orderItemId` must be an item of the order that is not DELETED, otherwise 404 (E10005) with the position, `items[1]: ...`. The same `orderItemId` twice in the request, an empty `items` list, more than 100 items or a quantity that is not a positive integer is 400 (E10001).
-- The new shipping has the status `PENDING`. `shippingMethod` is not a field of the request: it is copied from the payment of the order that has the status `COMPLETED` (`payment.t_payment.shipping_method`, chosen by the customer when the payment started), so every parcel of the order uses the method the customer paid for. The carrier name and the tracking number are given later by the update status API.
-- When the order is `PAYMENT_CONFIRMED` it becomes `PROCESSING` in the same transaction. The order row is the only row of the `sales` schema that this API changes (the columns `status`, `updated_by` and `updated_at`).
-- The address of the parcel is not copied: the shop reads the shipping address that the order stored when it was created (`sales.t_order.ship_*`).
-- Execution order: validate the request (400) -> existence of the order and of the order items (404) -> permission of the caller (403) -> status of the order and the quantity check (409) -> write the shipping, its items and the order status in one transaction. The order row is locked (`SELECT ... FOR UPDATE`) before any row of `shipping.*` is read for the quantity check or written.
-- This behaviour follows `docs/superpowers/specs/2026-11-06-shipping-design.md`, approved by the product owner on 2026-11-06. The payment columns that the shipping APIs read (`payment.t_payment.shipping_method`) belong to the payment design of WP2 (`docs/superpowers/specs/2026-11-06-payment-design.md`).
 
 #### Example Body Parameters
 

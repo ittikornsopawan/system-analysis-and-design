@@ -18,6 +18,17 @@
 | PRE-PRODUCTION | https://www.domain.com/api-pre-prod |
 | PRODUCTION     | https://www.domain.com/api          |
 
+- The caller must be an ACTIVE member of the shop of the order (a row of `shop.t_shop_user` with the role ADMIN or STAFF that is ACTIVE) or a platform administrator (a user that has the role `PLATFORM_ADMIN`), otherwise 403 (E10009). This permission model was approved by the product owner. The shop is the shop of the order of the shipping.
+- A stop is a checkpoint of the parcel that the customer sees as a timeline (taken from the shop, a hub on the way, arrival at the receiver). The information may come from the carrier, but the system does not call the carrier, the shop records it. A stop is not a driver route.
+- A stop can be inserted, updated, deleted or archived only while the shipping is `PENDING` or `SHIPPED`, otherwise 409 (E10006) with the current status in the message. `PICKUP` can be recorded before the parcel is handed over.
+- `stopNumber` is unique among the stops of the shipping that are not DELETED, the number held by an INACTIVE, LOCKED or ARCHIVED stop is still taken (409, E10003). The number of a DELETED stop can be used again. The order of the timeline is `stopNumber`.
+- `shippingId`, `stopNumber`, `stopType` and `locationName` are required in every request, including a delete and an archive.
+- DELETED is final: a DELETED stop is never reopened and its `id` counts as not found (404, E10004). INACTIVE, LOCKED and ARCHIVED are reversible: an update with `rowStatus` ACTIVE shows the stop again. `rowStatus` DELETED is rejected with 400 (E10001) when the request inserts a stop. The customer sees only stops that are ACTIVE.
+- This API has no batch version, the shop records one hub at a time, and the stops are read through the inquiry APIs of the shipping (they are returned inside every shipping), so the stop has no inquiry of its own.
+- HTTP status of the single upsert: Insert 201 Created, Update 200 Ok, Delete 204 No Content (no response body), Archive 200 Ok.
+- A shipping that does not exist, or that is DELETED, answers 404 (E10004) `Shipping not found.` and a stop that does not exist answers 404 (E10004) `Shipping stop not found.` (approved by the product owner on 2026-11-08).
+- This behaviour follows the shipping design, approved by the product owner on 2026-11-06. The payment columns that the shipping APIs read (`payment.t_payment.shipping_method`) belong to the payment design of WP2 (`docs/superpowers/specs/2026-11-06-payment-design.md`).
+
 ---
 
 ## Request Parameters
@@ -43,20 +54,6 @@
 | 6   | estimatedArrival | String: TIMESTAMP | OPTIONAL  | Expected arrival (UTC)                                                                                                       | 2026-11-07T08:00:00.123Z             |
 | 7   | arrivedAt        | String: TIMESTAMP | OPTIONAL  | Time the parcel reached the stop (UTC), Null or not specified = not arrived yet                                              | 2026-11-07T07:40:00.123Z             |
 | 8   | rowStatus        | String            | OPTIONAL  | ACTIVE, INACTIVE, LOCKED, ARCHIVED or DELETED, Defaults to ACTIVE on insert and keeps the value on update when not specified | ACTIVE                               |
-
-### Shipping Stop Rules
-
-- The caller must be an ACTIVE member of the shop of the order (a row of `shop.t_shop_user` with the role ADMIN or STAFF that is ACTIVE) or a platform administrator (a user that has the role `PLATFORM_ADMIN`), otherwise 403 (E10009). This permission model was approved by the product owner. The shop is the shop of the order of the shipping.
-- A stop is a checkpoint of the parcel that the customer sees as a timeline (taken from the shop, a hub on the way, arrival at the receiver). The information may come from the carrier, but the system does not call the carrier, the shop records it. A stop is not a driver route.
-- A stop can be inserted, updated, deleted or archived only while the shipping is `PENDING` or `SHIPPED`, otherwise 409 (E10006) with the current status in the message. `PICKUP` can be recorded before the parcel is handed over.
-- `stopNumber` is unique among the stops of the shipping that are not DELETED, the number held by an INACTIVE, LOCKED or ARCHIVED stop is still taken (409, E10003). The number of a DELETED stop can be used again. The order of the timeline is `stopNumber`.
-- `shippingId`, `stopNumber`, `stopType` and `locationName` are required in every request, including a delete and an archive.
-- DELETED is final: a DELETED stop is never reopened and its `id` counts as not found (404, E10004). INACTIVE, LOCKED and ARCHIVED are reversible: an update with `rowStatus` ACTIVE shows the stop again. `rowStatus` DELETED is rejected with 400 (E10001) when the request inserts a stop. The customer sees only stops that are ACTIVE.
-- This API has no batch version, the shop records one hub at a time, and the stops are read through the inquiry APIs of the shipping (they are returned inside every shipping), so the stop has no inquiry of its own.
-- HTTP status of the single upsert: Insert 201 Created, Update 200 Ok, Delete 204 No Content (no response body), Archive 200 Ok.
-- A shipping that does not exist, or that is DELETED, answers 404 (E10004) `Shipping not found.` and a stop that does not exist answers 404 (E10004) `Shipping stop not found.` (approved by the product owner on 2026-11-08).
-- Execution order: validate the request (400) -> existence of the shipping and of the stop (404) -> permission of the caller (403) -> status of the shipping and duplicate `stopNumber` (409) -> write in one transaction. The shipping is first read without a lock only to find its order, then the order row of the shipping is locked (`SELECT ... FOR UPDATE`) before any stop is written.
-- This behaviour follows `docs/superpowers/specs/2026-11-06-shipping-design.md`, approved by the product owner on 2026-11-06. The payment columns that the shipping APIs read (`payment.t_payment.shipping_method`) belong to the payment design of WP2 (`docs/superpowers/specs/2026-11-06-payment-design.md`).
 
 #### Example Body Parameters
 

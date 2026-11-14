@@ -18,6 +18,11 @@
 | PRE-PRODUCTION | https://www.domain.com/api-pre-prod |
 | PRODUCTION     | https://www.domain.com/api          |
 
+- Only the shippings of the orders of the user of the access token are returned (the request never carries a user id). The shipping of another user's order is not found, `id` or `orderId` of another user answers an empty list.
+- The shippings are returned newest first by creation time, then `id`. Every shipping carries the shop that ships the order, its items and its stops. The customer sees only the stops that are ACTIVE, in `stopNumber` order. The customer does not see the profit of the items.
+- `search` matches the order code, the shop name or the tracking number (case-insensitive, partial). Nothing found is 200 with an empty list.
+- This behaviour follows the shipping design, approved by the product owner on 2026-11-06. The payment columns that the shipping APIs read (`payment.t_payment.shipping_method`) belong to the payment design of WP2 (`docs/superpowers/specs/2026-11-06-payment-design.md`).
+
 ---
 
 ## Request Parameters
@@ -40,13 +45,6 @@
 | 4   | pageIndex      | Numeric      | OPTIONAL | Page index starting from 1, Defaults to 1                                                                  | 1                                    |
 | 5   | pageSize       | Numeric      | OPTIONAL | Number of items per page (max 100), Defaults to 10                                                         | 10                                   |
 | 6   | search         | String       | OPTIONAL | Search by order code, shop name or tracking number                                                         | TH0123                               |
-
-### Shipping Inquiry Rules
-
-- Only the shippings of the orders of the user of the access token are returned (the request never carries a user id). The shipping of another user's order is not found, `id` or `orderId` of another user answers an empty list.
-- The shippings are returned newest first by creation time, then `id`. Every shipping carries the shop that ships the order, its items and its stops. The customer sees only the stops that are ACTIVE, in `stopNumber` order. The customer does not see the profit of the items.
-- `search` matches the order code, the shop name or the tracking number (case-insensitive, partial). Nothing found is 200 with an empty list.
-- This behaviour follows `docs/superpowers/specs/2026-11-06-shipping-design.md`, approved by the product owner on 2026-11-06. The payment columns that the shipping APIs read (`payment.t_payment.shipping_method`) belong to the payment design of WP2 (`docs/superpowers/specs/2026-11-06-payment-design.md`).
 
 ## Example Request
 
