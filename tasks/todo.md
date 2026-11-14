@@ -297,7 +297,7 @@ MongoDB extension requested by Ittikorn during the Redis design (2026-11-07): ad
 - [x] Research MongoDB primary sources for configuration documents, validation/versioning, indexes, TTL, transactions and cross-store consistency.
 - [x] Extend the proposed architecture and three diagram views based on the owner's answers, with explicit current/proposed status and no invented financial ownership.
 - [x] Verify the combined Redis/MongoDB design and rendered artifacts before the owner handoff.
-- [ ] Obtain approval of the detailed in-review policies before any backend, collection/outbox schema or endpoint contract implementation; this is outside the completed diagram work.
+- [x] Obtain approval of the detailed in-review policies before any backend, collection/outbox schema or endpoint contract implementation; this is outside the completed diagram work.
 
 Owner clarification (2026-11-07): MongoDB stores feature flags/general configuration including cache/rate policy, plus audit/integration events and transaction copies for historical search. PostgreSQL retains business/financial authority. `mongodb-design.md` records the selected ownership and proposed publication/outage rules. Remaining policy approval is not inferred from the selection. Runtime view merges in-process HTTP/CQRS use cases into one host node so two Redis roles, MongoDB and PostgreSQL fit the nine-node budget without pretending layers are separate services. Existing source references and order states remain unchanged.
 
@@ -325,8 +325,8 @@ Status: Verified and ready for commit/push/PR; actual delivery state is derived 
 - [x] Read commit-and-pr and its exact formats/checklist; select the completed diagram package and preserve the unstarted additional-view work.
 - [x] Persist the direct owner's delivery grant for the active assignment; run delivery preflight and resolve or explicitly obtain approval for findings.
 - [x] Recheck source/model consistency, HTML, editable PNGs, Markdown frontmatter/links and the exact staged diff.
-- [ ] Commit the chosen paths, push the existing task branch and open one PR against main; attach it to this chat and inspect its status once.
-- [ ] Release the editing-session lock and hand off the PR; additional views wait for this PR's reconciliation under the named-agent lifecycle.
+- [x] Commit the chosen paths, push the existing task branch and open one PR against main; attach it to this chat and inspect its status once.
+- [x] Release the editing-session lock and hand off the PR; additional views wait for this PR's reconciliation under the named-agent lifecycle.
 
 PR preparation verification (2026-11-07): delivery-check recognizes the direct owner authorization and all 23 paths remain in scope (21 diagram package files plus tasks/todo.md and tasks/lessons.md). Preflight reports no blockers. Refreshed origin/main revealed merged WP3b; the lifecycle/runtime note/research/explanation now include guarded seven-day completion instead of the superseded no-job rule. Native exports use scale 1.5 (2378 x 1682) and compressed compatible mxfile metadata; final PNG sizes are 1014302, 824217 and 829340 bytes, all below 1 MiB. Every final image was visually reviewed; packaged extraction equals source and native PNG reopening/re-export preserves exact IDAT data. Three HTML self-checks and all 12 authored Markdown frontmatters/local links pass. Geometry/evidence checks pass. Backend/API/database checks are outside this diagram-only change. Additional architecture-package views are unstarted and excluded from this delivery.
 
