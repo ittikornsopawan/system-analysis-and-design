@@ -8462,14 +8462,6 @@ def spec_template_errors(md: str) -> list[str]:
 # Specs that do not follow the template yet. Each is exempt until its sections and links are fixed; an entry must be a spec folder and
 # must still fail, so a spec that passes has to leave the list in the same change. The count is printed in the OK line.
 LEGACY_SPEC_TEMPLATE = (
-    "shop/01-upsert-shop-product-sku",
-    "shop/02-upsert-shop-product-sku-batch",
-    "shop/04-inquiry-storefront-product",
-    "shop/05-upsert-shop-type",
-    "shop/06-upsert-shop-type-batch",
-    "shop/08-upsert-shop",
-    "shop/09-upsert-shop-batch",
-    "shop/10-inquiry-shop",
 )
 
 
@@ -8507,16 +8499,6 @@ MD_FRONTMATTER_PENDING = (
     "docs/superpowers/specs/2026-11-06-order-design.md",
     "docs/superpowers/specs/2026-11-06-payment-design.md",
     "docs/superpowers/specs/2026-11-06-shop-lot-pricing-and-storefront-design.md",
-    "e-commerce/doc/api/shop/01-upsert-shop-product-sku/spec.md",
-    "e-commerce/doc/api/shop/02-upsert-shop-product-sku-batch/spec.md",
-    "e-commerce/doc/api/shop/03-inquiry-shop-product-sku/spec.md",
-    "e-commerce/doc/api/shop/04-inquiry-storefront-product/spec.md",
-    "e-commerce/doc/api/shop/05-upsert-shop-type/spec.md",
-    "e-commerce/doc/api/shop/06-upsert-shop-type-batch/spec.md",
-    "e-commerce/doc/api/shop/07-inquiry-shop-type/spec.md",
-    "e-commerce/doc/api/shop/08-upsert-shop/spec.md",
-    "e-commerce/doc/api/shop/09-upsert-shop-batch/spec.md",
-    "e-commerce/doc/api/shop/10-inquiry-shop/spec.md",
 )
 MD_STATUSES = ("draft", "in-review", "approved", "superseded")
 
