@@ -1,12 +1,20 @@
+---
+name: Consent Upsert API Specification
+description: Defines the consent insert, update, delete and archive for a platform administrator with verified JWT roles, current credential gating, consent type then consent locks, DELETED as final and the consent period check; read when reviewing or implementing POST v1/consent/upsert.
+status: in-review
+approved_by: null
+approved_at: null
+---
+
 # [POST]: v1/consent/upsert
 
-| Title       | Description                                                                                                                                                                                                                                                          |
-| ----------- | -------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------- |
-| Name        | Upsert Consent API                                                                                                                                                                                                                                                   |
-| Method      | POST                                                                                                                                                                                                                                                                 |
-| Endpoint    | v{version}/consent/upsert                                                                                                                                                                                                                                            |
-| Version     | 1                                                                                                                                                                                                                                                                    |
-| Description | Insert, update or delete a consent, Insert when id is not specified, Update when id is specified, Delete when rowStatus is DELETED (HTTP 204 No Content, no response body), Archive when rowStatus is ARCHIVED (HTTP 200), only a platform administrator can call it |
+| Title       | Description                                                                                                                                                                                                                                                                                                     |
+| ----------- | --------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------- |
+| Name        | Upsert Consent API                                                                                                                                                                                                                                                                                              |
+| Method      | POST                                                                                                                                                                                                                                                                                                            |
+| Endpoint    | v{version}/consent/upsert                                                                                                                                                                                                                                                                                       |
+| Version     | 1                                                                                                                                                                                                                                                                                                               |
+| Description | Insert, update or delete a consent, Insert when id is not specified, Update when id is specified, Delete when rowStatus is DELETED (HTTP 204 No Content, no response body), Archive when rowStatus is ARCHIVED (HTTP 200), only a platform administrator can call it, Only a platform administrator can call it |
 
 ## Domain
 
@@ -17,6 +25,14 @@
 | UAT            | https://www.domain.com/api-uat      |
 | PRE-PRODUCTION | https://www.domain.com/api-pre-prod |
 | PRODUCTION     | https://www.domain.com/api          |
+
+- Governing decisions: owner-confirmed API review Q2, Q4, Q10, Q13 and the owner answers of 2026-11-13 (approved by the product owner).
+- Only a platform administrator can call it: the verified JWT `roles` claim must contain the exact role `PLATFORM_ADMIN`, otherwise 403 (E10009); the author tables are never queried.
+- DELETED is final: the id of a DELETED consent is 404 (E10004), while INACTIVE, LOCKED and ARCHIVED can return to ACTIVE; the consent type row must exist (404, E10005).
+- `code` stays plainly UNIQUE, so the code of a DELETED consent cannot be reused (409, E10003); when both are given `expiredAt` must be later than `effectiveAt` (400, E10001).
+- The consent type must be ACTIVE only when the request creates a consent, opens a consent that is not ACTIVE to ACTIVE or changes its type while it is ACTIVE (404, E10005); a consent of a type that is not ACTIVE can still be deleted, archived, deactivated or locked (owner answer of 2026-11-14, like Q23).
+- Deleting or archiving a consent that has user answers is not blocked; `consentVersion` may change to any different value of at most 8 characters, and the answers of the old version become pending again (Q8) without any user consent row being overwritten.
+- The transaction locks the caller user, then the consent type, then the target consent (`FOR UPDATE`); the order of the checks and every outcome is in the sequence diagram.
 
 ---
 
@@ -33,24 +49,19 @@
 
 ### Body Parameters
 
-|     | Parameter Name     | Data Type         | M/O       | Description                                                                                                              | Example                              |
-| --- | ------------------ | ----------------- | --------- | ------------------------------------------------------------------------------------------------------------------------ | ------------------------------------ |
-| 1   | id                 | String: UUID      | OPTIONAL  | Consent Id, Insert when not specified, Update or Delete when specified                                                   | c1a2b3d4-e5f6-4a7b-8c9d-0e1f2a3b4c5d |
-| 2   | code               | String            | MANDATORY | Consent Code (max 64 characters), Unique                                                                                 | PRIVACY_POLICY                       |
-| 3   | consentTypeId      | String: UUID      | MANDATORY | Consent Type Id                                                                                                          | a7b8c9d0-1e2f-4a3b-8c4d-5e6f7a8b9c0d |
-| 4   | consentVersion     | String            | OPTIONAL  | Consent Version (max 8 characters), Defaults to 1.0.0                                                                    | 1.0.0                                |
-| 5   | consentName        | String            | MANDATORY | Consent Name (max 128 characters)                                                                                        | Privacy Policy                       |
-| 6   | consentDescription | String            | OPTIONAL  | Consent Description                                                                                                      | Privacy policy of the service        |
-| 7   | effectiveAt        | String: TIMESTAMP | OPTIONAL  | Consent Effective Timestamp (Without time zone UTC), Defaults to now                                                     | 2026-01-01T00:00:00.000Z             |
-| 8   | expiredAt          | String: TIMESTAMP | OPTIONAL  | Consent Expired Timestamp (Without time zone UTC)                                                                        | 2027-01-01T00:00:00.000Z             |
-| 9   | isRequired         | Boolean           | OPTIONAL  | Consent is required to be accepted, Defaults to FALSE                                                                    | true                                 |
-| 10  | rowStatus          | String            | OPTIONAL  | Row status (ACTIVE, INACTIVE, DELETED, LOCKED, ARCHIVED), Defaults to ACTIVE, Delete when DELETED, Archive when ARCHIVED | ACTIVE                               |
-| 11  | body               | Object            | MANDATORY | Consent Body                                                                                                             |                                      |
-
-### Permission Rules
-
-- Permission: only a platform administrator (a user with an ACTIVE `author.t_user_role` row for the ACTIVE role `PLATFORM_ADMIN`) can call this API, any other caller gets 403 (E10009), after the existence checks and before the duplicate, in-use and other conflict checks and before anything is written. Reading is not changed by this rule. Approved by the product owner (answered through the lead SA, 2026-11-06).
-- Order of checks: validate the request (400) -> existence checks (404) -> permission (403, E10009) -> duplicate, in-use and other conflicts (409) -> write.
+|     | Parameter Name     | Data Type         | M/O       | Description                                                                                                                      | Example                              |
+| --- | ------------------ | ----------------- | --------- | -------------------------------------------------------------------------------------------------------------------------------- | ------------------------------------ |
+| 1   | id                 | String: UUID      | OPTIONAL  | Consent Id, Insert when not specified, Update or Delete when specified                                                           | c1a2b3d4-e5f6-4a7b-8c9d-0e1f2a3b4c5d |
+| 2   | code               | String            | MANDATORY | Consent Code (max 64 characters), Unique among all consents including a DELETED one                                              | PRIVACY_POLICY                       |
+| 3   | consentTypeId      | String: UUID      | MANDATORY | Consent Type Id, An ACTIVE type when the consent is created, opened to ACTIVE or moved to another type                                                                                                                  | a7b8c9d0-1e2f-4a3b-8c4d-5e6f7a8b9c0d |
+| 4   | consentVersion     | String            | OPTIONAL  | Consent Version (max 8 characters), Defaults to 1.0.0, Any different value may be set on update                                  | 1.0.0                                |
+| 5   | consentName        | String            | MANDATORY | Consent Name (max 128 characters)                                                                                                | Privacy Policy                       |
+| 6   | consentDescription | String            | OPTIONAL  | Consent Description                                                                                                              | Privacy policy of the service        |
+| 7   | effectiveAt        | String: TIMESTAMP | OPTIONAL  | Consent Effective Timestamp (Without time zone UTC), Defaults to now                                                             | 2026-01-01T00:00:00.000Z             |
+| 8   | expiredAt          | String: TIMESTAMP | OPTIONAL  | Consent Expired Timestamp (Without time zone UTC), Later than effectiveAt when both are given                                    | 2027-01-01T00:00:00.000Z             |
+| 9   | isRequired         | Boolean           | OPTIONAL  | Consent is required to be accepted, Defaults to FALSE                                                                            | true                                 |
+| 10  | rowStatus          | String            | OPTIONAL  | Row status (ACTIVE, INACTIVE, DELETED, LOCKED, ARCHIVED), Defaults to ACTIVE, Delete when DELETED (final), Archive when ARCHIVED | ACTIVE                               |
+| 11  | body               | Object            | MANDATORY | Consent Body                                                                                                                     |                                      |
 
 #### Example Body Parameters
 
@@ -280,6 +291,22 @@ HTTP/1.1 204 No Content
 }
 ```
 
+#### Fail - Bad Request Period
+
+```JSON
+{
+    "status": {
+        "code": 400,
+        "message": "Bad Request",
+        "bizCode": "E10001",
+        "bizMessage": "Expired timestamp must be later than the effective timestamp.",
+        "requestId": "req-415a1b2c-3d4e-5f6a-7b8c-9d0e1f2a3b4c",
+        "timestamp": "2026-11-05T12:41:20.123Z",
+        "status": "ERROR"
+    }
+}
+```
+
 #### Fail - Unauthorized
 
 ```JSON
@@ -307,6 +334,22 @@ HTTP/1.1 204 No Content
         "bizMessage": "Consent not found.",
         "requestId": "req-404a1b2c-3d4e-5f6a-7b8c-9d0e1f2a3b4c",
         "timestamp": "2026-11-05T12:44:05.321Z",
+        "status": "ERROR"
+    }
+}
+```
+
+#### Fail - Not Found Consent Type
+
+```JSON
+{
+    "status": {
+        "code": 404,
+        "message": "Not Found",
+        "bizCode": "E10005",
+        "bizMessage": "Consent type not found or not ACTIVE.",
+        "requestId": "req-475a1b2c-3d4e-5f6a-7b8c-9d0e1f2a3b4c",
+        "timestamp": "2026-11-05T12:47:30.123Z",
         "status": "ERROR"
     }
 }
@@ -360,31 +403,82 @@ HTTP/1.1 204 No Content
 }
 ```
 
+#### Fail - Internal Server Error
+
+```JSON
+{
+    "status": {
+        "code": 500,
+        "message": "Internal Server Error",
+        "bizMessage": "An unexpected error occurred.",
+        "requestId": "req-consent-upsert-review",
+        "timestamp": "2026-11-14T00:00:00.123Z",
+        "status": "ERROR"
+    }
+}
+```
+
 ---
 
 ## Database Relations
 
-### Table: [consent.m_consent_type](../../../schema/consent/m_consent_type.md)
+One READ COMMITTED transaction. Caller identity (`callerUserId`) is distinct from the consent; all values and the fresh UTC time are bound. Lock order: caller user, consent type, then the target consent.
 
-#### QUERY - Check consent type
+### Table: [authen.m_user](../../../schema/authen/m_user.md)
+
+#### QUERY - Lock the caller user
 
 ```SQL
 SELECT
-    ct.id as consent_type_id
+    u.id as user_id
+FROM authen.m_user u
+WHERE u.id = '<sequence.callerUserId>'
+FOR UPDATE
+```
+
+### Table: [authen.t_user_access_token](../../../schema/authen/t_user_access_token.md)
+
+#### QUERY - Check current credential and user
+
+```SQL
+SELECT
+    at.id as access_token_id
+FROM authen.t_user_access_token at
+JOIN authen.m_user u ON u.id = at.user_id
+WHERE at.token = '<sequence.accessTokenHash>'
+AND at.user_id = '<sequence.callerUserId>'
+AND at.row_status = 'ACTIVE'
+AND at.expired_at > '<sequence.now>'
+AND u.row_status = 'ACTIVE'
+```
+
+### Table: [consent.m_consent_type](../../../schema/consent/m_consent_type.md)
+
+#### QUERY - Lock the consent type
+
+```SQL
+SELECT
+    ct.id as consent_type_id,
+    ct.row_status
 FROM consent.m_consent_type ct
 WHERE ct.id = '<sequence.consentTypeId>'
-AND ct.row_status = 'ACTIVE'
+FOR UPDATE
 ```
 
 ### Table: [consent.t_consent](../../../schema/consent/t_consent.md)
 
-#### QUERY - Check existing consent
+#### QUERY - Lock existing consent
 
 ```SQL
 SELECT
-    c.id as consent_id
+    c.id as consent_id,
+    c.consent_type_id,
+    c.consent_version,
+    c.row_status
 FROM consent.t_consent c
 WHERE c.id = '<sequence.id>'
+AND c.row_status <> 'DELETED' -- the id of a DELETED consent counts as not found
+FOR UPDATE
 ```
 
 #### QUERY - Check duplicate code
@@ -394,7 +488,7 @@ SELECT
     c.id as consent_id
 FROM consent.t_consent c
 WHERE c.code = '<sequence.code>'
-AND c.id <> '<sequence.id>'
+AND ('<sequence.id>' IS NULL OR c.id <> '<sequence.id>') -- every status counts, a DELETED consent keeps its code
 ```
 
 #### INSERT - Create consent
@@ -402,6 +496,7 @@ AND c.id <> '<sequence.id>'
 ```SQL
 INSERT INTO consent.t_consent (
     created_by,
+    created_at,
     row_status,
     code,
     consent_type_id,
@@ -415,6 +510,7 @@ INSERT INTO consent.t_consent (
 )
 VALUES (
     '<sequence.createdBy>',
+    '<sequence.now>',
     '<sequence.rowStatus>',
     '<sequence.code>',
     '<sequence.consentTypeId>',
@@ -435,7 +531,7 @@ RETURNING id as consent_id
 UPDATE consent.t_consent
 SET
     updated_by = '<sequence.updatedBy>',
-    updated_at = NOW() AT TIME ZONE 'UTC',
+    updated_at = '<sequence.now>',
     row_status = '<sequence.rowStatus>',
     code = '<sequence.code>',
     consent_type_id = '<sequence.consentTypeId>',
@@ -447,30 +543,6 @@ SET
     is_required = '<sequence.isRequired>',
     body = '<sequence.body>'
 WHERE id = '<sequence.id>'
+AND row_status <> 'DELETED'
 RETURNING id as consent_id
-```
-
-### Table: [author.m_role](../../../schema/author/m_role.md)
-
-#### QUERY - Get the platform administrator role
-
-```SQL
-SELECT
-    r.id as role_id
-FROM author.m_role r
-WHERE r.name = 'PLATFORM_ADMIN'
-AND r.row_status = 'ACTIVE'
-```
-
-### Table: [author.t_user_role](../../../schema/author/t_user_role.md)
-
-#### QUERY - Check platform administrator
-
-```SQL
-SELECT
-    ur.id as user_role_id
-FROM author.t_user_role ur
-WHERE ur.user_id = '<sequence.userId>'
-AND ur.role_id = '<sequence.roleId>'
-AND ur.row_status = 'ACTIVE'
 ```
