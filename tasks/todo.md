@@ -1573,10 +1573,11 @@ Status: Complete in the branch, waiting for review. Assignment: agent `tommy`, d
 
 ## e-commerce: Markdown frontmatter checker and repair
 
-Status: Complete in the branch, waiting for review. Assignment: agent `tommy`, delivery `open-pr`, authorized by `josh`, workspace `.workspace/tommy`, branch `docs/tommy-md-frontmatter`, scopes `e-commerce/db/tests/check_docs.py`, `e-commerce/doc/schema`, `e-commerce/doc/api/template.md`, `.agents/skills/api-contract-design/assets/api-spec.md.tmpl`, `.agents/skills/api-contract-design/SKILL.md`, `docs/handoff`, `docs/superpowers`, `README.md`, `tasks`.
+Status: Complete in the branch, waiting for review. Assignment: agent `tommy`, delivery `open-pr`, authorized by `josh`, workspace `.workspace/tommy`, branch `docs/tommy-md-frontmatter`, scopes `e-commerce/db/tests/check_docs.py`, `e-commerce/db/tests/audit_all.py`, `e-commerce/doc/schema`, `e-commerce/doc/api/template.md`, `.agents/skills/api-contract-design/assets/api-spec.md.tmpl`, `.agents/skills/api-contract-design/SKILL.md`, `.agents/skills/data-modeling/assets/schema-doc.md.tmpl`, `docs/handoff`, `docs/superpowers`, `README.md`, `tasks`.
 
-- [x] Add the `md-frontmatter` checker: `name` and `description` in every tracked `*.md`, `status`, `approved_by` and `approved_at` in every specification, and the explicit list `MD_FRONTMATTER_PENDING` (59 specs; a file that passes must leave it).
+- [x] Add the `md-frontmatter` checker: `name` and `description` in every tracked `*.md`, `status`, `approved_by` and `approved_at` in every specification, and the explicit list `MD_FRONTMATTER_PENDING` (the specs without frontmatter; a file that passes must leave it).
 - [x] Add the frontmatter (`name`, `description`) to the 53 schema docs, the schema README and template, the 5 hand-offs, the 2 plans and `README.md` (which was empty and now has a short overview); no `status` on a non-spec file.
 - [x] Add the spec frontmatter placeholders to `e-commerce/doc/api/template.md` and `api-spec.md.tmpl` and correct the sentence of `SKILL.md` that said a spec has no frontmatter.
+- [x] `audit_all.py` and the schema checks of `check_docs.py` read the table heading after the frontmatter; `schema-doc.md.tmpl` starts with the frontmatter (`realign_tables.py` is unchanged and leaves a schema doc as it is).
 - [x] Record the lesson in `tasks/lessons.md`; do not touch any API `spec.md`.
 - [x] Open the PR with `commit-and-pr`, tell the lead SA, then suspend. Next: the frontmatter of the cart, payment, sales, shipping and campaign specs.
