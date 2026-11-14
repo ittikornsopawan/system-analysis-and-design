@@ -1,3 +1,8 @@
+---
+name: "Plan: multi-level product SKU"
+description: "Implementation plan of 2026-11-05 that lets one product define up to three option levels (a configurable limit) for its SKUs; read it for the steps and the reasons of that change."
+---
+
 # Product SKU หลาย level — Implementation Plan
 
 > **For agentic workers:** REQUIRED SUB-SKILL: Use superpowers:subagent-driven-development (recommended) or superpowers:executing-plans to implement this plan task-by-task. Steps use checkbox (`- [ ]`) syntax for tracking.

@@ -1,3 +1,8 @@
+---
+name: "Hand-off to Tommy: WP7 campaign and discount"
+description: "Historical hand-off of 2026-11-06 from Josh to Tommy for work package WP7 (campaign and discount) with the working agreements of that day; read it only for the history of that assignment."
+---
+
 # Hand-off ถึง Tommy: งานถัดไป (WP7 แคมเปญและส่วนลด) และข้อตกลงใหม่
 
 วันที่: 2026-11-06 · ผู้ส่งงาน: Josh (Lead SA) ตามที่เจ้าของงานสั่ง · ผู้รับงาน: Tommy (SA)

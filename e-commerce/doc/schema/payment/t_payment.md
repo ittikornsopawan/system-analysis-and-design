@@ -1,3 +1,8 @@
+---
+name: "Schema doc: payment.t_payment"
+description: "Columns, keys, constraints and indexes of the table payment.t_payment. Transaction table of the `payment` schema (defined in `db/migrations/up/07-payment.schema.up.sql`). Read it when you write or review a migration, a query or an API spec that uses this table."
+---
+
 # Table: payment.t_payment
 
 Description: Transaction table of the `payment` schema (defined in `db/migrations/up/07-payment.schema.up.sql`).

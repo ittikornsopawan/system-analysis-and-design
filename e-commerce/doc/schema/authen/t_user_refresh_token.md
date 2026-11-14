@@ -1,3 +1,8 @@
+---
+name: "Schema doc: authen.t_user_refresh_token"
+description: "Columns, keys, constraints and indexes of the table authen.t_user_refresh_token. Transaction table of the `authen` schema (defined in `db/migrations/up/01-authen.schema.up.sql`). Read it when you write or review a migration, a query or an API spec that uses this table."
+---
+
 # Table: authen.t_user_refresh_token
 
 Description: Transaction table of the `authen` schema (defined in `db/migrations/up/01-authen.schema.up.sql`).
