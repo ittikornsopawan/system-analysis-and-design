@@ -26,6 +26,13 @@ approved_at: null
 | PRE-PRODUCTION | https://www.domain.com/api-pre-prod |
 | PRODUCTION     | https://www.domain.com/api          |
 
+- Only a platform administrator can read scopes (403, E10009), because they describe the security model.
+- Validate timestamp as mandatory UTC and accept only single id/pageIndex/pageSize/search/rowStatus query keys, with no body.
+- search matches scope code OR description with existing case-insensitive ILIKE wildcard semantics.
+- Verify Bearer JWT signature/issuer/audience/expiry/UUID sub and structured roles before BEGIN.
+- Begin REPEATABLE READ READ ONLY, capture fresh server UTC now immediately before the joined current credential/user read and recheck JWT exp.
+- The order of the checks, the locks and every outcome is in the sequence diagram.
+
 ---
 
 ## Request Parameters
@@ -47,33 +54,6 @@ approved_at: null
 | 3   | pageSize       | Numeric      | OPTIONAL | Number of items per page (max 100), Defaults to 10                                                          | 10                                   |
 | 4   | search         | String       | OPTIONAL | Search by scope code or description                                                                         | catalog                              |
 | 5   | rowStatus      | String       | OPTIONAL | Row status filter (ACTIVE, INACTIVE, LOCKED, ARCHIVED), All statuses except DELETED when not specified      | ACTIVE                               |
-
-### Scope Inquiry Rules
-
-- Only a platform administrator can read scopes (403, E10009), because they describe the security model. Approved by the product owner (answered through the lead SA, 2026-11-06; claims basis A12); use exact PLATFORM_ADMIN in verified JWT role claims under [owner-confirmed review](../../../../../docs/superpowers/specs/2026-11-07-api-review-design.md), Q2/Q4/Q10/Q13. This detailed revision remains in-review; no backend/schema implementation.
-- Validate timestamp as mandatory UTC and accept only single id/pageIndex/pageSize/search/rowStatus query keys, with no body. Reject unknown/repeated keys and malformed header/query with 400 E10001 before SQL. Generate requestId if omitted. Supplied id is a non-empty UUID, never null; omitted id is typed SQL NULL. pageIndex/pageSize are positive signed 64-bit integers, default 1/10 only when omitted, pageSize at most 100. Compute checked offset = (pageIndex - 1) * pageSize and reject parse/offset overflow beyond nonnegative BIGINT with 400. Explicit empty/null-like values do not become defaults. Row status must be one of ACTIVE, INACTIVE, LOCKED, ARCHIVED.
-- search matches scope code OR description with existing case-insensitive ILIKE wildcard semantics. Omitted searchPattern binds typed SQL NULL; supplied search, including empty string, becomes one bound text searchPattern = percent + search + percent, preserving percent/underscore wildcards. Never interpolate client text into SQL. The three nullable filters disable only themselves and combine by AND; id is still filtered/paginated, not an unpaged alternate path.
-- Verify Bearer JWT signature/issuer/audience/expiry/UUID sub and structured roles before BEGIN. roles must be an array including [], every role object has UUID roleId and non-empty string name, and roleIds are unique. Missing/malformed roles is generic 401 E10002, never an empty-list or live-grant fallback. Derive callerUserId only from verified sub and accessTokenHash as SHA-256 of the exact JWT; do not accept caller ids or isPlatformAdmin flags from requests.
-- Begin REPEATABLE READ READ ONLY, capture fresh server UTC now immediately before the joined current credential/user read and recheck JWT exp. Require matching token hash/caller id, ACTIVE token/user and strict expired_at > now; missing/inactive/revoked/expired/mismatched credentials is generic 401 E10002 with rollback before scope reads. No user/role/token locks or writes. This current credential gate preserves immediate logout/reset revocation (Q13).
-- After current credentials pass, authorize once using exact case-sensitive PLATFORM_ADMIN in verified JWT roles. Valid roles=[] or any other role name is 403 E10009 `You do not have permission to read scopes.` after rollback and before count/page SQL. Never query current caller role assignments to grant, remove or replace authorization. Grant withdrawal after token issuance leaves the old privilege usable until access expiry (Q4); refresh reloads current grants (Q7). Scope metadata returned below comes from the database snapshot, distinct from author/me's calling-token snapshot.
-- Count first and optionally fetch the page in the same read-only repeatable-read snapshot as credentials. Both scope queries use identical non-DELETED/id/searchPattern/rowStatus WHERE predicates; every supplied value is bound, including pageSize and checked offset. If totalItems=0 skip the page SQL and return items=[], totalPages=0. With positive count, query the requested page; an offset beyond the range returns items=[] with positive totals/pages and no 404. A missing/DELETED id is the same empty-list 200 for an authorized caller; permission is checked before revealing whether any scope exists.
-- Scopes with rowStatus DELETED are never returned. Omitted rowStatus preserves every non-DELETED status; supplied status accepts only ACTIVE/INACTIVE/LOCKED/ARCHIVED. Sort by scope then id ascending, preserving database collation. This is deterministic within one snapshot; later requests may see newly committed changes and are not a frozen paging cursor.
-- Map each row to exactly scopeId/scope/name/description/rowStatus. No caller id, assignment, token/hash, audit or extra table fields are returned. Return exactly five data keys: items/pageIndex/pageSize/totalItems/totalPages, with explicit empty arrays. Echo validated pages and compute totalPages by integer quotient/remainder (zero when count=0), avoiding floating point or overflowing count+pageSize-1. Require page row count = min(pageSize, max(0, totalItems-offset)); mismatch or malformed/null/missing required data is internal failure.
-- Map the full response before COMMIT, then HTTP 200 S10000 Inquiry Scope Success. An unexpected SQL/result/mapping error rolls back and returns generic 500 without bizCode; timeout before COMMIT rolls back and returns 408 E90001. Never return partially mapped rows, mutate scopes/assignments/tokens/audit, or answer 404/409 for this inquiry.
-- Execution order: validate query/header/body and checked pagination (400) -> verify JWT/roles (401) -> begin read-only repeatable-read transaction -> fresh now/expiry -> joined current credential/user (401) -> claims permission (403) -> count -> optional page -> complete mapping -> COMMIT -> 200. Every post-BEGIN rejection rolls back.
-
-#### Scenario correspondence with sequence.wsd
-
-| Scenario                                                              | Outcome                                                  | Transaction/query effects             |
-| --------------------------------------------------------------------- | -------------------------------------------------------- | ------------------------------------- |
-| Invalid input / invalid JWT or malformed roles                        | 400 E10001 / 401 E10002                                  | No BEGIN/SQL                          |
-| JWT expires before fresh credential read / current token-user invalid | 401 E10002                                               | Rollback, no scope queries            |
-| Current credential without exact PLATFORM_ADMIN role claim            | 403 E10009                                               | Rollback before count/page            |
-| No matching scope, including missing/DELETED id                       | 200 S10000, empty items and zero pages                   | Count only, commit read-only snapshot |
-| Positive count, populated page                                        | 200 S10000 with five-field items and all pagination keys | Same-filter/snapshot count and page   |
-| Positive count, page beyond range                                     | 200 S10000, empty items but positive totals/pages        | No 404                                |
-| Scope change committed between count/page                             | Consistent one-snapshot result                           | A later request sees the change       |
-| Timeout / unexpected SQL/result/mapping failure                       | 408 E90001 / generic 500                                 | Rollback, no partial response         |
 
 ## Example Request
 

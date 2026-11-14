@@ -45,6 +45,18 @@ activate api
 api -> app: [**MeQueryHandler**] Process request
 activate app
 app -> app: Generate requestId if omitted; validate mandatory UTC timestamp
+note over app, infra
+    Validate mandatory timestamp as a UTC timestamp before SQL; missing/malformed timestamp returns 400 E10001.
+    Generate requestId if omitted. Missing/malformed Bearer credentials or a failed JWT
+    signature/issuer/audience/expiry/sub/role-claim validation return the same 401 E10002 `Invalid or expired
+    access token.` before SQL.
+    Validate the `roles` claim of the payload defined by
+    [login](../../authen-and-author/02-login/spec.md#claim-resolution-and-payload) (owner-confirmed 2026-11-13):
+    roles must be an array of unique non-empty strings, including explicit [] for no roles. Missing/non-array
+    roles, non-string or duplicate entries make the credential invalid (401); never silently replace malformed
+    claims with an empty list or recover privileges from the database. The other claims (`user`, `permissions`,
+    `scopes`) are not used and are not response fields.
+end note
 alt Missing or malformed timestamp
     app -> api: HTTP 400 E10001
     api -> page: Header validation error
@@ -88,6 +100,35 @@ else Valid ordinary headers
                     app -> app: data.roles = sorted token roles; isPlatformAdmin = false
                 end
                 app -> app: data.userId = verified sub; ignore independent admin flag; no live role-table lookup
+                note over app, infra
+                    This detailed endpoint revision remains in-review; no backend implementation is included. Any caller with a
+                    valid access token can call this API, and sees only the caller's own snapshot.
+                    Capture fresh server UTC now immediately before the one credential query and recheck JWT expiry at now. The
+                    query must find the ACTIVE, unexpired stored token for that hash/userId and an ACTIVE user.
+                    Missing/revoked/expired token, mismatched owner or inactive user returns the same 401. No request userId,
+                    role, role name or isPlatformAdmin value controls this lookup or the response.
+                    Do not query author.t_user_role or author.m_role to reload, filter, rename or replace those roles.
+                    Role/assignment changes after issuance do not change this token's response; an old PLATFORM_ADMIN token may
+                    still report true until its own expiry, exactly as its privileges remain usable under Q4. The current
+                    token/user status check still allows logout/password reset to revoke credentials immediately (Q13).
+                    Copy the role names from the verified roles; sort them using ordinal case-sensitive comparison.
+                    isPlatformAdmin is true exactly when one returned role name equals PLATFORM_ADMIN (case-sensitive). Do not
+                    trust an independent isPlatformAdmin token claim or a request flag. roles=[] returns isPlatformAdmin=false.
+                    Database rows are not needed to sort or compute this flag. Because the new payload carries role names only,
+                    `data.roles` is an array of role-name strings and no longer returns `roleId` (decided by the SA, pending
+                    confirmation).
+                    Every refresh resolves latest ACTIVE grants for the newly issued token. Calling this endpoint with that
+                    refreshed token reports the refreshed snapshot, while an older still-valid token keeps its own prior roles.
+                    The endpoint never refreshes a token or alters role assignments itself. Current profile/lifecycle data is
+                    not substituted for role claims.
+                    Response: data.userId, data.isPlatformAdmin and data.roles, an array of role-name strings only. Permissions
+                    and scopes are not returned by this endpoint even though login/refresh carry them; no permission grant is
+                    inferred from the response. Never return stored token hashes or internal credential ids.
+                    After valid input/JWT, perform the single credential query, then map the snapshot and return 200 S10000.
+                    There is no 403 for a non-admin or no-role token. Timeout returns 408 E90001; unexpected failure returns
+                    generic 500 with no new bizCode. No outcome writes data and no 200 is sent before credential validation and
+                    snapshot mapping complete.
+                end note
                 app -> api: HTTP 200 S10000 Inquiry Me Success; data.userId, data.isPlatformAdmin, data.roles
                 api -> page: Return calling-token role snapshot
                 page -> user: Display privileges of this token
