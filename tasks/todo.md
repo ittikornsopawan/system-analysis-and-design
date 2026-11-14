@@ -1608,3 +1608,12 @@ Authority: owner decision that API specs follow `e-commerce/doc/api/template.md`
 - [x] Remove every `### ... Rules` section and the non-object `####` blocks; short bullets under `## Domain` (links turned into text).
 - [x] Visible short notes in each sequence: execution/lock order after `activate app`, then notes after the validation step, after `BEGIN`, before the success response; whole bullets are kept except a first sentence that a Domain bullet states in full.
 - [x] Needles: the nine flow checkers get a second loop over the whitespace-joined sequence text; `author-spec` gets `AUTHOR_SEQUENCE_NEEDLES` and `AUTHOR_REMOVED_NEEDLES` (the `### ... Rules` headings); the Q24 guards and the claims wording of the shared inquiry helper check the sequence note; the twelve files leave `LEGACY_SPEC_TEMPLATE`.
+
+## e-commerce: product/01 and 03 move Option and SKU Rules
+
+Status: Done, waiting for review. Authorized by Josh (owner decision of the template cleanup, 2026-11-13).
+
+1. [x] Remove `#### Option and SKU Rules` from product/01 and 03 (not a template section); the rules are short bullets under `## Domain`.
+2. [x] Product/03: the batch only rule (one transaction, request validation first, error of the first failing product) is a visible note in `sequence.wsd`.
+3. [x] Re-point the heading needle of `SPEC01_NEEDLES` and `SPEC03_NEEDLES` to a rule sentence; mutation tested.
+4. [x] All check_docs sub-commands, audit_all, PlantUML syntax and render count of the new note pass.
