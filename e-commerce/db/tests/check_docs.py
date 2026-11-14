@@ -4021,8 +4021,6 @@ LEGACY_SEQUENCES = (
 # must still fail at least one of them: a file that passes both has to leave this list. Remove an entry in the same
 # change that adds the missing answers to the diagram.
 LEGACY_TOKEN_SEQUENCES = (
-    "consent/02-upsert-consent",                    # no Verify JWT / 401 step, no 408
-    "consent/03-inquiry-consent",                   # no Verify JWT / 401 step, no 408
     "consent/06-upsert-consent-type",               # no Verify JWT / 401 step, no 408
     "consent/07-upsert-consent-type-batch",         # no Verify JWT / 401 step, no 408
     "consent/08-inquiry-consent-type",              # no Verify JWT / 401 step, no 408
@@ -8471,8 +8469,6 @@ MD_FRONTMATTER_PENDING = (
     "e-commerce/doc/api/cart/01-upsert-cart-item/spec.md",
     "e-commerce/doc/api/cart/02-upsert-cart-item-batch/spec.md",
     "e-commerce/doc/api/cart/03-inquiry-cart/spec.md",
-    "e-commerce/doc/api/consent/02-upsert-consent/spec.md",
-    "e-commerce/doc/api/consent/03-inquiry-consent/spec.md",
     "e-commerce/doc/api/consent/06-upsert-consent-type/spec.md",
     "e-commerce/doc/api/consent/07-upsert-consent-type-batch/spec.md",
     "e-commerce/doc/api/consent/08-inquiry-consent-type/spec.md",

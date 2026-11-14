@@ -1625,6 +1625,8 @@ Authority: owner Q18 and Q19 (2026-11-09), the new JWT payload of 2026-11-13 and
 - [x] Spec: frontmatter; Domain bullets; verified JWT roles claim (exact `PLATFORM_ADMIN`) and a current-credential gate in one REPEATABLE READ READ ONLY snapshot; every non-DELETED consent is returned, expired ones and consents of a non-ACTIVE type included (Q19); count and page with identical bound filters (id, search over code, consent name and description); newest first with `id` as the unique tie-breaker; consent type names read for the page with a bound typed UUID[] for every status; examples (empty, beyond range, 403, 408, 500).
 - [x] Sequence: complete read-only flow and visible note; the type names are read after the page and before COMMIT.
 - [x] Checker: `consent-inquiry-flow` (the shared `author_inquiry_flow` now takes a path and extra heads, plus the type-name checks); consent/03 leaves `LEGACY_TOKEN_SEQUENCES` and `MD_FRONTMATTER_PENDING`.
+- [x] Repair CI for the existing PR #125 by removing consent/02 and consent/03 from `LEGACY_TOKEN_SEQUENCES` and `MD_FRONTMATTER_PENDING`; preflight passes all 68 checkers, `audit_all.py`, and database tests.
+- [ ] Merge latest `main` and run every project checker before pushing the verified update to PR #125.
 ## e-commerce: product/10-15 template cleanup (type and brand)
 
 Status: Done, waiting for review. Authorized by Josh (owner decisions of 2026-11-13 and 2026-11-14).
