@@ -69,6 +69,20 @@ activate page
                     page -> user: Ask the user to sign in again
                 else Verified JWT
                     app -> app: userId = verified sub
+                    note over app, infra
+                        - The budget is taken in the same transaction as the stock: for each campaign of each order one `UPDATE campaign.m_campaign_budget SET remaining =
+                          remaining - n ... WHERE remaining >= n` (n is the sum of the discounts of the campaign in that order) and one ledger row `RESERVE` (`usage` = n,
+                          `remaining` = what is left of the budget, `reference` = the order items and their discounts). When the update changes no row the budget is short and
+                          the request is rejected with 409 (E10007) and rolled back, nothing is created. The order never gets a lower price silently. The order of the locks
+                          is the cart lines of the request by `id` (`FOR UPDATE` in `QUERY - Get the cart lines to order`), then the lots by `id`, then the budgets by `id`,
+                          so two checkouts at the same time cannot wait for each other in a circle and the quantity of a line cannot change between the read and the order
+                          (approved by the product owner on 2026-11-08).
+                        - Stock: the quantity of every item is taken from its lot with one conditional update (`quantity >= n` and the lot is still on sale), when the update
+                          changes no row because someone else bought the stock first the request is rejected with 409 (E10007) and the whole transaction is rolled back. A lot
+                          that reaches 0 stays on sale with 0 quantity (the SKU shows OUT_OF_STOCK), the system never opens the next lot.
+                        - Execution order: validate the request (400) -> existence checks (404) -> availability and stock checks (409) -> write the orders and the items, take
+                          the stock, delete the cart lines. The whole request is one transaction.
+                    end note
                     app -> infra: BEGIN READ COMMITTED
                     activate infra
                     alt Work completes before commit

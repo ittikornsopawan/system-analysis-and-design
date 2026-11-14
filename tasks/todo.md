@@ -1489,6 +1489,17 @@ Status: Complete in the branch, waiting for review. Assignment: agent `tommy`, d
 - [x] Adjust the needles of `cart-spec`; run every checker, strict SQL parity and the render check.
 - [x] Open the PR with `commit-and-pr`, tell the lead SA when CI is green, then suspend. Next: `payment`.
 
+## e-commerce: spec-template checker and guidance (M6)
+
+Status: Implemented in the managed workspace of Marry on branch `test/marry-spec-template-checker`. Scope: `e-commerce/db/tests/check_docs.py`, `.agents/skills/api-contract-design` (SKILL.md, references, the snapshot of the template), the guidance sentence of `e-commerce/doc/api/template.md` and `tasks/`. Owner decision of 2026-11-13 given by the lead; the JWT work per API is paused until the template is in place.
+
+- [x] `check_docs.py spec-template`: a `spec.md` has only the `##` and `###` sections of `template.md` (`Domain`, `Request Parameters` with Header/Path/Query/Body Parameters, `Example Request` with HTTP/cUrl Request, `Response Parameters` with Status Object, Data Object and Example Response Parameters, `Database Relations` with `### Table: [...]`, `External Services` with `### API: ...`); `####` and `#####` are free; text inside code fences is not read.
+- [x] Links only to schema docs (`../../../schema/...`), external `http(s)` URLs and anchors that match a heading of the same file; a link to a design document, `permission-scope.md` or another spec fails, and so does an anchor to nothing.
+- [x] `LEGACY_SPEC_TEMPLATE`: the specs that do not pass are named (73 of 83 when measured, 68 after the five payment specs fixed on `main` meanwhile left the list); an entry must be a spec folder and must still fail, so a spec that passes leaves the list in the same change; the OK line prints how many are left. The work of fixing product and shop specs follows this pull request.
+- [x] Guidance: one sentence in `template.md` (and its snapshot `assets/api-spec.md.tmpl`), the new section "Template sections and links" in `references/spec-structure.md`, the correction of the two passages that told authors to add `### ... Rules` and `### Allow Scope` sections, and the rule "ask the owner before adding a section" in `SKILL.md`.
+- [x] Mutation tests: 9 of 9 caught (an extra `###` and `##` section, a link to another spec, to a design document and to `permission-scope.md`, an anchor to nothing, an entry removed from, added to and invented in the list) and 5 controls pass (`####` and `#####` headings, an own anchor, an external URL, a schema link).
+- [ ] Merge `main`, run every check, push, open the pull request, tell the lead at once, suspend, then close the records of PR 99 and 107 with the script on `main`.
+
 ### JWT payload contract — new access-token claims in login, refresh, me and the permission matrix
 
 Authority: owner decision of 2026-11-13 relayed by Josh (SA Lead): "ใช้รูปแบบใหม่แทน" with the payload `iss`, `sub`, `aud`, `jti`, `iat`, `exp`, `user`, `roles` (names), `permissions` (`resource:action`), `scopes` (`type:value`), and the owner's answer "ตามคำแนะนำทั้ง 4 ข้อ" on permission naming, scope value, Q12 and deny; assignment `authorized_by: josh`, delivery `open-pr`. One outcome (the payload contract) across the three APIs that issue or report it and the matrix.
@@ -1517,3 +1528,22 @@ Status: Complete in the branch, waiting for review. Assignment: agent `tommy`, d
 - [x] The roles claim sentences of the payment notes (`payment/04`, `payment/05`) follow the new JWT payload (role names).
 - [x] The `shipping-spec` checker searches the spec and its sequence note; adjust the needles; the shipping, payment, sales and cart files leave the legacy list of the spec template checker.
 - [x] Open the PR with `commit-and-pr`, tell the lead SA when CI is green, then suspend. Next: `campaign`.
+
+### Template alignment — authen-and-author group (10 specs)
+
+Authority: owner decision that API specs follow `e-commerce/doc/api/template.md`, relayed by Josh (SA Lead); assignment `authorized_by: josh`, delivery `open-pr`; same rules as the cart group (PR #106) and payment (#108). No SQL and no behaviour change.
+
+- [x] Remove every `### ... Rules` section and the `####` blocks that are not objects or examples (Scenario correspondence, Acceptance criteria, Claim resolution); keep `#### Example Body Parameters`, the objects and the examples; move `#### Example JWT Payload` under `### Example Response Parameters` in login.
+- [x] Short bullets under `## Domain` (first sentences of the removed rules, links turned into text) and a rendered note with the order of the checks and the lock order in every sequence.
+- [x] The full removed rule text stays in each `sequence.wsd` as a PlantUML comment block (`' --- Rules moved ...`); `read()` in `check_docs.py` returns a spec together with that block, so every existing needle keeps protecting the rules without changing any flow check.
+- [x] Verify: headings and links of the 10 specs, all 64 documentation commands, audit, database tests, render of the 10 diagrams (all SQL lines visible), mutation of the moved text (4/4).
+- [ ] Open for Marry's `spec-template` checker: take the ten files out of its exception list when it merges.
+## e-commerce: spec template, sales
+
+Status: Complete in the branch, waiting for review. Assignment: agent `tommy`, delivery `open-pr`, authorized by `josh`, workspace `.workspace/tommy`, branch `docs/tommy-spec-template-sales`, scopes `e-commerce/doc/api/sales`, `e-commerce/db/tests/check_docs.py`, `tasks`.
+
+- [x] Remove `### Checkout Rules`, `### Order Rules`, `### Order Inquiry Rules`, `### Shop Order Inquiry Rules`, `### Cancel Rules`, `### Discount Example` and both `### Allow Scope` sections; the rules become short bullets under `## Domain` (the worked discount example is a bold label with its table under `## Domain`); remove the links to the design doc, login and permission-scope.
+- [x] Move the JWT checks, the lock order, the Idempotency-Key, the budget and stock updates and the order of the checks into a note of `sequence.wsd`; no SQL and no behavior is changed.
+- [x] The roles claim sentences follow the new JWT payload (role names), as recorded in the API review design.
+- [x] The `order-spec` checker searches the spec and its sequence note; adjust the needles; run every checker, strict SQL parity and the render check.
+- [x] Open the PR with `commit-and-pr`, tell the lead SA when CI is green, then suspend. Next: `shipping`, with the roles sentence of the payment notes.
