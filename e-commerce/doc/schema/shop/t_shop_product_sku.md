@@ -1,3 +1,8 @@
+---
+name: "Schema doc: shop.t_shop_product_sku"
+description: "Columns, keys, constraints and indexes of the table shop.t_shop_product_sku. Transaction table of the `shop` schema (defined in `db/migrations/up/04-shop.schema.up.sql`). Read it when you write or review a migration, a query or an API spec that uses this table."
+---
+
 # Table: shop.t_shop_product_sku
 
 Description: Transaction table of the `shop` schema (defined in `db/migrations/up/04-shop.schema.up.sql`).

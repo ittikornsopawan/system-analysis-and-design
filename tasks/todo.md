@@ -1570,3 +1570,13 @@ Status: Complete in the branch, waiting for review. Assignment: agent `tommy`, d
 - [x] Move the deleted children statements and the order of the checks into notes of `sequence.wsd`; no SQL and no behavior is changed.
 - [x] The `campaign-spec` checker searches the spec and its sequence note; adjust the needles; the campaign files leave `LEGACY_SPEC_TEMPLATE`; the sales and authen-and-author entries that already follow the template are removed too (the same lines as the shipping PR, so `spec-template` passes on this branch).
 - [x] Open the PR with `commit-and-pr`, tell the lead SA when CI is green, then suspend. This is the last group of the template alignment.
+
+## e-commerce: Markdown frontmatter checker and repair
+
+Status: Complete in the branch, waiting for review. Assignment: agent `tommy`, delivery `open-pr`, authorized by `josh`, workspace `.workspace/tommy`, branch `docs/tommy-md-frontmatter`, scopes `e-commerce/db/tests/check_docs.py`, `e-commerce/doc/schema`, `e-commerce/doc/api/template.md`, `.agents/skills/api-contract-design/assets/api-spec.md.tmpl`, `.agents/skills/api-contract-design/SKILL.md`, `docs/handoff`, `docs/superpowers`, `README.md`, `tasks`.
+
+- [x] Add the `md-frontmatter` checker: `name` and `description` in every tracked `*.md`, `status`, `approved_by` and `approved_at` in every specification, and the explicit list `MD_FRONTMATTER_PENDING` (59 specs; a file that passes must leave it).
+- [x] Add the frontmatter (`name`, `description`) to the 53 schema docs, the schema README and template, the 5 hand-offs, the 2 plans and `README.md` (which was empty and now has a short overview); no `status` on a non-spec file.
+- [x] Add the spec frontmatter placeholders to `e-commerce/doc/api/template.md` and `api-spec.md.tmpl` and correct the sentence of `SKILL.md` that said a spec has no frontmatter.
+- [x] Record the lesson in `tasks/lessons.md`; do not touch any API `spec.md`.
+- [x] Open the PR with `commit-and-pr`, tell the lead SA, then suspend. Next: the frontmatter of the cart, payment, sales, shipping and campaign specs.

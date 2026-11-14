@@ -1,3 +1,8 @@
+---
+name: "Schema doc: shop.m_shop_type"
+description: "Columns, keys, constraints and indexes of the table shop.m_shop_type. Master table of the `shop` schema (defined in `db/migrations/up/04-shop.schema.up.sql`). Read it when you write or review a migration, a query or an API spec that uses this table."
+---
+
 # Table: shop.m_shop_type
 
 Description: Master table of the `shop` schema (defined in `db/migrations/up/04-shop.schema.up.sql`).

@@ -1,3 +1,8 @@
+---
+name: "Schema doc: shipping.t_shipping_stop"
+description: "Columns, keys, constraints and indexes of the table shipping.t_shipping_stop. Transaction table of the `shipping` schema (defined in `db/migrations/up/08-shipping.schema.up.sql`). Read it when you write or review a migration, a query or an API spec that uses this table."
+---
+
 # Table: shipping.t_shipping_stop
 
 Description: Transaction table of the `shipping` schema (defined in `db/migrations/up/08-shipping.schema.up.sql`).

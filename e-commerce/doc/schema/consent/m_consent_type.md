@@ -1,3 +1,8 @@
+---
+name: "Schema doc: consent.m_consent_type"
+description: "Columns, keys, constraints and indexes of the table consent.m_consent_type. Master table of the `consent` schema (defined in `db/migrations/up/00-common.schema.up.sql`). Read it when you write or review a migration, a query or an API spec that uses this table."
+---
+
 # Table: consent.m_consent_type
 
 Description: Master table of the `consent` schema (defined in `db/migrations/up/00-common.schema.up.sql`).

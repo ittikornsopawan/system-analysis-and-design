@@ -1,3 +1,8 @@
+---
+name: "Schema doc: author.m_permission"
+description: "Columns, keys, constraints and indexes of the table author.m_permission. Master table of the `author` schema (defined in `db/migrations/up/02-author.schema.up.sql`). Read it when you write or review a migration, a query or an API spec that uses this table."
+---
+
 # Table: author.m_permission
 
 Description: Master table of the `author` schema (defined in `db/migrations/up/02-author.schema.up.sql`).

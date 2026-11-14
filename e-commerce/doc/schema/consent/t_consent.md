@@ -1,3 +1,8 @@
+---
+name: "Schema doc: consent.t_consent"
+description: "Columns, keys, constraints and indexes of the table consent.t_consent. Transaction table of the `consent` schema (defined in `db/migrations/up/00-common.schema.up.sql`). Read it when you write or review a migration, a query or an API spec that uses this table."
+---
+
 # Table: consent.t_consent
 
 Description: Transaction table of the `consent` schema (defined in `db/migrations/up/00-common.schema.up.sql`).

@@ -1,3 +1,8 @@
+---
+name: "Schema doc: sales.t_order_item"
+description: "Columns, keys, constraints and indexes of the table sales.t_order_item. Transaction table of the `sales` schema (defined in `db/migrations/up/06-sales.schema.up.sql`). Read it when you write or review a migration, a query or an API spec that uses this table."
+---
+
 # Table: sales.t_order_item
 
 Description: Transaction table of the `sales` schema (defined in `db/migrations/up/06-sales.schema.up.sql`).
