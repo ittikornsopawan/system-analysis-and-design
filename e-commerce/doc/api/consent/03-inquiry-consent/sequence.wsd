@@ -1,6 +1,8 @@
-@startuml InquiryConsent Sequence
+@startuml InquiryConsent
 
 title Inquiry Consent API Sequence
+
+' Leading SQL apostrophes use &#39; so PlantUML preserves literals; parity compares decoded SQL.
 
 ' Visual style
 skinparam defaultFontName "Sarabun"
@@ -24,40 +26,145 @@ skinparam sequence {
 ' Do not show participant footers at the bottom of the diagram
 hide footbox
 
-
 actor "User" as user
-
 box "Frontend" #F8FAFC
     participant "Inquiry Consent Page" as page
 end box
-
 box "Web API" #F8FAFC
     participant "API" as api
     participant "Application" as app
     participant "Domain" as domain
     participant "Infrastructure" as infra
 end box
-
 box "Database" #F8FAFC
+    database "t_user_access_token" as t_user_access_token
     database "t_consent" as t_consent
     database "m_consent_type" as m_consent_type
 end box
 
-user -> page: Request Inquiry Consent
-
+user -> page: Read all consents with optional filters and pagination
 activate page
-    page -> api: Call GET v1/consent
+    page -> api: GET v1/consent (Bearer JWT, UTC timestamp; query only)
     activate api
         api -> app: [**InquiryConsentQueryHandler**] Process request
         activate app
-            app -> app: Validate request parameters and business rules
-            alt If request is invalid
-                app -> api: Return error response
-                api -> page: Return error response
-                page -> user: Display error message
-            else If request is valid
-                app -> infra: Execute database operations
-                activate infra
+            note over app, infra
+                Execution order: validate query/header/body and checked pagination (400) -> verify JWT/roles (401) -> begin
+                read-only repeatable-read transaction -> fresh now/expiry -> joined current credential/user (401) -> claims
+                permission (403) -> count -> optional page -> consent type names -> complete mapping -> COMMIT -> 200. Every
+                post-BEGIN rejection rolls back.
+            end note
+            app -> app: Generate requestId; validate UTC timestamp, known single query keys/no body, UUID id, positive signed Int64 pages/default 1/10/pageSize <=100 and ACTIVE/INACTIVE/LOCKED/ARCHIVED filter
+            note over app, infra
+                Reject unknown/repeated keys and malformed header/query with 400 E10001 before SQL. Generate requestId if
+                omitted. Supplied id is a non-empty UUID, never null; omitted id is typed SQL NULL. pageIndex/pageSize are
+                positive signed 64-bit integers, default 1/10 only when omitted, pageSize at most 100. Compute checked
+                offset = (pageIndex - 1) * pageSize and reject parse/offset overflow beyond nonnegative BIGINT with 400.
+                Explicit empty/null-like values do not become defaults.
+            end note
+            app -> app: Compute checked offset = (pageIndex - 1) * pageSize; reject numeric/offset overflow beyond nonnegative BIGINT
+            alt Invalid input or pagination overflow
+                break Reject this inquiry
+                    app -> api: HTTP 400 E10001
+                    api -> page: Show failure without a partial consent page
+                    page -> user: Display failure; no consent data
+                end break
+            else Check passed
+            end
+            app -> app: Verify JWT signature/issuer/audience/expiry/UUID sub and the roles claim as unique non-empty strings
+            alt Missing/invalid JWT or malformed roles
+                break Reject this inquiry
+                    app -> api: HTTP 401 E10002 Invalid or expired access token.
+                    api -> page: Show failure without a partial consent page
+                    page -> user: Display failure; no consent data
+                end break
+            else Check passed
+            end
+            app -> app: callerUserId = verified sub; accessTokenHash = SHA-256 exact JWT
+            app -> app: Bind omitted id/searchPattern/rowStatus as typed SQL NULL; supplied searchPattern = percent + search + percent, preserving ILIKE wildcards
+            app -> infra: BEGIN REPEATABLE READ READ ONLY
+            note over app, infra
+                Verify Bearer JWT signature/issuer/audience/expiry/UUID sub and the roles claim before BEGIN. roles must be
+                an array of unique non-empty strings, including [] (JWT payload of 2026-11-13). Missing/malformed roles is
+                generic 401 E10002, never an empty-list or live-grant fallback. Derive callerUserId only from verified sub
+                and accessTokenHash as SHA-256 of the exact presented JWT; do not accept caller ids or isPlatformAdmin flags
+                from requests.
+                Require matching token hash/caller id, ACTIVE token/user and strict expired_at > now;
+                missing/inactive/revoked/expired/mismatched credentials is generic 401 E10002 with rollback before consent
+                reads. No user/role/token locks or writes. This current credential gate preserves immediate logout/reset
+                revocation (Q13).
+            end note
+            activate infra
+            alt Read and mapping work completes
+                note over app, infra
+                    No locks or writes. Credentials, consent count and page use one repeatable-read snapshot.
+                    Timeout or unexpected SQL/result/mapping failure may interrupt any step; no partial response.
+                end note
+                app -> app: Capture fresh server UTC now immediately before joined credential read; recheck JWT exp
+                alt JWT expired before fresh credential read
+                    break Reject this inquiry
+                        app -> infra: ROLLBACK
+                        app -> api: HTTP 401 E10002 Invalid or expired access token.
+                        api -> page: Show failure without a partial consent page
+                        page -> user: Display failure; no consent data
+                    end break
+                else Check passed
+                end
+                app -> infra: QUERY - Check current credential and user
+                infra -> t_user_access_token: QUERY - Check current credential and user
+                activate t_user_access_token
+                    note right of t_user_access_token
+                        SELECT
+                            at.id as access_token_id
+                        FROM authen.t_user_access_token at
+                        JOIN authen.m_user u ON u.id = at.user_id
+                        WHERE at.token = '<sequence.accessTokenHash>'
+                        AND at.user_id = '<sequence.callerUserId>'
+                        AND at.row_status = 'ACTIVE'
+                        AND at.expired_at > '<sequence.now>'
+                        AND u.row_status = 'ACTIVE'
+                    end note
+                    t_user_access_token -> infra: Return ACTIVE matching unexpired token/user or no row
+                deactivate t_user_access_token
+                infra -> app: Return ACTIVE matching unexpired token/user or no row
+                alt Current token/user missing/inactive/revoked/expired/mismatched
+                    break Reject this inquiry
+                        app -> infra: ROLLBACK
+                        app -> api: HTTP 401 E10002 Invalid or expired access token.
+                        api -> page: Show failure without a partial consent page
+                        page -> user: Display failure; no consent data
+                    end break
+                else Check passed
+                end
+                app -> app: Authorize once using exact case-sensitive PLATFORM_ADMIN in verified JWT roles; never reload current grants
+                alt No exact PLATFORM_ADMIN role claim
+                    break Reject this inquiry
+                        app -> infra: ROLLBACK
+                        app -> api: HTTP 403 E10009 You do not have permission to read consents.
+                        api -> page: Show failure without a partial consent page
+                        page -> user: Display failure; no consent data
+                    end break
+                else Check passed
+                end
+                app -> infra: QUERY - Get total items
+                infra -> t_consent: QUERY - Get total items
+                activate t_consent
+                    note right of t_consent
+                        SELECT
+                            COUNT(c.id) as total_items
+                        FROM consent.t_consent c
+                        WHERE c.row_status <> 'DELETED'
+                        AND ('<sequence.id>' IS NULL OR c.id = '<sequence.id>') -- only when id is specified
+                        AND ('<sequence.searchPattern>' IS NULL OR c.code ILIKE '<sequence.searchPattern>' OR c.consent_name ILIKE '<sequence.searchPattern>' OR c.consent_description ILIKE '<sequence.searchPattern>') -- only when search is specified
+                    end note
+                    t_consent -> infra: Return totalItems for non-DELETED consents and all nullable filters
+                deactivate t_consent
+                infra -> app: Return totalItems for non-DELETED consents and all nullable filters
+                app -> app: totalPages = 0 when totalItems=0, otherwise integer quotient plus nonzero remainder; no floating point or overflowing count+pageSize-1
+                alt totalItems = 0
+                    app -> app: items = []; skip page query; totalPages = 0
+                else totalItems > 0
+                    app -> infra: QUERY - Get consents
                     infra -> t_consent: QUERY - Get consents
                     activate t_consent
                         note right of t_consent
@@ -75,53 +182,99 @@ activate page
                                 c.body
                             FROM consent.t_consent c
                             WHERE c.row_status <> 'DELETED'
-                            AND c.id = '<sequence.id>' -- only when id is specified
-                            AND (c.code ILIKE '%<sequence.search>%' OR c.consent_name ILIKE '%<sequence.search>%' OR c.consent_description ILIKE '%<sequence.search>%') -- only when search is specified
-                            ORDER BY c.created_at DESC
-                            LIMIT <sequence.pageSize> OFFSET (<sequence.pageIndex> - 1) * <sequence.pageSize>
+                            AND ('<sequence.id>' IS NULL OR c.id = '<sequence.id>') -- only when id is specified
+                            AND ('<sequence.searchPattern>' IS NULL OR c.code ILIKE '<sequence.searchPattern>' OR c.consent_name ILIKE '<sequence.searchPattern>' OR c.consent_description ILIKE '<sequence.searchPattern>') -- only when search is specified
+                            ORDER BY c.created_at DESC, c.id
+                            LIMIT '<sequence.pageSize>' OFFSET '<sequence.offset>'
                         end note
-                        t_consent -> infra: Return query result
+                        t_consent -> infra: Return consent rows in created_at descending/id order from identical filters/snapshot
                     deactivate t_consent
-
-                    infra -> t_consent: QUERY - Get total items
-                    activate t_consent
-                        note right of t_consent
-                            SELECT
-                                COUNT(c.id) as total_items
-                            FROM consent.t_consent c
-                            WHERE c.row_status <> 'DELETED'
-                            AND c.id = '<sequence.id>' -- only when id is specified
-                            AND (c.code ILIKE '%<sequence.search>%' OR c.consent_name ILIKE '%<sequence.search>%' OR c.consent_description ILIKE '%<sequence.search>%') -- only when search is specified
-                        end note
-                        t_consent -> infra: Return query result
-                    deactivate t_consent
-
-                    infra -> m_consent_type: QUERY - Get consent type
-                    activate m_consent_type
-                        note right of m_consent_type
-                            SELECT
-                                ct.id as consent_type_id,
-                                ct.name as consent_type_name
-                            FROM consent.m_consent_type ct
-                            WHERE ct.id IN ('<sequence.consentTypeIds>')
-                        end note
-                        m_consent_type -> infra: Return query result
-                    deactivate m_consent_type
-
-                    infra -> app: Return database result
-                deactivate infra
-
-                app -> domain: Apply domain rules and prepare response
-                activate domain
-                    domain -> app: Return response data
-                deactivate domain
-
-                app -> api: Return success response
-                api -> page: Return success response
-                page -> user: Display success result
-            end alt
+                    infra -> app: Return consent rows in created_at descending/id order from identical filters/snapshot
+                    app -> app: Require page row count = min(pageSize, max(0, totalItems-offset)); mismatch is internal failure
+                    alt Page contains rows
+                        app -> app: consentTypeIds = typed UUID[] of the distinct consentTypeId values of the page rows
+                        app -> infra: QUERY - Get consent type
+                        infra -> m_consent_type: QUERY - Get consent type
+                        activate m_consent_type
+                            note right of m_consent_type
+                                SELECT
+                                    ct.id as consent_type_id,
+                                    ct.name as consent_type_name
+                                FROM consent.m_consent_type ct
+                                WHERE ct.id = ANY ('<sequence.consentTypeIds>'::UUID[]) -- every status, Q19
+                            end note
+                            m_consent_type -> infra: Return consent type id/name rows of every status for the page
+                        deactivate m_consent_type
+                        infra -> app: Return consent type id/name rows of every status for the page
+                        app -> app: Require exactly one type row per distinct consentTypeId; a missing type row is internal failure
+                        app -> app: Map exactly consentId/code/consentTypeId/consentTypeName/consentVersion/consentName/consentDescription/effectiveAt/expiredAt/isRequired/rowStatus/body per row; expired and non-ACTIVE-type consents included; required values non-null; exclude caller/assignment/token/hash/audit
+                    else Page beyond range contains no rows
+                        app -> app: items = []; retain positive totalItems/totalPages; no 404
+                    end
+                end
+                app -> app: data = exactly items/pageIndex/pageSize/totalItems/totalPages; echo validated page values; explicit empty arrays; finish full mapping
+                app -> infra: COMMIT
+                infra -> app: Return committed consistent read-only consent page
+                note over app, infra
+                    Approved by the product owner (Q18, 2026-11-09); use exact PLATFORM_ADMIN in verified JWT role claims under
+                    [owner-confirmed review](../../../../../docs/superpowers/specs/2026-11-07-api-review-design.md),
+                    Q2/Q4/Q10/Q13. This detailed revision remains in-review; no backend/schema implementation. It does not
+                    change the token-only consent type reference inquiry (consent/08) or the consumer consent lists.
+                    Omitted searchPattern binds typed SQL NULL; supplied search, including empty string, becomes one bound text
+                    searchPattern = percent + search + percent, preserving percent/underscore wildcards. Never interpolate
+                    client text into SQL. The two nullable filters disable only themselves and combine by AND; id is still
+                    filtered/paginated, not an unpaged alternate path.
+                    After current credentials pass, authorize once using exact case-sensitive PLATFORM_ADMIN in verified JWT
+                    roles. Valid roles=[] or any other role name is 403 E10009 `You do not have permission to read consents.`
+                    after rollback and before count/page SQL. Never query current caller role assignments to grant, remove or
+                    replace authorization. Grant withdrawal after token issuance leaves the old privilege usable until access
+                    expiry (Q4); refresh reloads current grants (Q7).
+                    **All consent records are returned (Q19, 2026-11-09).** Consents with rowStatus DELETED are never returned;
+                    every other consent matching the filters is returned, including INACTIVE/LOCKED/ARCHIVED rows, consents
+                    whose effective period has not started or has expired, and consents whose consent type is not ACTIVE. The
+                    consumer visibility rules of consent/01 and consent/05 do not apply to this management list. No
+                    historical-content storage is added: `body` is the stored current body.
+                    Count first and optionally fetch the page in the same read-only repeatable-read snapshot as credentials.
+                    Both consent queries use identical non-DELETED/id/searchPattern WHERE predicates; every supplied value is
+                    bound, including pageSize and checked offset. If totalItems=0 skip the page SQL and return items=[],
+                    totalPages=0. With positive count, query the requested page; an offset beyond the range returns items=[]
+                    with positive totals/pages and no 404. A missing/DELETED id is the same empty-list 200 for an authorized
+                    caller; permission is checked before revealing whether any consent exists.
+                    When the page has rows, read the names of its distinct consent types with one bound typed UUID[] query in
+                    the same snapshot, whatever the status of the type (Q19). A type row is mandatory by the foreign key: a
+                    missing type row or a row count different from the distinct type ids is an internal failure. A page without
+                    rows skips this query.
+                    Sort by created_at descending, then id ascending (the existing newest-first order with a unique tie-breaker,
+                    so pages never repeat or skip a row), preserving database collation. This is deterministic within one
+                    snapshot; later requests may see newly committed changes and are not a frozen paging cursor.
+                    Map each row to exactly
+                    consentId/code/consentTypeId/consentTypeName/consentVersion/consentName/consentDescription/effectiveAt/expiredAt/isRequired/rowStatus/body.
+                    No caller id, assignment, token/hash, audit or extra table fields are returned. Return exactly five data
+                    keys: items/pageIndex/pageSize/totalItems/totalPages, with explicit empty arrays. Echo validated pages and
+                    compute totalPages by integer quotient/remainder (zero when count=0), avoiding floating point or overflowing
+                    count+pageSize-1. Require page row count = min(pageSize, max(0, totalItems-offset)); mismatch or
+                    malformed/null/missing required data is internal failure.
+                    Map the full response before COMMIT, then HTTP 200 S10000 Inquiry Consent Success. An unexpected
+                    SQL/result/mapping error rolls back and returns generic 500 without bizCode; timeout before COMMIT rolls
+                    back and returns 408 E90001. Never return partially mapped rows, mutate consents/assignments/tokens/audit,
+                    or answer 404/409 for this inquiry.
+                end note
+                app -> api: HTTP 200 S10000 Inquiry Consent Success; all five pagination keys
+                api -> page: Show authorized consent page and totals
+                page -> user: Display consents or empty page
+            else Timeout before COMMIT
+                app -> infra: ROLLBACK
+                app -> api: HTTP 408 E90001
+                api -> page: Show failure without a partial consent page
+                page -> user: Display failure; no consent data
+            else Unexpected SQL/result/mapping failure before COMMIT
+                app -> infra: ROLLBACK
+                app -> api: HTTP 500 Internal Server Error; omit bizCode
+                api -> page: Show failure without a partial consent page
+                page -> user: Display failure; no consent data
+            end
+            deactivate infra
         deactivate app
     deactivate api
 deactivate page
-
 @enduml

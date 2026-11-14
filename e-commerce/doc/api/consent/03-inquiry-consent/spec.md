@@ -1,12 +1,20 @@
+---
+name: Consent Inquiry API Specification
+description: Defines the platform-administrator management inquiry of all consent records with verified JWT roles, current credential gating, bound nullable filters and consistent read-only pagination; read when reviewing or implementing consent inquiry.
+status: in-review
+approved_by: null
+approved_at: null
+---
+
 # [GET]: v1/consent
 
-| Title       | Description                                                                                                                    |
-| ----------- | ------------------------------------------------------------------------------------------------------------------------------ |
-| Name        | Inquiry Consent API                                                                                                            |
-| Method      | GET                                                                                                                            |
-| Endpoint    | v{version}/consent                                                                                                             |
-| Version     | 1                                                                                                                              |
-| Description | Inquiry the list of consents with paging and search, Inquiry by id returns a list with one item, Deleted consents are excluded |
+| Title       | Description                                                                                                                                                                                                                                        |
+| ----------- | -------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------- |
+| Name        | Inquiry Consent API                                                                                                                                                                                                                                |
+| Method      | GET                                                                                                                                                                                                                                                |
+| Endpoint    | v{version}/consent                                                                                                                                                                                                                                 |
+| Version     | 1                                                                                                                                                                                                                                                  |
+| Description | Inquiry the list of consents with paging and search, Inquiry by id returns a list with one item, Deleted consents are excluded, Only a platform administrator can call it, Expired consents and consents of a type that is not ACTIVE are included |
 
 ## Domain
 
@@ -18,6 +26,13 @@
 | PRE-PRODUCTION | https://www.domain.com/api-pre-prod |
 | PRODUCTION     | https://www.domain.com/api          |
 
+- Only a platform administrator can read the consent management list (403, E10009), because it exposes every consent record.
+- Validate timestamp as mandatory UTC and accept only single id/pageIndex/pageSize/search query keys, with no body.
+- search matches code OR consent name OR consent description with existing case-insensitive ILIKE wildcard semantics.
+- Verify Bearer JWT signature/issuer/audience/expiry/UUID sub and the roles claim before BEGIN.
+- Begin REPEATABLE READ READ ONLY, capture fresh server UTC now immediately before the joined current credential/user read and recheck JWT exp.
+- The order of the checks, the locks and every outcome is in the sequence diagram.
+
 ---
 
 ## Request Parameters
@@ -27,36 +42,36 @@
 |     | Parameter Name | Data Type | M/O       | Description                  | Example                                        |
 | --- | -------------- | --------- | --------- | ---------------------------- | ---------------------------------------------- |
 | 1   | authorization  | String    | MANDATORY | Access token with token type | Bearer eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9... |
-| 2   | timestamp      | DateTime  | MANDATORY | Request timestamp            | 2026-11-05T12:42:00.123Z                       |
+| 2   | timestamp      | DateTime  | MANDATORY | Request timestamp            | 2026-11-06T09:00:00.123Z                       |
 | 3   | requestId      | String    | OPTIONAL  | API Request Id               | req-9b1deb4d-3b7d-4bad-9bdd-2b0d7b3dcb6d       |
 
 ### Query Parameters
 
-|     | Parameter Name | Data Type    | M/O      | Description                                         | Example                              |
-| --- | -------------- | ------------ | -------- | --------------------------------------------------- | ------------------------------------ |
-| 1   | id             | String: UUID | OPTIONAL | Consent Id, Response is a list with one item        | c1a2b3d4-e5f6-4a7b-8c9d-0e1f2a3b4c5d |
-| 2   | pageIndex      | Numeric      | OPTIONAL | Page index starting from 1, Defaults to 1           | 1                                    |
-| 3   | pageSize       | Numeric      | OPTIONAL | Number of items per page (max 100), Defaults to 10  | 10                                   |
-| 4   | search         | String       | OPTIONAL | Search by code, consent name or consent description | terms                                |
+|     | Parameter Name | Data Type    | M/O      | Description                                                                                                   | Example                              |
+| --- | -------------- | ------------ | -------- | ------------------------------------------------------------------------------------------------------------- | ------------------------------------ |
+| 1   | id             | String: UUID | OPTIONAL | Consent Id filter combined with other filters and normal pagination; missing/DELETED id returns an empty list | c1a2b3d4-e5f6-4a7b-8c9d-0e1f2a3b4c5d |
+| 2   | pageIndex      | Numeric      | OPTIONAL | Page index starting from 1, Defaults to 1                                                                     | 1                                    |
+| 3   | pageSize       | Numeric      | OPTIONAL | Number of items per page (max 100), Defaults to 10                                                            | 10                                   |
+| 4   | search         | String       | OPTIONAL | Search by code, consent name or consent description                                                           | terms                                |
 
 ## Example Request
 
 ### HTTP Request
 
 ```HTTP
-GET /api-dev/v1/consent?id=c1a2b3d4-e5f6-4a7b-8c9d-0e1f2a3b4c5d&pageIndex=1&pageSize=10&search=terms HTTP/1.1
+GET /api-dev/v1/consent?pageIndex=1&pageSize=10&rowStatus=ACTIVE HTTP/1.1
 Host: www.domain.com
 authorization: Bearer eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9...
-timestamp: 2026-11-05T12:42:00.123Z
+timestamp: 2026-11-06T09:00:00.123Z
 requestId: req-9b1deb4d-3b7d-4bad-9bdd-2b0d7b3dcb6d
 ```
 
 ### cUrl Request
 
 ```JSON
-curl --location --request GET 'https://www.domain.com/api-dev/v1/consent?id=c1a2b3d4-e5f6-4a7b-8c9d-0e1f2a3b4c5d&pageIndex=1&pageSize=10&search=terms' \
+curl --location --request GET 'https://www.domain.com/api-dev/v1/consent?pageIndex=1&pageSize=10&rowStatus=ACTIVE' \
 --header 'authorization: Bearer eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9...' \
---header 'timestamp: 2026-11-05T12:42:00.123Z' \
+--header 'timestamp: 2026-11-06T09:00:00.123Z' \
 --header 'requestId: req-9b1deb4d-3b7d-4bad-9bdd-2b0d7b3dcb6d'
 ```
 
@@ -78,7 +93,7 @@ curl --location --request GET 'https://www.domain.com/api-dev/v1/consent?id=c1a2
 | 3   | bizCode        | String            | OPTIONAL  | Sequence Diagram | response.status.bizCode    | Business Code Success or Fail                 | S10000                                   |
 | 4   | bizMessage     | String            | OPTIONAL  | Sequence Diagram | response.status.bizMessage | Business Message Success or Fail              | Success                                  |
 | 5   | requestId      | String            | MANDATORY | Sequence Diagram | response.status.requestId  | API Request Id                                | req-9b1deb4d-3b7d-4bad-9bdd-2b0d7b3dcb6d |
-| 6   | timestamp      | String: TIMESTAMP | MANDATORY | Sequence Diagram | response.status.timestamp  | API Request Timestamp (Without time zone UTC) | 2026-11-05T12:42:00.123Z                 |
+| 6   | timestamp      | String: TIMESTAMP | MANDATORY | Sequence Diagram | response.status.timestamp  | API Request Timestamp (Without time zone UTC) | 2026-11-06T09:00:00.123Z                 |
 | 7   | status         | String            | MANDATORY | Sequence Diagram | response.status.status     | API Request Status (SUCCESS, ERROR)           | SUCCESS                                  |
 
 ### Data Object
@@ -120,7 +135,7 @@ curl --location --request GET 'https://www.domain.com/api-dev/v1/consent?id=c1a2
         "bizCode": "S10000",
         "bizMessage": "Inquiry Consent Success",
         "requestId": "req-9b1deb4d-3b7d-4bad-9bdd-2b0d7b3dcb6d",
-        "timestamp": "2026-11-05T12:42:00.123Z",
+        "timestamp": "2026-11-06T09:00:00.123Z",
         "status": "SUCCESS"
     },
     "data": {
@@ -170,6 +185,8 @@ curl --location --request GET 'https://www.domain.com/api-dev/v1/consent?id=c1a2
 
 #### Success - By Id
 
+Request: `GET v1/consent?id=c1a2b3d4-e5f6-4a7b-8c9d-0e1f2a3b4c5d`
+
 ```JSON
 {
     "status": {
@@ -178,7 +195,7 @@ curl --location --request GET 'https://www.domain.com/api-dev/v1/consent?id=c1a2
         "bizCode": "S10000",
         "bizMessage": "Inquiry Consent Success",
         "requestId": "req-8f6a2b4c-5d7e-4f9a-b1c3-4d5e6f7a8b9c",
-        "timestamp": "2026-11-05T12:48:00.123Z",
+        "timestamp": "2026-11-06T09:10:00.123Z",
         "status": "SUCCESS"
     },
     "data": {
@@ -219,7 +236,7 @@ curl --location --request GET 'https://www.domain.com/api-dev/v1/consent?id=c1a2
         "bizCode": "S10000",
         "bizMessage": "Inquiry Consent Success",
         "requestId": "req-9a7b3c5d-6e8f-4a0b-c2d4-5e6f7a8b9c0d",
-        "timestamp": "2026-11-05T12:49:00.123Z",
+        "timestamp": "2026-11-06T09:20:00.123Z",
         "status": "SUCCESS"
     },
     "data": {
@@ -242,7 +259,7 @@ curl --location --request GET 'https://www.domain.com/api-dev/v1/consent?id=c1a2
         "bizCode": "E10001",
         "bizMessage": "Page Index and Page Size must be greater than 0, Page Size must not be greater than 100.",
         "requestId": "req-400a1b2c-3d4e-5f6a-7b8c-9d0e1f2a3b4c",
-        "timestamp": "2026-11-05T12:43:45.123Z",
+        "timestamp": "2026-11-06T09:40:40.123Z",
         "status": "ERROR"
     }
 }
@@ -257,8 +274,24 @@ curl --location --request GET 'https://www.domain.com/api-dev/v1/consent?id=c1a2
         "message": "Unauthorized",
         "bizCode": "E10002",
         "bizMessage": "Invalid or expired access token.",
-        "requestId": "req-7a2cba3e-1b2d-4caf-8cce-3b1d7b3dcb6d",
-        "timestamp": "2026-11-05T12:43:10.456Z",
+        "requestId": "req-70a1b2c-3d4e-5f6a-7b8c-9d0e1f2a3b4c",
+        "timestamp": "2026-11-06T09:07:49.123Z",
+        "status": "ERROR"
+    }
+}
+```
+
+#### Fail - Forbidden
+
+```JSON
+{
+    "status": {
+        "code": 403,
+        "message": "Forbidden",
+        "bizCode": "E10009",
+        "bizMessage": "You do not have permission to read consents.",
+        "requestId": "req-460a1b2c-3d4e-5f6a-7b8c-9d0e1f2a3b4c",
+        "timestamp": "2026-11-06T09:46:22.123Z",
         "status": "ERROR"
     }
 }
@@ -273,8 +306,46 @@ curl --location --request GET 'https://www.domain.com/api-dev/v1/consent?id=c1a2
         "message": "Request Timeout",
         "bizCode": "E90001",
         "bizMessage": "The server timed out waiting for the request.",
-        "requestId": "req-408a1b2c-3d4e-5f6a-7b8c-9d0e1f2a3b4c",
-        "timestamp": "2026-11-05T12:45:30.123Z",
+        "requestId": "req-80a1b2c-3d4e-5f6a-7b8c-9d0e1f2a3b4c",
+        "timestamp": "2026-11-06T09:08:56.123Z",
+        "status": "ERROR"
+    }
+}
+```
+
+#### Success - Page Beyond Range
+
+```JSON
+{
+    "status": {
+        "code": 200,
+        "message": "Ok",
+        "bizCode": "S10000",
+        "bizMessage": "Inquiry Consent Success",
+        "requestId": "req-8f6a2b4c-5d7e-4f9a-b1c3-4d5e6f7a8b9c",
+        "timestamp": "2026-11-06T09:10:00.123Z",
+        "status": "SUCCESS"
+    },
+    "data": {
+        "items": [],
+        "pageIndex": 2,
+        "pageSize": 10,
+        "totalItems": 1,
+        "totalPages": 1
+    }
+}
+```
+
+#### Fail - Internal Server Error
+
+```JSON
+{
+    "status": {
+        "code": 500,
+        "message": "Internal Server Error",
+        "bizMessage": "An unexpected error occurred.",
+        "requestId": "req-consent-inquiry-review",
+        "timestamp": "2026-11-08T00:00:00.123Z",
         "status": "ERROR"
     }
 }
@@ -283,6 +354,37 @@ curl --location --request GET 'https://www.domain.com/api-dev/v1/consent?id=c1a2
 ---
 
 ## Database Relations
+
+All three SELECTs share one REPEATABLE READ READ ONLY transaction; authorization is derived solely from the verified token roles, and current token/user status is read from the database. Bound nullable filters and identical predicates apply to count and page. No locks or writes.
+
+### Table: [authen.t_user_access_token](../../../schema/authen/t_user_access_token.md)
+
+#### QUERY - Check current credential and user
+
+```SQL
+SELECT
+    at.id as access_token_id
+FROM authen.t_user_access_token at
+JOIN authen.m_user u ON u.id = at.user_id
+WHERE at.token = '<sequence.accessTokenHash>'
+AND at.user_id = '<sequence.callerUserId>'
+AND at.row_status = 'ACTIVE'
+AND at.expired_at > '<sequence.now>'
+AND u.row_status = 'ACTIVE'
+```
+
+### Table: [consent.t_consent](../../../schema/consent/t_consent.md)
+
+#### QUERY - Get total items
+
+```SQL
+SELECT
+    COUNT(c.id) as total_items
+FROM consent.t_consent c
+WHERE c.row_status <> 'DELETED'
+AND ('<sequence.id>' IS NULL OR c.id = '<sequence.id>') -- only when id is specified
+AND ('<sequence.searchPattern>' IS NULL OR c.code ILIKE '<sequence.searchPattern>' OR c.consent_name ILIKE '<sequence.searchPattern>' OR c.consent_description ILIKE '<sequence.searchPattern>') -- only when search is specified
+```
 
 ### Table: [consent.t_consent](../../../schema/consent/t_consent.md)
 
@@ -303,21 +405,10 @@ SELECT
     c.body
 FROM consent.t_consent c
 WHERE c.row_status <> 'DELETED'
-AND c.id = '<sequence.id>' -- only when id is specified
-AND (c.code ILIKE '%<sequence.search>%' OR c.consent_name ILIKE '%<sequence.search>%' OR c.consent_description ILIKE '%<sequence.search>%') -- only when search is specified
-ORDER BY c.created_at DESC
-LIMIT <sequence.pageSize> OFFSET (<sequence.pageIndex> - 1) * <sequence.pageSize>
-```
-
-#### QUERY - Get total items
-
-```SQL
-SELECT
-    COUNT(c.id) as total_items
-FROM consent.t_consent c
-WHERE c.row_status <> 'DELETED'
-AND c.id = '<sequence.id>' -- only when id is specified
-AND (c.code ILIKE '%<sequence.search>%' OR c.consent_name ILIKE '%<sequence.search>%' OR c.consent_description ILIKE '%<sequence.search>%') -- only when search is specified
+AND ('<sequence.id>' IS NULL OR c.id = '<sequence.id>') -- only when id is specified
+AND ('<sequence.searchPattern>' IS NULL OR c.code ILIKE '<sequence.searchPattern>' OR c.consent_name ILIKE '<sequence.searchPattern>' OR c.consent_description ILIKE '<sequence.searchPattern>') -- only when search is specified
+ORDER BY c.created_at DESC, c.id
+LIMIT '<sequence.pageSize>' OFFSET '<sequence.offset>'
 ```
 
 ### Table: [consent.m_consent_type](../../../schema/consent/m_consent_type.md)
@@ -329,5 +420,5 @@ SELECT
     ct.id as consent_type_id,
     ct.name as consent_type_name
 FROM consent.m_consent_type ct
-WHERE ct.id IN ('<sequence.consentTypeIds>')
+WHERE ct.id = ANY ('<sequence.consentTypeIds>'::UUID[]) -- every status, Q19
 ```
