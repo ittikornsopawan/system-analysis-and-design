@@ -50,7 +50,23 @@ activate page
     activate api
         api -> app: [**UpsertRoleBatchCommandHandler**] Process request
         activate app
+            note over app, infra
+                Execution order: validate all items (400) -> verify JWT (401) -> begin transaction (READ COMMITTED) ->
+                caller lock -> fresh current credential gate (401) -> lock target ids ascending -> all target existence
+                checks in request order (404) -> one claims permission (403, E10009) -> per-item stored
+                system/duplicate/in-use conflicts (409) and guarded writes in input order -> complete indexed mapping ->
+                COMMIT -> one 200. Every post-BEGIN error rolls back the whole batch.
+            end note
             app -> app: Generate requestId; validate whole JSON envelope/no query/known unique keys, UTC timestamp, roles array 1..100, every item type/required fields/code/status/defaults; reject insert-DELETED
+            note over app, infra
+                Validate the whole request before SQL: exactly one JSON object with only roles, no query keys, correct JSON
+                content type and mandatory UTC timestamp; roles is an array of 1..100 non-null objects with only
+                id/name/description/rowStatus and no repeated JSON keys. Process item validation in input order; required
+                name/description are non-null nonblank strings (max 64/256), name matches ^[A-Z][A-Z0-9_]{0,63}$, and values
+                are not trimmed/case-normalized. id is optional only by omission; supplied id must be a non-null UUID.
+                rowStatus defaults to ACTIVE only when omitted, otherwise ACTIVE/INACTIVE/DELETED/LOCKED/ARCHIVED;
+                insert-DELETED is 400. Validate required fields even for delete/archive. Generate requestId if omitted.
+            end note
             app -> app: Validate all items in input order; canonical duplicate ids and exact duplicate non-DELETED names are 400 before SQL
             alt Invalid envelope/header/item/count/duplicate ids or names
                 break Reject this whole request
@@ -72,6 +88,39 @@ activate page
             app -> app: callerUserId = verified sub; accessTokenHash = SHA-256 exact JWT; createdBy/updatedBy = caller UUID string
             app -> app: targetRoleIds = typed UUID[] of supplied canonical ids, empty for all inserts; omitted per-item id = typed SQL NULL
             app -> infra: BEGIN READ COMMITTED
+            note over app, infra
+                When any item fails the whole request is rolled back and no role is changed. `id` must not be duplicated in
+                the request, and `name` must not be duplicated among the items that are not DELETED (400, E10001). An item
+                without `id` and with `rowStatus` DELETED is rejected with 400 (E10001). The response is HTTP 200 for every
+                successful batch, including a batch that deletes. The 403 message has no item position (the permission is
+                the caller's, not the item's).
+                Verify JWT signature/issuer/audience/expiry/UUID sub and structured roles before BEGIN. roles must be an
+                array (including []), each object has UUID roleId and non-empty string name, and roleIds are unique;
+                missing/malformed claims are generic 401 E10002, not an empty-role fallback. Derive callerUserId only from
+                verified sub, accessTokenHash as SHA-256 of the exact JWT, createdBy/updatedBy as caller UUID string. Never
+                use request flags or a separate isPlatformAdmin claim to grant permission.
+                Begin one READ COMMITTED transaction, lock caller user first, capture fresh server UTC now after the lock
+                and recheck JWT exp, then read joined current credential/user. Require matching hash/caller, ACTIVE
+                token/user and strict expired_at > now. Missing caller or revoked/inactive/expired/mismatched credentials is
+                generic 401 before target reads. Logout/reset use the same user-first lock. Withdrawal of a grant alone does
+                not invalidate an otherwise-current old JWT role snapshot; refresh loads current grants.
+                Construct targetRoleIds as a typed UUID[] of all supplied ids (empty array for all inserts). Lock every
+                matching non-DELETED target role in ascending id order with one SELECT FOR UPDATE, independent of request
+                order. Map locked rows by id, then report the first missing/DELETED target in original request order as
+                roles[i]: Role not found. (404 E10004), before caller permission or any conflict/write. The row-lock query
+                rechecks lifecycle after waiting; no resurrection. Request-order mutation and sorted lock order are separate
+                concerns. Existing roles cannot appear twice because validation rejects duplicate ids.
+                Each item's conflict reads see preceding item writes in the same transaction. Deleting a role at index 0 can
+                release its old name for an insert at index 1; reversing those items returns duplicate 409 at index 0 and
+                applies neither. Renaming A to a name still held by B returns 409 even if a later item would release it;
+                this API does not apply a final-state rename plan. Preserve the existing request-order rule. Every
+                item-specific 404/409 message begins roles[i]; a unique-index collision uses the current writing item's
+                index.
+                Shared lifecycle invariant: reference/assignment writers must lock and recheck the target role before
+                creating/reopening a binding, with target users first and role ids ascending. Their matching migrations
+                remain separate API PRs; this batch contract and its SQL fixtures do not certify unmigrated writers. A
+                soft-deleted parent flag alone is not enforced by its foreign key.
+            end note
             activate infra
             alt Work completes before commit
                 note over app, infra
@@ -343,6 +392,49 @@ activate page
                 app -> app: Require results count equals input count, original index order and unique returned roleIds; data = exactly roles array of index/roleId/action; map all before COMMIT
                 app -> infra: COMMIT
                 infra -> app: Return committed whole batch
+                note over app, infra
+                    This detailed revision remains in-review; no backend/schema implementation is included.
+                    Every role follows the rules of [the single upsert](../01-upsert-role/spec.md#role-rules): name is the role
+                    code: capital letters, DELETED is final, delete and archive are rejected while a user (`author.t_user_role`)
+                    or a permission (`author.t_role_permission`) that is not DELETED still uses it.
+                    **`PLATFORM_ADMIN` is the system role.** It cannot be renamed, changed, deleted, archived, locked or set
+                    INACTIVE through this API: any request that names it by `id` is rejected with 409 (E10006) `System role
+                    cannot be changed.` Giving another role the name `PLATFORM_ADMIN` is a duplicate name (409, E10003). The
+                    role is created by the seed, see `e-commerce/db/seed/author.seed.sql`.
+                    Valid non-admin claims return one 403 E10009 after all target existence checks and before any conflict or
+                    write, with no item position. Never reload live caller grants from author.t_user_role/author.m_role.
+                    Approved by the product owner (Q2/Q4/Q10/Q13, 2026-11-07), superseding the earlier live-assignment guard.
+                    Compare parsed canonical UUIDs when rejecting duplicate ids (400), and reject exact duplicate names among
+                    non-DELETED input items (400); deleted input items do not reserve a proposed name. Input errors identify
+                    roles[i] where item-specific; count/envelope/header errors are request-level. No partial processing before
+                    validation is complete.
+                    After all target ids exist, authorize once using exact case-sensitive PLATFORM_ADMIN from verified JWT
+                    roles. Empty roles or other valid roles is one 403 E10009 with no item index; skip all conflict/write work.
+                    Do not query the caller's live assignments or reload claims. Target system-role and binding reads below
+                    protect business invariants only.
+                    Then iterate roles[i] in original input order. For an existing target check its stored PLATFORM_ADMIN name
+                    (409 E10006) before duplicate name. Check duplicate names with a null-safe optional target exclusion, across
+                    all non-DELETED statuses; omitted insert id binds typed SQL NULL. For an existing target requested
+                    DELETED/ARCHIVED, either non-DELETED user or permission binding is 409 E10006, including
+                    inactive/locked/archived bindings. INACTIVE/LOCKED leave bindings unchanged. Insert-ARCHIVED is INSERT and
+                    needs no binding check.
+                    Bind every SQL value. INSERT explicitly sets created_at from fresh server now and must return exactly one
+                    role_id; zero/malformed result is internal 500. UPDATE guards target id, non-DELETED status and stored name
+                    <> PLATFORM_ADMIN; zero returns roles[i]: Role not found. (404 E10004), no result or earlier mutation is
+                    committed. Exactly one returned update id must equal that input id. Preserve creation audit on update; never
+                    trust a client-generated inserted id or audit fields.
+                    Append exactly index/roleId/action per item, using RETURNING. index is its original zero-based position.
+                    action is INSERT when id omitted (including insert-ARCHIVED), otherwise DELETE for DELETED, ARCHIVE for
+                    ARCHIVED, UPDATE for ACTIVE/INACTIVE/LOCKED. All item outcomes, including DELETE, remain in data.roles.
+                    Require exactly one result per input item in the same order with no duplicate returned roleIds. Finish all
+                    mapping before one COMMIT after the loop, then HTTP 200 S10000 Batch Upsert Role Success; batch never sends
+                    per-item 201/204 or partial success.
+                    uq_m_role_name is the final concurrent duplicate guard. SQLSTATE 23505 from that constraint rolls back all
+                    items and returns 409 E10003 roles[i]: Role name already exists.; other SQL/result/mapping failures roll
+                    back and return generic 500 without bizCode. Timeout before COMMIT rolls back and returns 408 E90001. These
+                    request-level failures have no invented item position. No success or partial result escapes a failed
+                    transaction; no retry is promised after an unknown commit result.
+                end note
                 app -> api: HTTP 200 S10000 Batch Upsert Role Success; all ordered roles results including DELETE
                 api -> page: Show all committed indexed actions
                 page -> user: Display the entire saved batch

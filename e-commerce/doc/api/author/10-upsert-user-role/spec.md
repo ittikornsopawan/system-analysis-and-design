@@ -26,6 +26,14 @@ approved_at: null
 | PRE-PRODUCTION | https://www.domain.com/api-pre-prod |
 | PRODUCTION     | https://www.domain.com/api          |
 
+- Governing decisions: owner-confirmed API review Q2/Q4/Q7/Q10/Q13/Q15 (approved by the product owner).
+- The caller is the user of the verified access token.
+- **The user and the role must be ACTIVE only when the request gives the role**, that is an insert, or an update that sets `rowStatus` ACTIVE on a row that is not ACTIVE, otherwise 404 (E10005).
+- A user can have a role once among the rows that are not DELETED (409, E10003).
+- **The platform keeps at least one administrator.** After the whole request is applied there must be at least one ACTIVE `t_user_role` row of the ACTIVE role `PLATFORM_ADMIN` whose user is ACTIVE, otherwise 409 (E10006) and the request is ...
+- HTTP status of the single upsert: Insert 201 Created, Update 200 Ok, Delete 204 No Content (no response body), Archive 200 Ok.
+- The order of the checks, the locks and every outcome is in the sequence diagram.
+
 ---
 
 ## Request Parameters
@@ -47,41 +55,6 @@ approved_at: null
 | 2   | userId         | String: UUID | MANDATORY | User Id, An ACTIVE user when the role is given (not needed to take it away), Cannot be changed by an update                                                                                                                                                                | b1c2d3e4-f5a6-4b7c-8d9e-0f1a2b3c4d5e |
 | 3   | roleId         | String: UUID | MANDATORY | Role Id, An ACTIVE role when the role is given (not needed to take it away), Cannot be changed by an update                                                                                                                                                                | a1b2c3d4-e5f6-4a7b-8c9d-0e1f2a3b4c5d |
 | 4   | rowStatus      | String       | OPTIONAL  | Row status (ACTIVE, INACTIVE, DELETED, LOCKED, ARCHIVED), Defaults to ACTIVE, Delete when DELETED, Archive when ARCHIVED, DELETED is not allowed when inserting, Delete, archive, lock or deactivate is rejected when it would leave the platform without an administrator | ACTIVE                               |
-
-### User Role Rules
-
-- The caller is the user of the verified access token. Only a platform administrator from the verified JWT roles claim can assign or take away a role; require exact case-sensitive role name PLATFORM_ADMIN. A valid non-admin claim returns 403 E10009 after the existence checks and before the duplicate check, including when it gives the role `PLATFORM_ADMIN` to another user. No live caller-assignment or request-flag fallback. Approved by the product owner (Q2/Q4/Q10/Q13); this supersedes the earlier live-grant guard.
-- **The user and the role must be ACTIVE only when the request gives the role**, that is an insert, or an update that sets `rowStatus` ACTIVE on a row that is not ACTIVE, otherwise 404 (E10005). Taking the role away (`rowStatus` DELETED, ARCHIVED, INACTIVE or LOCKED) works whatever the status of the user and of the role is, so that a role cannot stay on a locked or closed account and come back when the account is opened again. The target user row must exist for every request: a missing target user is 404 (E10005) `User not found.`, also when the request takes the role away. The last administrator rule below still applies in full. `userId` and `roleId` are required in every request and cannot be changed by an update: a different value from the row of `id` is 400 (E10001). Approved by the product owner on 2026-11-08 (target-row locks and the missing-target-user answer).
-- A user can have a role once among the rows that are not DELETED (409, E10003). A row that is INACTIVE, LOCKED or ARCHIVED still holds the place and gives no right, an update with `rowStatus` ACTIVE opens it again. After a delete the role can be assigned again, which creates a new row. DELETED is final: a DELETED row never reopens and its `id` counts as not found (404, E10004). `rowStatus` DELETED is rejected with 400 (E10001) when the request inserts a row.
-- **The platform keeps at least one administrator.** After the whole request is applied there must be at least one ACTIVE `t_user_role` row of the ACTIVE role `PLATFORM_ADMIN` whose user is ACTIVE, otherwise 409 (E10006) and the request is rolled back. This covers deleting, archiving, locking or deactivating the last assignment, including when an administrator takes the role away from themselves. An administrator cannot skip this rule. The rule is checked on the state after the write.
-- Execution order: validate the request (400) -> verify JWT (401) -> begin transaction (READ COMMITTED) -> lock the caller and target users -> fresh current credentials (401) -> target user existence (404, E10005) -> lock the role -> locked assignment existence (404, E10004, only when id supplied) and unchanged user/role (400) -> role and user ACTIVE when the request gives the role (404, E10005) -> permission (403, E10009) -> duplicate check (409, E10003) -> guarded write -> last administrator rule on the result (409, E10006) -> complete mapping -> COMMIT -> response. Every post-BEGIN rejection rolls back.
-- HTTP status of the single upsert: Insert 201 Created, Update 200 Ok, Delete 204 No Content (no response body), Archive 200 Ok.
-
-### Credential, Lock and Transaction Rules
-
-- Governing design: [owner-confirmed review](../../../../../docs/superpowers/specs/2026-11-07-api-review-design.md), Q2/Q4/Q7/Q10/Q13/Q15, and approved author design A7/A8/A12. Detailed revision remains in-review; no schema/backend implementation.
-- Validate one JSON object allowing only id/userId/roleId/rowStatus, no repeated/unknown body/query keys, JSON content type and mandatory UTC timestamp before SQL. id is optional only by omission and is a non-null UUID when supplied. userId and roleId are required non-null UUIDs in every request, including delete and archive. rowStatus defaults to ACTIVE only when omitted and otherwise is ACTIVE/INACTIVE/DELETED/LOCKED/ARCHIVED; insert-DELETED is 400 E10001. Generate requestId when omitted.
-- Verify JWT signature/issuer/audience/expiry/UUID sub and structured unique roles before BEGIN. roles must be an array including [], each role has UUID roleId/non-empty name and roleIds are unique. Malformed/missing roles is generic 401 E10002, never [] or live-grant fallback. callerUserId = verified sub; accessTokenHash = SHA-256 exact JWT. createdBy/updatedBy are the caller UUID string and now is fresh server UTC, never request audit values or timestamp. The request userId is the target user and is distinct from callerUserId.
-- Begin READ COMMITTED and lock the distinct caller and target users in one statement in ascending id order (`userIds`). Missing caller is 401 with rollback. Capture fresh server UTC now after the lock and recheck JWT exp; require matching hash/caller, ACTIVE token/user and strict expired_at > now. Revoked/inactive/expired/mismatched credentials are generic 401 before any role or assignment read. Logout/reset share the user-first lock. Grant withdrawal alone does not revoke current old claims; refresh resolves latest rights.
-- Lock order is users (ascending id) -> the role of the request (`FOR UPDATE`) -> the assignment row of `id` (`FOR UPDATE`) -> duplicate/count reads and the write. `userId` and `roleId` are immutable, so the request touches the `PLATFORM_ADMIN` assignment exactly when the locked role is named `PLATFORM_ADMIN`; two requests that take the last administrator away both lock that role row and cannot both pass. Other assignment writers must lock the target user and the role in the same order before creating or reopening an assignment, as role/permission/scope writers do; this contract does not certify unmigrated writers.
-- Authorize only exact `PLATFORM_ADMIN` in verified JWT roles after current credentials and existence checks. [] or any other valid role name gives 403 E10009 You do not have permission to assign roles.; do not query live caller role grants. The `PLATFORM_ADMIN` name is read from the locked role row and from the administrator count only to protect the last-administrator invariant, never to authorize the caller.
-- Bind all values. A locked assignment is the single source for the stored user, role and status; an update that sets ACTIVE on a row that is not ACTIVE counts as giving the role. Duplicate exclusion is null-safe: omitted insert id binds typed SQL NULL. INSERT explicitly sets created_at and must return exactly one user_role_id UUID; missing/malformed result is generic 500. UPDATE guards id and non-DELETED status; zero returned rows is 404 E10004 with rollback. Preserve created_by/created_at on UPDATE. Map exactly data.userRoleId from RETURNING before COMMIT.
-- Insert is 201 S10000 Insert User Role Success, existing delete is 204 with no body/status/data, existing archive is 200 S10000 Archive User Role Success, and other existing updates are 200 S10000 Update User Role Success. SQLSTATE 23505 from uq_t_user_role_user_id_role_id is the final concurrent duplicate guard and maps to 409 E10003 The user already has this role. after full rollback. Other SQL/result/mapping errors roll back and return generic 500 without bizCode. Timeout before COMMIT rolls back and returns 408 E90001. No retry is promised for an unknown commit result.
-
-#### Scenario correspondence with sequence.wsd
-
-| Scenario                                                                   | Outcome                               | Effects                               |
-| -------------------------------------------------------------------------- | ------------------------------------- | ------------------------------------- |
-| Invalid input / invalid JWT or malformed roles                             | 400 E10001 / 401 E10002 before SQL    | None                                  |
-| Missing caller, expiry during user-lock wait or current credential failure | Generic 401 E10002                    | Rollback before role/assignment reads |
-| Missing target user, also when taking the role away                        | 404 E10005 User not found.            | Rollback, no write                    |
-| Missing/DELETED assignment of id / changed user or role                    | 404 E10004 / 400 E10001               | Rollback                              |
-| Giving the role to a missing/not ACTIVE user or role                       | 404 E10005                            | Rollback                              |
-| Valid non-admin claims                                                     | 403 E10009                            | No conflict/write work                |
-| Role already held in a non-DELETED row / concurrent unique collision       | 409 E10003                            | Whole transaction rollback            |
-| No ACTIVE administrator left after the write                               | 409 E10006                            | Rollback, including self-removal      |
-| Insert / update / archive / delete                                         | 201 / 200 / 200 / 204                 | Guarded write, one commit             |
-| Zero guarded update / timeout / unexpected failure                         | 404 E10004 / 408 E90001 / generic 500 | Rollback                              |
 
 #### Example Body Parameters
 
