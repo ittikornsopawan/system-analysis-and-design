@@ -1526,7 +1526,7 @@ Status: Complete in the branch, waiting for review. Assignment: agent `tommy`, d
 - [x] Remove the six `### ... Rules` sections of shipping/01 to 06, `### Automatic Completion Rules` and `### Automatic Completion Example` (a bold label with its table under `## Domain`); the rules become short bullets under `## Domain`; the design doc path becomes plain words.
 - [x] Move the order of the checks, the lock details, the job scan and the clashes into notes of `sequence.wsd`; no SQL and no behavior is changed.
 - [x] The roles claim sentences of the payment notes (`payment/04`, `payment/05`) follow the new JWT payload (role names).
-- [x] The `shipping-spec` checker searches the spec and its sequence note; adjust the needles; the shipping, payment, sales and cart files leave the legacy list of the spec template checker.
+- [x] The `shipping-spec` checker searches the spec and its sequence note; adjust the needles; the shipping files, and the sales and authen-and-author files that already follow the template, leave `LEGACY_SPEC_TEMPLATE`.
 - [x] Open the PR with `commit-and-pr`, tell the lead SA when CI is green, then suspend. Next: `campaign`.
 
 ### Template alignment — authen-and-author group (10 specs)
