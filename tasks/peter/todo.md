@@ -15,8 +15,9 @@ Started at: 2026-11-14T18:03:13+07:00
 Authority: the owner's answers of 2026-11-14 (relayed by Josh, SA Lead): the shop owner is a separate identity and not the shop ADMIN, a shop can have several owners, and owner, admin and staff are separate roles with fixed permissions; the SA Lead asked for a design draft first. Assignment `authorized_by: josh`, delivery `open-pr`. Nothing is approved and no schema, specification, checker, test or matrix row is changed by this task.
 
 - [x] Collect the evidence: the `shop.t_shop_user` role constraint and unique index, the ADMIN and creator rules of `shop/08`, `shop/09`, `shop/11`, `shop/12`, the seventeen specs whose SQL checks the member role, the matrix rows of the shop APIs, the tests and the seed.
-- [x] Write `docs/superpowers/specs/2026-11-14-shop-owner-design.md` with status draft (revised for the several-owner answer): D1 storage (role OWNER in `t_shop_user`, alternative `is_owner`), D2 the fixed permission table per shop API, D3 minimum rules, D4 creator, D5 who changes owners and leaving, D6 JWT or API check, D7 impact and order of work; each with a recommendation, the cost if wrong and a question (Q1–Q7).
-- [ ] The SA Lead sends the seven questions to the owner and returns the answers; only then is a schema or specification change planned (work not started, held for the owner's approval).
+- [x] Write `docs/superpowers/specs/2026-11-14-shop-roles-design.md` with status draft (revised for the several-owner answer): D1 storage (role OWNER in `t_shop_user`, alternative `is_owner`), D2 the fixed permission table per shop API, D3 minimum rules, D4 creator, D5 who changes owners and leaving, D6 JWT or API check, D7 impact and order of work; each with a recommendation, the cost if wrong and a question (Q1–Q7).
+- [x] The SA Lead put the questions to the owner and returned the answers (2026-11-14): Q1 `OWNER` as a third role value, Q2 the permission table as written, Q3 at least one ACTIVE OWNER replaces the ADMIN rule, Q4 the creator is OWNER, Q5 owners are added by promoting members and an owner leaves only while another ACTIVE owner remains, Q6 the role is checked in the database and not in the JWT; Q7 follows the order of work of D7 (SA Lead). Recorded in the document, renamed to `shop-roles-design`, status `in-review`.
+- [ ] The owner changes the status of the document to approved; only then is a schema or specification change planned (work not started, held for the owner's approval).
 
 Verification: `md-frontmatter` check OK for the new design file and this task file; no other file is changed.
 
@@ -42,3 +43,6 @@ Plan (draft; one pull request per step, each from main, each with its own `todo`
 - [ ] Final check after PR 11: `grep` for `role IN ('ADMIN', 'STAFF')` and `role = 'ADMIN'` in the specs finds no old role set; all documentation commands, the audit and the database tests pass on main.
 
 Verification of this plan: not applicable yet; the inventory behind it is 21 queries in 17 specs (`campaign/02`, `payment/04`, `payment/05`, `sales/04`, `sales/05`, `shipping/01–04`, `shop/01`, `02`, `08`, `09`, `10`, `11` (3), `12` (3), `13`), the checker functions `check_shop_spec`, `check_shop_profile_spec`, `check_order_spec`, `check_shop_user_spec`, `check_shop_user_schema`, `check_shop_product_spec`, `check_payment_spec`, `check_shipping_schema`, `check_campaign_schema`, `check_campaign_data` and `check_campaign_spec`, and the test `04-shop-user.test.sql`.
+Progress (2026-11-14T18:15:55+07:00): the owner answers are recorded and the document is in review.
+
+Verification: `md-frontmatter` check OK for the design file and this task file; no other file is changed.
