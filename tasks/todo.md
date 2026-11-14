@@ -1683,3 +1683,9 @@ Authority: owner answers of 2026-11-13 ("ใช้คำแนะนำทั้
 
 - [x] Consent/02 owner answer of 2026-11-14 (relayed by Josh): a consent of a type that is not ACTIVE can still be deleted, archived, deactivated or locked; the type must be ACTIVE only when the request creates a consent, opens one that is not ACTIVE to ACTIVE or changes the type of an ACTIVE consent (like Q23). Spec Domain bullets, the lock query (now returns the stored `consent_type_id`), the sequence decision and branch, the `consent-upsert-flow` needles and four more mutations (21/21) follow it.
 - [ ] Record the answer in `api-review-design.md` (outside this assignment's scope; a separate small PR).
+
+### Consent type answer of 2026-11-14 recorded
+
+Authority: owner answer relayed by Josh (SA Lead); the SA Lead approved this small PR. `authorized_by: josh`, delivery `open-pr`.
+
+- [x] Record the answer in `api-review-design.md` (consent of a closed type can still be deleted or archived; ACTIVE type only when creating or opening to ACTIVE; the SA Lead's type-change condition marked as his decision) and the lesson of the stray merge.
