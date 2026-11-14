@@ -18,6 +18,11 @@
 | PRE-PRODUCTION | https://www.domain.com/api-pre-prod |
 | PRODUCTION     | https://www.domain.com/api          |
 
+- A platform administrator (a user that has the role `PLATFORM_ADMIN`) sees every campaign that is not DELETED with its budget, its remaining amount and its shops. Any other caller must send `shopId` of a shop that the caller is an ACTIVE member of (a row of `shop.t_shop_user` with the role ADMIN or STAFF that is ACTIVE), otherwise 403 (E10009), and sees only the campaigns that apply to that shop: the shop is in a live `t_campaign_shop` row of the campaign, or the campaign has no live shop row (it is for every shop, C2). A shop that does not exist or is DELETED is not found (404, E10005). This permission model was approved by the product owner.
+- The members of a shop never see `budget` and the shop list, both are returned as `null` and the keys stay. They see the discount and the products and categories of the campaign. Campaigns with `rowStatus` DELETED are never returned.
+- `activeOnly` keeps the campaigns that give discounts right now: `row_status = 'ACTIVE'` and `start_at <= now < end_at` (UTC). Campaigns are ordered by `start_at` (newest first) then `id`. `search` matches the name (case-insensitive, partial). Nothing found is 200 with an empty list.
+- This behaviour follows the campaign design, approved by the product owner on 2026-11-06 (the proposals to the delivered specs in its section 4 are decided by the lead SA).
+
 ---
 
 ## Request Parameters
@@ -41,14 +46,6 @@
 | 5   | pageIndex      | Numeric      | OPTIONAL | Page index starting from 1, Defaults to 1                                                                                 | 1                                    |
 | 6   | pageSize       | Numeric      | OPTIONAL | Number of items per page (max 100), Defaults to 10                                                                        | 10                                   |
 | 7   | search         | String       | OPTIONAL | Search by campaign name                                                                                                   | Friday                               |
-
-### Campaign Inquiry Rules
-
-- A platform administrator (a user that has the role `PLATFORM_ADMIN`) sees every campaign that is not DELETED with its budget, its remaining amount and its shops. Any other caller must send `shopId` of a shop that the caller is an ACTIVE member of (a row of `shop.t_shop_user` with the role ADMIN or STAFF that is ACTIVE), otherwise 403 (E10009), and sees only the campaigns that apply to that shop: the shop is in a live `t_campaign_shop` row of the campaign, or the campaign has no live shop row (it is for every shop, C2). A shop that does not exist or is DELETED is not found (404, E10005). This permission model was approved by the product owner.
-- The members of a shop never see `budget` and the shop list, both are returned as `null` and the keys stay. They see the discount and the products and categories of the campaign. Campaigns with `rowStatus` DELETED are never returned.
-- `activeOnly` keeps the campaigns that give discounts right now: `row_status = 'ACTIVE'` and `start_at <= now < end_at` (UTC). Campaigns are ordered by `start_at` (newest first) then `id`. `search` matches the name (case-insensitive, partial). Nothing found is 200 with an empty list.
-- Execution order: validate the request (400) -> existence of the shop (404) -> permission (403) -> read.
-- This behaviour follows `docs/superpowers/specs/2026-11-06-campaign-design.md`, approved by the product owner on 2026-11-06 (the proposals to the delivered specs in its section 4 are decided by the lead SA).
 
 ## Example Request
 

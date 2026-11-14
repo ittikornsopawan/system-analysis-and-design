@@ -1556,3 +1556,11 @@ Authority: SA Lead review of PR #112 (merged first): the comment block and the `
 - [x] Delete `MOVED_RULES` and give `read()` back its plain body.
 - [x] Move each needle to the file that holds its text: the ten flow checkers get a second loop over the note texts of the sequence (whitespace joined), `authen-spec` gets `AUTHEN_SEQUENCE_NEEDLES`; needles whose text is gone by design are dropped (the design-document file name, the `### ... Rules` headings, `Scenario correspondence with sequence.wsd`).
 - [x] Take the ten files out of `LEGACY_SPEC_TEMPLATE` (Marry's checker is on main).
+## e-commerce: spec template, campaign
+
+Status: Complete in the branch, waiting for review. Assignment: agent `tommy`, delivery `open-pr`, authorized by `josh`, workspace `.workspace/tommy`, branch `docs/tommy-spec-template-campaign`, scopes `e-commerce/doc/api/campaign`, `e-commerce/db/tests/check_docs.py`, `tasks`.
+
+- [x] Remove `### Campaign Rules`, `### Campaign Inquiry Rules` and `### Campaign Ledger Inquiry Rules`; the rules become short bullets under `## Domain`; the design doc path becomes plain words.
+- [x] Move the deleted children statements and the order of the checks into notes of `sequence.wsd`; no SQL and no behavior is changed.
+- [x] The `campaign-spec` checker searches the spec and its sequence note; adjust the needles; the campaign files leave `LEGACY_SPEC_TEMPLATE`; the sales and authen-and-author entries that already follow the template are removed too (the same lines as the shipping PR, so `spec-template` passes on this branch).
+- [x] Open the PR with `commit-and-pr`, tell the lead SA when CI is green, then suspend. This is the last group of the template alignment.

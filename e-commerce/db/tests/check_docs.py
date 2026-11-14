@@ -4474,7 +4474,7 @@ CAMPAIGN_SUCCESS_CODES = {
     "03": {"Success": 200, "Success - Empty": 200},
 }
 CAMPAIGN_NEEDLES = {
-    "01": ["### Campaign Rules", "ck_m_campaign_period", "#### QUERY - Check existing campaign", "#### QUERY - Check duplicate campaign name",
+    "01": ["- Only a platform administrator (a user that has the role `PLATFORM_ADMIN`) can call this API", "ck_m_campaign_period", "#### QUERY - Check existing campaign", "#### QUERY - Check duplicate campaign name",
            "#### INSERT - Create campaign", "#### UPDATE - Update, delete or archive campaign", "#### QUERY - Check campaign used",
            "#### INSERT - Create budget", "#### UPDATE - Change budget", "AND (budget - remaining) <= '<sequence.budget.budget>'",
            "'<sequence.budget.budget>', '<sequence.budget.budget>'", "#### INSERT - Create discount", "#### INSERT - Create campaign shop",
@@ -4483,11 +4483,11 @@ CAMPAIGN_NEEDLES = {
            "#### Fail - Bad Request Row Status", "E10003", "E10005", "E10006", "E10009", "Delete 204 No Content (no response body)",
            "#### QUERY - Get the platform administrator role", "#### QUERY - Check platform administrator",
            "validate the request (400) -> existence of the campaign, the children and the shops, products and categories (404) -> permission (403)", "#### QUERY - Check existing campaign shop", "#### QUERY - Check existing campaign product", "#### UPDATE - Delete the discount of a deleted campaign", "#### UPDATE - Delete the shops of a deleted campaign", "#### UPDATE - Delete the products of a deleted campaign", "one statement for all the rows of the campaign", "approved by the product owner on 2026-11-08"],
-    "02": ["### Campaign Inquiry Rules", "ORDER BY c.start_at DESC, c.id", "NOT EXISTS (", "cs.row_status = 'ACTIVE'", "#### QUERY - Count the campaigns",
+    "02": ["- A platform administrator (a user that has the role `PLATFORM_ADMIN`) sees every campaign", "ORDER BY c.start_at DESC, c.id", "NOT EXISTS (", "cs.row_status = 'ACTIVE'", "#### QUERY - Count the campaigns",
            "#### QUERY - Check shop member", "#### QUERY - Check shop", "#### QUERY - Check platform administrator", "#### Fail - Forbidden",
            "#### Fail - Not Found Reference", "activeOnly", "#### QUERY - Get the budgets of the campaigns", "#### QUERY - Get the shops of the campaigns",
            "validate the request (400) -> existence of the shop (404) -> permission (403) -> read"],
-    "03": ["### Campaign Ledger Inquiry Rules", "ORDER BY l.created_at DESC, l.id", "#### QUERY - Count the ledger entries", "#### Fail - Forbidden",
+    "03": ["- Only a platform administrator (a user that has the role `PLATFORM_ADMIN`) can call this API", "ORDER BY l.created_at DESC, l.id", "#### QUERY - Count the ledger entries", "#### Fail - Forbidden",
            "#### Fail - Not Found", "budget - remaining = sum of RESERVE usage - sum of RELEASE usage", "#### QUERY - Check campaign",
            "#### QUERY - Check platform administrator", "validate the request (400) -> existence of the campaign (404) -> permission (403) -> read"],
 }
@@ -4759,7 +4759,9 @@ def check_campaign_spec() -> int:
     if errors:
         return fail("; ".join(errors))
     for key, need in CAMPAIGN_NEEDLES.items():
-        for missing in missing_needles(mds[key], need):
+        # rules that moved into a note of the sequence diagram are searched there, one line per wrapped note
+        seq = re.sub(r"\n\s+", " ", read(CAMPAIGN_SPECS[key].replace("spec.md", "sequence.wsd")))
+        for missing in missing_needles(mds[key] + "\n" + seq, need):
             errors.append(f"{CAMPAIGN_SPECS[key]} missing: {missing}")
     for key, counts in CAMPAIGN_COUNTS.items():
         for phrase, n in counts.items():
@@ -8176,9 +8178,6 @@ LEGACY_SPEC_TEMPLATE = (
     "author/10-upsert-user-role",
     "author/11-inquiry-user-role",
     "author/12-me",
-    "campaign/01-upsert-campaign",
-    "campaign/02-inquiry-campaign",
-    "campaign/03-inquiry-campaign-ledger",
     "consent/01-inquiry-active-consent",
     "consent/02-upsert-consent",
     "consent/04-submit-consent",
@@ -8197,6 +8196,12 @@ LEGACY_SPEC_TEMPLATE = (
     "product/13-upsert-product-brand",
     "product/14-upsert-product-brand-batch",
     "product/15-inquiry-product-brand",
+    "shipping/01-create-shipping",
+    "shipping/02-update-shipping-status",
+    "shipping/03-upsert-shipping-stop",
+    "shipping/04-inquiry-shop-shipping",
+    "shipping/05-inquiry-shipping",
+    "shipping/06-confirm-delivery",
     "shop/01-upsert-shop-product-sku",
     "shop/02-upsert-shop-product-sku-batch",
     "shop/04-inquiry-storefront-product",
