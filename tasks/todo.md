@@ -1558,7 +1558,9 @@ Status: Implemented in the managed workspace of Marry on branch `docs/marry-prod
 - [x] `LEGACY_SPEC_TEMPLATE`: product/01 and 15 entries that passed on `main` (authen 01-10 and sales 01-05, fixed by other pull requests) are removed; 52 remain.
 - [x] Proof: 9 of 9 mutations caught (each phrase of the diagram note and of the Domain bullets, an added `### Permission Rules`, a link to another spec and to the design document); 65 sub-commands pass; PlantUML passes and the note is drawn.
 - [x] Review of the lead: product/03 done the same way (needles of `admin-write-spec` for it now check its diagram, `ADMIN_WRITE_RULE_IN_DIAGRAM`), 8 of 8 mutations caught.
-- [ ] Merge `main` (the lead's pull request that also prunes the list lands first; keep its result), run every check, push, tell the lead, suspend.
+- [x] Frontmatter (owner decision of 2026-11-14): product/01, 02 and 03 get `name`, `description`, `status: in-review`, `approved_by: null`, `approved_at: null`, as the rule `markdown.md` asks; the `md-frontmatter` checker of the lead's colleague is not merged yet.
+- [x] Merged `main` three times (the pull requests #113 and #115 pruned the exemption list; the result of `main` is kept and the product entries are removed): 43 specs remain in `LEGACY_SPEC_TEMPLATE`.
+- [ ] Final run, push, tell the lead, suspend.
 
 ## e-commerce: spec template, campaign
 

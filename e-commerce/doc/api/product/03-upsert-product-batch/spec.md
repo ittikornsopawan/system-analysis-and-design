@@ -1,3 +1,11 @@
+---
+name: Upsert Product Batch API Specification
+description: Defines the all-or-nothing insert, update, delete and archive of several products in one request with the platform administrator permission checked once and the SQL of every step; read when reviewing or implementing the product batch upsert.
+status: in-review
+approved_by: null
+approved_at: null
+---
+
 # [POST]: v1/product/upsert/batch
 
 | Title       | Description                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                    |

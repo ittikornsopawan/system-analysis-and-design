@@ -1,3 +1,11 @@
+---
+name: Upsert Product API Specification
+description: Defines the insert, update, delete and archive of one product with its attributes, options, option values, images and generated SKUs, the platform administrator authorization from the verified JWT roles claim and the SQL of every step; read when reviewing or implementing the product upsert.
+status: in-review
+approved_by: null
+approved_at: null
+---
+
 # [POST]: v1/product/upsert
 
 | Title       | Description                                                                                                                                                                                                                                                          |
