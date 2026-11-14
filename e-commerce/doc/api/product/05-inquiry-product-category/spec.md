@@ -1,3 +1,11 @@
+---
+name: Inquiry Product Category API Specification
+description: Defines the product category list inquiry with paging and search, inquiry by id and the parent of each category; read when reviewing or implementing the product category inquiry.
+status: in-review
+approved_by: null
+approved_at: null
+---
+
 # [GET]: v1/product-category
 
 | Title       | Description                                                                                                                                        |
