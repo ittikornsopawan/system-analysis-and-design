@@ -1,3 +1,8 @@
+---
+name: "Summary of the shop domain (T1 to T5)"
+description: "Summary of the five shop domain tasks T1 to T5 done by the junior SA and reviewed by Josh on 2026-11-06, with the results of the checks; read it for the state of the shop domain at that date."
+---
+
 # สรุปรวมโดเมน shop (T1–T5)
 
 วันที่: 2026-11-06 · ผู้ทำ: งาม (SA jr) · ผู้ตรวจ: Josh (lead SA) · สถานะ: T1–T5 ผ่านการตรวจของ Josh แล้ว เจ้าของงานตอบ "ตามนั้น" ยืนยันทุกกฎที่ค้างตามเอกสารนี้แล้ว (รวม G2) ยังไม่มีการ commit

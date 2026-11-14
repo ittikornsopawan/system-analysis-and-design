@@ -50,7 +50,36 @@ activate page
     activate api
         api -> app: [**UpsertRoleCommandHandler**] Process request
         activate app
+            note over app, infra
+                Execution order: validate the request (400) -> verify JWT (401) -> begin transaction (READ COMMITTED) ->
+                caller user lock -> fresh current credential check (401) -> locked target existence check (404, only for id)
+                -> permission (403, E10009) -> system role check (409, E10006) -> duplicate check (409, E10003) -> in-use
+                check (409, E10006, only for existing id with DELETED or ARCHIVED) -> guarded write -> map returned roleId
+                -> COMMIT -> response. Insert skips target/system/in-use checks; every post-BEGIN rejection rolls back.
+                Lock order is caller user -> target role -> binding checks/write. Reference/assignment writers must lock and
+                recheck their target role before creating/reopening a binding, with target users first and role locks
+                ordered by id; a soft lifecycle flag is not protected by a foreign key alone. The matching reference-writer
+                migration is delivered in its own API PR; these SQL tests must not be presented as certification of an
+                unmigrated cross-API writer. This contract does not add role grants or rewrite existing bindings.
+            end note
             app -> app: Generate requestId; validate one JSON object/known unique keys/no query, UTC timestamp, UUID id, required name/description lengths and role code, rowStatus/default ACTIVE; reject insert-DELETED
+            note over app, infra
+                HTTP status of the single upsert: Insert 201 Created, Update 200 Ok, Delete 204 No Content (no response
+                body), Archive 200 Ok.
+                Validate one JSON object with only id/name/description/rowStatus, reject repeated keys, wrong content type,
+                unknown query/body fields and invalid UTC timestamp before SQL (400 E10001). id is optional only by
+                omission; if present it must be a non-empty UUID, not null. name/description are non-null, nonblank strings,
+                at most 64/256 characters, and name matches ^[A-Z][A-Z0-9_]{0,63}$. Do not trim or case-normalize either
+                field. rowStatus defaults to ACTIVE only when omitted and otherwise is
+                ACTIVE/INACTIVE/DELETED/LOCKED/ARCHIVED; insert-DELETED is 400. All required fields remain mandatory even on
+                delete/archive. Generate requestId if omitted.
+                Bind all values; createdBy/updatedBy are the verified caller UUID string and now is the fresh server value,
+                never request fields or the supplied timestamp. INSERT explicitly sets created_at and must return exactly
+                one role_id; missing insert result is internal 500. UPDATE is guarded by id, non-DELETED status and stored
+                name <> PLATFORM_ADMIN; zero returned rows is 404 E10004 with rollback. One returned id must equal the
+                requested id; an unexpected result/mapping failure is internal 500. Do not change creation audit fields on
+                update.
+            end note
             alt Invalid input
                 break Reject this request
                     app -> api: HTTP 400 E10001
@@ -70,6 +99,26 @@ activate page
             end
             app -> app: callerUserId = verified sub; accessTokenHash = SHA-256 exact JWT; createdBy/updatedBy = caller UUID string; omitted id = typed SQL NULL
             app -> infra: BEGIN READ COMMITTED
+            note over app, infra
+                BEGIN READ COMMITTED and lock the caller's authen.m_user first. A missing user is 401 with rollback. Capture
+                fresh server UTC now after that lock, recheck JWT exp, then require the matching ACTIVE token/hash/caller,
+                strict expired_at > now and ACTIVE user from a joined current credential read. This query does not reload
+                grants. A revoked/expired token or non-ACTIVE user is 401 before any target-role lookup. Logout/reset share
+                the user-first lock; a request that waits for them must see their committed revocation. Grant withdrawal
+                alone does not invalidate an otherwise-current old PLATFORM_ADMIN claim (Q4); refresh constructs a newer
+                snapshot.
+                For an existing id, lock the non-DELETED target role FOR UPDATE before the 404/403/conflict checks;
+                concurrent deletion cannot be followed by resurrection. Use typed SQL NULL for omitted id on insert, never
+                the string NULL. Duplicate name exclusion is null-safe and applies to all non-DELETED statuses; the current
+                row may retain its name. Protect the system role by its stored target name before duplicate checking, not by
+                the proposed request name. A new role named PLATFORM_ADMIN conflicts with the seeded role as 409 E10003.
+                Reversible-status changes leave binding rows unchanged.
+                The partial unique index uq_m_role_name is the final concurrent duplicate guard. SQLSTATE 23505 from that
+                constraint rolls back the whole transaction and returns 409 E10003, including races after the pre-check;
+                other constraints/unexpected SQL/mapping failures roll back and return generic 500 with no bizCode. Timeout
+                before COMMIT rolls back and returns 408 E90001. Never commit a partial write or return success before
+                commit. No retry is promised after an unknown commit result.
+            end note
             activate infra
             alt Work completes before commit
                 note over app, infra
@@ -195,6 +244,39 @@ activate page
                     app -> app: data = exactly roleId from RETURNING; exclude caller/token/audit/grants
                     app -> infra: COMMIT
                     infra -> app: Return committed role mutation
+                    note over app, infra
+                        This detailed revision remains in-review; no backend/schema change is included.
+                        The comparison is exact and a value held by an INACTIVE, LOCKED or ARCHIVED role is still taken (409,
+                        E10003). The value of a DELETED role can be used again.
+                        Every field that is not optional is required in every request, including a delete and an archive.
+                        INACTIVE, LOCKED and ARCHIVED are reversible: an update with `rowStatus` ACTIVE opens the role again.
+                        `rowStatus` DELETED is rejected with 400 (E10001) when the request inserts a role. A role that is not ACTIVE
+                        is excluded when resolving new login/refresh claims; an already-issued token keeps its role snapshot until
+                        expiry (owner Q4/Q7).
+                        INACTIVE and LOCKED are allowed, the rows that use it are not changed.
+                        **`PLATFORM_ADMIN` is the system role.** It cannot be renamed, changed, deleted, archived, locked or set
+                        INACTIVE through this API: any request that names it by `id` is rejected with 409 (E10006) `System role
+                        cannot be changed.` Giving another role the name `PLATFORM_ADMIN` is a duplicate name (409, E10003). The
+                        role is created by the seed, see `e-commerce/db/seed/author.seed.sql`.
+                        Permission: only a platform administrator from the verified JWT roles claim can call this API; require an
+                        exact case-sensitive role name PLATFORM_ADMIN. Empty roles or other valid role names give 403 E10009 after
+                        the existence check and before conflicts. Never authorize from live author.t_user_role/author.m_role
+                        assignment queries, request flags, permission names or a separate isPlatformAdmin claim. Approved by the
+                        product owner (Q2/Q4/Q10/Q13, 2026-11-07); this supersedes the earlier live-assignment guard.
+                        Verify Bearer JWT signature/issuer/audience/expiry/UUID sub and structured roles from login. roles must be
+                        an array (including []), every role has UUID roleId and non-empty string name, and roleIds are unique.
+                        Malformed/missing roles is 401, not an empty-list fallback; verify before BEGIN. Compute callerUserId from
+                        verified sub and accessTokenHash as SHA-256 of the exact JWT. Missing/invalid credentials use generic 401
+                        E10002 `Invalid or expired access token.`
+                        Check non-DELETED t_user_role and t_role_permission only for an existing target requested DELETED/ARCHIVED;
+                        either result is 409 E10006, including inactive/locked/archived bindings. Insert-ARCHIVED is allowed (201
+                        insert); it has no prior bindings. INACTIVE/LOCKED updates may keep bindings. These are business-invariant
+                        reads, not caller authorization.
+                        Map response data to exactly roleId from RETURNING, then COMMIT before success. Insert returns 201 S10000
+                        Insert Role Success (also insert-ARCHIVED), existing delete returns 204 with no body/status/data, existing
+                        archive 200 S10000 Archive Role Success, other updates 200 S10000 Update Role Success. No token, caller id,
+                        row, audit fields or grants are returned.
+                    end note
                     app -> api: HTTP 201 S10000 Insert Role Success; exactly roleId
                     api -> page: Display completed role action
                     page -> user: Display the committed role action

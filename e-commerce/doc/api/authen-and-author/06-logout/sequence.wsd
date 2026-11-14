@@ -25,35 +25,6 @@ skinparam sequence {
 
 ' Do not show participant footers at the bottom of the diagram
 hide footbox
-' --- Rules moved from spec.md by the template alignment; the checks read them together with the spec ---
-' ### Logout Rules
-'
-' - Governing behavior: [owner-confirmed review](../../../../../docs/superpowers/specs/2026-11-07-api-review-design.md), Q13, approved by the product owner, and WP4 U9/U23. This detailed endpoint revision remains in-review; no backend implementation is included. No administrator role is required to log out of one's own session.
-' - No body or target userId/sessionId is accepted. Validate mandatory timestamp as a UTC timestamp and empty body before SQL; invalid input returns 400 E10001. Generate requestId when omitted. Missing/malformed Bearer credentials or failed JWT signature/issuer/audience/expiry/UUID sub validation return the same 401 E10002 `Invalid or expired access token.` before a transaction.
-' - Derive userId only from verified JWT sub and accessTokenHash as SHA-256 (32 bytes) of the exact presented JWT. Never take userId/sessionId from the request or trust an unverified token payload. JWT role/permission changes do not change this self-session operation; current credential/user checks are still required.
-' - Lock order: BEGIN READ COMMITTED -> lock the ACTIVE authen.m_user row FOR UPDATE -> capture fresh server UTC now after the lock -> recheck JWT expiry and read the ACTIVE stored access token/session using hash, userId and expiry > now -> close the session's access rows -> close the session's refresh rows -> COMMIT -> 200. Do not use a pre-lock token/session snapshot or transaction-start NOW() to authorize a waiter. No token UPDATE may run before the user lock and fresh credential check.
-' - Missing/inactive user or missing/revoked/expired/mismatched credential returns the same 401 after ROLLBACK, with no token changes. sessionId comes only from the post-lock access-token row; it is not a JWT flag or caller-selected target. If the JWT expires while waiting, the post-lock expiry check rejects the call even if it passed before the wait.
-' - Close **every ACTIVE access token and refresh token that has the same `session_id` as the access token of the request**, including all access tokens issued by earlier refreshes in that session. Both UPDATEs also guard user_id. Sessions of other devices are not changed. Other users are unaffected even if legacy data reuses a sessionId. Do not filter revocation to the presented token hash or only unexpired rows: all ACTIVE rows of this user/session become INACTIVE.
-' - The common user lock serializes logout with refresh, password reset and other conforming credential writers for that user. If refresh commits first, logout reads its still-valid presented access token and closes the newly issued pair too. If logout commits first, a later refresh rereads an INACTIVE credential and cannot issue new tokens. A second concurrent logout waits, then finds its access token INACTIVE and returns 401 without writes. Calling logout again likewise answers 401.
-' - Both token-table changes are one transaction. Zero refresh rows is allowed when none remains ACTIVE; the access token that authorized the request must be included in access closure. Use returned affected counts for consistency checks; an unexpected zero access-row update after valid authorization is an internal failure that rolls back, not 200. Do not commit only one token table. All parameters are typed bound UUIDs/bytes/timestamps, never interpolated SQL; updatedBy is the verified userId.
-' - COMMIT must succeed before 200 S10000 `Logout Success` with status only and no data. On timeout before commit, ROLLBACK then 408 E90001; on unexpected pre-commit failure, ROLLBACK then generic 500 without a new bizCode. None of the 400/401/408/500 paths intentionally preserves a token change. A lost response after commit does not undo logout: retry with that token returns 401 because revocation is durable.
-' - A successful logout does not issue tokens, refresh claims, alter roles/passwords, or affect another session. Each database result returns to Application before branching or deriving sessionId. Return generic credential errors without revealing whether user/token/session exists.
-'
-' #### Scenario correspondence with sequence.wsd
-'
-' | Scenario                                         | Required sequence behavior                                       | HTTP             | Durable effects                                 |
-' | ------------------------------------------------ | ---------------------------------------------------------------- | ---------------- | ----------------------------------------------- |
-' | Invalid timestamp/body                           | No SQL or BEGIN                                                  | 400 E10001       | None                                            |
-' | Missing/invalid JWT                              | No SQL or BEGIN                                                  | 401 E10002       | None                                            |
-' | Missing/inactive user                            | User lock returns no ACTIVE row; ROLLBACK                        | 401 E10002       | None                                            |
-' | Revoked/expired/mismatched token after lock wait | Fresh token check fails; ROLLBACK                                | 401 E10002       | None                                            |
-' | Valid current session                            | Close both token tables after lock/check, COMMIT before response | 200 S10000       | All ACTIVE tokens in that user/session INACTIVE |
-' | Unexpected zero access closure                   | Abort and ROLLBACK before common success                         | 500              | None                                            |
-' | Concurrent refresh first                         | Close its new pair too under the same user lock                  | 200 S10000       | Session remains fully revoked                   |
-' | Concurrent logout first / repeated call          | Fresh credential check sees INACTIVE                             | 401 E10002       | No additional writes                            |
-' | Timeout / other pre-commit failure               | ROLLBACK every token change                                      | 408 E90001 / 500 | None                                            |
-' --- end of the moved rules ---
-
 actor "User" as user
 box "Frontend" #F8FAFC
     participant "Logout Page" as page
@@ -83,6 +54,12 @@ activate app
         may run before the user lock and fresh credential check.
     end note
 app -> app: Generate requestId if omitted; validate UTC timestamp and empty body
+note over app, infra
+    Validate mandatory timestamp as a UTC timestamp and empty body before SQL; invalid input returns 400 E10001.
+    Generate requestId when omitted. Missing/malformed Bearer credentials or failed JWT
+    signature/issuer/audience/expiry/UUID sub validation return the same 401 E10002 `Invalid or expired access
+    token.` before a transaction.
+end note
 alt Invalid timestamp or non-empty body
     app -> api: HTTP 400 E10001
     api -> page: Validation failure
@@ -94,6 +71,21 @@ else Valid input
     else Verified JWT
         app -> app: userId = verified sub; accessTokenHash = SHA-256 exact JWT
         app -> infra: BEGIN READ COMMITTED
+        note over app, infra
+            Missing/inactive user or missing/revoked/expired/mismatched credential returns the same 401 after ROLLBACK,
+            with no token changes. sessionId comes only from the post-lock access-token row; it is not a JWT flag or
+            caller-selected target. If the JWT expires while waiting, the post-lock expiry check rejects the call even
+            if it passed before the wait.
+            If refresh commits first, logout reads its still-valid presented access token and closes the newly issued
+            pair too. If logout commits first, a later refresh rereads an INACTIVE credential and cannot issue new
+            tokens. A second concurrent logout waits, then finds its access token INACTIVE and returns 401 without
+            writes. Calling logout again likewise answers 401.
+            Both token-table changes are one transaction. Zero refresh rows is allowed when none remains ACTIVE; the
+            access token that authorized the request must be included in access closure. Use returned affected counts
+            for consistency checks; an unexpected zero access-row update after valid authorization is an internal
+            failure that rolls back, not 200. Do not commit only one token table. All parameters are typed bound
+            UUIDs/bytes/timestamps, never interpolated SQL; updatedBy is the verified userId.
+        end note
         alt Transaction work completes
             app -> infra: QUERY - Lock the user
             infra -> m_user: QUERY - Lock the user
@@ -164,6 +156,20 @@ else Valid input
                         app -> app: refreshClosedCount may be zero; both table changes remain atomic
                         app -> infra: COMMIT
                         infra -> app: Return committed full-session revocation
+                        note over app, infra
+                            Never take userId/sessionId from the request or trust an unverified token payload. JWT role/permission
+                            changes do not change this self-session operation; current credential/user checks are still required.
+                            Both UPDATEs also guard user_id. Sessions of other devices are not changed. Other users are unaffected even
+                            if legacy data reuses a sessionId. Do not filter revocation to the presented token hash or only unexpired
+                            rows: all ACTIVE rows of this user/session become INACTIVE.
+                            COMMIT must succeed before 200 S10000 `Logout Success` with status only and no data. On timeout before
+                            commit, ROLLBACK then 408 E90001; on unexpected pre-commit failure, ROLLBACK then generic 500 without a new
+                            bizCode. None of the 400/401/408/500 paths intentionally preserves a token change. A lost response after
+                            commit does not undo logout: retry with that token returns 401 because revocation is durable.
+                            A successful logout does not issue tokens, refresh claims, alter roles/passwords, or affect another session.
+                            Each database result returns to Application before branching or deriving sessionId. Return generic
+                            credential errors without revealing whether user/token/session exists.
+                        end note
                         app -> api: HTTP 200 S10000 Logout Success; status only, no data
                         api -> page: Session logged out
                         page -> user: Show signed-out state

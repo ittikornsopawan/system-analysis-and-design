@@ -1,3 +1,8 @@
+---
+name: "Schema doc: author.t_permission_scope"
+description: "Columns, keys, constraints and indexes of the table author.t_permission_scope. Transaction table of the `author` schema (defined in `db/migrations/up/02-author.schema.up.sql`). Read it when you write or review a migration, a query or an API spec that uses this table."
+---
+
 # Table: author.t_permission_scope
 
 Description: Transaction table of the `author` schema (defined in `db/migrations/up/02-author.schema.up.sql`).

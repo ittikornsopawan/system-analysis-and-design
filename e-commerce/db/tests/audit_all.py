@@ -112,7 +112,8 @@ def audit_docs(tables, indexes):
             finding("doc", f"{full}: missing {path.relative_to(ROOT)}")
             continue
         md = path.read_text(encoding="utf-8")
-        if not md.startswith(f"# Table: {full}\n"):
+        body = md.split("\n---\n", 1)[1].lstrip("\n") if md.startswith("---\n") and "\n---\n" in md else md  # skip the frontmatter
+        if not body.startswith(f"# Table: {full}\n"):
             finding("doc", f"{path.name}: heading is not '# Table: {full}'")
         rows = parse_doc_columns(md)
         doc_names = [r["name"] for r in rows]

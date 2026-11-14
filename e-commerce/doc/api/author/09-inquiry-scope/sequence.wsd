@@ -47,7 +47,21 @@ activate page
     activate api
         api -> app: [**InquiryScopeQueryHandler**] Process request
         activate app
+            note over app, infra
+                Execution order: validate query/header/body and checked pagination (400) -> verify JWT/roles (401) -> begin
+                read-only repeatable-read transaction -> fresh now/expiry -> joined current credential/user (401) -> claims
+                permission (403) -> count -> optional page -> complete mapping -> COMMIT -> 200. Every post-BEGIN rejection
+                rolls back.
+            end note
             app -> app: Generate requestId; validate UTC timestamp, known single query keys/no body, UUID id, positive signed Int64 pages/default 1/10/pageSize <=100 and ACTIVE/INACTIVE/LOCKED/ARCHIVED filter
+            note over app, infra
+                Reject unknown/repeated keys and malformed header/query with 400 E10001 before SQL. Generate requestId if
+                omitted. Supplied id is a non-empty UUID, never null; omitted id is typed SQL NULL. pageIndex/pageSize are
+                positive signed 64-bit integers, default 1/10 only when omitted, pageSize at most 100. Compute checked
+                offset = (pageIndex - 1) * pageSize and reject parse/offset overflow beyond nonnegative BIGINT with 400.
+                Explicit empty/null-like values do not become defaults. Row status must be one of ACTIVE, INACTIVE, LOCKED,
+                ARCHIVED.
+            end note
             app -> app: Compute checked offset = (pageIndex - 1) * pageSize; reject numeric/offset overflow beyond nonnegative BIGINT
             alt Invalid input or pagination overflow
                 break Reject this inquiry
@@ -69,6 +83,17 @@ activate page
             app -> app: callerUserId = verified sub; accessTokenHash = SHA-256 exact JWT
             app -> app: Bind omitted id/searchPattern/rowStatus as typed SQL NULL; supplied searchPattern = percent + search + percent, preserving ILIKE wildcards
             app -> infra: BEGIN REPEATABLE READ READ ONLY
+            note over app, infra
+                Verify Bearer JWT signature/issuer/audience/expiry/UUID sub and structured roles before BEGIN. roles must be
+                an array including [], every role object has UUID roleId and non-empty string name, and roleIds are unique.
+                Missing/malformed roles is generic 401 E10002, never an empty-list or live-grant fallback. Derive
+                callerUserId only from verified sub and accessTokenHash as SHA-256 of the exact JWT; do not accept caller
+                ids or isPlatformAdmin flags from requests.
+                Require matching token hash/caller id, ACTIVE token/user and strict expired_at > now;
+                missing/inactive/revoked/expired/mismatched credentials is generic 401 E10002 with rollback before scope
+                reads. No user/role/token locks or writes. This current credential gate preserves immediate logout/reset
+                revocation (Q13).
+            end note
             activate infra
             alt Read and mapping work completes
                 note over app, infra
@@ -171,6 +196,42 @@ activate page
                 app -> app: data = exactly items/pageIndex/pageSize/totalItems/totalPages; echo validated page values; explicit empty arrays; finish full mapping
                 app -> infra: COMMIT
                 infra -> app: Return committed consistent read-only scope page
+                note over app, infra
+                    Approved by the product owner (answered through the lead SA, 2026-11-06; claims basis A12); use exact
+                    PLATFORM_ADMIN in verified JWT role claims under [owner-confirmed
+                    review](../../../../../docs/superpowers/specs/2026-11-07-api-review-design.md), Q2/Q4/Q10/Q13. This detailed
+                    revision remains in-review; no backend/schema implementation.
+                    Omitted searchPattern binds typed SQL NULL; supplied search, including empty string, becomes one bound text
+                    searchPattern = percent + search + percent, preserving percent/underscore wildcards. Never interpolate
+                    client text into SQL. The three nullable filters disable only themselves and combine by AND; id is still
+                    filtered/paginated, not an unpaged alternate path.
+                    After current credentials pass, authorize once using exact case-sensitive PLATFORM_ADMIN in verified JWT
+                    roles. Valid roles=[] or any other role name is 403 E10009 `You do not have permission to read scopes.`
+                    after rollback and before count/page SQL. Never query current caller role assignments to grant, remove or
+                    replace authorization. Grant withdrawal after token issuance leaves the old privilege usable until access
+                    expiry (Q4); refresh reloads current grants (Q7). Scope metadata returned below comes from the database
+                    snapshot, distinct from author/me's calling-token snapshot.
+                    Count first and optionally fetch the page in the same read-only repeatable-read snapshot as credentials.
+                    Both scope queries use identical non-DELETED/id/searchPattern/rowStatus WHERE predicates; every supplied
+                    value is bound, including pageSize and checked offset. If totalItems=0 skip the page SQL and return
+                    items=[], totalPages=0. With positive count, query the requested page; an offset beyond the range returns
+                    items=[] with positive totals/pages and no 404. A missing/DELETED id is the same empty-list 200 for an
+                    authorized caller; permission is checked before revealing whether any scope exists.
+                    Scopes with rowStatus DELETED are never returned. Omitted rowStatus preserves every non-DELETED status;
+                    supplied status accepts only ACTIVE/INACTIVE/LOCKED/ARCHIVED. Sort by scope then id ascending, preserving
+                    database collation. This is deterministic within one snapshot; later requests may see newly committed
+                    changes and are not a frozen paging cursor.
+                    Map each row to exactly scopeId/scope/name/description/rowStatus. No caller id, assignment, token/hash,
+                    audit or extra table fields are returned. Return exactly five data keys:
+                    items/pageIndex/pageSize/totalItems/totalPages, with explicit empty arrays. Echo validated pages and compute
+                    totalPages by integer quotient/remainder (zero when count=0), avoiding floating point or overflowing
+                    count+pageSize-1. Require page row count = min(pageSize, max(0, totalItems-offset)); mismatch or
+                    malformed/null/missing required data is internal failure.
+                    Map the full response before COMMIT, then HTTP 200 S10000 Inquiry Scope Success. An unexpected
+                    SQL/result/mapping error rolls back and returns generic 500 without bizCode; timeout before COMMIT rolls
+                    back and returns 408 E90001. Never return partially mapped rows, mutate scopes/assignments/tokens/audit, or
+                    answer 404/409 for this inquiry.
+                end note
                 app -> api: HTTP 200 S10000 Inquiry Scope Success; all five pagination keys
                 api -> page: Show authorized scope page and totals
                 page -> user: Display scopes or empty page

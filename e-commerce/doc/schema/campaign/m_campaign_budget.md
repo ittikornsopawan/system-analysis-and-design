@@ -1,3 +1,8 @@
+---
+name: "Schema doc: campaign.m_campaign_budget"
+description: "Columns, keys, constraints and indexes of the table campaign.m_campaign_budget. Master table of the `campaign` schema (defined in `db/migrations/up/09-campaign.schema.up.sql`). Read it when you write or review a migration, a query or an API spec that uses this table."
+---
+
 # Table: campaign.m_campaign_budget
 
 Description: Master table of the `campaign` schema (defined in `db/migrations/up/09-campaign.schema.up.sql`).
