@@ -52,7 +52,16 @@ activate page
     activate api
         api -> app: [**UpsertConsentTypeCommandHandler**] Process request
         activate app
+            note over app, infra
+                Execution order: validate the request (400) -> existence check (404) -> permission (403, E10009) ->
+                duplicate name check (409, E10003) -> in-use check (409, E10006, only when `rowStatus` is DELETED or
+                ARCHIVED) -> write.
+            end note
             app -> app: Validate request parameters and business rules
+            note over app, infra
+                HTTP status of the single upsert: Insert 201 Created, Update 200 Ok, Delete 204 No Content (no response
+                body), Archive 200 Ok.
+            end note
             alt If request is invalid
                 app -> api: Return error response
                 api -> page: Return error response
@@ -173,6 +182,20 @@ activate page
                 api -> page: Return success response
                 page -> user: Display success result
             end alt
+        note over app, infra
+            The comparison is exact (upper and lower case are different names) and a name held by an INACTIVE, LOCKED or
+            ARCHIVED consent type is still taken (409, E10003). The name of a DELETED consent type can be used again.
+            `description` and `isRequired` are optional.
+            INACTIVE, LOCKED and ARCHIVED are reversible: an update with `rowStatus` ACTIVE opens the consent type
+            again. `rowStatus` DELETED is rejected with 400 (E10001) when the request inserts a consent type.
+            INACTIVE and LOCKED are allowed even when consents use the consent type, the consents are not changed. A
+            consent type that is not ACTIVE blocks the writes that use it, because a consent is written only with an
+            ACTIVE consent type (404, E10005, see the consent upsert). Nothing is changed in the consents that use it
+            and they can be edited again when this row is ACTIVE.
+            Any other caller gets 403 (E10009), after the existence check and before the duplicate name check. Reading
+            is open to every caller with a valid access token (see the inquiry). Approved by the product owner (answered
+            through the lead SA, 2026-11-06).
+        end note
         deactivate app
     deactivate api
 deactivate page

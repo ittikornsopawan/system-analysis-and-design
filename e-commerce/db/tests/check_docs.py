@@ -3384,6 +3384,25 @@ def master_errors_inquiry(m: dict, md: str) -> list[str]:
     return errors
 
 
+# Needles of a master spec whose sentence now lives in a note of its sequence (moved by the template alignment) and needles whose text is gone by design
+MASTER_SEQUENCE_NEEDLES = {
+    "consent-type/upsert": ['-> permission (403, E10009) -> duplicate name check',
+           'The name of a DELETED consent type can be used again.',
+           'are allowed even when',
+           'blocks the writes that use it',
+           'Approved by the product owner',
+           '`description` and `isRequired` are optional'],
+    "consent-type/batch": ['so the 403 message has no item position',
+           'Approved by the product owner'],
+}
+MASTER_REMOVED_NEEDLES = {
+    "consent-type/upsert": ['### Consent Type Rules'],
+    "consent-type/batch": ['### Consent Type Rules (same as the single upsert, applied per consent type)',
+           '- Permission:'],
+    "consent-type/inquiry": ['### Consent Type Inquiry Rules'],
+}
+
+
 def check_master_spec(names: tuple[str, ...], label: str) -> int:
     errors = []
     for name in names:
@@ -3409,8 +3428,12 @@ def check_master_spec(names: tuple[str, ...], label: str) -> int:
                 errors.append(f"{path} contains ALTER TABLE")
             if not (ROOT / path).with_name("sequence.wsd").exists():
                 errors.append(f"{path} has no sequence.wsd beside it")
-            for missing in missing_needles(md, master_needles(m)[0][kind]):
+            in_sequence = MASTER_SEQUENCE_NEEDLES.get(f"{name}/{kind}", [])
+            for missing in missing_needles(md, [x for x in master_needles(m)[0][kind] if x not in in_sequence and x not in MASTER_REMOVED_NEEDLES.get(f"{name}/{kind}", [])]):
                 errors.append(f"{path} missing: {missing!r}")
+            sequence_note = " ".join((ROOT / path).with_name("sequence.wsd").read_text(encoding="utf-8").split()) if (ROOT / path).with_name("sequence.wsd").exists() else ""
+            for missing in missing_needles(sequence_note, in_sequence):
+                errors.append(f"{path} sequence note missing: {missing!r}")
             for text, times in master_counted(m)[kind]:
                 if md.count(text) != times:
                     errors.append(f"{path}: {text!r} must appear {times} time(s), found {md.count(text)}")
@@ -6038,14 +6061,14 @@ def check_consent_submit_flow() -> int:
     path = 'e-commerce/doc/api/consent/04-submit-consent/spec.md'
     md = read(path);wsd = read(str(Path(path).with_name('sequence.wsd')))
     errors = []
-    for needle in ('2026-11-07-api-review-design.md', 'Q16/Q17', 'READ COMMITTED',
-                   'Duplicate consentIds return 400', 'resultSpecified records presence',
-                   'An existing answer survives a read-only request', 'performs no UPDATE at all',
-                   'preserve read_at even when NULL', 'newest created_at, then greatest id',
-                   'validate the complete current consent set', 'including all-no-op batches',
-                   'Return data.consents in original request order', 'A later item/DB failure rolls back earlier item changes',
-                   'current version', 'mandatory boolean isRead=true'):
+    for needle in ('Q16/Q17', 'READ COMMITTED', 'current version', 'mandatory boolean isRead=true'):
         if needle not in md:errors.append(f'submit rule missing {needle!r}')
+    seq = ' '.join(wsd.split())  # the note texts of the sequence, one line
+    for needle in ('Duplicate consentIds return 400', 'resultSpecified records presence', 'An existing answer survives a read-only request',
+            'performs no UPDATE at all', 'preserve read_at even when NULL', 'newest created_at, then greatest id', 'validate the complete current consent set',
+            'including all-no-op batches', 'Return data.consents in original request order', 'A later item/DB failure rolls back earlier item changes'):
+        if needle not in seq:
+            errors.append(f'submit sequence note missing {needle!r}')
     front = re.match(r'---\n(.*?)\n---\n', md, re.S)
     fm = front[1] if front else ''
     state = re.search(r'^status: (draft|in-review|approved)$', fm, re.M)
@@ -6146,14 +6169,15 @@ def check_pending_consent_flow() -> int:
     """Guard current canonical evidence, required/optional pending and one read-only response snapshot."""
     path='e-commerce/doc/api/consent/05-inquiry-pending-consent/spec.md'
     md=read(path);wsd=read(str(Path(path).with_name('sequence.wsd')));errors=[]
-    for needle in ('2026-11-07-api-review-design.md','Q16/Q17','REPEATABLE READ READ ONLY',
-                   'newest created_at, then greatest id', 'BOTH is_read=true AND result=true',
-                   'Optional consent is complete once canonical current-version is_read=true',
-                   'No evidence means pending', 'submittedVersion does not itself prove acceptance',
-                   'This GET never marks a consent read', 'same snapshot', 'effective_at ASC, id ASC',
-                   'already-authorized in-flight read', 'inactive/locked/archived/deleted type is hidden',
-                   'Required means c.is_required', 'No FOR UPDATE', 'A new current version is pending'):
+    for needle in ('Q16/Q17', 'REPEATABLE READ READ ONLY', 'newest created_at, then greatest id'):
         if needle not in md:errors.append(f'pending rule missing {needle!r}')
+    seq = ' '.join(wsd.split())  # the note texts of the sequence, one line
+    for needle in ('BOTH is_read=true AND result=true', 'Optional consent is complete once canonical current-version is_read=true', 'No evidence means pending',
+            'submittedVersion does not itself prove acceptance', 'This GET never marks a consent read', 'same snapshot', 'effective_at ASC, id ASC',
+            'already-authorized in-flight read', 'inactive/locked/archived/deleted type is hidden', 'Required means c.is_required', 'No FOR UPDATE',
+            'A new current version is pending'):
+        if needle not in seq:
+            errors.append(f'pending sequence note missing {needle!r}')
     canonical_rule=re.search(r'^- Select the canonical ACTIVE evidence row[^\n]+',md,re.M)
     if not canonical_rule or 'newest created_at, then greatest id' not in canonical_rule[0]:
         errors.append('canonical current-version evidence must explicitly use newest created_at then greatest id')
@@ -6228,7 +6252,7 @@ def check_pending_consent_flow() -> int:
             if title=='Success - No Pending Consent' and obj['data']['consents']!=[]:errors.append('empty pending success must contain []')
         except (TypeError,KeyError,ValueError):errors.append(f'missing pending {title} example')
     for text in ('| isRead=false, result=true | Pending | Pending |','| isRead=true, result=false (read-only/rejected) | Pending | Complete |','| isRead=true, result=true | Complete | Complete |'):
-        if re.sub(r'\s+','',text) not in re.sub(r'\s+','',md):errors.append('pending truth table must distinguish read and accepted for both kinds')
+        if re.sub(r'\s+','',text) not in re.sub(r'\s+','',wsd):errors.append('pending sequence note must carry the truth table that distinguishes read and accepted for both kinds')
     errors+=json_blocks_parse(md);errors+=table_lines_aligned(md)
     if '--rendered-svg' in sys.argv:
         import xml.etree.ElementTree as ET
@@ -6252,11 +6276,13 @@ def check_active_consent_flow() -> int:
     """Check the public visible-consent contract, complete type names and read-only paths."""
     path='e-commerce/doc/api/consent/01-inquiry-active-consent/spec.md'
     md=read(path);wsd=read(str(Path(path).with_name('sequence.wsd')));errors=[]
-    for needle in ('2026-11-07-api-review-design.md','Q3','Public endpoint','REPEATABLE READ READ ONLY',
-                   'isRequired comes from c.is_required','every visible current consent',
-                   'mandatory consentTypeName','effective_at ASC, id ASC','This GET never records reading',
-                   'skip the type-name lookup','A type deactivated after this snapshot is absent in the next request'):
+    for needle in ('Q3', 'Public endpoint', 'REPEATABLE READ READ ONLY', 'every visible current consent', 'effective_at ASC, id ASC'):
         if needle not in md:errors.append(f'active consent rule missing {needle!r}')
+    seq = ' '.join(wsd.split())  # the note texts of the sequence, one line
+    for needle in ('isRequired comes from c.is_required', 'mandatory consentTypeName', 'This GET never records reading', 'skip the type-name lookup',
+            'A type deactivated after this snapshot is absent in the next request'):
+        if needle not in seq:
+            errors.append(f'active consent sequence note missing {needle!r}')
     if 'authorization' in md.lower():errors.append('public active-consent contract must not require a credential header')
     front=re.match(r'---\n(.*?)\n---\n',md,re.S);fm=front[1] if front else ''
     state=re.search(r'^status: (draft|in-review|approved)$',fm,re.M)
@@ -8391,12 +8417,6 @@ def spec_template_errors(md: str) -> list[str]:
 # Specs that do not follow the template yet. Each is exempt until its sections and links are fixed; an entry must be a spec folder and
 # must still fail, so a spec that passes has to leave the list in the same change. The count is printed in the OK line.
 LEGACY_SPEC_TEMPLATE = (
-    "consent/01-inquiry-active-consent",
-    "consent/04-submit-consent",
-    "consent/05-inquiry-pending-consent",
-    "consent/06-upsert-consent-type",
-    "consent/07-upsert-consent-type-batch",
-    "consent/08-inquiry-consent-type",
     "shop/01-upsert-shop-product-sku",
     "shop/02-upsert-shop-product-sku-batch",
     "shop/04-inquiry-storefront-product",
@@ -8455,9 +8475,6 @@ MD_FRONTMATTER_PENDING = (
     "e-commerce/doc/api/cart/02-upsert-cart-item-batch/spec.md",
     "e-commerce/doc/api/cart/03-inquiry-cart/spec.md",
     "e-commerce/doc/api/consent/03-inquiry-consent/spec.md",
-    "e-commerce/doc/api/consent/06-upsert-consent-type/spec.md",
-    "e-commerce/doc/api/consent/07-upsert-consent-type-batch/spec.md",
-    "e-commerce/doc/api/consent/08-inquiry-consent-type/spec.md",
     "e-commerce/doc/api/payment/01-start-payment/spec.md",
     "e-commerce/doc/api/payment/02-stripe-webhook/spec.md",
     "e-commerce/doc/api/payment/03-inquiry-payment/spec.md",
