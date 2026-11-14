@@ -53,7 +53,37 @@ activate page
     activate api
         api -> app: [**UpsertPermissionCommandHandler**] Process request
         activate app
+            note over app, infra
+                Execution order: validate the request (400) -> verify JWT (401) -> begin transaction (READ COMMITTED) ->
+                caller lock/fresh current credentials (401) -> locked parent existence check (404) -> permission (403,
+                E10009) -> scope check (404, E10005 for ACTIVE links), owned scope-link existence (404 E10004) and immutable
+                scopeId (400) -> before-definition count -> duplicate check (409, E10003) -> parent/link in-use checks (409
+                E10006) -> guarded parent and child writes -> final definition count/Q24 deletion guard/Q22 grant guard (409
+                E10006) -> map -> COMMIT -> response. Every post-BEGIN error rolls back the whole request.
+                Lock order: caller user -> existing permission -> ACTIVE referenced scope masters ordered by id -> owned
+                requested permission-scope rows ordered by id -> writes. activeScopeIds contains only scopeIds of requested
+                ACTIVE links; permissionScopeIds contains supplied child ids. Both bind typed UUID[] (empty allowed). Before
+                writing, validate each child in input order: ACTIVE child requires a returned ACTIVE master; DELETED child
+                skips master-active validation (Q23), then a supplied child id must map to the owned non-DELETED row and its
+                stored scopeId must equal the request (400 if changed). Missing/DELETED/other-parent child is 404 E10004. A
+                child id cannot belong to a new parent; it likewise returns 404 after authorization. These checks never
+                disclose another parent's child.
+            end note
             app -> app: Generate requestId; validate whole object/known unique keys/no query, UTC timestamp, required name/description/code, parent id/status/default ACTIVE and all scope items
+            note over app, infra
+                HTTP status of the single upsert: Insert 201 Created, Update 200 Ok, Delete 204 No Content (no response
+                body), Archive 200 Ok.
+                Validate one JSON object with only id/name/description/scopes/rowStatus, no repeated keys or query fields,
+                correct JSON content type and mandatory UTC timestamp. Generate requestId if omitted. Parent id, if
+                supplied, is a non-null UUID; omitted means insert. Required name/description are non-null nonblank strings
+                of at most 64/256 characters; name matches ^[a-z][a-z0-9_]*(\.[a-z0-9_]+)+$ without
+                trimming/case-normalization. Parent status defaults to ACTIVE only when omitted, otherwise
+                ACTIVE/INACTIVE/DELETED/LOCKED/ARCHIVED; insert-DELETED is 400.
+                Map exactly data.permissionId from the parent's RETURNING id before COMMIT. Insert is 201 S10000 Insert
+                Permission Success; existing DELETED is 204 with no body/status/data; existing ARCHIVED is 200 S10000
+                Archive Permission Success; other existing updates are 200 S10000 Update Permission Success. Every child
+                action and final Q24/Q22 check completes before success; no partial response.
+            end note
             app -> app: scopes omitted or [] means no changes; reject null, child insert-DELETED, duplicate parsed child ids and duplicate non-DELETED scopeIds before SQL
             alt Invalid parent/child/header/input
                 break Reject this request
@@ -74,6 +104,22 @@ activate page
             end
             app -> app: callerUserId = verified sub; accessTokenHash = SHA-256 exact JWT; createdBy/updatedBy = caller UUID string; omitted ids = typed SQL NULL
             app -> infra: BEGIN READ COMMITTED
+            note over app, infra
+                Verify JWT signature/issuer/audience/expiry/UUID sub and structured roles before BEGIN. roles must be an
+                array including [], every object has UUID roleId/non-empty name, and roleIds are unique; malformed/missing
+                roles is generic 401 E10002, never an empty-role fallback. Derive callerUserId from verified sub and
+                accessTokenHash as SHA-256 of exact JWT. createdBy/updatedBy are the caller UUID string; use fresh server
+                UTC now, never request audit values.
+                Begin READ COMMITTED, lock caller user first, capture fresh server UTC now after that lock and recheck JWT
+                exp, then require matching ACTIVE token/hash/caller, strict expired_at > now and ACTIVE user.
+                Missing/revoked/inactive/expired credentials is generic 401 before parent lookup. Logout/reset share the
+                caller lock. Authorization then uses only exact PLATFORM_ADMIN in verified JWT roles; [] or another valid
+                role is 403. Grant changes alone do not invalidate a current old claim; refresh loads latest grants.
+                Shared grant/reference writers must lock and recheck their permission/definition parents before
+                creating/reopening bindings; otherwise a soft-status invariant is not guaranteed by foreign keys. Their
+                migrations remain separate APIs; this contract/SQL test does not certify unmigrated writers. Caller/target
+                users must be locked in ascending id order in those writers before master/link rows.
+            end note
             activate infra
             alt Work completes before commit
                 note over app, infra
@@ -565,6 +611,80 @@ activate page
                     app -> app: data = exactly permissionId from parent RETURNING; no child ids or audit fields
                     app -> infra: COMMIT
                     infra -> app: Return committed parent and scope-link actions
+                    note over app, infra
+                        Detailed revision remains in-review; no schema/backend implementation.
+                        The comparison is exact and a value held by an INACTIVE, LOCKED or ARCHIVED permission is still taken (409,
+                        E10003). The value of a DELETED permission can be used again.
+                        Every field that is not optional is required in every request, including a delete and an archive.
+                        INACTIVE, LOCKED and ARCHIVED are reversible: an update with `rowStatus` ACTIVE opens the permission again.
+                        `rowStatus` DELETED is rejected with 400 (E10001) when the request inserts a permission. A permission that
+                        is not ACTIVE is excluded from newly resolved login/refresh claims; an existing token keeps its previous
+                        claims until expiry (Q4/Q7).
+                        INACTIVE and LOCKED are allowed, the rows that use it are not changed.
+                        An item without `id` is added, with `id` is updated, with `rowStatus` DELETED is removed. Scopes that are
+                        not listed are kept. Adding or retaining an ACTIVE link requires an ACTIVE scope master (404 E10005);
+                        removing an existing link may reference a closed master under owner Q23. A scope cannot be deleted from the
+                        permission while a role (`author.t_role_permission_scope`) or a user (`author.t_user_permission`) still uses
+                        it (409, E10006). A permission without scopes has no scope dimension.
+                        Permission: only a platform administrator from verified JWT roles can call this API, with exact
+                        case-sensitive PLATFORM_ADMIN. Valid non-admin claims give 403 E10009 after parent existence and before
+                        scope/conflict work; do not authorize from live assignment queries or request flags. Approved by the product
+                        owner (Q2/Q4/Q10/Q13); this supersedes the prior live-grant guard.
+                        scopes omitted or [] means no link change; null is invalid. Every supplied item is an object with only
+                        id/scopeId/rowStatus: optional id is a non-null UUID when present, scopeId is a required UUID, and child
+                        status is ACTIVE or DELETED, default ACTIVE only when omitted. Reject child insert-DELETED, duplicate parsed
+                        child ids, and duplicate scopeIds among non-DELETED input items with 400 before SQL. Required fields remain
+                        required on every parent/child delete. No new array-size limit is introduced.
+                        Lock the non-DELETED parent when id is supplied; missing/DELETED is 404 and never reopened. permissionId is
+                        that verified existing id, or typed SQL NULL before insert; after parent RETURNING bind the actual returned
+                        id for every child write/final query. Keep callerUserId, optional request id and derived permissionId
+                        distinct. No client-generated inserted parent id or live caller-grant lookup.
+                        Q23 owner answer: “ใช่ อนุญาตถอน link ของ scope ที่ปิดแล้ว”. Deleting an owned existing definition works
+                        even when its master is INACTIVE/LOCKED/ARCHIVED/DELETED, subject to immutable scopeId and in-use/Q22
+                        checks. ACTIVE link creation/retention still requires an ACTIVE master. No master status or grant row is
+                        changed by this API.
+                        Scopes that are not listed are kept. Preserve existing precheck semantics: all child
+                        reference/duplicate/in-use checks precede any parent/child write. Deleting then readding the same existing
+                        scopeId in this array still returns duplicate 409 because the old definition exists at precheck time; remove
+                        it in a prior request before adding a replacement. Omitted insert ids bind typed SQL NULL and duplicate
+                        exclusions are null-safe. Root name uniqueness spans every non-DELETED parent; scope-pair uniqueness spans
+                        every non-DELETED definition.
+                        Parent DELETED/ARCHIVED is 409 E10006 while any non-DELETED role/direct-user grant holds it, including
+                        inactive/locked/archived grants. A DELETED child is 409 E10006 while any non-DELETED role-scope/direct-user
+                        row references that definition, irrespective of current effective rights. Do not detach/rewrite grant
+                        history. Read these tables for business invariants, never to authorize the caller.
+                        Capture beforeDefinitionCount as every non-DELETED definition of this permission (not only ACTIVE or
+                        ACTIVE-master definitions). After all parent/child writes, query finalDefinitionCount again. Q22 triggers
+                        only when beforeDefinitionCount > 0 and finalDefinitionCount = 0. Then freshly query role/direct-user grant
+                        usage and reject any non-DELETED grant with 409 E10006 `Permission cannot become unscoped while assigned to
+                        roles or users.`; ROLLBACK restores all parent/link/audit writes. Owner answer: “ใช่ ปฏิเสธจนถอน grant
+                        เดิมครบ”. A request that merely updates an already-unscoped permission (before count 0) may keep valid
+                        unscoped grants. This is a final whole-request invariant, not a transient intermediate count.
+                        Q24 approved by the product owner on 2026-11-09: owner answer “ต้องถอน links ให้ครบก่อนลบ permission
+                        (แนะนำ)”. After all explicit child writes, reuse the final whole-request definition count: rowStatus =
+                        DELETED and finalDefinitionCount > 0 is 409 E10006 `Permission cannot be deleted while scope definitions
+                        remain.` with complete rollback of parent/child/audit writes. Count every non-DELETED definition, including
+                        INACTIVE/LOCKED/ARCHIVED and closed-master links. Omitted/empty scopes keep existing definitions and cannot
+                        bypass this rule. The caller may explicitly withdraw every remaining definition and delete the parent in the
+                        same request when existing ownership, immutable-id, grant and child-reference checks pass. Already-zero
+                        definitions, including DELETED-only history, permit parent deletion. ARCHIVED may retain definitions. Check
+                        Q24 after the final count, before Q22 and before any COMMIT/success; no implicit cascade and no
+                        deleted-parent cleanup exception are added.
+                        Parent/child INSERTs explicitly set created_at from server now and must return exactly one UUID;
+                        missing/malformed result is internal 500. Existing parent UPDATE guards id and non-DELETED; child UPDATE
+                        guards id, permissionId, immutable scopeId and non-DELETED status. A zero-row update is 404 E10004 with
+                        whole-request rollback; a returned existing id must match its requested id. Preserve creation audit on
+                        updates. Do not reopen DELETED rows.
+                        Archive and other reversible parent updates retain unlisted child definitions. Parent deletion requires zero
+                        final non-DELETED definitions under Q24; unlisted definitions therefore cause 409 E10006 instead of being
+                        stranded. Explicit child actions remain atomic and there is no implicit cascade. A new parent requested
+                        ARCHIVED is still an INSERT (201). Child ids are internal results, not added response fields.
+                        SQLSTATE 23505 from uq_m_permission_name is 409 E10003 `Permission name already exists.`; from
+                        uq_t_permission_scope_permission_id_scope_id is 409 E10003 `Scope already exists in the permission.`. Both
+                        roll back the entire transaction, including earlier writes. Other SQL/result/mapping errors return generic
+                        500 without bizCode after rollback; timeout before COMMIT is 408 E90001 after rollback. No retry is promised
+                        for an unknown commit result.
+                    end note
                     app -> api: HTTP 201 S10000 Insert Permission Success; exactly permissionId
                     api -> page: Show completed permission action
                     page -> user: Display the committed action

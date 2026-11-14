@@ -5017,6 +5017,64 @@ def author_inquiry_errors(m, md: str) -> list[str]:
     return errors
 
 
+# Needles whose sentence now lives in a note of the sequence diagram (moved there by the template alignment) and needles whose text is gone by design
+AUTHOR_SEQUENCE_NEEDLES = {
+    "01": ['Permission: only a platform administrator from the verified JWT roles claim',
+           'Approved by the product owner',
+           '-> permission (403, E10009) ->',
+           'The value of a DELETED role can be used again.',
+           'Delete 204 No Content'],
+    "02": ['Approved by the product owner',
+           'The 403 message has no item position'],
+    "03": ['use exact PLATFORM_ADMIN in verified JWT role claims',
+           'Approved by the product owner'],
+    "04": ['Permission: only a platform administrator from verified JWT roles',
+           'Approved by the product owner',
+           '-> permission (403, E10009) ->',
+           'The value of a DELETED permission can be used again.',
+           'Delete 204 No Content',
+           'Scopes that are not listed are kept.'],
+    "05": ['Approved by the product owner',
+           'The 403 message has no item position'],
+    "06": ['use exact PLATFORM_ADMIN in verified JWT role claims',
+           'Approved by the product owner'],
+    "07": ['Approved by the product owner',
+           '-> permission (403, E10009) ->',
+           'The value of a DELETED scope can be used again.',
+           'Delete 204 No Content'],
+    "08": ['Approved by the product owner',
+           'The 403 message has no item position'],
+    "09": ['use exact PLATFORM_ADMIN in verified JWT role claims',
+           'Approved by the product owner'],
+    "10": ['Lock order is users (ascending id) -> the role of the request',
+           'Only a platform administrator from the verified JWT roles claim',
+           'exact case-sensitive role name PLATFORM_ADMIN',
+           'Approved by the product owner',
+           'uq_t_user_role_user_id_role_id',
+           'Taking the role away (`rowStatus` DELETED, ARCHIVED, INACTIVE or LOCKED) works whatever the status of the user and of the role is',
+           'The last administrator rule below still applies in full.',
+           'a missing target user is 404 (E10005) `User not found.`, also when the request takes the role away'],
+    "11": ['use exact PLATFORM_ADMIN in verified JWT role claims'],
+    "12": ['Any caller with a valid access token can call this API',
+           'Do not query author.t_user_role or author.m_role'],
+}
+AUTHOR_REMOVED_NEEDLES = {
+    "01": ['### Role Rules'],
+    "02": ['### Role Rules (same as the single upsert, applied per role)'],
+    "03": ['### Role Inquiry Rules'],
+    "04": ['### Permission Rules'],
+    "05": ['### Permission Rules (same as the single upsert, applied per permission)'],
+    "06": ['### Permission Inquiry Rules'],
+    "07": ['### Scope Rules'],
+    "08": ['### Scope Rules (same as the single upsert, applied per scope)'],
+    "09": ['### Scope Inquiry Rules'],
+    "10": ['### User Role Rules',
+           '### Credential, Lock and Transaction Rules'],
+    "11": ['### User Role Inquiry Rules'],
+    "12": ['### Me Rules'],
+}
+
+
 def author_example_errors(key: str, md: str) -> list[str]:
     errors = []
     masters = {v[0]: (v, False) for v in AUTHOR_MASTERS.values()}
@@ -5094,8 +5152,12 @@ def check_author_spec() -> int:
         if not (ROOT / path).with_name("sequence.wsd").exists():
             errors.append(f"{path} has no sequence.wsd beside it")
         need = author_needles(key) if key in ("01", "02", "03", "04", "05", "06", "07", "08", "09") else AUTHOR_OTHER_NEEDLES[key]
-        for missing in missing_needles(md, need):
+        in_sequence = AUTHOR_SEQUENCE_NEEDLES.get(key, [])
+        for missing in missing_needles(md, [x for x in need if x not in in_sequence and x not in AUTHOR_REMOVED_NEEDLES.get(key, [])]):
             errors.append(f"{path} missing: {missing!r}")
+        sequence_note = " ".join((ROOT / path).with_name("sequence.wsd").read_text(encoding="utf-8").split())
+        for missing in missing_needles(sequence_note, in_sequence):
+            errors.append(f"{path} sequence note missing: {missing!r}")
         for forbidden in AUTHOR_FORBIDDEN_TEXT.get(key, []):
             if forbidden in md:
                 errors.append(f"{path} must not contain {forbidden!r}")
@@ -6458,16 +6520,16 @@ def check_author_me_flow() -> int:
     """Check the calling-token role snapshot while preserving live credential/user revocation."""
     path='e-commerce/doc/api/author/12-me/spec.md'
     md=read(path);wsd=read(str(Path(path).with_name('sequence.wsd')));errors=[]
-    for needle in ('2026-11-07-api-review-design.md','Q4/Q11/Q13',"calling token's role snapshot",
-                   'Do not query author.t_user_role or author.m_role','duplicate entries',
-                   'roles must be an array of unique non-empty strings, including explicit []','ordinal case-sensitive comparison.',
-                   'isPlatformAdmin is true exactly when one returned role name equals PLATFORM_ADMIN',
-                   'Do not trust an independent isPlatformAdmin token claim',
-                   'Role/assignment changes after issuance do not change this token',
-                   'Every refresh resolves latest ACTIVE grants','one read-only autocommit SELECT',
-                   'stored token for that hash/userId and an ACTIVE user','There is no 403',
-                   'Permissions and scopes are not returned'):
+    for needle in ('Q4/Q11/Q13', "calling token's role snapshot", 'one read-only autocommit SELECT'):
         if needle not in md:errors.append(f'me rule missing {needle!r}')
+    seq = ' '.join(wsd.split())  # the note texts of the sequence, one line
+    for needle in ('Do not query author.t_user_role or author.m_role', 'duplicate entries', 'roles must be an array of unique non-empty strings, including explicit []',
+            'ordinal case-sensitive comparison.', 'isPlatformAdmin is true exactly when one returned role name equals PLATFORM_ADMIN',
+            'Do not trust an independent isPlatformAdmin token claim', 'Role/assignment changes after issuance do not change this token',
+            'Every refresh resolves latest ACTIVE grants', 'stored token for that hash/userId and an ACTIVE user', 'There is no 403',
+            'Permissions and scopes are not returned'):
+        if needle not in seq:
+            errors.append(f'me sequence note missing {needle!r}')
     front=re.match(r'---\n(.*?)\n---\n',md,re.S);fm=front[1] if front else ''
     state=re.search(r'^status: (draft|in-review|approved)$',fm,re.M)
     if not state:errors.append('me requires approval metadata')
@@ -6553,11 +6615,19 @@ COMMANDS['author-me-flow'] = check_author_me_flow
 def check_permission_upsert_flow() -> int:
     """Check scoped permission parent/link phases, owner Q22/Q23 and atomic rollback."""
     path=f'{AUTHOR_DIR}/{AUTHOR_SPECS["04"]}/spec.md';md=read(path);wsd=read(str(Path(path).with_name('sequence.wsd')));errors=[]
-    for n in ('status: in-review','approved_by: null','approved_at: null','Q22/Q23 approved by the product owner','malformed/missing roles is generic 401','exact PLATFORM_ADMIN','scopes omitted or [] means no link change','duplicate parsed child ids','Lock order: caller user -> existing permission','beforeDefinitionCount > 0 and finalDefinitionCount = 0','already-unscoped permission','all child reference/duplicate/in-use checks precede any parent/child write','Capture beforeDefinitionCount as every non-DELETED definition','After all parent/child writes','final whole-request invariant','Map exactly data.permissionId','uq_m_permission_name','uq_t_permission_scope_permission_id_scope_id','Scenario correspondence with sequence.wsd','ใช่ ปฏิเสธจนถอน grant เดิมครบ','ใช่ อนุญาตถอน link ของ scope ที่ปิดแล้ว'):
+    for n in ('status: in-review', 'approved_by: null', 'approved_at: null'):
         if n not in md:errors.append(f'permission spec missing {n!r}')
+    seq = ' '.join(wsd.split())  # the note texts of the sequence, one line
+    for n in ('malformed/missing roles is generic 401', 'exact PLATFORM_ADMIN', 'scopes omitted or [] means no link change', 'duplicate parsed child ids',
+            'Lock order: caller user -> existing permission', 'beforeDefinitionCount > 0 and finalDefinitionCount = 0', 'already-unscoped permission',
+            'all child reference/duplicate/in-use checks precede any parent/child write', 'Capture beforeDefinitionCount as every non-DELETED definition',
+            'After all parent/child writes', 'final whole-request invariant', 'Map exactly data.permissionId', 'uq_m_permission_name',
+            'uq_t_permission_scope_permission_id_scope_id', 'ใช่ ปฏิเสธจนถอน grant เดิมครบ', 'ใช่ อนุญาตถอน link ของ scope ที่ปิดแล้ว'):
+        if n not in seq:
+            errors.append(f'permission sequence note missing {n!r}')
     for n in ('QUERY - Get the platform administrator role','QUERY - Check platform administrator'):
         if n in md or n in wsd:errors.append('permission caller authorization may not reload live grants')
-    if 'Q24 approved by the product owner' not in md or 'rowStatus = DELETED and finalDefinitionCount > 0' not in md:errors.append('permission spec must define owner Q24 final deletion guard')
+    if 'Q24 approved by the product owner' not in ' '.join(wsd.split()) or 'rowStatus = DELETED and finalDefinitionCount > 0' not in ' '.join(wsd.split()):errors.append('permission sequence note must define owner Q24 final deletion guard')
     q24='alt Parent rowStatus = DELETED and finalDefinitionCount > 0 (Q24)'
     passed='Q24 passed: parent is not DELETED or finalDefinitionCount = 0'
     if q24 not in wsd or passed not in wsd:errors.append('permission sequence must enforce Q24 after final count')
@@ -6688,11 +6758,24 @@ COMMANDS['permission-upsert-flow'] = check_permission_upsert_flow
 def check_permission_batch_flow() -> int:
     """Check scoped permission parent/link phases, owner Q22/Q23/Q24 and atomic rollback."""
     path=f'{AUTHOR_DIR}/{AUTHOR_SPECS["05"]}/spec.md';md=read(path);wsd=read(str(Path(path).with_name('sequence.wsd')));errors=[]
-    for n in ('status: in-review', 'approved_by: null', 'approved_at: null', 'Q22/Q23 approved by the product owner', 'permissions must be an array of 1..100', 'Reject duplicate parsed canonical parent ids', 'malformed/missing roles is generic 401', 'Lock order: caller user -> all existing target permissions ordered by id', 'Check all supplied target ids in original request order before permission', 'Authorize once from exact PLATFORM_ADMIN', 'activeScopeIds contains only scopeIds requested ACTIVE anywhere', 'Map each returned child id to its stored permission_id and scope_id', 'optional permissions.id, callerUserId and derived permissionId are distinct', 'scopes omitted or [] means no link change', 'Every child precheck precedes the current parent', 'Capture beforeDefinitionCount as every non-DELETED definition', 'beforeDefinitionCount > 0 and finalDefinitionCount = 0', "Because parent ids cannot repeat and child ownership is enforced, this post-item state is that permission's final whole-request state; no later item may alter its definitions.", 'exactly index/permissionId/action', 'one COMMIT after the outer loop', 'Every item-specific 400/404/409 has permissions[i] prefix', 'uq_m_permission_name', 'uq_t_permission_scope_permission_id_scope_id', 'Scenario correspondence with sequence.wsd', 'ใช่ ปฏิเสธจนถอน grant เดิมครบ', 'ใช่ อนุญาตถอน link ของ scope ที่ปิดแล้ว'):
+    for n in ('status: in-review', 'approved_by: null', 'approved_at: null', 'Q22/Q23 (approved by the product owner)'):
         if n not in md:errors.append(f'permission batch spec missing {n!r}')
+    seq = ' '.join(wsd.split())  # the note texts of the sequence, one line
+    for n in ('permissions must be an array of 1..100', 'Reject duplicate parsed canonical parent ids',
+            'malformed/missing roles is generic 401', 'Lock order: caller user -> all existing target permissions ordered by id',
+            'Check all supplied target ids in original request order before permission', 'Authorize once from exact PLATFORM_ADMIN',
+            'activeScopeIds contains only scopeIds requested ACTIVE anywhere', 'Map each returned child id to its stored permission_id and scope_id',
+            'optional permissions.id, callerUserId and derived permissionId are distinct', 'scopes omitted or [] means no link change',
+            'Every child precheck precedes the current parent', 'Capture beforeDefinitionCount as every non-DELETED definition',
+            'beforeDefinitionCount > 0 and finalDefinitionCount = 0',
+            "Because parent ids cannot repeat and child ownership is enforced, this post-item state is that permission's final whole-request state; no later item may alter its definitions.",
+            'exactly index/permissionId/action', 'one COMMIT after the outer loop', 'Every item-specific 400/404/409 has permissions[i] prefix',
+            'uq_m_permission_name', 'uq_t_permission_scope_permission_id_scope_id', 'ใช่ ปฏิเสธจนถอน grant เดิมครบ', 'ใช่ อนุญาตถอน link ของ scope ที่ปิดแล้ว'):
+        if n not in seq:
+            errors.append(f'permission batch sequence note missing {n!r}')
     for n in ('QUERY - Get the platform administrator role','QUERY - Check platform administrator'):
         if n in md or n in wsd:errors.append('permission caller authorization may not reload live grants')
-    if 'Q24 approved by the product owner' not in md or 'rowStatus = DELETED and finalDefinitionCount > 0' not in md:errors.append('permission batch spec must define owner Q24 final deletion guard')
+    if 'Q24 approved by the product owner' not in ' '.join(wsd.split()) or 'rowStatus = DELETED and finalDefinitionCount > 0' not in ' '.join(wsd.split()):errors.append('permission batch sequence note must define owner Q24 final deletion guard')
     q24='alt Current permission rowStatus = DELETED and finalDefinitionCount > 0 (Q24)'
     passed='Q24 passed for permissions[i]: rowStatus is not DELETED or finalDefinitionCount = 0'
     if q24 not in wsd or passed not in wsd:errors.append('permission batch sequence must enforce Q24 after final count')
@@ -6834,8 +6917,20 @@ COMMANDS['permission-batch-flow'] = check_permission_batch_flow
 def check_permission_inquiry_flow() -> int:
     """Check token-claim administration and consistent filtered current role metadata."""
     path=f'{AUTHOR_DIR}/{AUTHOR_SPECS["06"]}/spec.md';md=read(path);wsd=read(str(Path(path).with_name('sequence.wsd')));errors=[]
-    for n in ('status: in-review', 'approved_by: null', 'approved_at: null', '2026-11-07-api-review-design.md', 'exact PLATFORM_ADMIN in verified JWT role claims', 'positive signed 64-bit integers', 'nonnegative BIGINT', 'one bound text searchPattern', 'Missing/malformed roles is generic 401', 'Grant withdrawal after token issuance leaves the old privilege usable', 'Count first and optionally fetch the page in the same read-only repeatable-read snapshot', 'identical non-DELETED/id/searchPattern/rowStatus WHERE predicates', 'an offset beyond the range returns items=[] with positive totals/pages', 'Sort by name then id ascending', 'exactly permissionId/name/description/scopes/rowStatus', 'exactly five data keys', 'integer quotient/remainder', 'Map the full response before COMMIT', 'distinct UUID[] of that page', 'An empty page skips both definition and master queries', 'A page with no definitions maps scopes=[]', 'including INACTIVE/LOCKED/ARCHIVED/DELETED masters', 'Metadata is matched by immutable scope_id', 'exactly permissionScopeId/scopeId/scope/scopeName/rowStatus', "rowStatus is the definition's status", 'derive master rank', 'Credential/count/page/definition/master SELECTs share the same read-only repeatable-read snapshot', 'No per-permission or per-scope SQL queries', 'Scenario correspondence with sequence.wsd'):
+    for n in ('status: in-review', 'approved_by: null', 'approved_at: null'):
         if n not in md:errors.append(f'permission-inquiry spec missing {n!r}')
+    seq = ' '.join(wsd.split())  # the note texts of the sequence, one line
+    for n in ('2026-11-07-api-review-design.md', 'exact PLATFORM_ADMIN in verified JWT role claims', 'positive signed 64-bit integers', 'nonnegative BIGINT',
+            'one bound text searchPattern', 'Missing/malformed roles is generic 401', 'Grant withdrawal after token issuance leaves the old privilege usable',
+            'Count first and optionally fetch the page in the same read-only repeatable-read snapshot',
+            'identical non-DELETED/id/searchPattern/rowStatus WHERE predicates', 'an offset beyond the range returns items=[] with positive totals/pages',
+            'Sort by name then id ascending', 'exactly permissionId/name/description/scopes/rowStatus', 'exactly five data keys', 'integer quotient/remainder',
+            'Map the full response before COMMIT', 'distinct UUID[] of that page', 'An empty page skips both definition and master queries',
+            'A page with no definitions maps scopes=[]', 'including INACTIVE/LOCKED/ARCHIVED/DELETED masters', 'Metadata is matched by immutable scope_id',
+            'exactly permissionScopeId/scopeId/scope/scopeName/rowStatus', "rowStatus is the definition's status", 'derive master rank',
+            'Credential/count/page/definition/master SELECTs share the same read-only repeatable-read snapshot', 'No per-permission or per-scope SQL queries'):
+        if n not in seq:
+            errors.append(f'permission-inquiry sequence note missing {n!r}')
     for n in ('QUERY - Get the platform administrator role','QUERY - Check platform administrator'):
         if n in md or n in wsd:errors.append('permission inquiry authorization must not reload current assignments')
     ops=spec_database_operations(md);heads=('QUERY - Check current credential and user','QUERY - Get total items','QUERY - Get permissions','QUERY - Get the scopes of the permissions','QUERY - Get scope')
@@ -6973,8 +7068,17 @@ COMMANDS['permission-inquiry-flow'] = check_permission_inquiry_flow
 def check_scope_upsert_flow() -> int:
     """Check verified-claim scope administration and guarded master/definition lifecycle."""
     path=f'{AUTHOR_DIR}/{AUTHOR_SPECS["07"]}/spec.md';md=read(path);wsd=read(str(Path(path).with_name('sequence.wsd')));errors=[]
-    for n in ('status: in-review','approved_by: null','approved_at: null','2026-11-07-api-review-design.md','Permission: only a platform administrator from the verified JWT roles claim','exact case-sensitive role name PLATFORM_ADMIN','Malformed/missing roles is generic 401','Grant withdrawal alone does not revoke','Capture fresh server UTC now after caller lock','lock the non-DELETED scope FOR UPDATE','Duplicate scope exclusion is null-safe','Existing scope codes, including seed codes, remain editable','Lock order is caller user -> target scope -> usage reads/write','regardless of its parent permission\'s lifecycle','No parent/master/grant JOIN or ACTIVE-only filter may hide usage','Insert-ARCHIVED is allowed','zero returned rows is 404 E10004','exactly data.scopeId from RETURNING','SQLSTATE 23505 from uq_m_scope_scope','Scenario correspondence with sequence.wsd'):
+    for n in ('status: in-review', 'approved_by: null', 'approved_at: null', 'Permission: only a platform administrator from the verified JWT roles claim',
+            'exact case-sensitive role name PLATFORM_ADMIN'):
         if n not in md:errors.append(f'scope-upsert spec missing {n!r}')
+    seq = ' '.join(wsd.split())  # the note texts of the sequence, one line
+    for n in ('Malformed/missing roles is generic 401', 'Grant withdrawal alone does not revoke', 'Capture fresh server UTC now after caller lock',
+            'lock the non-DELETED scope FOR UPDATE', 'Duplicate scope exclusion is null-safe', 'Existing scope codes, including seed codes, remain editable',
+            'Lock order is caller user -> target scope -> usage reads/write', "regardless of its parent permission's lifecycle",
+            'No parent/master/grant JOIN or ACTIVE-only filter may hide usage', 'Insert-ARCHIVED is allowed', 'zero returned rows is 404 E10004',
+            'exactly data.scopeId from RETURNING', 'SQLSTATE 23505 from uq_m_scope_scope'):
+        if n not in seq:
+            errors.append(f'scope-upsert sequence note missing {n!r}')
     for n in ('QUERY - Get the platform administrator role','QUERY - Check platform administrator'):
         if n in md or n in wsd:errors.append('scope upsert must not reload live caller grants')
     ops=spec_database_operations(md);heads=('QUERY - Lock the caller user','QUERY - Check current credential and user','QUERY - Check existing scope','QUERY - Check duplicate scope','QUERY - Check permission scope in use','INSERT - Create scope','UPDATE - Update or delete scope')
@@ -7071,8 +7175,19 @@ COMMANDS['scope-upsert-flow'] = check_scope_upsert_flow
 def check_scope_batch_flow() -> int:
     """Verify whole-batch preflight, sorted target locks before usage checks and ordered atomic scope mutations; unroll one representative item."""
     path=f'{AUTHOR_DIR}/{AUTHOR_SPECS["08"]}/spec.md';md=read(path);wsd=read(str(Path(path).with_name('sequence.wsd')));errors=[]
-    for n in ('status: in-review','approved_by: null','approved_at: null','2026-11-07-api-review-design.md','Validate the whole request before SQL','Compare parsed canonical UUIDs','exact case-sensitive PLATFORM_ADMIN','all target existence checks','after all target existence checks and before any conflict or write','with one SELECT FOR UPDATE','before any in-use check or write','any non-DELETED permission-scope definition is 409 E10006','no parent/master/grant JOIN or ACTIVE-only filter may hide usage','Withdrawal of a grant alone does not invalidate','first missing/DELETED target in original request order','Each item\'s conflict reads see preceding item writes','reversing those items returns duplicate 409','does not apply a final-state recode plan','exactly one result per input item in the same order','batch never sends per-item 201/204 or partial success','SQLSTATE 23505','uq_m_scope_scope','lock order is caller user -> target scopes ascending by id -> usage reads/writes','Scenario correspondence with sequence.wsd'):
+    for n in ('status: in-review', 'approved_by: null', 'approved_at: null', 'Validate the whole request before SQL', 'Compare parsed canonical UUIDs',
+            'exact case-sensitive PLATFORM_ADMIN'):
         if n not in md:errors.append(f'scope-batch spec missing {n!r}')
+    seq = ' '.join(wsd.split())  # the note texts of the sequence, one line
+    for n in ('all target existence checks', 'after all target existence checks and before any conflict or write', 'with one SELECT FOR UPDATE',
+            'before any in-use check or write', 'any non-DELETED permission-scope definition is 409 E10006',
+            'no parent/master/grant JOIN or ACTIVE-only filter may hide usage', 'Withdrawal of a grant alone does not invalidate',
+            'first missing/DELETED target in original request order', "Each item's conflict reads see preceding item writes",
+            'reversing those items returns duplicate 409', 'does not apply a final-state recode plan', 'exactly one result per input item in the same order',
+            'batch never sends per-item 201/204 or partial success', 'SQLSTATE 23505', 'uq_m_scope_scope',
+            'lock order is caller user -> target scopes ascending by id -> usage reads/writes'):
+        if n not in seq:
+            errors.append(f'scope-batch sequence note missing {n!r}')
     for n in ('QUERY - Get the platform administrator role','QUERY - Check platform administrator'):
         if n in md or n in wsd:errors.append('batch caller authorization must not reload live assignments')
     ops=spec_database_operations(md);heads=('QUERY - Lock the caller user','QUERY - Check current credential and user','QUERY - Lock existing scopes','QUERY - Check duplicate scope','QUERY - Check permission scope in use','INSERT - Create scope','UPDATE - Update or delete scope')
@@ -7187,14 +7302,17 @@ COMMANDS['scope-batch-flow'] = check_scope_batch_flow
 def check_role_upsert_flow() -> int:
     """Verify role upsert claim authorization independently of live business-invariant reads."""
     path=f'{AUTHOR_DIR}/{AUTHOR_SPECS["01"]}/spec.md';md=read(path);wsd=read(str(Path(path).with_name('sequence.wsd')));errors=[]
-    for n in ('status: in-review','approved_by: null','approved_at: null','2026-11-07-api-review-design.md',
-              'Permission: only a platform administrator from the verified JWT roles claim','exact case-sensitive role name PLATFORM_ADMIN',
-              'Malformed/missing roles is 401','Grant withdrawal alone does not invalidate','fresh server UTC now after that lock',
-              'Lock order is caller user -> target role -> binding checks/write','Reference/assignment writers must lock and recheck their target role',
-              'must not be presented as certification of an unmigrated cross-API writer','Duplicate name exclusion is null-safe','lock the non-DELETED target role FOR UPDATE',
-              'Insert-ARCHIVED is allowed (201 insert)','zero returned rows is 404 E10004','exactly roleId from RETURNING',
-              'SQLSTATE 23505','uq_m_role_name','Scenario correspondence with sequence.wsd'):
+    for n in ('status: in-review', 'approved_by: null', 'approved_at: null'):
         if n not in md:errors.append(f'role-upsert spec missing {n!r}')
+    seq = ' '.join(wsd.split())  # the note texts of the sequence, one line
+    for n in ('Permission: only a platform administrator from the verified JWT roles claim', 'exact case-sensitive role name PLATFORM_ADMIN',
+            'Malformed/missing roles is 401', 'Grant withdrawal alone does not invalidate', 'fresh server UTC now after that lock',
+            'Lock order is caller user -> target role -> binding checks/write', 'Reference/assignment writers must lock and recheck their target role',
+            'must not be presented as certification of an unmigrated cross-API writer', 'Duplicate name exclusion is null-safe',
+            'lock the non-DELETED target role FOR UPDATE', 'Insert-ARCHIVED is allowed (201 insert)', 'zero returned rows is 404 E10004',
+            'exactly roleId from RETURNING', 'SQLSTATE 23505', 'uq_m_role_name'):
+        if n not in seq:
+            errors.append(f'role-upsert sequence note missing {n!r}')
     for n in ('QUERY - Get the platform administrator role','QUERY - Check platform administrator'):
         if n in md or n in wsd:errors.append('role-upsert may not reload live caller grants')
     ops=spec_database_operations(md);heads=('QUERY - Lock the caller user','QUERY - Check current credential and user','QUERY - Check existing role','QUERY - Check system role','QUERY - Check duplicate name','QUERY - Check user in use','QUERY - Check role permission in use','INSERT - Create role','UPDATE - Update or delete role')
@@ -7297,8 +7415,16 @@ COMMANDS['role-upsert-flow'] = check_role_upsert_flow
 def check_role_batch_flow() -> int:
     """Verify whole-batch preflight and ordered atomic role mutations; unroll one representative item."""
     path=f'{AUTHOR_DIR}/{AUTHOR_SPECS["02"]}/spec.md';md=read(path);wsd=read(str(Path(path).with_name('sequence.wsd')));errors=[]
-    for n in ('status: in-review','approved_by: null','approved_at: null','2026-11-07-api-review-design.md','Validate the whole request before SQL','Compare parsed canonical UUIDs','exact case-sensitive PLATFORM_ADMIN','all target existence checks','after all target existence checks and before any conflict or write','with one SELECT FOR UPDATE','Withdrawal of a grant alone does not invalidate','first missing/DELETED target in original request order','Each item\'s conflict reads see preceding item writes','reversing those items returns duplicate 409','does not apply a final-state rename plan','exactly one result per input item in the same order','batch never sends per-item 201/204 or partial success','SQLSTATE 23505','uq_m_role_name','reference/assignment writers must lock and recheck','Scenario correspondence with sequence.wsd'):
+    for n in ('status: in-review', 'approved_by: null', 'approved_at: null', 'Validate the whole request before SQL', 'exact case-sensitive PLATFORM_ADMIN'):
         if n not in md:errors.append(f'role-batch spec missing {n!r}')
+    seq = ' '.join(wsd.split())  # the note texts of the sequence, one line
+    for n in ('Compare parsed canonical UUIDs', 'all target existence checks', 'after all target existence checks and before any conflict or write',
+            'with one SELECT FOR UPDATE', 'Withdrawal of a grant alone does not invalidate', 'first missing/DELETED target in original request order',
+            "Each item's conflict reads see preceding item writes", 'reversing those items returns duplicate 409', 'does not apply a final-state rename plan',
+            'exactly one result per input item in the same order', 'batch never sends per-item 201/204 or partial success', 'SQLSTATE 23505', 'uq_m_role_name',
+            'reference/assignment writers must lock and recheck'):
+        if n not in seq:
+            errors.append(f'role-batch sequence note missing {n!r}')
     for n in ('QUERY - Get the platform administrator role','QUERY - Check platform administrator'):
         if n in md or n in wsd:errors.append('batch caller authorization must not reload live assignments')
     ops=spec_database_operations(md);heads=('QUERY - Lock the caller user','QUERY - Check current credential and user','QUERY - Lock existing roles','QUERY - Check system role','QUERY - Check duplicate name','QUERY - Check user in use','QUERY - Check role permission in use','INSERT - Create role','UPDATE - Update or delete role')
@@ -7414,8 +7540,16 @@ COMMANDS['role-batch-flow'] = check_role_batch_flow
 def check_role_inquiry_flow() -> int:
     """Check token-claim administration and consistent filtered current role metadata."""
     path=f'{AUTHOR_DIR}/{AUTHOR_SPECS["03"]}/spec.md';md=read(path);wsd=read(str(Path(path).with_name('sequence.wsd')));errors=[]
-    for n in ('status: in-review','approved_by: null','approved_at: null','2026-11-07-api-review-design.md','exact PLATFORM_ADMIN in verified JWT role claims','positive signed 64-bit integers','nonnegative BIGINT','one bound text searchPattern','Missing/malformed roles is generic 401','Grant withdrawal after token issuance leaves the old privilege usable','same read-only repeatable-read snapshot','identical non-DELETED/id/searchPattern/rowStatus WHERE predicates','an offset beyond the range returns items=[] with positive totals/pages','Sort by name then id ascending','exactly roleId/name/description/rowStatus','exactly five data keys','integer quotient/remainder','Map the full response before COMMIT','Scenario correspondence with sequence.wsd'):
+    for n in ('status: in-review', 'approved_by: null', 'approved_at: null'):
         if n not in md:errors.append(f'role-inquiry spec missing {n!r}')
+    seq = ' '.join(wsd.split())  # the note texts of the sequence, one line
+    for n in ('2026-11-07-api-review-design.md', 'exact PLATFORM_ADMIN in verified JWT role claims', 'positive signed 64-bit integers', 'nonnegative BIGINT',
+            'one bound text searchPattern', 'Missing/malformed roles is generic 401', 'Grant withdrawal after token issuance leaves the old privilege usable',
+            'same read-only repeatable-read snapshot', 'identical non-DELETED/id/searchPattern/rowStatus WHERE predicates',
+            'an offset beyond the range returns items=[] with positive totals/pages', 'Sort by name then id ascending',
+            'exactly roleId/name/description/rowStatus', 'exactly five data keys', 'integer quotient/remainder', 'Map the full response before COMMIT'):
+        if n not in seq:
+            errors.append(f'role-inquiry sequence note missing {n!r}')
     for n in ('QUERY - Get the platform administrator role','QUERY - Check platform administrator'):
         if n in md or n in wsd:errors.append('role inquiry authorization must not reload current assignments')
     ops=spec_database_operations(md);heads=('QUERY - Check current credential and user','QUERY - Get total items','QUERY - Get roles')
@@ -7533,7 +7667,8 @@ def author_inquiry_flow(key: str, page_head: str, columns: str, forbidden: str) 
     if not md.startswith('---\nname:') or 'status: in-review\napproved_by: null\napproved_at: null' not in md:errors.append('spec stays in-review until approved')
     page=next((q for _,k,q in ops if k==page_head),'');proj=re.search(r'SELECT\s+(.*?)\s+FROM\s',page,re.S)
     if not proj or normalize(proj[1])!=normalize(columns):errors.append('page returns exactly the documented columns')
-    errors+=[f'claims wording missing {n!r}' for n in ('verify JWT/roles (401)','verified token roles') if n not in md]
+    errors+=[f'claims wording missing {n!r}' for n in ('verified token roles',) if n not in md]
+    errors+=[f'claims wording missing in the sequence note {n!r}' for n in ('verify JWT/roles (401)',) if n not in ' '.join(wsd.split())]
     if forbidden not in wsd or 'skip page query' not in wsd:errors.append('403 text and zero-count page skip must be drawn')
     if errors:return fail('; '.join(errors))
     print(f'OK: {AUTHOR_SPECS[key][3:]}-flow (claims-only admin, read-only snapshot, ordered count/page, one commit)')
@@ -8181,18 +8316,6 @@ def spec_template_errors(md: str) -> list[str]:
 # Specs that do not follow the template yet. Each is exempt until its sections and links are fixed; an entry must be a spec folder and
 # must still fail, so a spec that passes has to leave the list in the same change. The count is printed in the OK line.
 LEGACY_SPEC_TEMPLATE = (
-    "author/01-upsert-role",
-    "author/02-upsert-role-batch",
-    "author/03-inquiry-role",
-    "author/04-upsert-permission",
-    "author/05-upsert-permission-batch",
-    "author/06-inquiry-permission",
-    "author/07-upsert-scope",
-    "author/08-upsert-scope-batch",
-    "author/09-inquiry-scope",
-    "author/10-upsert-user-role",
-    "author/11-inquiry-user-role",
-    "author/12-me",
     "consent/01-inquiry-active-consent",
     "consent/02-upsert-consent",
     "consent/04-submit-consent",
