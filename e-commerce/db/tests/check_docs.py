@@ -5402,7 +5402,7 @@ ADMIN_WRITE_APPROVED = "Approved by the product owner (answered through the lead
 # Specs moved to the verified JWT roles claim (API review Q2, Q4, Q10, Q13): the two live role queries are gone, the caller lock and the
 # current credential check take their place. Add a folder here in the pull request that migrates it.
 ADMIN_WRITE_JWT_CLAIMS = {"product/01-upsert-product"}
-ADMIN_WRITE_CLAIMS_RULE = "the verified JWT `roles` claim must contain the exact case-sensitive role `PLATFORM_ADMIN`"
+ADMIN_WRITE_CLAIMS_RULE = "the verified JWT `roles` claim (an array of role names, an empty array is valid) must contain the exact case-sensitive role `PLATFORM_ADMIN`"
 ADMIN_WRITE_RULE_BATCH = ("Permission: the same as the single upsert, only a platform administrator (a user with an ACTIVE `author.t_user_role` row for the ACTIVE role `PLATFORM_ADMIN`) "
                           "can call this API, any other caller gets 403 (E10009)")
 ADMIN_WRITE_RULE = ("Permission: only a platform administrator (a user with an ACTIVE `author.t_user_role` row for the ACTIVE role `PLATFORM_ADMIN`) "
@@ -5442,6 +5442,9 @@ def admin_write_claims_flow_errors(wsd: str) -> list[str]:
         errors.append("the diagram must run: " + " -> ".join(name for name, _ in marks))
     if not re.search(r"^\s*app -> app: Verify JWT\b.*roles claim", wsd, re.MULTILINE):
         errors.append("the JWT step must verify the roles claim")
+    for phrase in ("verify the JWT and its roles claim (401)", "lock the caller user (FOR UPDATE)", "permission from the roles claim (403, E10009)", "the author tables are never queried"):
+        if phrase not in wsd:
+            errors.append(f"the visible order note of the diagram must say {phrase!r}")
     if re.search(r"infra -> (?:m_role|t_user_role):", wsd):
         errors.append("the diagram must not read author.m_role or author.t_user_role")
     return errors
@@ -5474,8 +5477,8 @@ def check_admin_write_spec() -> int:
         need = [ADMIN_WRITE_RULE_BATCH if batch else ADMIN_WRITE_RULE, ADMIN_WRITE_APPROVED, "permission (403, E10009)", "#### QUERY - Get the platform administrator role", "#### QUERY - Check platform administrator",
                 "(../../../schema/author/m_role.md)", "(../../../schema/author/t_user_role.md)", f"You do not have permission to manage {thing}."]
         if claims:
-            need = [ADMIN_WRITE_CLAIMS_RULE, "Q2, Q4, Q10 and Q13", "Never query `author.m_role` or `author.t_user_role`", "permission from the `roles` claim (403, E10009)",
-                    "verify the JWT and its `roles` claim (401), lock the caller and check the current credential (401), existence checks (404,", "-> verify the JWT and its `roles` claim (401) -> lock the caller and check the current credential (401) -> existence checks (404)", "#### QUERY - Lock the caller user", "WHERE u.id = '<sequence.callerUserId>'\nFOR UPDATE",
+            need = [ADMIN_WRITE_CLAIMS_RULE, "Q2, Q4, Q10 and Q13", "Never query `author.m_role` or `author.t_user_role`", "The order of the checks and the locks is in the sequence diagram",
+                    "#### QUERY - Lock the caller user", "WHERE u.id = '<sequence.callerUserId>'\nFOR UPDATE",
                     "#### QUERY - Check current credential and user", "AND at.expired_at > '<sequence.now>'", "(../../../schema/authen/m_user.md)",
                     "(../../../schema/authen/t_user_access_token.md)", f"You do not have permission to manage {thing}."]
             for gone in ("#### QUERY - Get the platform administrator role", "#### QUERY - Check platform administrator", "(../../../schema/author/m_role.md)", "(../../../schema/author/t_user_role.md)"):
@@ -5513,8 +5516,8 @@ def check_admin_write_spec() -> int:
                 errors.append(f"{path}: Fail - Forbidden must come before the Conflict examples (after Not Found)")
         if md.index(queries_once[0]) < md.index("## Database Relations"):
             errors.append(f"{path}: the {'caller lock and credential' if claims else 'platform administrator'} queries belong to Database Relations")
-        if md.count("E10009") < 3:
-            errors.append(f"{path}: E10009 must appear in the rule, the order of checks and the example")
+        if md.count("E10009") < (2 if claims else 3):
+            errors.append(f"{path}: E10009 must appear in the rule, {'' if claims else 'the order of checks, '}and the example")
         if claims:
             errors.extend(f"{path}: {error}" for error in admin_write_claims_flow_errors(read(str(Path(path).with_name("sequence.wsd")))))
     if errors:
@@ -8046,16 +8049,6 @@ def spec_template_errors(md: str) -> list[str]:
 # Specs that do not follow the template yet. Each is exempt until its sections and links are fixed; an entry must be a spec folder and
 # must still fail, so a spec that passes has to leave the list in the same change. The count is printed in the OK line.
 LEGACY_SPEC_TEMPLATE = (
-    "authen-and-author/01-register",
-    "authen-and-author/02-login",
-    "authen-and-author/03-reset-password",
-    "authen-and-author/04-create-new-password",
-    "authen-and-author/05-refresh-token",
-    "authen-and-author/06-logout",
-    "authen-and-author/07-upsert-user-profile",
-    "authen-and-author/08-inquiry-user-profile",
-    "authen-and-author/09-upsert-user-address",
-    "authen-and-author/10-inquiry-user-address",
     "author/01-upsert-role",
     "author/02-upsert-role-batch",
     "author/03-inquiry-role",
@@ -8078,7 +8071,6 @@ LEGACY_SPEC_TEMPLATE = (
     "consent/06-upsert-consent-type",
     "consent/07-upsert-consent-type-batch",
     "consent/08-inquiry-consent-type",
-    "product/01-upsert-product",
     "product/04-upsert-product-category",
     "product/06-upsert-product-category-batch",
     "product/07-upsert-product-category-attribute",
@@ -8089,11 +8081,6 @@ LEGACY_SPEC_TEMPLATE = (
     "product/13-upsert-product-brand",
     "product/14-upsert-product-brand-batch",
     "product/15-inquiry-product-brand",
-    "sales/01-inquiry-checkout",
-    "sales/02-create-order",
-    "sales/03-inquiry-order",
-    "sales/04-inquiry-shop-order",
-    "sales/05-cancel-order",
     "shipping/01-create-shipping",
     "shipping/02-update-shipping-status",
     "shipping/03-upsert-shipping-stop",

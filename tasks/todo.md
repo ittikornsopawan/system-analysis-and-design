@@ -1537,3 +1537,14 @@ Status: Complete in the branch, waiting for review. Assignment: agent `tommy`, d
 - [x] The roles claim sentences follow the new JWT payload (role names), as recorded in the API review design.
 - [x] The `order-spec` checker searches the spec and its sequence note; adjust the needles; run every checker, strict SQL parity and the render check.
 - [x] Open the PR with `commit-and-pr`, tell the lead SA when CI is green, then suspend. Next: `shipping`, with the roles sentence of the payment notes.
+
+## e-commerce: product/01-03 follow the spec template (template PR1)
+
+Status: Implemented in the managed workspace of Marry on branch `docs/marry-product-spec-template`. Scope: `product/01-upsert-product`, `02-inquiry-product`, `03-upsert-product-batch`, `check_docs.py` and `tasks/`. First of six template pull requests of the lead (product 01-03, 04-09, 10-15, shop 01-04, 05-10, 11-16).
+
+- [x] Measured with `spec-template`: product/02 and 03 already pass it (never listed); product/01 failed only on two links (the review design document and the login spec). 02 is unchanged. 03 keeps its database-based permission rule (its JWT migration is paused), so it is unchanged too.
+- [x] product/01: the `#### Permission Rules` section and the long "Execution order" bullet leave the spec; two short bullets under `## Domain` say who may call it (the exact role `PLATFORM_ADMIN` in the verified `roles` claim, now an array of role names as in the new login payload; never the author tables; 401 for a missing or malformed claim; approval Q2, Q4, Q10, Q13) and that the caller is locked first; the order of the checks and the locks is a visible `note over app, infra` in the diagram at the step where it starts (no PlantUML comment). The two links are gone. SQL is unchanged.
+- [x] `admin-write-spec` for the migrated spec checks the new Domain wording and the order text directly in `sequence.wsd` (the JWT step, the lock, the claims permission, the author tables), and needs E10009 twice (rule and example).
+- [x] `LEGACY_SPEC_TEMPLATE`: product/01 and 15 entries that passed on `main` (authen 01-10 and sales 01-05, fixed by other pull requests) are removed; 52 remain.
+- [x] Proof: 9 of 9 mutations caught (each phrase of the diagram note and of the Domain bullets, an added `### Permission Rules`, a link to another spec and to the design document); 65 sub-commands pass; PlantUML passes and the note is drawn.
+- [ ] Merge `main`, run every check, push, open the pull request, tell the lead at once, suspend.
