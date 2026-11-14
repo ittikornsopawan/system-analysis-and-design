@@ -71,6 +71,10 @@ def read(path: str) -> str:
             text += "\n" + "\n".join(line[2:] if line.startswith("' ") else line[1:] for line in moved.group(1).splitlines()) + "\n"
     return text
 
+def without_frontmatter(md: str) -> str:
+    """The Markdown after its YAML frontmatter (the whole text when there is none)."""
+    return md.split("\n---\n", 1)[1].lstrip("\n") if md.startswith("---\n") and "\n---\n" in md else md
+
 
 def fail(reason: str) -> int:
     print(f"FAIL: {reason}")
@@ -112,7 +116,7 @@ def check_schema() -> int:
         except FileNotFoundError:
             errors.append(f"{path} does not exist")
             continue
-        if not md.startswith(f"# Table: product.{table}\n"):
+        if not without_frontmatter(md).startswith(f"# Table: product.{table}\n"):
             errors.append(f"{path} missing heading '# Table: product.{table}'")
     extra = {"m_product_sku": "combination_key", "m_product_image": "option_value_id"}
     for table in NEW_TABLES + list(extra):
@@ -192,7 +196,7 @@ def check_shop_schema() -> int:
         except FileNotFoundError:
             errors.append(f"{path} does not exist")
             continue
-        if not md.startswith(f"# Table: {schema}.{table}\n"):
+        if not without_frontmatter(md).startswith(f"# Table: {schema}.{table}\n"):
             errors.append(f"{path} missing heading '# Table: {schema}.{table}'")
         for bad in table_lines_aligned(md):
             errors.append(f"{path} misaligned table: {bad[:40]}")
