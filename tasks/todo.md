@@ -1617,3 +1617,11 @@ Authority: owner decision that API specs follow `e-commerce/doc/api/template.md`
 - [x] Frontmatter with name and description for 06, 07 and 08 (01, 04 and 05 had it; 02 and 03 get it in their own PRs).
 - [x] Needles: the three consent flow checkers get a second loop over the sequence text; `consent-type-spec` gets static `MASTER_SEQUENCE_NEEDLES` and `MASTER_REMOVED_NEEDLES`; the pending truth table is checked in the sequence note; the six files leave `LEGACY_SPEC_TEMPLATE` (the `LEGACY_SEQUENCES` entries of 06 and 07 stay).
 - [ ] consent/02 and consent/03 follow on the new template with the owner's answers (2026-11-13) and the new JWT payload.
+## e-commerce: product/01 and 03 move Option and SKU Rules
+
+Status: Done, waiting for review. Authorized by Josh (owner decision of the template cleanup, 2026-11-13).
+
+1. [x] Remove `#### Option and SKU Rules` from product/01 and 03 (not a template section); the rules are short bullets under `## Domain`.
+2. [x] Product/03: the batch only rule (one transaction, request validation first, error of the first failing product) is a visible note in `sequence.wsd`.
+3. [x] Re-point the heading needle of `SPEC01_NEEDLES` and `SPEC03_NEEDLES` to a rule sentence; mutation tested.
+4. [x] All check_docs sub-commands, audit_all, PlantUML syntax and render count of the new note pass.
