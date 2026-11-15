@@ -2016,6 +2016,11 @@ def check_shop_user_inquiry_examples(md: str) -> list[str]:
     return errors
 
 
+# Shop user specs moved to the verified JWT roles claim: spec key -> (heading of the first membership query, the member decision of the diagram).
+SHOP_USER_JWT = {"11": ("QUERY - Check shop administrator", "alt caller is not an ADMIN of the shop and not a STAFF member leaving their own membership")}
+SHOP_USER_JWT_SEQ = {"11": ["app -> api: HTTP 403 E10009 You do not have permission to manage the members of the shop."]}
+
+
 def check_shop_user_spec() -> int:
     errors = []
     mds = {}
@@ -2043,8 +2048,8 @@ def check_shop_user_spec() -> int:
     permission = approval
     needles = {
         "11": ["# [POST]: v1/shop/user/upsert", "- A member of a shop is a user that has a row in `shop.t_shop_user`", approval, permission, "#### QUERY - Check shop member", "#### QUERY - Check shop administrator",
-               "#### QUERY - Count the ADMIN members of the shop after the write", "#### QUERY - Check duplicate member", "#### QUERY - Check platform administrator",
-               "(../../../schema/shop/t_shop_user.md)", "(../../../schema/authen/m_user.md)", "(../../../schema/author/t_user_role.md)",
+               "#### QUERY - Count the ADMIN members of the shop after the write", "#### QUERY - Check duplicate member",
+               "(../../../schema/shop/t_shop_user.md)", "(../../../schema/authen/m_user.md)",
                "AND su.row_status <> 'DELETED'\nAND su.id <> '<sequence.id>'", "User is already a member of the shop.", "The shop must keep at least one ADMIN.",
                "You do not have permission to manage the members of this shop.", "Shop user not found.", "Shop not found.", "User not found.",
                "Shop Id and User Id cannot be changed.", "Role must be ADMIN or STAFF.", "Row status must not be DELETED when inserting a shop user.",
@@ -2072,6 +2077,10 @@ def check_shop_user_spec() -> int:
         for forbidden in ("pageSize", "pageIndex"):
             if forbidden in mds[key]:
                 errors.append(f"{SHOP_USER_SPECS[key]} must not contain '{forbidden}'")
+    for key, (member, no_member) in SHOP_USER_JWT.items():
+        wsd_text = read(SHOP_USER_SPECS[key].replace("spec.md", "sequence.wsd"))
+        errors.extend(shop_jwt_errors(SHOP_USER_SPECS[key], mds[key], wsd_text, member, no_member))
+        errors.extend(f"{SHOP_USER_SPECS[key]} (sequence) missing: {n!r}" for n in missing_needles(wsd_text, SHOP_USER_JWT_SEQ.get(key, [])))
     try:
         errors.extend(check_shop_user_upsert_examples(mds["11"]))
         errors.extend(check_shop_user_batch_examples(mds["12"]))
