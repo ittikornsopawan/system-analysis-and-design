@@ -2821,7 +2821,7 @@ SHIPPING_NEEDLES = {
            "#### QUERY - Count the shippings that are still active", "#### UPDATE - Give the order back to PAYMENT_CONFIRMED", "AND status = 'PROCESSING'",
            "#### QUERY - Lock the order", "FOR UPDATE", "#### Fail - Conflict Tracking Number", "#### Fail - Conflict Status", "E10003", "E10006", "E10009",
            "approved by the product owner", "#### QUERY - Check shop member", "#### QUERY - Lock the shipping", "FOR UPDATE -- read again after the order row is locked", "the status step is checked on that second read", "approved by the product owner on 2026-11-08"],
-    "03": ["- The caller must be an ACTIVE member of the shop of the order", "#### INSERT - Create the stop", "#### UPDATE - Update, delete or archive the stop", "#### QUERY - Check duplicate stop number",
+    "03": ["- The caller needs a verified JWT, then must be an ACTIVE member of the shop of the order", "#### INSERT - Create the stop", "#### UPDATE - Update, delete or archive the stop", "#### QUERY - Check duplicate stop number",
            "#### QUERY - Lock the order", "FOR UPDATE", "#### Fail - Bad Request Row Status", "#### Fail - Conflict Status", "E10003", "E10006", "E10009",
            "Delete 204 No Content (no response body)", "approved by the product owner", "#### QUERY - Check shop member", "#### Fail - Not Found Shipping", "`Shipping not found.`", "approved by the product owner on 2026-11-08"],
     "04": ["- The caller needs a verified JWT, then must be an ACTIVE member of the shop (", "E10009", "#### Fail - Forbidden", "#### Fail - Not Found Reference", "#### QUERY - Check shop member",
@@ -3127,6 +3127,7 @@ SHIPPING_JWT_INQUIRY = {
     "04": {"spec": ["#### QUERY - Check active credential and user", "(../../../schema/authen/t_user_access_token.md)", "AND EXISTS ("],
            "seq": ["app -> infra: QUERY - Check active credential and user", "The inquiry has no transaction: every query is one autocommit SELECT",
                    "recheck the JWT expiry at `now`", "app -> infra: Execute database operations"]},
+    "03": "validate the request (400) -> verify the JWT (401) -> begin the transaction, lock the caller user and check the current credential (401) -> existence of the shipping and of the stop (404) -> permission of the caller (403)",
 }
 SHIPPING_JWT_GONE = ["QUERY - Get the platform administrator role", "QUERY - Check platform administrator", "infra -> m_role", "infra -> t_user_role", "(../../../schema/author/"]
 
@@ -3251,7 +3252,7 @@ MASTER = {
         id="a7b8c9d0-1e2f-4a3b-8c4d-5e6f7a8b9c0d", other_spec=("consent/02-upsert-consent/spec.md", '"consentTypeId"'), consent=True),
 }
 # Consent type APIs already moved to the verified JWT roles claim; add the kind in the pull request that migrates it.
-CONSENT_TYPE_JWT_KINDS = {"upsert", "batch"}
+CONSENT_TYPE_JWT_KINDS = {"upsert", "batch", "inquiry"}
 MASTER_GROUPS = {"product-master": ("product-type", "product-brand"), "consent-type": ("consent-type",)}
 SINGLE_UPSERT_SPECS.extend(f"{MASTER_API}/{m['group']}/{m['nums'][0]}-{m['folder'][0]}/spec.md" for m in MASTER.values())
 BATCH_UPSERT_SPECS.extend(f"{MASTER_API}/{m['group']}/{m['nums'][1]}-{m['folder'][1]}/spec.md" for m in MASTER.values())
@@ -3498,16 +3499,21 @@ def consent_type_claims_errors(kind: str, md: str, wsd: str) -> list[str]:
     if "'<sequence.now>'" not in sql.get("QUERY - Check current credential and user", "") or "NOW()" in sql.get("QUERY - Check current credential and user", ""):
         errors.append("the credential check compares the bound time")
     begin = "BEGIN REPEATABLE READ READ ONLY" if kind == "inquiry" else "BEGIN READ COMMITTED"
-    order = ["app -> app: Verify JWT", "HTTP 401 E10002", "app -> infra: " + begin] + ["app -> infra: " + h for h in want] + ["Authorize once", "app -> infra: COMMIT"]
+    order = ["app -> app: Generate requestId; validate", "app -> app: Verify JWT", "HTTP 401 E10002", "app -> infra: " + begin] + ["app -> infra: " + h for h in want[:-1]] + ["Capture fresh server UTC now", "app -> infra: " + want[-1]] + (["Authorize once"] if kind != "inquiry" else []) + ["app -> infra: COMMIT"]
     pos = [wsd.find(x) for x in order]
     if -1 in pos or pos != sorted(pos):
         errors.append("steps must run verify JWT, 401, BEGIN, caller lock, credential, one permission decision, COMMIT")
     if kind == "upsert" and not all(wsd.find("app -> infra: QUERY - Check duplicate name") > wsd.find("Authorize once") for _ in (0,)):
         errors.append("the permission decision comes before the duplicate name check")
-    if kind != "batch" and (wsd.count("Authorize once") != 1 or wsd.count("app -> infra: COMMIT") != 1):
-        errors.append("exactly one permission decision and one COMMIT")
-    if kind == "batch" and (wsd.count("Authorize once") != 1 or wsd.count("app -> infra: COMMIT") != 1):
-        errors.append("exactly one permission decision for the request and one COMMIT")
+    if kind == "inquiry" and ("Authorize once" in wsd or "HTTP 403" in wsd or "roles claim is not used" not in wsd):
+        errors.append("the inquiry takes no permission decision: no 403 and the roles claim is not used")
+    if wsd.count("app -> infra: COMMIT") != 1 or (kind != "inquiry" and wsd.count("Authorize once") != 1):
+        errors.append("exactly one COMMIT and, for a write, one permission decision (once for the whole batch request)")
+    lines = wsd.splitlines()
+    begin_line = next((i for i, l in enumerate(lines) if "app -> infra: BEGIN" in l), len(lines))
+    for i, l in enumerate(lines):
+        if i > begin_line and re.search(r"app -> api: HTTP (?:400|401|403|404|408|409|500)", l) and "app -> infra: ROLLBACK" not in lines[i - 1]:
+            errors.append(f"post-BEGIN rejection needs ROLLBACK first: {l.strip()}")
     if kind != "inquiry" and "app -> api: HTTP 403 E10009 You do not have permission to change consent types." not in wsd:
         errors.append("the 403 answer must be drawn with its message")
     internal = json_examples(md, "Fail - Internal Server Error")
@@ -4157,7 +4163,6 @@ LEGACY_SEQUENCES = (
 # must still fail at least one of them: a file that passes both has to leave this list. Remove an entry in the same
 # change that adds the missing answers to the diagram.
 LEGACY_TOKEN_SEQUENCES = (
-    "consent/08-inquiry-consent-type",              # no Verify JWT / 401 step, no 408
 )
 
 
