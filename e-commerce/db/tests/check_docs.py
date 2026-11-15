@@ -5714,6 +5714,7 @@ ADMIN_WRITE_APPROVED = "Approved by the product owner (answered through the lead
 ADMIN_WRITE_JWT_CLAIMS = {
     "product/01-upsert-product",
     "product/03-upsert-product-batch",
+    "product/09-upsert-product-category-attribute-batch",
 }
 # Specs that still use the live role queries but keep their rule and order text in the visible note of the diagram, not in the spec.
 _IN_DIAGRAM_SINGLE = ("only a platform administrator (a user with an ACTIVE author.t_user_role row for the ACTIVE role PLATFORM_ADMIN)", "any other caller gets 403 (E10009)",
@@ -5725,7 +5726,6 @@ ADMIN_WRITE_RULE_IN_DIAGRAM = {  # folder: the phrases that the visible note of 
     "product/04-upsert-product-category": _IN_DIAGRAM_SINGLE + (_IN_DIAGRAM_CAMPAIGN,),
     "product/06-upsert-product-category-batch": _IN_DIAGRAM_BATCH + (_IN_DIAGRAM_CAMPAIGN,),
     "product/07-upsert-product-category-attribute": _IN_DIAGRAM_SINGLE,
-    "product/09-upsert-product-category-attribute-batch": _IN_DIAGRAM_BATCH,
 }
 ADMIN_WRITE_CLAIMS_RULE = "the verified JWT `roles` claim (an array of role names, an empty array is valid) must contain the exact case-sensitive role `PLATFORM_ADMIN`"
 ADMIN_WRITE_RULE_BATCH = ("Permission: the same as the single upsert, only a platform administrator (a user with an ACTIVE `author.t_user_role` row for the ACTIVE role `PLATFORM_ADMIN`) "
