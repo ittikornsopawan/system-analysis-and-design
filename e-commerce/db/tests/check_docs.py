@@ -5771,6 +5771,7 @@ ADMIN_WRITE_APPROVED = "Approved by the product owner (answered through the lead
 # current credential check take their place. Add a folder here in the pull request that migrates it.
 ADMIN_WRITE_JWT_CLAIMS = {
     "shop/05-upsert-shop-type",
+    "shop/06-upsert-shop-type-batch",
     "product/01-upsert-product",
     "product/03-upsert-product-batch",
     "product/09-upsert-product-category-attribute-batch",

@@ -66,7 +66,6 @@ activate page
                     note over app, infra
                         - Execution order: validate the request (400) -> verify the JWT and its roles claim (401) -> BEGIN -> lock the caller user (FOR UPDATE) -> current credential and user (401) ->
                           lock and existence check of the shop type (FOR UPDATE, 404) -> permission from the roles claim (403, E10009) -> duplicate name check (409, E10003) -> in-use check (409, E10006, only when `rowStatus` is
-                          existence check (404) -> permission from the roles claim (403, E10009) -> duplicate name check (409, E10003) -> in-use check (409, E10006, only when `rowStatus` is
                           DELETED or ARCHIVED) -> write -> COMMIT; the author tables are never queried.
                     end note
                     app -> infra: BEGIN READ COMMITTED
