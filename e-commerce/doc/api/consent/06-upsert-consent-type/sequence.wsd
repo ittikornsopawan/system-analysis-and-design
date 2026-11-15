@@ -39,36 +39,107 @@ box "Web API" #F8FAFC
 end box
 
 box "Database" #F8FAFC
+    database "m_user" as m_user
+    database "t_user_access_token" as t_user_access_token
     database "m_consent_type" as m_consent_type
     database "t_consent" as t_consent
-    database "m_role" as m_role
-    database "t_user_role" as t_user_role
 end box
 
 user -> page: Submit Upsert Consent Type
 
 activate page
-    page -> api: Call POST v1/consent/type/upsert
+    page -> api: POST v1/consent/type/upsert (JSON, Bearer JWT, UTC timestamp)
     activate api
         api -> app: [**UpsertConsentTypeCommandHandler**] Process request
         activate app
             note over app, infra
-                Execution order: validate the request (400) -> existence check (404) -> permission (403, E10009) ->
-                duplicate name check (409, E10003) -> in-use check (409, E10006, only when `rowStatus` is DELETED or
-                ARCHIVED) -> write.
+                Order: validate (400) -> verify the JWT and its roles claim (401) -> BEGIN -> lock the caller user (FOR UPDATE) -> current credential (401) ->
+                existence check (404, only when id is specified) -> permission (403, E10009) -> duplicate name check (409, E10003) ->
+                in-use check (409, E10006, only when `rowStatus` is DELETED or ARCHIVED) -> write -> COMMIT. The permission comes from the verified roles claim only; the author tables are never queried.
+                HTTP status of the single upsert: Insert 201 Created, Update 200 Ok, Delete 204 No Content (no response body), Archive 200 Ok.
             end note
-            app -> app: Validate request parameters and business rules
-            note over app, infra
-                HTTP status of the single upsert: Insert 201 Created, Update 200 Ok, Delete 204 No Content (no response
-                body), Archive 200 Ok.
-            end note
-            alt If request is invalid
-                app -> api: Return error response
-                api -> page: Return error response
-                page -> user: Display error message
-            else If request is valid
-                app -> infra: Execute database operations
-                activate infra
+            app -> app: Generate requestId; validate JSON object/known keys, UTC timestamp, optional UUID id, required name (max 128 characters), description (max 1000 characters), boolean isRequired, row status (insert must not be DELETED)
+            alt Invalid input/header
+                break Reject this request
+                    app -> api: HTTP 400 E10001
+                    api -> page: Show failure; no successful consent type action
+                    page -> user: Display failure; keep unsaved input
+                end break
+            else Check passed
+            end
+            app -> app: Verify JWT signature/issuer/audience/expiry/UUID sub and the roles claim as unique non-empty strings
+            alt Missing/invalid JWT or malformed roles
+                break Reject this request
+                    app -> api: HTTP 401 E10002 Invalid or expired access token.
+                    api -> page: Show failure; no successful consent type action
+                    page -> user: Display failure; keep unsaved input
+                end break
+            else Check passed
+            end
+            app -> app: callerUserId = verified sub; accessTokenHash = SHA-256 exact JWT; createdBy/updatedBy = caller UUID string
+            app -> infra: BEGIN READ COMMITTED
+            activate infra
+            alt Work completes before commit
+                app -> infra: QUERY - Lock the caller user
+                infra -> m_user: QUERY - Lock the caller user
+                activate m_user
+                    note right of m_user
+                        SELECT
+                            u.id as user_id
+                        FROM authen.m_user u
+                        WHERE u.id = '<sequence.callerUserId>'
+                        FOR UPDATE
+                    end note
+                    m_user -> infra: Return locked caller user or no row
+                deactivate m_user
+                infra -> app: Return locked caller user or no row
+                alt Caller user missing
+                    break Reject this request
+                        app -> infra: ROLLBACK
+                        app -> api: HTTP 401 E10002 Invalid or expired access token.
+                        api -> page: Show failure; no successful consent type action
+                        page -> user: Display failure; keep unsaved input
+                    end break
+                else Check passed
+                end
+                app -> app: Capture fresh server UTC now after the caller lock; recheck JWT exp
+                alt JWT expired while waiting for the caller lock
+                    break Reject this request
+                        app -> infra: ROLLBACK
+                        app -> api: HTTP 401 E10002 Invalid or expired access token.
+                        api -> page: Show failure; no successful consent type action
+                        page -> user: Display failure; keep unsaved input
+                    end break
+                else Check passed
+                end
+                app -> infra: QUERY - Check current credential and user
+                infra -> t_user_access_token: QUERY - Check current credential and user
+                activate t_user_access_token
+                    note right of t_user_access_token
+                        SELECT
+                            at.id as access_token_id
+                        FROM authen.t_user_access_token at
+                        JOIN authen.m_user u ON u.id = at.user_id
+                        WHERE at.token = '<sequence.accessTokenHash>'
+                        AND at.user_id = '<sequence.callerUserId>'
+                        AND at.row_status = 'ACTIVE'
+                        AND at.expired_at > '<sequence.now>'
+                        AND u.row_status = 'ACTIVE'
+                    end note
+                    t_user_access_token -> infra: Return ACTIVE matching unexpired token/user or no row
+                deactivate t_user_access_token
+                infra -> app: Return ACTIVE matching unexpired token/user or no row
+                alt Current token/user missing/inactive/revoked/expired/mismatched
+                    break Reject this request
+                        app -> infra: ROLLBACK
+                        app -> api: HTTP 401 E10002 Invalid or expired access token.
+                        api -> page: Show failure; no successful consent type action
+                        page -> user: Display failure; keep unsaved input
+                    end break
+                else Check passed
+                end
+                alt id is specified (update, delete or archive)
+                    app -> infra: QUERY - Check existing consent type
                     infra -> m_consent_type: QUERY - Check existing consent type
                     activate m_consent_type
                         note right of m_consent_type
@@ -78,22 +149,82 @@ activate page
                             WHERE ct.id = '<sequence.id>'
                             AND ct.row_status <> 'DELETED' -- the id of a DELETED consent type counts as not found
                         end note
-                        m_consent_type -> infra: Return query result
+                        m_consent_type -> infra: Return consent_type_id or no row
                     deactivate m_consent_type
-
-                    infra -> m_consent_type: QUERY - Check duplicate name
-                    activate m_consent_type
-                        note right of m_consent_type
+                    infra -> app: Return consent_type_id or no row
+                    alt Consent type not found or DELETED
+                        break Reject this request
+                            app -> infra: ROLLBACK
+                            app -> api: HTTP 404 E10004 Consent type not found.
+                            api -> page: Show failure; no successful consent type action
+                            page -> user: Display failure; keep unsaved input
+                        end break
+                    else Check passed
+                    end
+                else id omitted (insert)
+                    app -> app: No consent type row to check
+                end
+                app -> app: Authorize once using only exact case-sensitive PLATFORM_ADMIN in verified JWT roles; never reload live grants
+                alt No exact PLATFORM_ADMIN role claim
+                    break Reject this request
+                        app -> infra: ROLLBACK
+                        app -> api: HTTP 403 E10009 You do not have permission to change consent types.
+                        api -> page: Show failure; no successful consent type action
+                        page -> user: Display failure; keep unsaved input
+                    end break
+                else Check passed
+                end
+                app -> infra: QUERY - Check duplicate name
+                infra -> m_consent_type: QUERY - Check duplicate name
+                activate m_consent_type
+                    note right of m_consent_type
+                        SELECT
+                            ct.id as consent_type_id
+                        FROM consent.m_consent_type ct
+                        WHERE ct.name = '<sequence.name>'
+                        AND ct.row_status <> 'DELETED'
+                        AND ct.id <> '<sequence.id>' -- only when id is specified
+                    end note
+                    m_consent_type -> infra: Return the consent type that holds this name, or no row
+                deactivate m_consent_type
+                infra -> app: Return the consent type that holds this name, or no row
+                alt The name is held by another consent type that is not DELETED
+                    break Reject this request
+                        app -> infra: ROLLBACK
+                        app -> api: HTTP 409 E10003 Consent type name already exists.
+                        api -> page: Show failure; no successful consent type action
+                        page -> user: Display failure; keep unsaved input
+                    end break
+                else Check passed
+                end
+                alt rowStatus is DELETED or ARCHIVED (id is specified)
+                    app -> infra: QUERY - Check consent in use
+                    infra -> t_consent: QUERY - Check consent in use
+                    activate t_consent
+                        note right of t_consent
                             SELECT
-                                ct.id as consent_type_id
-                            FROM consent.m_consent_type ct
-                            WHERE ct.name = '<sequence.name>'
-                            AND ct.row_status <> 'DELETED'
-                            AND ct.id <> '<sequence.id>' -- only when id is specified
+                                c.id as consent_id
+                            FROM consent.t_consent c
+                            WHERE c.consent_type_id = '<sequence.id>' -- only when rowStatus is DELETED or ARCHIVED
+                            AND c.row_status <> 'DELETED'
                         end note
-                        m_consent_type -> infra: Return query result
-                    deactivate m_consent_type
-
+                        t_consent -> infra: Return a consent that uses the consent type, or no row
+                    deactivate t_consent
+                    infra -> app: Return a consent that uses the consent type, or no row
+                    alt A consent that is not DELETED uses the consent type
+                        break Reject this request
+                            app -> infra: ROLLBACK
+                            app -> api: HTTP 409 E10006 Consent type is used by consents.
+                            api -> page: Show failure; no successful consent type action
+                            page -> user: Display failure; keep unsaved input
+                        end break
+                    else Check passed
+                    end
+                else Check not needed
+                    app -> app: INACTIVE, LOCKED and ACTIVE are allowed even when consents use the consent type
+                end
+                alt id is omitted (INSERT)
+                    app -> infra: INSERT - Create consent type
                     infra -> m_consent_type: INSERT - Create consent type
                     activate m_consent_type
                         note right of m_consent_type
@@ -113,9 +244,12 @@ activate page
                             )
                             RETURNING id as consent_type_id
                         end note
-                        m_consent_type -> infra: Return inserted result
+                        m_consent_type -> infra: Return inserted consent_type_id
                     deactivate m_consent_type
-
+                    infra -> app: Return inserted consent_type_id
+                    app -> app: Require exactly one inserted consent_type_id; missing/malformed result is internal failure
+                else id is specified (UPDATE, DELETE or ARCHIVE)
+                    app -> infra: UPDATE - Update or delete consent type
                     infra -> m_consent_type: UPDATE - Update or delete consent type
                     activate m_consent_type
                         note right of m_consent_type
@@ -130,58 +264,43 @@ activate page
                             WHERE id = '<sequence.id>'
                             RETURNING id as consent_type_id
                         end note
-                        m_consent_type -> infra: Return updated result
+                        m_consent_type -> infra: Return updated consent_type_id or no row
                     deactivate m_consent_type
-
-                    infra -> t_consent: QUERY - Check consent in use
-                    activate t_consent
-                        note right of t_consent
-                            SELECT
-                                c.id as consent_id
-                            FROM consent.t_consent c
-                            WHERE c.consent_type_id = '<sequence.id>' -- only when rowStatus is DELETED or ARCHIVED
-                            AND c.row_status <> 'DELETED'
-                        end note
-                        t_consent -> infra: Return query result
-                    deactivate t_consent
-
-                    infra -> m_role: QUERY - Get the platform administrator role
-                    activate m_role
-                        note right of m_role
-                            SELECT
-                                r.id as role_id
-                            FROM author.m_role r
-                            WHERE r.name = 'PLATFORM_ADMIN'
-                            AND r.row_status = 'ACTIVE'
-                        end note
-                        m_role -> infra: Return query result
-                    deactivate m_role
-
-                    infra -> t_user_role: QUERY - Check platform administrator
-                    activate t_user_role
-                        note right of t_user_role
-                            SELECT
-                                ur.id as user_role_id
-                            FROM author.t_user_role ur
-                            WHERE ur.user_id = '<sequence.userId>'
-                            AND ur.role_id = '<sequence.roleId>'
-                            AND ur.row_status = 'ACTIVE'
-                        end note
-                        t_user_role -> infra: Return query result
-                    deactivate t_user_role
-
-                    infra -> app: Return database result
-                deactivate infra
-
-                app -> domain: Apply domain rules and prepare response
-                activate domain
-                    domain -> app: Return response data
-                deactivate domain
-
-                app -> api: Return success response
-                api -> page: Return success response
-                page -> user: Display success result
-            end alt
+                    infra -> app: Return updated consent_type_id or no row
+                    app -> app: Require exactly one returned consent_type_id equal to this input id; missing result is internal failure
+                end
+                app -> app: Map data.consentTypeId from RETURNING before COMMIT; delete maps no body
+                app -> infra: COMMIT
+                infra -> app: Return committed consent type
+                alt Insert
+                    app -> api: HTTP 201 S10000 Insert Consent Type Success
+                    api -> page: Return the consent type
+                    page -> user: Display the outcome
+                else rowStatus = DELETED (delete)
+                    app -> api: HTTP 204 No Content; no response body
+                    api -> page: No content
+                    page -> user: Display the outcome
+                else rowStatus = ARCHIVED (archive)
+                    app -> api: HTTP 200 S10000 Archive Consent Type Success
+                    api -> page: Return the consent type
+                    page -> user: Display the outcome
+                else Update
+                    app -> api: HTTP 200 S10000 Update Consent Type Success
+                    api -> page: Return the consent type
+                    page -> user: Display the outcome
+                end
+            else Timeout before COMMIT
+                app -> infra: ROLLBACK
+                app -> api: HTTP 408 E90001
+                api -> page: Request timeout
+                page -> user: Display the outcome
+            else Unexpected SQL/result/mapping failure before COMMIT
+                app -> infra: ROLLBACK
+                app -> api: HTTP 500 Internal Server Error; omit bizCode
+                api -> page: Internal server error
+                page -> user: Display the outcome
+            end
+            deactivate infra
         note over app, infra
             The comparison is exact (upper and lower case are different names) and a name held by an INACTIVE, LOCKED or
             ARCHIVED consent type is still taken (409, E10003). The name of a DELETED consent type can be used again.
