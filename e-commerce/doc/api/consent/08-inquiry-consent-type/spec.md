@@ -1,6 +1,6 @@
 ---
 name: Consent Type Inquiry API Specification
-description: Defines the consent type list and lookup for a caller with a valid access token, with paging, search and SQL; read when reviewing or implementing GET v1/consent/type.
+description: Defines the consent type list and lookup for a caller with a valid access token (verified JWT and current credential check, no role claim), with paging, search and SQL; read when reviewing or implementing GET v1/consent/type.
 status: in-review
 approved_by: null
 approved_at: null
@@ -26,7 +26,8 @@ approved_at: null
 | PRE-PRODUCTION | https://www.domain.com/api-pre-prod |
 | PRODUCTION     | https://www.domain.com/api          |
 
-- Any caller with a valid access token can read consent types, no role is checked (the data is only names and descriptions).
+- Governing decisions: owner-confirmed API review Q2, Q4, Q10 and Q13 (JWT payload of 2026-11-13).
+- Any caller with a valid access token can read consent types, no role is checked (the data is only names and descriptions): the JWT is verified and the current credential and user are checked in a read-only transaction (401, E10002), the `roles` claim is not read and no lock is taken.
 - Consent types with `rowStatus` DELETED are never returned.
 - Sorted by `created_at` descending and then by `id`, so that the pages never repeat or skip a row.
 - `isRequired` is reference data only.
@@ -277,9 +278,42 @@ Request: `GET v1/consent/type?id=a7b8c9d0-1e2f-4a3b-8c4d-5e6f7a8b9c0d`
 }
 ```
 
+#### Fail - Internal Server Error
+
+```JSON
+{
+    "status": {
+        "code": 500,
+        "message": "Internal Server Error",
+        "bizMessage": "An unexpected error occurred.",
+        "requestId": "req-500a1b2c-3d4e-5f6a-7b8c-9d0e1f2a3b4c",
+        "timestamp": "2026-11-05T12:46:10.123Z",
+        "status": "ERROR"
+    }
+}
+```
+
 ---
 
 ## Database Relations
+
+One REPEATABLE READ READ ONLY transaction. The caller identity (`callerUserId`, the `sub` of the verified JWT) is only used to check the current credential; the fresh UTC time is bound.
+
+### Table: [authen.t_user_access_token](../../../schema/authen/t_user_access_token.md)
+
+#### QUERY - Check current credential and user
+
+```SQL
+SELECT
+    at.id as access_token_id
+FROM authen.t_user_access_token at
+JOIN authen.m_user u ON u.id = at.user_id
+WHERE at.token = '<sequence.accessTokenHash>'
+AND at.user_id = '<sequence.callerUserId>'
+AND at.row_status = 'ACTIVE'
+AND at.expired_at > '<sequence.now>'
+AND u.row_status = 'ACTIVE'
+```
 
 ### Table: [consent.m_consent_type](../../../schema/consent/m_consent_type.md)
 
