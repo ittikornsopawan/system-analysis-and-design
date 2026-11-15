@@ -89,6 +89,20 @@ Assignment: agent `tommy`, delivery `open-pr`, authorized by `josh`, workspace `
 - [x] Run every check. Evidence: see the pull request.
 - [ ] Open the pull request with `commit-and-pr`, tell the lead SA when CI is green, then suspend. Next: shipping 03.
 
+## e-commerce: JWT claims, shipping 03 shipping stop write
+
+Owner: tommy
+Status: In review (pull request open)
+Created at: 2026-11-15T08:42:44+07:00
+Started at: 2026-11-15T08:42:44+07:00
+
+Assignment: agent `tommy`, delivery `open-pr`, authorized by `josh`, workspace `.workspace/tommy`, branch `docs/tommy-jwt-shipping-stop`, scopes `e-commerce/doc/api/shipping/03-upsert-shipping-stop`, `e-commerce/db/tests/check_docs.py`, `tasks/tommy`. This is the third of seven JWT PRs (shipping 01 to 04, campaign 01 to 03), by the owner decisions Q2/Q4/Q10/Q13 of `docs/superpowers/specs/2026-11-07-api-review-design.md`.
+
+- [x] Remove `Get the platform administrator role` and `Check platform administrator` from the spec and the sequence; the administrator is the exact role `PLATFORM_ADMIN` in the verified `roles` claim; add the roles claim to the JWT verify and the 401, the caller lock and `Check current credential and user`; the shop member check stays on `shop.t_shop_user`; no other SQL is changed. Evidence: strict SQL parity, render with every SQL line visible, plantuml check.
+- [x] Update the needles of the checker: the JWT needles are searched in the spec and in the sequence separately, the removed queries must be gone from both. Mutation test: 15/15 mutations of the added needles caught, plus the order, the order sentence and the permission rule (3/3); three injected faults rejected (second 401 removed, the administrator query back in the spec, an m_role read back in the sequence)
+- [x] Run every check. Evidence: see the pull request.
+- [ ] Open the pull request with `commit-and-pr`, tell the lead SA when CI is green, then suspend. Next: shipping 04.
+
 ## e-commerce: JWT claims, campaign 01 campaign upsert
 
 Owner: tommy
