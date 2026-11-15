@@ -2815,12 +2815,12 @@ SHIPPING_NEEDLES = {
            "#### Fail - Conflict Order Status", "#### Fail - Not Found Reference", "#### Fail - Forbidden", "E10009", "E10006",
            "validate the request (400) -> verify the JWT (401)",
            "approved by the product owner", "#### QUERY - Check shop member"],
-    "02": ["- The caller must be an ACTIVE member of the shop of the order", "`PENDING` -> `SHIPPED`", "`PENDING` -> `CANCELLED`", "`SHIPPED` -> `RETURNED`", "#### UPDATE - Mark the shipping as shipped",
+    "02": ["- The caller needs a verified JWT, then must be an ACTIVE member of the shop of the order", "`PENDING` -> `SHIPPED`", "`PENDING` -> `CANCELLED`", "`SHIPPED` -> `RETURNED`", "#### UPDATE - Mark the shipping as shipped",
            "#### UPDATE - Cancel the shipping", "#### UPDATE - Mark the shipping as returned", "AND status = 'PENDING' -- no row changed means the status changed in the meantime",
            "AND status = 'SHIPPED' -- no row changed means the status changed in the meantime", "#### QUERY - Check duplicate tracking number",
            "#### QUERY - Count the shippings that are still active", "#### UPDATE - Give the order back to PAYMENT_CONFIRMED", "AND status = 'PROCESSING'",
            "#### QUERY - Lock the order", "FOR UPDATE", "#### Fail - Conflict Tracking Number", "#### Fail - Conflict Status", "E10003", "E10006", "E10009",
-           "approved by the product owner", "#### QUERY - Check shop member", "#### QUERY - Check platform administrator", "#### QUERY - Lock the shipping", "FOR UPDATE -- read again after the order row is locked", "the status step is checked on that second read", "approved by the product owner on 2026-11-08"],
+           "approved by the product owner", "#### QUERY - Check shop member", "#### QUERY - Lock the shipping", "FOR UPDATE -- read again after the order row is locked", "the status step is checked on that second read", "approved by the product owner on 2026-11-08"],
     "03": ["- The caller must be an ACTIVE member of the shop of the order", "#### INSERT - Create the stop", "#### UPDATE - Update, delete or archive the stop", "#### QUERY - Check duplicate stop number",
            "#### QUERY - Lock the order", "FOR UPDATE", "#### Fail - Bad Request Row Status", "#### Fail - Conflict Status", "E10003", "E10006", "E10009",
            "Delete 204 No Content (no response body)", "approved by the product owner", "#### QUERY - Check shop member", "#### Fail - Not Found Shipping", "`Shipping not found.`", "approved by the product owner on 2026-11-08"],
@@ -3117,7 +3117,10 @@ SHIPPING_JWT_SEQ = ["Verify JWT signature, issuer, audience, exp, UUID sub and t
                     "do not query `author.m_role` or `author.t_user_role`", "Q2/Q4/Q10/Q13", "lock the caller user first (`QUERY - Lock the caller user`, `FOR UPDATE`)",
                     "FOR UPDATE -- the caller user is locked first, before any other row of the request", "app -> infra: QUERY - Check current credential and user",
                     "WHERE at.token = '<sequence.accessTokenHash>'", "alt The roles claim has no PLATFORM_ADMIN"]
-SHIPPING_JWT_ORDER = {"01": "verify the JWT (401) -> begin the transaction, lock the caller user and check the current credential (401) -> existence of the order and of the order items (404) -> permission of the caller (403)"}
+SHIPPING_JWT_ORDER = {
+    "01": "verify the JWT (401) -> begin the transaction, lock the caller user and check the current credential (401) -> existence of the order and of the order items (404) -> permission of the caller (403)",
+    "02": "validate the request (400) -> verify the JWT (401) -> begin the transaction, lock the caller user and check the current credential (401) -> existence of the shipping (404) -> permission of the caller (403)",
+}
 SHIPPING_JWT_GONE = ["QUERY - Get the platform administrator role", "QUERY - Check platform administrator", "infra -> m_role", "infra -> t_user_role", "(../../../schema/author/"]
 
 
@@ -3238,7 +3241,7 @@ MASTER = {
         id="a7b8c9d0-1e2f-4a3b-8c4d-5e6f7a8b9c0d", other_spec=("consent/02-upsert-consent/spec.md", '"consentTypeId"'), consent=True),
 }
 # Consent type APIs already moved to the verified JWT roles claim; add the kind in the pull request that migrates it.
-CONSENT_TYPE_JWT_KINDS = {"upsert"}
+CONSENT_TYPE_JWT_KINDS = {"upsert", "batch"}
 MASTER_GROUPS = {"product-master": ("product-type", "product-brand"), "consent-type": ("consent-type",)}
 SINGLE_UPSERT_SPECS.extend(f"{MASTER_API}/{m['group']}/{m['nums'][0]}-{m['folder'][0]}/spec.md" for m in MASTER.values())
 BATCH_UPSERT_SPECS.extend(f"{MASTER_API}/{m['group']}/{m['nums'][1]}-{m['folder'][1]}/spec.md" for m in MASTER.values())
@@ -3472,8 +3475,16 @@ def consent_type_claims_errors(kind: str, md: str, wsd: str) -> list[str]:
         errors.append(f"the first SQL definitions must be {want}")
     if kind != "inquiry" and "FOR UPDATE" not in sql.get(want[0], ""):
         errors.append("the caller user must be locked with FOR UPDATE")
-    if any(SEQUENCE_LOCK.search(q) for h, q in sql.items() if h != want[0] or kind == "inquiry"):
-        errors.append("only the caller lock may lock")
+    locking = "QUERY - Check existing consent type"  # locks the target consent type before the in-use check and the write (lead decision, 2026-11-15)
+    if any(SEQUENCE_LOCK.search(q) for h, q in sql.items() if h not in (want[0], locking) or kind == "inquiry"):
+        errors.append("only the caller lock and the consent type lock may lock")
+    if kind != "inquiry":
+        if "FOR UPDATE" not in sql.get(locking, ""):
+            errors.append("the existing consent type must be locked with FOR UPDATE")
+        if not 0 < wsd.find("app -> infra: " + locking) < wsd.find("Authorize once") < wsd.find("app -> infra: QUERY - Check consent in use"):
+            errors.append("the consent type lock comes after the credential check and before the permission decision and the in-use check")
+        if kind == "batch" and "loop Each item with id, in ascending id order" not in wsd:
+            errors.append("the batch locks the consent types in ascending id order")
     if "'<sequence.now>'" not in sql.get("QUERY - Check current credential and user", "") or "NOW()" in sql.get("QUERY - Check current credential and user", ""):
         errors.append("the credential check compares the bound time")
     begin = "BEGIN REPEATABLE READ READ ONLY" if kind == "inquiry" else "BEGIN READ COMMITTED"
@@ -4130,14 +4141,12 @@ REQUIRED_GROUPS = ("authen-and-author", "consent")
 LEGACY_SEQUENCES = (
     # authen-and-author: waiting for a retrofit to the login standard
     # consent: waiting for a retrofit to the login standard
-    "consent/07-upsert-consent-type-batch",
 )
 # Diagrams written before the access token and timeout answers became part of the check. Each is exempt from the token
 # rule (Verify JWT and 401 E10002 when the spec has a mandatory authorization header) and from the 408 E90001 rule, and
 # must still fail at least one of them: a file that passes both has to leave this list. Remove an entry in the same
 # change that adds the missing answers to the diagram.
 LEGACY_TOKEN_SEQUENCES = (
-    "consent/07-upsert-consent-type-batch",         # no Verify JWT / 401 step, no 408
     "consent/08-inquiry-consent-type",              # no Verify JWT / 401 step, no 408
 )
 
@@ -5710,6 +5719,7 @@ ADMIN_WRITE_APPROVED = "Approved by the product owner (answered through the lead
 # current credential check take their place. Add a folder here in the pull request that migrates it.
 ADMIN_WRITE_JWT_CLAIMS = {
     "product/01-upsert-product",
+    "product/03-upsert-product-batch",
     "product/06-upsert-product-category-batch",
 }
 # Specs that still use the live role queries but keep their rule and order text in the visible note of the diagram, not in the spec.
@@ -5722,8 +5732,6 @@ ADMIN_WRITE_CAMPAIGN = {  # migrated folders that keep the campaign delete rule
     "product/06-upsert-product-category-batch",
 }
 ADMIN_WRITE_RULE_IN_DIAGRAM = {  # folder: the phrases that the visible note of its diagram must say
-    "product/03-upsert-product-batch": ("the same as the single upsert, only a platform administrator", "ACTIVE role PLATFORM_ADMIN", "any other caller gets 403 (E10009)",
-                                        "so the 403 message has no item position", "permission check (403, E10009, once for the request) -> in-use check (409)"),
     "product/04-upsert-product-category": _IN_DIAGRAM_SINGLE + (_IN_DIAGRAM_CAMPAIGN,),
     "product/07-upsert-product-category-attribute": _IN_DIAGRAM_SINGLE,
     "product/09-upsert-product-category-attribute-batch": _IN_DIAGRAM_BATCH,
