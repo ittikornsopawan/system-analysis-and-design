@@ -3254,6 +3254,11 @@ MASTER = {
 # Consent type APIs already moved to the verified JWT roles claim; add the kind in the pull request that migrates it.
 CONSENT_TYPE_JWT_KINDS = {"upsert", "batch", "inquiry"}
 MASTER_GROUPS = {"product-master": ("product-type", "product-brand"), "consent-type": ("consent-type",)}
+# Product type and product brand APIs moved to the verified JWT roles claim (API review Q2, Q4, Q10, Q13): the live role queries are gone and the
+# caller lock with the current credential check take their place. Add a folder here in the pull request that migrates it.
+MASTER_JWT_CLAIMS = {
+    "product/11-upsert-product-type-batch",
+}
 SINGLE_UPSERT_SPECS.extend(f"{MASTER_API}/{m['group']}/{m['nums'][0]}-{m['folder'][0]}/spec.md" for m in MASTER.values())
 BATCH_UPSERT_SPECS.extend(f"{MASTER_API}/{m['group']}/{m['nums'][1]}-{m['folder'][1]}/spec.md" for m in MASTER.values())
 
@@ -3281,6 +3286,10 @@ def master_needles(m: dict) -> list[dict]:
                  "AND at.expired_at > '<sequence.now>'", "(../../../schema/authen/m_user.md)", "(../../../schema/authen/t_user_access_token.md)",
                  f"You do not have permission to change {lower}s.", "Approved by the product owner"]
     admin_kind = {k: admin if k in CONSENT_TYPE_JWT_KINDS else admin_live for k in ("upsert", "batch")}
+    if not m["consent"]:
+        # a migrated product master spec keeps only the 403 example here; its claims rule is checked by master_claims_errors
+        claims_needles = ["- Permission:", "E10009", "#### Fail - Forbidden", f"You do not have permission to change {lower}s.", "Approved by the product owner"]
+        admin_kind = {k: claims_needles if f"product/{m['nums'][i]}-{m['folder'][i]}" in MASTER_JWT_CLAIMS else admin_kind[k] for i, k in enumerate(("upsert", "batch"))}
     upsert = [f"# [POST]: v1/{m['path']}/upsert", f"### {m['title']} Rules", "-> permission (403, E10009) -> duplicate name check", f"(../../../schema/{m['doc']})",
               f"(../../../schema/{m['use_doc']})", f"#### QUERY - Check {m['use_thing']} in use", f"WHERE {ua}.{uc} = '<sequence.id>' -- only when rowStatus is DELETED or ARCHIVED",
               f"AND {ua}.row_status <> 'DELETED'", f"AND {alias}.row_status <> 'DELETED'\nAND {alias}.id <> '<sequence.id>'", f"{cap} name already exists.",
@@ -3522,6 +3531,22 @@ def consent_type_claims_errors(kind: str, md: str, wsd: str) -> list[str]:
     return errors
 
 
+def master_claims_errors(kind: str, md: str, wsd: str) -> list[str]:
+    """A product master upsert that authorizes from the verified JWT roles claim: the rule and the two SQL blocks in the spec, the order in the diagram, no author table."""
+    errors = [f"missing in the spec: {n!r}" for n in missing_needles(md, [
+        ADMIN_WRITE_CLAIMS_RULE, "Q2, Q4, Q10 and Q13", "Never query `author.m_role` or `author.t_user_role`", "The order of the checks and the locks is in the sequence diagram",
+        "#### QUERY - Lock the caller user", "WHERE u.id = '<sequence.callerUserId>'\nFOR UPDATE", "#### QUERY - Check current credential and user",
+        "AND at.expired_at > '<sequence.now>'", "(../../../schema/authen/m_user.md)", "(../../../schema/authen/t_user_access_token.md)"] + (
+        ["so the 403 message has no item position"] if kind == "batch" else []))]
+    for gone in ("#### QUERY - Get the platform administrator role", "#### QUERY - Check platform administrator", "schema/author/"):
+        if gone in md:
+            errors.append(f"the spec must not contain {gone!r}")
+    errors += [f"in the sequence: {e}" for e in admin_write_claims_flow_errors(wsd, kind == "batch")]
+    if kind == "upsert" and "-> permission from the roles claim (403, E10009) -> duplicate name check" not in " ".join(wsd.split()):
+        errors.append("the sequence note must say '-> permission from the roles claim (403, E10009) -> duplicate name check'")
+    return errors
+
+
 def check_master_spec(names: tuple[str, ...], label: str) -> int:
     errors = []
     for name in names:
@@ -3555,12 +3580,15 @@ def check_master_spec(names: tuple[str, ...], label: str) -> int:
                 errors.append(f"{path} sequence note missing: {missing!r}")
             if m["consent"] and kind in CONSENT_TYPE_JWT_KINDS and (ROOT / path).with_name("sequence.wsd").exists():
                 errors.extend(f"{path}: {e}" for e in consent_type_claims_errors(kind, md, (ROOT / path).with_name("sequence.wsd").read_text(encoding="utf-8")))
+            migrated = f"product/{m['nums'][i]}-{m['folder'][i]}" in MASTER_JWT_CLAIMS
+            if migrated:
+                errors.extend(f"{path}: {e}" for e in master_claims_errors(kind, md, (ROOT / path).with_name("sequence.wsd").read_text(encoding="utf-8")))
             for text, times in master_counted(m)[kind]:
                 if md.count(text) != times:
                     errors.append(f"{path}: {text!r} must appear {times} time(s), found {md.count(text)}")
             diagram_path = str(Path(path).with_name("sequence.wsd"))
             if (ROOT / diagram_path).exists():
-                for missing in missing_needles(read(diagram_path), master_diagram_needles(m).get(kind, [])):
+                for missing in missing_needles(read(diagram_path), [] if migrated else master_diagram_needles(m).get(kind, [])):
                     errors.append(f"{diagram_path} missing: {missing!r}")
             for forbidden in MASTER_FORBIDDEN[kind]:
                 if forbidden in md:
