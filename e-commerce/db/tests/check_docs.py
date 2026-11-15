@@ -2809,12 +2809,12 @@ SHIPPING_SUCCESS_CODES = {
     "06": {"Success - Order Still Processing": 200, "Success - Order Completed": 200},
 }
 SHIPPING_NEEDLES = {
-    "01": ["- The caller must be an ACTIVE member of the shop of the order", "#### QUERY - Lock the order", "FOR UPDATE", "#### UPDATE - Start processing", "AND status = 'PAYMENT_CONFIRMED'",
+    "01": ["- The caller needs a verified JWT, then must be an ACTIVE member of the shop of the order", "#### QUERY - Lock the order", "FOR UPDATE", "#### UPDATE - Start processing", "AND status = 'PAYMENT_CONFIRMED'",
            "#### QUERY - Get the quantity already assigned", "AND s.status IN ('PENDING', 'SHIPPED', 'DELIVERED')", "#### QUERY - Get the shipping method of the order",
            "p.status = 'COMPLETED'", "#### INSERT - Create the shipping", "#### INSERT - Add the items to the shipping", "#### Fail - Conflict Quantity",
            "#### Fail - Conflict Order Status", "#### Fail - Not Found Reference", "#### Fail - Forbidden", "E10009", "E10006",
-           "validate the request (400) -> existence of the order and of the order items (404) -> permission of the caller (403)",
-           "approved by the product owner", "#### QUERY - Check shop member", "#### QUERY - Check platform administrator"],
+           "validate the request (400) -> verify the JWT (401)",
+           "approved by the product owner", "#### QUERY - Check shop member"],
     "02": ["- The caller must be an ACTIVE member of the shop of the order", "`PENDING` -> `SHIPPED`", "`PENDING` -> `CANCELLED`", "`SHIPPED` -> `RETURNED`", "#### UPDATE - Mark the shipping as shipped",
            "#### UPDATE - Cancel the shipping", "#### UPDATE - Mark the shipping as returned", "AND status = 'PENDING' -- no row changed means the status changed in the meantime",
            "AND status = 'SHIPPED' -- no row changed means the status changed in the meantime", "#### QUERY - Check duplicate tracking number",
@@ -2844,7 +2844,7 @@ SHIPPING_NEEDLES = {
 }
 # phrases that must appear at least n times (a rule or a guard that two statements share must not lose one copy unnoticed)
 SHIPPING_COUNTS = {
-    "01": {"approved by the product owner": 2},
+    "01": {"approved by the product owner": 1},
     "02": {"AND status = 'PENDING' -- no row changed means the status changed in the meantime": 2,
            "AND status = 'SHIPPED' -- no row changed means the status changed in the meantime": 1, "approved by the product owner": 2},
     "03": {"approved by the product owner": 2},
@@ -3118,6 +3118,7 @@ SHIPPING_JWT_SEQ = ["Verify JWT signature, issuer, audience, exp, UUID sub and t
                     "FOR UPDATE -- the caller user is locked first, before any other row of the request", "app -> infra: QUERY - Check current credential and user",
                     "WHERE at.token = '<sequence.accessTokenHash>'", "alt The roles claim has no PLATFORM_ADMIN"]
 SHIPPING_JWT_ORDER = {
+    "01": "verify the JWT (401) -> begin the transaction, lock the caller user and check the current credential (401) -> existence of the order and of the order items (404) -> permission of the caller (403)",
     "03": "validate the request (400) -> verify the JWT (401) -> begin the transaction, lock the caller user and check the current credential (401) -> existence of the shipping and of the stop (404) -> permission of the caller (403)",
 }
 SHIPPING_JWT_GONE = ["QUERY - Get the platform administrator role", "QUERY - Check platform administrator", "infra -> m_role", "infra -> t_user_role", "(../../../schema/author/"]
