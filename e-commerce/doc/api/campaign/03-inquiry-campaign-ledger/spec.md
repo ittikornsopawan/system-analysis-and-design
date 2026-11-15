@@ -26,7 +26,9 @@ approved_at: null
 | PRE-PRODUCTION | https://www.domain.com/api-pre-prod |
 | PRODUCTION     | https://www.domain.com/api          |
 
-- Only a platform administrator (a user that has the role `PLATFORM_ADMIN`) can call this API, any other user gets 403 (E10009). This permission model was approved by the product owner.
+- The caller needs a verified JWT, then only a platform administrator (the role `PLATFORM_ADMIN` in the verified `roles` claim) can call this API, any other user gets 403 (E10009).
+- The platform administrator is the exact case-sensitive role `PLATFORM_ADMIN` in the verified `roles` claim; do not query `author.m_role` or `author.t_user_role`, and a change of the assignment after the token was issued does not change this token (it may stay usable until its expiry).
+- The JWT and credential checks, the order of the checks and the inquiry without a transaction are in the sequence diagram.
 - The ledger of the budget of the campaign: every time an order takes the budget there is a `RESERVE` row, and every time the budget goes back (the order was cancelled or expired, or the payment was refunded) a `RELEASE` row. `usage` is the amount of the entry, always positive, the direction is `entryType`. `remaining` is the remaining amount of the budget after that entry. `reference` lists the order items and the discount each of them got. The system writes the rows, this API only reads them.
 - The invariant `budget - remaining = sum of RESERVE usage - sum of RELEASE usage` holds for the budget at any time, the entry with the newest `createdAt` shows the current `remaining` of the budget. Entries are ordered by `created_at` (newest first) then `id`. A campaign that does not exist or is DELETED is not found (404, E10004). Nothing found is 200 with an empty list.
 - This behaviour follows the campaign design, approved by the product owner on 2026-11-06 (the proposals to the delivered specs in its section 4 are decided by the lead SA).
@@ -345,27 +347,22 @@ AND l.entry_type = '<sequence.entryType>' -- only when entryType is specified
 AND l.order_id = '<sequence.orderId>' -- only when orderId is specified
 ```
 
-### Table: [author.m_role](../../../schema/author/m_role.md)
+### Table: [authen.t_user_access_token](../../../schema/authen/t_user_access_token.md)
 
-#### QUERY - Get the platform administrator role
-
-```SQL
-SELECT
-    r.id as role_id
-FROM author.m_role r
-WHERE r.name = 'PLATFORM_ADMIN'
-AND r.row_status = 'ACTIVE'
-```
-
-### Table: [author.t_user_role](../../../schema/author/t_user_role.md)
-
-#### QUERY - Check platform administrator
+#### QUERY - Check active credential and user
 
 ```SQL
 SELECT
-    ur.id as user_role_id
-FROM author.t_user_role ur
-WHERE ur.user_id = '<sequence.userId>'
-AND ur.role_id = '<sequence.roleId>'
-AND ur.row_status = 'ACTIVE'
+    at.user_id
+FROM authen.t_user_access_token at
+WHERE at.token = '<sequence.accessTokenHash>'
+AND at.user_id = '<sequence.userId>'
+AND at.row_status = 'ACTIVE'
+AND at.expired_at > '<sequence.now>'
+AND EXISTS (
+    SELECT 1
+    FROM authen.m_user u
+    WHERE u.id = at.user_id
+    AND u.row_status = 'ACTIVE'
+)
 ```
