@@ -5788,9 +5788,6 @@ ADMIN_WRITE_CAMPAIGN = {  # migrated folders that keep the campaign delete rule
     "product/06-upsert-product-category-batch",
 }
 ADMIN_WRITE_RULE_IN_DIAGRAM = {  # folder: the phrases that the visible note of its diagram must say
-
-    "product/06-upsert-product-category-batch": _IN_DIAGRAM_BATCH + (_IN_DIAGRAM_CAMPAIGN,),
-    "product/07-upsert-product-category-attribute": _IN_DIAGRAM_SINGLE,
 }
 ADMIN_WRITE_CLAIMS_RULE = "the verified JWT `roles` claim (an array of role names, an empty array is valid) must contain the exact case-sensitive role `PLATFORM_ADMIN`"
 ADMIN_WRITE_RULE_BATCH = ("Permission: the same as the single upsert, only a platform administrator (a user with an ACTIVE `author.t_user_role` row for the ACTIVE role `PLATFORM_ADMIN`) "
