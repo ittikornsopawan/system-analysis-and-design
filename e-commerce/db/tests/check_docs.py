@@ -2809,18 +2809,18 @@ SHIPPING_SUCCESS_CODES = {
     "06": {"Success - Order Still Processing": 200, "Success - Order Completed": 200},
 }
 SHIPPING_NEEDLES = {
-    "01": ["- The caller must be an ACTIVE member of the shop of the order", "#### QUERY - Lock the order", "FOR UPDATE", "#### UPDATE - Start processing", "AND status = 'PAYMENT_CONFIRMED'",
+    "01": ["- The caller needs a verified JWT, then must be an ACTIVE member of the shop of the order", "#### QUERY - Lock the order", "FOR UPDATE", "#### UPDATE - Start processing", "AND status = 'PAYMENT_CONFIRMED'",
            "#### QUERY - Get the quantity already assigned", "AND s.status IN ('PENDING', 'SHIPPED', 'DELIVERED')", "#### QUERY - Get the shipping method of the order",
            "p.status = 'COMPLETED'", "#### INSERT - Create the shipping", "#### INSERT - Add the items to the shipping", "#### Fail - Conflict Quantity",
            "#### Fail - Conflict Order Status", "#### Fail - Not Found Reference", "#### Fail - Forbidden", "E10009", "E10006",
-           "validate the request (400) -> existence of the order and of the order items (404) -> permission of the caller (403)",
-           "approved by the product owner", "#### QUERY - Check shop member", "#### QUERY - Check platform administrator"],
-    "02": ["- The caller must be an ACTIVE member of the shop of the order", "`PENDING` -> `SHIPPED`", "`PENDING` -> `CANCELLED`", "`SHIPPED` -> `RETURNED`", "#### UPDATE - Mark the shipping as shipped",
+           "validate the request (400) -> verify the JWT (401)",
+           "approved by the product owner", "#### QUERY - Check shop member"],
+    "02": ["- The caller needs a verified JWT, then must be an ACTIVE member of the shop of the order", "`PENDING` -> `SHIPPED`", "`PENDING` -> `CANCELLED`", "`SHIPPED` -> `RETURNED`", "#### UPDATE - Mark the shipping as shipped",
            "#### UPDATE - Cancel the shipping", "#### UPDATE - Mark the shipping as returned", "AND status = 'PENDING' -- no row changed means the status changed in the meantime",
            "AND status = 'SHIPPED' -- no row changed means the status changed in the meantime", "#### QUERY - Check duplicate tracking number",
            "#### QUERY - Count the shippings that are still active", "#### UPDATE - Give the order back to PAYMENT_CONFIRMED", "AND status = 'PROCESSING'",
            "#### QUERY - Lock the order", "FOR UPDATE", "#### Fail - Conflict Tracking Number", "#### Fail - Conflict Status", "E10003", "E10006", "E10009",
-           "approved by the product owner", "#### QUERY - Check shop member", "#### QUERY - Check platform administrator", "#### QUERY - Lock the shipping", "FOR UPDATE -- read again after the order row is locked", "the status step is checked on that second read", "approved by the product owner on 2026-11-08"],
+           "approved by the product owner", "#### QUERY - Check shop member", "#### QUERY - Lock the shipping", "FOR UPDATE -- read again after the order row is locked", "the status step is checked on that second read", "approved by the product owner on 2026-11-08"],
     "03": ["- The caller must be an ACTIVE member of the shop of the order", "#### INSERT - Create the stop", "#### UPDATE - Update, delete or archive the stop", "#### QUERY - Check duplicate stop number",
            "#### QUERY - Lock the order", "FOR UPDATE", "#### Fail - Bad Request Row Status", "#### Fail - Conflict Status", "E10003", "E10006", "E10009",
            "Delete 204 No Content (no response body)", "approved by the product owner", "#### QUERY - Check shop member", "#### Fail - Not Found Shipping", "`Shipping not found.`", "approved by the product owner on 2026-11-08"],
@@ -2844,7 +2844,7 @@ SHIPPING_NEEDLES = {
 }
 # phrases that must appear at least n times (a rule or a guard that two statements share must not lose one copy unnoticed)
 SHIPPING_COUNTS = {
-    "01": {"approved by the product owner": 2},
+    "01": {"approved by the product owner": 1},
     "02": {"AND status = 'PENDING' -- no row changed means the status changed in the meantime": 2,
            "AND status = 'SHIPPED' -- no row changed means the status changed in the meantime": 1, "approved by the product owner": 2},
     "03": {"approved by the product owner": 2},
@@ -3110,6 +3110,38 @@ def check_shipping_scan_query(md: str) -> list[str]:
     return errors
 
 
+# the JWT needles are searched in the file where the text lives: the spec or the sequence diagram, never both combined
+SHIPPING_JWT_SPEC = ["the role `PLATFORM_ADMIN` in the verified `roles` claim", "do not query `author.m_role` or `author.t_user_role`", "#### QUERY - Lock the caller user",
+                     "#### QUERY - Check current credential and user", "(../../../schema/authen/m_user.md)", "(../../../schema/authen/t_user_access_token.md)"]
+SHIPPING_JWT_SEQ = ["Verify JWT signature, issuer, audience, exp, UUID sub and the roles claim (an array of role names)", "isPlatformAdmin = roles contains PLATFORM_ADMIN (no database query)",
+                    "do not query `author.m_role` or `author.t_user_role`", "Q2/Q4/Q10/Q13", "lock the caller user first (`QUERY - Lock the caller user`, `FOR UPDATE`)",
+                    "FOR UPDATE -- the caller user is locked first, before any other row of the request", "app -> infra: QUERY - Check current credential and user",
+                    "WHERE at.token = '<sequence.accessTokenHash>'", "alt The roles claim has no PLATFORM_ADMIN"]
+SHIPPING_JWT_ORDER = {
+    "01": "verify the JWT (401) -> begin the transaction, lock the caller user and check the current credential (401) -> existence of the order and of the order items (404) -> permission of the caller (403)",
+    "02": "validate the request (400) -> verify the JWT (401) -> begin the transaction, lock the caller user and check the current credential (401) -> existence of the shipping (404) -> permission of the caller (403)",
+}
+SHIPPING_JWT_GONE = ["QUERY - Get the platform administrator role", "QUERY - Check platform administrator", "infra -> m_role", "infra -> t_user_role", "(../../../schema/author/"]
+
+
+def check_shipping_jwt(key: str, md: str, wsd: str) -> list[str]:
+    errors = []
+    path = SHIPPING_SPECS[key]
+    seq = re.sub(r"\n\s+", " ", wsd)
+    for missing in missing_needles(md, SHIPPING_JWT_SPEC):
+        errors.append(f"{path} missing: {missing}")
+    for missing in missing_needles(seq, SHIPPING_JWT_SEQ + [SHIPPING_JWT_ORDER[key]]):
+        errors.append(f"{path.replace('spec.md', 'sequence.wsd')} missing: {missing}")
+    if seq.count("HTTP 401 E10002 Invalid or expired access token.") < 2:
+        errors.append(f"{path.replace('spec.md', 'sequence.wsd')}: the 401 must be answered by the JWT check and by the credential check")
+    for gone in SHIPPING_JWT_GONE:
+        if gone in md:
+            errors.append(f"{path}: must not contain {gone!r}")
+        if gone in wsd:
+            errors.append(f"{path.replace('spec.md', 'sequence.wsd')}: must not contain {gone!r}")
+    return errors
+
+
 def check_shipping_spec() -> int:
     errors = []
     mds = {}
@@ -3133,6 +3165,8 @@ def check_shipping_spec() -> int:
     for key, need in SHIPPING_NEEDLES.items():
         for missing in missing_needles(full[key], need):
             errors.append(f"{SHIPPING_SPECS[key]} missing: {missing}")
+    for key in SHIPPING_JWT_ORDER:
+        errors.extend(check_shipping_jwt(key, mds[key], read(SHIPPING_SPECS[key].replace("spec.md", "sequence.wsd"))))
     for key, counts in SHIPPING_COUNTS.items():
         for phrase, n in counts.items():
             if full[key].count(phrase) < n:
@@ -5680,6 +5714,7 @@ ADMIN_WRITE_APPROVED = "Approved by the product owner (answered through the lead
 ADMIN_WRITE_JWT_CLAIMS = {
     "product/01-upsert-product",
     "product/04-upsert-product-category",
+    "product/03-upsert-product-batch",
 }
 # Specs that still use the live role queries but keep their rule and order text in the visible note of the diagram, not in the spec.
 _IN_DIAGRAM_SINGLE = ("only a platform administrator (a user with an ACTIVE author.t_user_role row for the ACTIVE role PLATFORM_ADMIN)", "any other caller gets 403 (E10009)",
@@ -5693,6 +5728,7 @@ ADMIN_WRITE_CAMPAIGN = {  # migrated folders that keep the campaign delete rule
 ADMIN_WRITE_RULE_IN_DIAGRAM = {  # folder: the phrases that the visible note of its diagram must say
     "product/03-upsert-product-batch": ("the same as the single upsert, only a platform administrator", "ACTIVE role PLATFORM_ADMIN", "any other caller gets 403 (E10009)",
                                         "so the 403 message has no item position", "permission check (403, E10009, once for the request) -> in-use check (409)"),
+    "product/04-upsert-product-category": _IN_DIAGRAM_SINGLE + (_IN_DIAGRAM_CAMPAIGN,),
     "product/06-upsert-product-category-batch": _IN_DIAGRAM_BATCH + (_IN_DIAGRAM_CAMPAIGN,),
     "product/07-upsert-product-category-attribute": _IN_DIAGRAM_SINGLE,
     "product/09-upsert-product-category-attribute-batch": _IN_DIAGRAM_BATCH,

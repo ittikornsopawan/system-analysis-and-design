@@ -26,7 +26,9 @@ approved_at: null
 | PRE-PRODUCTION | https://www.domain.com/api-pre-prod |
 | PRODUCTION     | https://www.domain.com/api          |
 
-- The caller must be an ACTIVE member of the shop of the order (a row of `shop.t_shop_user` with the role ADMIN or STAFF that is ACTIVE) or a platform administrator (a user that has the role `PLATFORM_ADMIN`), otherwise 403 (E10009). This permission model was approved by the product owner.
+- The caller needs a verified JWT, then must be an ACTIVE member of the shop of the order (a row of `shop.t_shop_user` with the role ADMIN or STAFF that is ACTIVE) or have the role `PLATFORM_ADMIN` in the verified `roles` claim, otherwise 403 (E10009).
+- The platform administrator is the exact case-sensitive role `PLATFORM_ADMIN` in the verified `roles` claim; do not query `author.m_role` or `author.t_user_role`, and a change of the assignment after the token was issued does not change this token (it may stay usable until its expiry). Membership of a shop is not a token claim and is still read from `shop.t_shop_user`.
+- The JWT and credential checks, the lock order and the order of the checks are in the sequence diagram.
 - The status moves only along these steps, any other step is 409 (E10006) with the current status in the message: `PENDING` -> `SHIPPED` (the parcel is handed to the carrier), `PENDING` -> `CANCELLED` (the shop gives up before handing it over), `SHIPPED` -> `RETURNED` (the parcel came back to the shop because it could not be delivered). `DELIVERED` is not set here, only the receiver can set it (confirm delivery API). `DELIVERED`, `CANCELLED` and `RETURNED` are final. A parcel that came back is sent again by creating a new shipping.
 - `SHIPPED` needs `carrierName` and `trackingNumber` and sets `shipped_at` to the time of the request. The pair (`carrierName`, `trackingNumber`) is unique among shippings that are not DELETED, a pair that already exists is 409 (E10003). The comparison is exact. `CANCELLED` and `RETURNED` do not accept the two fields (400, E10001) and keep the values the shipping already has.
 - A shipping is never deleted by the API: cancelling is the status `CANCELLED`, and `row_status` stays `ACTIVE`. The shipping method never changes.
@@ -485,27 +487,30 @@ AND su.role IN ('ADMIN', 'STAFF')
 AND su.row_status = 'ACTIVE'
 ```
 
-### Table: [author.m_role](../../../schema/author/m_role.md)
+### Table: [authen.m_user](../../../schema/authen/m_user.md)
 
-#### QUERY - Get the platform administrator role
+#### QUERY - Lock the caller user
 
 ```SQL
 SELECT
-    r.id as role_id
-FROM author.m_role r
-WHERE r.name = 'PLATFORM_ADMIN'
-AND r.row_status = 'ACTIVE'
+    u.id as user_id
+FROM authen.m_user u
+WHERE u.id = '<sequence.userId>'
+FOR UPDATE -- the caller user is locked first, before any other row of the request
 ```
 
-### Table: [author.t_user_role](../../../schema/author/t_user_role.md)
+### Table: [authen.t_user_access_token](../../../schema/authen/t_user_access_token.md)
 
-#### QUERY - Check platform administrator
+#### QUERY - Check current credential and user
 
 ```SQL
 SELECT
-    ur.id as user_role_id
-FROM author.t_user_role ur
-WHERE ur.user_id = '<sequence.userId>'
-AND ur.role_id = '<sequence.roleId>'
-AND ur.row_status = 'ACTIVE'
+    at.id as access_token_id
+FROM authen.t_user_access_token at
+JOIN authen.m_user u ON u.id = at.user_id
+WHERE at.token = '<sequence.accessTokenHash>'
+AND at.user_id = '<sequence.userId>'
+AND at.row_status = 'ACTIVE'
+AND at.expired_at > '<sequence.now>'
+AND u.row_status = 'ACTIVE'
 ```
