@@ -20,6 +20,14 @@ Assignment: agent `marry`, delivery `open-pr`, authorized by `josh`, workspace `
 - [x] Verification: 69/69 `check_docs.py` sub-commands, 20 of 20 deliberate faults rejected (spec and sequence, single and batch wording).
 - [ ] Merge `origin/main`, run `audit_all.py`, `run_db_tests.sh` and `preflight.py`, open the pull request, tell Josh when `checks` is green, then suspend.
 
+## e-commerce: JWT claims, product/09-upsert-product-category-attribute-batch
+
+Owner: marry
+Status: In review (pull request pending)
+Created at: 2026-11-15T08:49:18+07:00
+Started at: 2026-11-15T08:49:18+07:00
+
+Assignment: agent `marry`, delivery `open-pr`, authorized by `josh`, workspace `.workspace/marry`, branch `docs/marry-product-category-attribute-batch-upsert-jwt-claims`, scopes `e-commerce/doc/api/product/09-upsert-product-category-attribute-batch`, `e-commerce/db/tests/check_docs.py`, `tasks/marry`. Queue of the last sweep: product 03, 04, 06, 07, 09, 10, 11, 13, 14, one API per pull request, pattern of product/01. Governing decisions: Q2, Q4, Q10 and Q13 of `docs/superpowers/specs/2026-11-07-api-review-design.md`.
 ## e-commerce: JWT claims, product/07-upsert-product-category-attribute
 
 Owner: marry
