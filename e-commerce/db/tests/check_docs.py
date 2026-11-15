@@ -2809,12 +2809,12 @@ SHIPPING_SUCCESS_CODES = {
     "06": {"Success - Order Still Processing": 200, "Success - Order Completed": 200},
 }
 SHIPPING_NEEDLES = {
-    "01": ["- The caller must be an ACTIVE member of the shop of the order", "#### QUERY - Lock the order", "FOR UPDATE", "#### UPDATE - Start processing", "AND status = 'PAYMENT_CONFIRMED'",
+    "01": ["- The caller needs a verified JWT, then must be an ACTIVE member of the shop of the order", "#### QUERY - Lock the order", "FOR UPDATE", "#### UPDATE - Start processing", "AND status = 'PAYMENT_CONFIRMED'",
            "#### QUERY - Get the quantity already assigned", "AND s.status IN ('PENDING', 'SHIPPED', 'DELIVERED')", "#### QUERY - Get the shipping method of the order",
            "p.status = 'COMPLETED'", "#### INSERT - Create the shipping", "#### INSERT - Add the items to the shipping", "#### Fail - Conflict Quantity",
            "#### Fail - Conflict Order Status", "#### Fail - Not Found Reference", "#### Fail - Forbidden", "E10009", "E10006",
-           "validate the request (400) -> existence of the order and of the order items (404) -> permission of the caller (403)",
-           "approved by the product owner", "#### QUERY - Check shop member", "#### QUERY - Check platform administrator"],
+           "validate the request (400) -> verify the JWT (401)",
+           "approved by the product owner", "#### QUERY - Check shop member"],
     "02": ["- The caller needs a verified JWT, then must be an ACTIVE member of the shop of the order", "`PENDING` -> `SHIPPED`", "`PENDING` -> `CANCELLED`", "`SHIPPED` -> `RETURNED`", "#### UPDATE - Mark the shipping as shipped",
            "#### UPDATE - Cancel the shipping", "#### UPDATE - Mark the shipping as returned", "AND status = 'PENDING' -- no row changed means the status changed in the meantime",
            "AND status = 'SHIPPED' -- no row changed means the status changed in the meantime", "#### QUERY - Check duplicate tracking number",
@@ -2844,7 +2844,7 @@ SHIPPING_NEEDLES = {
 }
 # phrases that must appear at least n times (a rule or a guard that two statements share must not lose one copy unnoticed)
 SHIPPING_COUNTS = {
-    "01": {"approved by the product owner": 2},
+    "01": {"approved by the product owner": 1},
     "02": {"AND status = 'PENDING' -- no row changed means the status changed in the meantime": 2,
            "AND status = 'SHIPPED' -- no row changed means the status changed in the meantime": 1, "approved by the product owner": 2},
     "03": {"approved by the product owner": 2},
@@ -3118,6 +3118,7 @@ SHIPPING_JWT_SEQ = ["Verify JWT signature, issuer, audience, exp, UUID sub and t
                     "FOR UPDATE -- the caller user is locked first, before any other row of the request", "app -> infra: QUERY - Check current credential and user",
                     "WHERE at.token = '<sequence.accessTokenHash>'", "alt The roles claim has no PLATFORM_ADMIN"]
 SHIPPING_JWT_ORDER = {
+    "01": "verify the JWT (401) -> begin the transaction, lock the caller user and check the current credential (401) -> existence of the order and of the order items (404) -> permission of the caller (403)",
     "02": "validate the request (400) -> verify the JWT (401) -> begin the transaction, lock the caller user and check the current credential (401) -> existence of the shipping (404) -> permission of the caller (403)",
 }
 SHIPPING_JWT_GONE = ["QUERY - Get the platform administrator role", "QUERY - Check platform administrator", "infra -> m_role", "infra -> t_user_role", "(../../../schema/author/"]
@@ -3239,6 +3240,8 @@ MASTER = {
         use_table="consent.t_consent", use_alias="c", use_col="consent_type_id", use_doc="consent/t_consent.md", use_thing="consent", use_things="consents",
         id="a7b8c9d0-1e2f-4a3b-8c4d-5e6f7a8b9c0d", other_spec=("consent/02-upsert-consent/spec.md", '"consentTypeId"'), consent=True),
 }
+# Consent type APIs already moved to the verified JWT roles claim; add the kind in the pull request that migrates it.
+CONSENT_TYPE_JWT_KINDS = {"upsert"}
 MASTER_GROUPS = {"product-master": ("product-type", "product-brand"), "consent-type": ("consent-type",)}
 SINGLE_UPSERT_SPECS.extend(f"{MASTER_API}/{m['group']}/{m['nums'][0]}-{m['folder'][0]}/spec.md" for m in MASTER.values())
 BATCH_UPSERT_SPECS.extend(f"{MASTER_API}/{m['group']}/{m['nums'][1]}-{m['folder'][1]}/spec.md" for m in MASTER.values())
@@ -3259,17 +3262,25 @@ def master_needles(m: dict) -> list[dict]:
              "(../../../schema/author/m_role.md)", "(../../../schema/author/t_user_role.md)", "WHERE r.name = 'PLATFORM_ADMIN'", "AND r.row_status = 'ACTIVE'",
              "AND ur.role_id = '<sequence.roleId>'", "AND ur.row_status = 'ACTIVE'", f"You do not have permission to change {lower}s.",
              "Approved by the product owner"]
+    admin_live = admin
+    if m["consent"]:
+        # Verified JWT roles claim (API review Q2, Q4, Q10, Q13): no live role queries, the caller lock and the current credential check take their place.
+        admin = ["- Permission:", "E10009", "#### Fail - Forbidden", "the verified JWT `roles` claim", "exact case-sensitive role `PLATFORM_ADMIN`", "Never query `author.m_role` or `author.t_user_role`",
+                 "Q2, Q4, Q10 and Q13", "#### QUERY - Lock the caller user", "WHERE u.id = '<sequence.callerUserId>'\nFOR UPDATE", "#### QUERY - Check current credential and user",
+                 "AND at.expired_at > '<sequence.now>'", "(../../../schema/authen/m_user.md)", "(../../../schema/authen/t_user_access_token.md)",
+                 f"You do not have permission to change {lower}s.", "Approved by the product owner"]
+    admin_kind = {k: admin if k in CONSENT_TYPE_JWT_KINDS else admin_live for k in ("upsert", "batch")}
     upsert = [f"# [POST]: v1/{m['path']}/upsert", f"### {m['title']} Rules", "-> permission (403, E10009) -> duplicate name check", f"(../../../schema/{m['doc']})",
               f"(../../../schema/{m['use_doc']})", f"#### QUERY - Check {m['use_thing']} in use", f"WHERE {ua}.{uc} = '<sequence.id>' -- only when rowStatus is DELETED or ARCHIVED",
               f"AND {ua}.row_status <> 'DELETED'", f"AND {alias}.row_status <> 'DELETED'\nAND {alias}.id <> '<sequence.id>'", f"{cap} name already exists.",
               f"{cap} is used by {m['use_things']}.", f"{cap} not found.", f"Row status must not be DELETED when inserting a {lower}.", "E10003", "E10004",
               "E10006", "E90001", f"Insert {m['title']} Success", f"Archive {m['title']} Success", f"AND {alias}.row_status <> 'DELETED' -- the id of a DELETED {lower} counts as not found",
-              f"The name of a DELETED {lower} can be used again.", "are allowed even when", "blocks the writes that use it"] + admin
+              f"The name of a DELETED {lower} can be used again.", "are allowed even when", "blocks the writes that use it"] + admin_kind["upsert"]
     batch = [f"# [POST]: v1/{m['path']}/upsert/batch", f"### {m['title']} Rules (same as the single upsert, applied per {lower})", f"#### QUERY - Check {m['use_thing']} in use",
              f"{camel}s[2]: Id is duplicated with {camel}s[1].", f"{camel}s[2]: Name is duplicated with {camel}s[0].", f"{cap}s must contain 1 to 100 items.",
              "Swapping the names", f"{camel}s[2]: {cap} is used by {m['use_things']}.", f"AND {alias}.row_status <> 'DELETED'\nAND {alias}.id <> '<sequence.{camel}s.id>'",
              f"WHERE {ua}.{uc} = '<sequence.{camel}s.id>' -- only when rowStatus is DELETED or ARCHIVED", f"{camel}s[0]: {cap} name already exists.",
-             f"{camel}s[1]: {cap} not found.", "so the 403 message has no item position", "Batch Upsert " + m["title"] + " Success"] + admin
+             f"{camel}s[1]: {cap} not found.", "so the 403 message has no item position", "Batch Upsert " + m["title"] + " Success"] + admin_kind["batch"]
     inquiry = [f"# [GET]: v1/{m['path']}", f"#### QUERY - Get {lower}s", "#### QUERY - Get total items", "ILIKE", f"### {m['title']} Inquiry Rules", f"ORDER BY {alias}.created_at DESC, {alias}.id",
                "Page Index and Page Size must be greater than 0", "Row status must be one of ACTIVE, INACTIVE, LOCKED, ARCHIVED.", "authorization",
                f"Request: `GET v1/{m['path']}?id={m['id']}`", f"WHERE {alias}.row_status <> 'DELETED'", f"Inquiry {m['title']} Success", "no role is checked"]
@@ -3448,6 +3459,45 @@ MASTER_REMOVED_NEEDLES = {
 }
 
 
+def consent_type_claims_errors(kind: str, md: str, wsd: str) -> list[str]:
+    """Consent type APIs authorize from the verified JWT roles claim: no live role queries, caller lock then current credential, one decision, one COMMIT."""
+    errors = []
+    if "#### QUERY - Get the platform administrator role" in md + wsd or "#### QUERY - Check platform administrator" in md + wsd or "schema/author/" in md or re.search(r"infra -> (?:m_role|t_user_role):", wsd):
+        errors.append("must not read the author tables")
+    if "status: in-review\napproved_by: null\napproved_at: null" not in md:
+        errors.append("spec stays in-review until approved")
+    heads = [h for _, h, _ in spec_database_operations(md)]
+    sql = {h: q for _, h, q in spec_database_operations(md)}
+    want = ["QUERY - Lock the caller user", "QUERY - Check current credential and user"]
+    if kind == "inquiry":
+        want = want[1:]
+    if heads[:len(want)] != want:
+        errors.append(f"the first SQL definitions must be {want}")
+    if kind != "inquiry" and "FOR UPDATE" not in sql.get(want[0], ""):
+        errors.append("the caller user must be locked with FOR UPDATE")
+    if any(SEQUENCE_LOCK.search(q) for h, q in sql.items() if h != want[0] or kind == "inquiry"):
+        errors.append("only the caller lock may lock")
+    if "'<sequence.now>'" not in sql.get("QUERY - Check current credential and user", "") or "NOW()" in sql.get("QUERY - Check current credential and user", ""):
+        errors.append("the credential check compares the bound time")
+    begin = "BEGIN REPEATABLE READ READ ONLY" if kind == "inquiry" else "BEGIN READ COMMITTED"
+    order = ["app -> app: Verify JWT", "HTTP 401 E10002", "app -> infra: " + begin] + ["app -> infra: " + h for h in want] + ["Authorize once", "app -> infra: COMMIT"]
+    pos = [wsd.find(x) for x in order]
+    if -1 in pos or pos != sorted(pos):
+        errors.append("steps must run verify JWT, 401, BEGIN, caller lock, credential, one permission decision, COMMIT")
+    if kind == "upsert" and not all(wsd.find("app -> infra: QUERY - Check duplicate name") > wsd.find("Authorize once") for _ in (0,)):
+        errors.append("the permission decision comes before the duplicate name check")
+    if kind != "batch" and (wsd.count("Authorize once") != 1 or wsd.count("app -> infra: COMMIT") != 1):
+        errors.append("exactly one permission decision and one COMMIT")
+    if kind == "batch" and (wsd.count("Authorize once") != 1 or wsd.count("app -> infra: COMMIT") != 1):
+        errors.append("exactly one permission decision for the request and one COMMIT")
+    if kind != "inquiry" and "app -> api: HTTP 403 E10009 You do not have permission to change consent types." not in wsd:
+        errors.append("the 403 answer must be drawn with its message")
+    internal = json_examples(md, "Fail - Internal Server Error")
+    if not internal or internal["status"]["code"] != 500 or "bizCode" in internal["status"]:
+        errors.append("the Fail - Internal Server Error example must be 500 without a bizCode")
+    return errors
+
+
 def check_master_spec(names: tuple[str, ...], label: str) -> int:
     errors = []
     for name in names:
@@ -3479,6 +3529,8 @@ def check_master_spec(names: tuple[str, ...], label: str) -> int:
             sequence_note = " ".join((ROOT / path).with_name("sequence.wsd").read_text(encoding="utf-8").split()) if (ROOT / path).with_name("sequence.wsd").exists() else ""
             for missing in missing_needles(sequence_note, in_sequence):
                 errors.append(f"{path} sequence note missing: {missing!r}")
+            if m["consent"] and kind in CONSENT_TYPE_JWT_KINDS and (ROOT / path).with_name("sequence.wsd").exists():
+                errors.extend(f"{path}: {e}" for e in consent_type_claims_errors(kind, md, (ROOT / path).with_name("sequence.wsd").read_text(encoding="utf-8")))
             for text, times in master_counted(m)[kind]:
                 if md.count(text) != times:
                     errors.append(f"{path}: {text!r} must appear {times} time(s), found {md.count(text)}")
@@ -4081,7 +4133,6 @@ REQUIRED_GROUPS = ("authen-and-author", "consent")
 LEGACY_SEQUENCES = (
     # authen-and-author: waiting for a retrofit to the login standard
     # consent: waiting for a retrofit to the login standard
-    "consent/06-upsert-consent-type",
     "consent/07-upsert-consent-type-batch",
 )
 # Diagrams written before the access token and timeout answers became part of the check. Each is exempt from the token
@@ -4089,7 +4140,6 @@ LEGACY_SEQUENCES = (
 # must still fail at least one of them: a file that passes both has to leave this list. Remove an entry in the same
 # change that adds the missing answers to the diagram.
 LEGACY_TOKEN_SEQUENCES = (
-    "consent/06-upsert-consent-type",               # no Verify JWT / 401 step, no 408
     "consent/07-upsert-consent-type-batch",         # no Verify JWT / 401 step, no 408
     "consent/08-inquiry-consent-type",              # no Verify JWT / 401 step, no 408
 )
