@@ -1464,9 +1464,12 @@ def check_shop_profile_inquiry_examples(md: str) -> list[str]:
 
 
 # Shop profile specs moved to the verified JWT roles claim: spec key -> (heading of the membership query, the member decision of the diagram).
-SHOP_PROFILE_JWT = {"08": ("QUERY - Check shop administrator", "alt update, delete or archive by a caller who is not an ADMIN of the shop")}
+SHOP_PROFILE_JWT = {"08": ("QUERY - Check shop administrator", "alt update, delete or archive by a caller who is not an ADMIN of the shop"),
+                    "09": ("QUERY - Check shop administrator", "alt items[i]: update, delete or archive by a caller who is not an ADMIN of the shop")}
 SHOP_PROFILE_JWT_SEQ = {"08": ["app -> api: HTTP 403 E10009 You do not have permission to manage this shop.", "alt platformMarginRate differs from the current one and the verified roles claim has no PLATFORM_ADMIN",
-                               "app -> api: HTTP 403 E10009 Only a platform administrator can change the platform margin rate."]}
+                               "app -> api: HTTP 403 E10009 Only a platform administrator can change the platform margin rate."],
+                           "09": ["app -> api: HTTP 403 E10009 items[i]: You do not have permission to manage this shop.", "alt items[i]: platformMarginRate differs from the current one and the verified roles claim has no PLATFORM_ADMIN",
+                                  "app -> api: HTTP 403 E10009 items[i]: Only a platform administrator can change the platform margin rate."]}
 
 
 def check_shop_profile_spec() -> int:
