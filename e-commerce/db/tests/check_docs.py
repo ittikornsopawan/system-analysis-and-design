@@ -938,7 +938,7 @@ SHOP_JWT_MEMBER = {"01": ("QUERY - Check shop member", "alt The caller is not an
 SHOP_JWT_SPEC = ["Q2, Q4, Q10 and Q13", "the exact case-sensitive role `PLATFORM_ADMIN` in the verified `roles` claim", "do not query `author.m_role` or `author.t_user_role`",
                  "Membership of a shop is not a token claim and is still read from `shop.t_shop_user`", "#### QUERY - Lock the caller user", "WHERE u.id = '<sequence.callerUserId>'\nFOR UPDATE",
                  "#### QUERY - Check current credential and user", "AND at.expired_at > '<sequence.now>'", "(../../../schema/authen/m_user.md)", "(../../../schema/authen/t_user_access_token.md)",
-                 "The order of the checks and the locks is in the sequence diagram", "- Permission:", "E10009", "#### Fail - Forbidden"]
+                 "The order of the checks and the locks is in the sequence diagram", "E10009", "#### Fail - Forbidden"]
 SHOP_JWT_SEQ = ["Verify JWT signature/issuer/audience/expiry/UUID sub and the roles claim", "verify the JWT and its roles claim (401)", "lock the caller user (FOR UPDATE)",
                 "The author tables are never queried", "alt The verified roles claim has no PLATFORM_ADMIN", "app -> infra: BEGIN READ COMMITTED"]
 SHOP_JWT_GONE = ["QUERY - Get the platform administrator role", "QUERY - Check platform administrator", "(../../../schema/author/", "infra -> m_role", "infra -> t_user_role"]
@@ -1463,6 +1463,12 @@ def check_shop_profile_inquiry_examples(md: str) -> list[str]:
     return errors
 
 
+# Shop profile specs moved to the verified JWT roles claim: spec key -> (heading of the membership query, the member decision of the diagram).
+SHOP_PROFILE_JWT = {"08": ("QUERY - Check shop administrator", "alt update, delete or archive by a caller who is not an ADMIN of the shop")}
+SHOP_PROFILE_JWT_SEQ = {"08": ["app -> api: HTTP 403 E10009 You do not have permission to manage this shop.", "alt platformMarginRate differs from the current one and the verified roles claim has no PLATFORM_ADMIN",
+                               "app -> api: HTTP 403 E10009 Only a platform administrator can change the platform margin rate."]}
+
+
 def check_shop_profile_spec() -> int:
     errors = []
     mds = {}
@@ -1487,7 +1493,7 @@ def check_shop_profile_spec() -> int:
         return fail("; ".join(errors))
     needles = {
         "08": ["# [POST]: v1/shop/upsert", "- `name` is unique among shops that are not DELETED", "#### Image Object", "#### QUERY - Check shop products in use", "#### QUERY - Check shop orders in use",
-               "#### INSERT - Add the caller as ADMIN of the new shop", "#### QUERY - Check platform administrator", "#### QUERY - Get next seq of the image type",
+               "#### INSERT - Add the caller as ADMIN of the new shop", "#### QUERY - Get next seq of the image type",
                "#### UPDATE - Delete the images of a deleted shop", "AND s.row_status <> 'DELETED'\nAND s.id <> '<sequence.id>'", "(../../../schema/shop/m_shop.md)",
                "(../../../schema/shop/m_shop_image.md)", "(../../../schema/shop/m_shop_type.md)", "(../../../schema/shop/t_shop_user.md)", "(../../../schema/sales/t_order.md)",
                "Shop name already exists.", "Shop is used by products or orders.", "Shop not found.", "Shop image not found.", "Shop type not found.",
@@ -1515,6 +1521,10 @@ def check_shop_profile_spec() -> int:
         for forbidden in ("pageSize", "pageIndex"):
             if forbidden in mds[key]:
                 errors.append(f"{SHOP_PROFILE_SPECS[key]} must not contain '{forbidden}'")
+    for key, (member, no_member) in SHOP_PROFILE_JWT.items():
+        wsd_text = read(SHOP_PROFILE_SPECS[key].replace("spec.md", "sequence.wsd"))
+        errors.extend(shop_jwt_errors(SHOP_PROFILE_SPECS[key], mds[key], wsd_text, member, no_member))
+        errors.extend(f"{SHOP_PROFILE_SPECS[key]} (sequence) missing: {n!r}" for n in missing_needles(wsd_text, SHOP_PROFILE_JWT_SEQ.get(key, [])))
     try:
         errors.extend(check_shop_profile_upsert_examples(mds["08"]))
         errors.extend(check_shop_profile_batch_examples(mds["09"]))
