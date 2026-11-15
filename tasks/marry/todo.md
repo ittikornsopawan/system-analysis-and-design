@@ -105,3 +105,18 @@ Assignment: agent `marry`, delivery `open-pr`, authorized by `josh`, workspace `
 - [x] `check_docs.py`: add the folder to `ADMIN_WRITE_JWT_CLAIMS` and take it out of the in-diagram list; spec needles are checked in the spec and sequence needles in the sequence.
 - [x] Verification: every `check_docs.py` sub-command, `audit_all.py`, `run_db_tests.sh` and `preflight.py` pass; 0/0 deliberate faults rejected.
 - [ ] Tell Josh when `checks` is green, then suspend.
+
+## e-commerce: JWT claims, product/13-upsert-product-brand
+
+Owner: marry
+Status: In review (pull request pending)
+Created at: 2026-11-15T13:58:11+07:00
+Started at: 2026-11-15T13:58:11+07:00
+
+Assignment: agent `marry`, delivery `open-pr`, authorized by `josh`, workspace `.workspace/marry`, branch `docs/marry-product-brand-upsert-jwt-claims`, scopes `e-commerce/doc/api/product/13-upsert-product-brand`, `e-commerce/db/tests/check_docs.py`, `tasks/marry`. Queue of the last sweep: product 03, 04, 06, 07, 09, 10, 11, 13, 14, one API per pull request, pattern of product/01. Governing decisions: Q2, Q4, Q10 and Q13 of `docs/superpowers/specs/2026-11-07-api-review-design.md`.
+
+- [x] Remove `QUERY - Get the platform administrator role` and `QUERY - Check platform administrator` from the spec and the sequence; the administrator is the exact role `PLATFORM_ADMIN` in the verified JWT `roles` claim.
+- [x] Add the JWT verify with 401, `QUERY - Lock the caller user` and `QUERY - Check current credential and user` (401, ROLLBACK) right after BEGIN; all other SQL is unchanged.
+- [x] `check_docs.py`: add the folder to `ADMIN_WRITE_JWT_CLAIMS` and take it out of the in-diagram list; spec needles are checked in the spec and sequence needles in the sequence.
+- [x] Verification: every `check_docs.py` sub-command, `audit_all.py`, `run_db_tests.sh` and `preflight.py` pass; 18/18 deliberate faults rejected.
+- [ ] Tell Josh when `checks` is green, then suspend.

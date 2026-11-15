@@ -3301,6 +3301,7 @@ MASTER_GROUPS = {"product-master": ("product-type", "product-brand"), "consent-t
 MASTER_JWT_CLAIMS = {
     "product/11-upsert-product-type-batch",
     "product/10-upsert-product-type",
+    "product/13-upsert-product-brand",
 }
 SINGLE_UPSERT_SPECS.extend(f"{MASTER_API}/{m['group']}/{m['nums'][0]}-{m['folder'][0]}/spec.md" for m in MASTER.values())
 BATCH_UPSERT_SPECS.extend(f"{MASTER_API}/{m['group']}/{m['nums'][1]}-{m['folder'][1]}/spec.md" for m in MASTER.values())
