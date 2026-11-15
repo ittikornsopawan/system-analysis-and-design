@@ -2017,8 +2017,10 @@ def check_shop_user_inquiry_examples(md: str) -> list[str]:
 
 
 # Shop user specs moved to the verified JWT roles claim: spec key -> (heading of the first membership query, the member decision of the diagram).
-SHOP_USER_JWT = {"11": ("QUERY - Check shop administrator", "alt caller is not an ADMIN of the shop and not a STAFF member leaving their own membership")}
-SHOP_USER_JWT_SEQ = {"11": ["app -> api: HTTP 403 E10009 You do not have permission to manage the members of the shop."]}
+SHOP_USER_JWT = {"11": ("QUERY - Check shop administrator", "alt caller is not an ADMIN of the shop and not a STAFF member leaving their own membership"),
+                 "12": ("QUERY - Check shop administrator", "alt items[i]: caller is not an ADMIN of the shop and not a STAFF member leaving their own membership")}
+SHOP_USER_JWT_SEQ = {"11": ["app -> api: HTTP 403 E10009 You do not have permission to manage the members of the shop."],
+                     "12": ["app -> api: HTTP 403 E10009 items[i]: You do not have permission to manage the members of the shop."]}
 
 
 def check_shop_user_spec() -> int:
