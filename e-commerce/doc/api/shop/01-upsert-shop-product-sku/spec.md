@@ -1,6 +1,6 @@
 ---
 name: "Upsert Shop Product SKU API"
-description: "Insert, update, delete or archive a SKU of a product sold by a shop together with its lots. Read it when you implement, review or test POST v1/shop/product-sku/upsert."
+description: "Insert, update, delete or archive a SKU of a product sold by a shop together with its lots, for a member of the shop or a platform administrator from the verified JWT roles claim after the caller lock and the current credential check. Read it when you implement, review or test POST v1/shop/product-sku/upsert."
 status: in-review
 approved_by: null
 approved_at: null
@@ -35,7 +35,9 @@ approved_at: null
 - A lot that is on sale cannot be deleted or archived (409, E10006, put another lot on sale or close it first), and a lot that is referenced by order items (`sales.t_order_item.lot_id`) cannot be deleted (409, E10006). Archiving a lot that is not on sale is allowed.
 - Deleting a shop product SKU (`rowStatus = DELETED`) soft-deletes all of its lots and is rejected with 409 (E10006) when any of its lots is referenced by order items. Archiving a shop product SKU keeps its lots but none of them can be on sale.
 - `gross_margin`, `share_margin` and `platform_margin` of a lot are calculated by the system from the costs, the selling price and the margin rates of the shop, they are not part of the request.
-- Permission: the caller (the user of the access token, never a field of the request) must be a member of the shop, an ADMIN or a STAFF in `shop.t_shop_user` that is ACTIVE, or a platform administrator (a user that has the role `PLATFORM_ADMIN`), otherwise the request is rejected with 403 (E10009) and nothing is written. The rule covers every kind of write of this API (insert, update, delete, archive and the lots). The shop must be ACTIVE (see "Check shop"), a shop that is INACTIVE, LOCKED, ARCHIVED or DELETED counts as not found (404, E10005). This permission model (the role PLATFORM_ADMIN, the members of the shop and the code E10009) was approved by the product owner, the choice that STAFF may also manage SKUs and lots is a decision of the lead SA, restrict it to ADMIN if STAFF must not change prices.
+- Governing decisions: owner-confirmed API review Q2, Q4, Q10 and Q13 (JWT payload of 2026-11-13).
+- Permission: the caller (the user of the verified access token, never a field of the request) must be an ACTIVE member of the shop (an ADMIN or a STAFF in `shop.t_shop_user` that is ACTIVE) or have the exact case-sensitive role `PLATFORM_ADMIN` in the verified `roles` claim (an array of role names, an empty array is valid), otherwise the request is rejected with 403 (E10009) and nothing is written. The platform administrator is read only from the verified `roles` claim: do not query `author.m_role` or `author.t_user_role`, a change of the role assignments does not change a token that was already issued. Membership of a shop is not a token claim and is still read from `shop.t_shop_user`. The rule covers every kind of write of this API (insert, update, delete, archive and the lots). The shop must be ACTIVE (see "Check shop"), a shop that is INACTIVE, LOCKED, ARCHIVED or DELETED counts as not found (404, E10005). This permission model (the role PLATFORM_ADMIN, the members of the shop and the code E10009) was approved by the product owner, the choice that STAFF may also manage SKUs and lots is a decision of the lead SA, restrict it to ADMIN if STAFF must not change prices.
+- The transaction locks the caller user first and checks the current credential, a missing user or credential is 401 (E10002). The order of the checks and the locks is in the sequence diagram.
 - HTTP status of the single upsert: Insert 201 Created (a new shop product SKU), Update 200 Ok (including changes of lots only), Delete 204 No Content (no response body), Archive 200 Ok.
 
 ---
@@ -575,9 +577,54 @@ HTTP/1.1 204 No Content
 }
 ```
 
+#### Fail - Internal Server Error
+
+```JSON
+{
+    "status": {
+        "code": 500,
+        "message": "Internal Server Error",
+        "bizMessage": "An unexpected error occurred.",
+        "requestId": "req-500a1b2c-3d4e-5f6a-7b8c-9d0e1f2a3b4c",
+        "timestamp": "2026-11-05T12:46:10.123Z",
+        "status": "ERROR"
+    }
+}
+```
+
 ---
 
 ## Database Relations
+
+One READ COMMITTED transaction. The caller identity (`callerUserId`, the `sub` of the verified JWT, the same user as `userId` of the member check) is distinct from the shop product SKU; the fresh UTC time is bound. The caller user is locked first, then the current credential is checked.
+
+### Table: [authen.m_user](../../../schema/authen/m_user.md)
+
+#### QUERY - Lock the caller user
+
+```SQL
+SELECT
+    u.id as user_id
+FROM authen.m_user u
+WHERE u.id = '<sequence.callerUserId>'
+FOR UPDATE
+```
+
+### Table: [authen.t_user_access_token](../../../schema/authen/t_user_access_token.md)
+
+#### QUERY - Check current credential and user
+
+```SQL
+SELECT
+    at.id as access_token_id
+FROM authen.t_user_access_token at
+JOIN authen.m_user u ON u.id = at.user_id
+WHERE at.token = '<sequence.accessTokenHash>'
+AND at.user_id = '<sequence.callerUserId>'
+AND at.row_status = 'ACTIVE'
+AND at.expired_at > '<sequence.now>'
+AND u.row_status = 'ACTIVE'
+```
 
 ### Table: [shop.m_shop](../../../schema/shop/m_shop.md)
 
@@ -603,31 +650,6 @@ WHERE su.shop_id = '<sequence.shopId>'
 AND su.user_id = '<sequence.userId>'
 AND su.role IN ('ADMIN', 'STAFF')
 AND su.row_status = 'ACTIVE'
-```
-
-### Table: [author.m_role](../../../schema/author/m_role.md)
-
-#### QUERY - Get the platform administrator role
-
-```SQL
-SELECT
-    r.id as role_id
-FROM author.m_role r
-WHERE r.name = 'PLATFORM_ADMIN'
-AND r.row_status = 'ACTIVE'
-```
-
-### Table: [author.t_user_role](../../../schema/author/t_user_role.md)
-
-#### QUERY - Check platform administrator
-
-```SQL
-SELECT
-    ur.id as user_role_id
-FROM author.t_user_role ur
-WHERE ur.user_id = '<sequence.userId>'
-AND ur.role_id = '<sequence.roleId>'
-AND ur.row_status = 'ACTIVE'
 ```
 
 ### Table: [product.m_product_sku](../../../schema/product/m_product_sku.md)

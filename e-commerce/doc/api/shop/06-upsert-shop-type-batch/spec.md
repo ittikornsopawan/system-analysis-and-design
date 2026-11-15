@@ -1,6 +1,6 @@
 ---
 name: "Upsert Shop Type Batch API"
-description: "Insert, update or delete multiple shop types at the same time. Read it when you implement, review or test POST v1/shop/type/upsert/batch."
+description: "Insert, update, delete or archive several shop types in one transaction, only for a platform administrator authorized from the verified JWT roles claim after the caller lock and the current credential check. Read it when you implement, review or test POST v1/shop/type/upsert/batch."
 status: in-review
 approved_by: null
 approved_at: null
@@ -31,7 +31,9 @@ approved_at: null
 - `id` must not be duplicated in the request, and `name` must not be duplicated among the items that are not DELETED (400, E10001). The name of a DELETED item is not compared.
 - Swapping the names of two shop types in one request is rejected with 409 (E10003) at the first item, because that name is still held by the other shop type when the item is checked. Rename them in two requests.
 - An item without `id` and with `rowStatus` DELETED is rejected with 400 (E10001).
-- Permission: the same as the single upsert, only a platform administrator (a user with an ACTIVE `author.t_user_role` row for the ACTIVE role `PLATFORM_ADMIN`) can call this API, any other caller gets 403 (E10009). The check is made once for the request, after the existence checks of all items and before the duplicate, in-use and other conflict checks, so the 403 message has no item position. Approved by the product owner (answered through the lead SA, 2026-11-06).
+- Governing decisions: owner-confirmed API review Q2, Q4, Q10 and Q13 (JWT payload of 2026-11-13).
+- Permission: the same as the single upsert, only a platform administrator can call this API: the verified JWT `roles` claim (an array of role names, an empty array is valid) must contain the exact case-sensitive role `PLATFORM_ADMIN`, otherwise 403 (E10009). The check is made once for the request, after the existence checks of all items and before the duplicate, in-use and other conflict checks, so the 403 message has no item position. Never query `author.m_role` or `author.t_user_role`: a change of the role assignments does not change a token that was already issued.
+- The transaction locks the caller user first and checks the current credential, a missing user or credential is 401 (E10002). The order of the checks and the locks is in the sequence diagram.
 - The response is HTTP 200 for every successful batch, including a batch that deletes.
 
 ---
@@ -402,9 +404,54 @@ curl --location --request POST 'https://www.domain.com/api-dev/v1/shop/type/upse
 }
 ```
 
+#### Fail - Internal Server Error
+
+```JSON
+{
+    "status": {
+        "code": 500,
+        "message": "Internal Server Error",
+        "bizMessage": "An unexpected error occurred.",
+        "requestId": "req-500a1b2c-3d4e-5f6a-7b8c-9d0e1f2a3b4c",
+        "timestamp": "2026-11-05T12:46:10.123Z",
+        "status": "ERROR"
+    }
+}
+```
+
 ---
 
 ## Database Relations
+
+One READ COMMITTED transaction. The caller identity (`callerUserId`, the `sub` of the verified JWT) is distinct from the shop types; the fresh UTC time is bound. The caller user is locked first, then the current credential is checked, then the shop types of the items with an id are locked one by one in ascending id order (`FOR UPDATE`) before the permission decision, the in-use checks and the writes.
+
+### Table: [authen.m_user](../../../schema/authen/m_user.md)
+
+#### QUERY - Lock the caller user
+
+```SQL
+SELECT
+    u.id as user_id
+FROM authen.m_user u
+WHERE u.id = '<sequence.callerUserId>'
+FOR UPDATE
+```
+
+### Table: [authen.t_user_access_token](../../../schema/authen/t_user_access_token.md)
+
+#### QUERY - Check current credential and user
+
+```SQL
+SELECT
+    at.id as access_token_id
+FROM authen.t_user_access_token at
+JOIN authen.m_user u ON u.id = at.user_id
+WHERE at.token = '<sequence.accessTokenHash>'
+AND at.user_id = '<sequence.callerUserId>'
+AND at.row_status = 'ACTIVE'
+AND at.expired_at > '<sequence.now>'
+AND u.row_status = 'ACTIVE'
+```
 
 ### Table: [shop.m_shop_type](../../../schema/shop/m_shop_type.md)
 
@@ -416,6 +463,7 @@ SELECT
 FROM shop.m_shop_type st
 WHERE st.id = '<sequence.shopTypes.id>'
 AND st.row_status <> 'DELETED' -- the id of a DELETED shop type counts as not found
+FOR UPDATE
 ```
 
 #### QUERY - Check duplicate name
@@ -471,29 +519,4 @@ SELECT
 FROM shop.m_shop s
 WHERE s.type_id = '<sequence.shopTypes.id>' -- only when rowStatus is DELETED or ARCHIVED
 AND s.row_status <> 'DELETED'
-```
-
-### Table: [author.m_role](../../../schema/author/m_role.md)
-
-#### QUERY - Get the platform administrator role
-
-```SQL
-SELECT
-    r.id as role_id
-FROM author.m_role r
-WHERE r.name = 'PLATFORM_ADMIN'
-AND r.row_status = 'ACTIVE'
-```
-
-### Table: [author.t_user_role](../../../schema/author/t_user_role.md)
-
-#### QUERY - Check platform administrator
-
-```SQL
-SELECT
-    ur.id as user_role_id
-FROM author.t_user_role ur
-WHERE ur.user_id = '<sequence.userId>'
-AND ur.role_id = '<sequence.roleId>'
-AND ur.row_status = 'ACTIVE'
 ```
