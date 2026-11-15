@@ -2821,7 +2821,7 @@ SHIPPING_NEEDLES = {
            "#### QUERY - Count the shippings that are still active", "#### UPDATE - Give the order back to PAYMENT_CONFIRMED", "AND status = 'PROCESSING'",
            "#### QUERY - Lock the order", "FOR UPDATE", "#### Fail - Conflict Tracking Number", "#### Fail - Conflict Status", "E10003", "E10006", "E10009",
            "approved by the product owner", "#### QUERY - Check shop member", "#### QUERY - Lock the shipping", "FOR UPDATE -- read again after the order row is locked", "the status step is checked on that second read", "approved by the product owner on 2026-11-08"],
-    "03": ["- The caller must be an ACTIVE member of the shop of the order", "#### INSERT - Create the stop", "#### UPDATE - Update, delete or archive the stop", "#### QUERY - Check duplicate stop number",
+    "03": ["- The caller needs a verified JWT, then must be an ACTIVE member of the shop of the order", "#### INSERT - Create the stop", "#### UPDATE - Update, delete or archive the stop", "#### QUERY - Check duplicate stop number",
            "#### QUERY - Lock the order", "FOR UPDATE", "#### Fail - Bad Request Row Status", "#### Fail - Conflict Status", "E10003", "E10006", "E10009",
            "Delete 204 No Content (no response body)", "approved by the product owner", "#### QUERY - Check shop member", "#### Fail - Not Found Shipping", "`Shipping not found.`", "approved by the product owner on 2026-11-08"],
     "04": ["- The caller must be an ACTIVE member of the shop (", "E10009", "#### Fail - Forbidden", "#### Fail - Not Found Reference", "#### QUERY - Check shop member",
@@ -3120,6 +3120,7 @@ SHIPPING_JWT_SEQ = ["Verify JWT signature, issuer, audience, exp, UUID sub and t
 SHIPPING_JWT_ORDER = {
     "01": "verify the JWT (401) -> begin the transaction, lock the caller user and check the current credential (401) -> existence of the order and of the order items (404) -> permission of the caller (403)",
     "02": "validate the request (400) -> verify the JWT (401) -> begin the transaction, lock the caller user and check the current credential (401) -> existence of the shipping (404) -> permission of the caller (403)",
+    "03": "validate the request (400) -> verify the JWT (401) -> begin the transaction, lock the caller user and check the current credential (401) -> existence of the shipping and of the stop (404) -> permission of the caller (403)",
 }
 SHIPPING_JWT_GONE = ["QUERY - Get the platform administrator role", "QUERY - Check platform administrator", "infra -> m_role", "infra -> t_user_role", "(../../../schema/author/"]
 
