@@ -1,6 +1,6 @@
 ---
 name: Upsert Product Category API Specification
-description: Defines the insert, update, delete and archive of one product category with its parent, the platform administrator permission, the in-use and campaign checks and the SQL of every step; read when reviewing or implementing the product category upsert.
+description: Defines the insert, update, delete and archive of one product category with its parent, the platform administrator authorization from the verified JWT roles claim, the in-use and campaign checks and the SQL of every step; read when reviewing or implementing the product category upsert.
 status: in-review
 approved_by: null
 approved_at: null
@@ -26,7 +26,8 @@ approved_at: null
 | PRE-PRODUCTION | https://www.domain.com/api-pre-prod |
 | PRODUCTION     | https://www.domain.com/api          |
 
-- Only a platform administrator can call this API (a user with an ACTIVE `author.t_user_role` row for the ACTIVE role `PLATFORM_ADMIN`), otherwise 403 (E10009). Reading is not changed by this rule. Approved by the product owner (answered through the lead SA, 2026-11-06). The order of the checks is in the sequence diagram.
+- Only a platform administrator can call this API: the verified JWT `roles` claim (an array of role names, an empty array is valid) must contain the exact case-sensitive role `PLATFORM_ADMIN`, otherwise 403 (E10009). Never query `author.m_role` or `author.t_user_role`: a change of the role assignments does not change a token that was already issued, the former privilege may last until it expires (15 minutes by the existing configuration). A missing or malformed `roles` claim is a generic 401 (E10002), never an empty-role fallback. Reading is not changed by this rule. Approved by the product owner (Q2, Q4, Q10 and Q13 of the API review, 2026-11-07).
+- The transaction locks the caller user first and checks the current credential, a missing user or credential is 401 (E10002). The order of the checks and the locks is in the sequence diagram.
 - A product category cannot be deleted while it is in a campaign that is not DELETED and has not ended (409, E10006, with the campaign name in the message); archiving is always allowed. Approved by the product owner on 2026-11-06 (campaign design, C13).
 
 ---
@@ -405,6 +406,34 @@ HTTP/1.1 204 No Content
 
 ## Database Relations
 
+### Table: [authen.m_user](../../../schema/authen/m_user.md)
+
+#### QUERY - Lock the caller user
+
+```SQL
+SELECT
+    u.id as user_id
+FROM authen.m_user u
+WHERE u.id = '<sequence.callerUserId>'
+FOR UPDATE
+```
+
+### Table: [authen.t_user_access_token](../../../schema/authen/t_user_access_token.md)
+
+#### QUERY - Check current credential and user
+
+```SQL
+SELECT
+    at.id as access_token_id
+FROM authen.t_user_access_token at
+JOIN authen.m_user u ON u.id = at.user_id
+WHERE at.token = '<sequence.accessTokenHash>'
+AND at.user_id = '<sequence.callerUserId>'
+AND at.row_status = 'ACTIVE'
+AND at.expired_at > '<sequence.now>'
+AND u.row_status = 'ACTIVE'
+```
+
 ### Table: [product.m_product_category](../../../schema/product/m_product_category.md)
 
 #### QUERY - Check parent category
@@ -531,29 +560,4 @@ AND cp.row_status <> 'DELETED'
 AND c.row_status <> 'DELETED'
 AND c.end_at > NOW() AT TIME ZONE 'UTC' -- a campaign that ended or was deleted does not block, answer 409 (E10006) when a row is found
 LIMIT 1
-```
-
-### Table: [author.m_role](../../../schema/author/m_role.md)
-
-#### QUERY - Get the platform administrator role
-
-```SQL
-SELECT
-    r.id as role_id
-FROM author.m_role r
-WHERE r.name = 'PLATFORM_ADMIN'
-AND r.row_status = 'ACTIVE'
-```
-
-### Table: [author.t_user_role](../../../schema/author/t_user_role.md)
-
-#### QUERY - Check platform administrator
-
-```SQL
-SELECT
-    ur.id as user_role_id
-FROM author.t_user_role ur
-WHERE ur.user_id = '<sequence.userId>'
-AND ur.role_id = '<sequence.roleId>'
-AND ur.row_status = 'ACTIVE'
 ```
