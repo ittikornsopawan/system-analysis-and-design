@@ -26,7 +26,9 @@ approved_at: null
 | PRE-PRODUCTION | https://www.domain.com/api-pre-prod |
 | PRODUCTION     | https://www.domain.com/api          |
 
-- The caller must be an ACTIVE member of the shop of the order (a row of `shop.t_shop_user` with the role ADMIN or STAFF that is ACTIVE) or a platform administrator (a user that has the role `PLATFORM_ADMIN`), otherwise 403 (E10009). This permission model was approved by the product owner.
+- The caller needs a verified JWT, then must be an ACTIVE member of the shop of the order (a row of `shop.t_shop_user` with the role ADMIN or STAFF that is ACTIVE) or have the role `PLATFORM_ADMIN` in the verified `roles` claim, otherwise 403 (E10009).
+- The platform administrator is the exact case-sensitive role `PLATFORM_ADMIN` in the verified `roles` claim; do not query `author.m_role` or `author.t_user_role`, and a change of the assignment after the token was issued does not change this token (it may stay usable until its expiry). Membership of a shop is not a token claim and is still read from `shop.t_shop_user`.
+- The JWT and credential checks, the lock order and the order of the checks are in the sequence diagram.
 - A shipping can only be created for an order that is `PAYMENT_CONFIRMED` or `PROCESSING` (a later parcel of an order that is already being shipped), otherwise 409 (E10006) with the current status in the message. This API only reads the status of the order, it knows nothing about the payment provider.
 - An order can be shipped in several parcels. For every order item the quantity that is already in a shipping with the status `PENDING`, `SHIPPED` or `DELIVERED` counts as assigned (a `CANCELLED` or `RETURNED` parcel frees its quantity). `quantity` plus the assigned quantity must not be more than the quantity of the order item, otherwise 409 (E10006). The check runs while the order row is locked, so two requests at the same time cannot assign the same quantity twice.
 - Every `orderItemId` must be an item of the order that is not DELETED, otherwise 404 (E10005) with the position, `items[1]: ...`. The same `orderItemId` twice in the request, an empty `items` list, more than 100 items or a quantity that is not a positive integer is 400 (E10001).
@@ -474,27 +476,30 @@ AND su.role IN ('ADMIN', 'STAFF')
 AND su.row_status = 'ACTIVE'
 ```
 
-### Table: [author.m_role](../../../schema/author/m_role.md)
+### Table: [authen.m_user](../../../schema/authen/m_user.md)
 
-#### QUERY - Get the platform administrator role
+#### QUERY - Lock the caller user
 
 ```SQL
 SELECT
-    r.id as role_id
-FROM author.m_role r
-WHERE r.name = 'PLATFORM_ADMIN'
-AND r.row_status = 'ACTIVE'
+    u.id as user_id
+FROM authen.m_user u
+WHERE u.id = '<sequence.userId>'
+FOR UPDATE -- the caller user is locked first, before any other row of the request
 ```
 
-### Table: [author.t_user_role](../../../schema/author/t_user_role.md)
+### Table: [authen.t_user_access_token](../../../schema/authen/t_user_access_token.md)
 
-#### QUERY - Check platform administrator
+#### QUERY - Check current credential and user
 
 ```SQL
 SELECT
-    ur.id as user_role_id
-FROM author.t_user_role ur
-WHERE ur.user_id = '<sequence.userId>'
-AND ur.role_id = '<sequence.roleId>'
-AND ur.row_status = 'ACTIVE'
+    at.id as access_token_id
+FROM authen.t_user_access_token at
+JOIN authen.m_user u ON u.id = at.user_id
+WHERE at.token = '<sequence.accessTokenHash>'
+AND at.user_id = '<sequence.userId>'
+AND at.row_status = 'ACTIVE'
+AND at.expired_at > '<sequence.now>'
+AND u.row_status = 'ACTIVE'
 ```
