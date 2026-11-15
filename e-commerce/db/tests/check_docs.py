@@ -2815,12 +2815,12 @@ SHIPPING_NEEDLES = {
            "#### Fail - Conflict Order Status", "#### Fail - Not Found Reference", "#### Fail - Forbidden", "E10009", "E10006",
            "validate the request (400) -> verify the JWT (401)",
            "approved by the product owner", "#### QUERY - Check shop member"],
-    "02": ["- The caller must be an ACTIVE member of the shop of the order", "`PENDING` -> `SHIPPED`", "`PENDING` -> `CANCELLED`", "`SHIPPED` -> `RETURNED`", "#### UPDATE - Mark the shipping as shipped",
+    "02": ["- The caller needs a verified JWT, then must be an ACTIVE member of the shop of the order", "`PENDING` -> `SHIPPED`", "`PENDING` -> `CANCELLED`", "`SHIPPED` -> `RETURNED`", "#### UPDATE - Mark the shipping as shipped",
            "#### UPDATE - Cancel the shipping", "#### UPDATE - Mark the shipping as returned", "AND status = 'PENDING' -- no row changed means the status changed in the meantime",
            "AND status = 'SHIPPED' -- no row changed means the status changed in the meantime", "#### QUERY - Check duplicate tracking number",
            "#### QUERY - Count the shippings that are still active", "#### UPDATE - Give the order back to PAYMENT_CONFIRMED", "AND status = 'PROCESSING'",
            "#### QUERY - Lock the order", "FOR UPDATE", "#### Fail - Conflict Tracking Number", "#### Fail - Conflict Status", "E10003", "E10006", "E10009",
-           "approved by the product owner", "#### QUERY - Check shop member", "#### QUERY - Check platform administrator", "#### QUERY - Lock the shipping", "FOR UPDATE -- read again after the order row is locked", "the status step is checked on that second read", "approved by the product owner on 2026-11-08"],
+           "approved by the product owner", "#### QUERY - Check shop member", "#### QUERY - Lock the shipping", "FOR UPDATE -- read again after the order row is locked", "the status step is checked on that second read", "approved by the product owner on 2026-11-08"],
     "03": ["- The caller must be an ACTIVE member of the shop of the order", "#### INSERT - Create the stop", "#### UPDATE - Update, delete or archive the stop", "#### QUERY - Check duplicate stop number",
            "#### QUERY - Lock the order", "FOR UPDATE", "#### Fail - Bad Request Row Status", "#### Fail - Conflict Status", "E10003", "E10006", "E10009",
            "Delete 204 No Content (no response body)", "approved by the product owner", "#### QUERY - Check shop member", "#### Fail - Not Found Shipping", "`Shipping not found.`", "approved by the product owner on 2026-11-08"],
@@ -3117,7 +3117,10 @@ SHIPPING_JWT_SEQ = ["Verify JWT signature, issuer, audience, exp, UUID sub and t
                     "do not query `author.m_role` or `author.t_user_role`", "Q2/Q4/Q10/Q13", "lock the caller user first (`QUERY - Lock the caller user`, `FOR UPDATE`)",
                     "FOR UPDATE -- the caller user is locked first, before any other row of the request", "app -> infra: QUERY - Check current credential and user",
                     "WHERE at.token = '<sequence.accessTokenHash>'", "alt The roles claim has no PLATFORM_ADMIN"]
-SHIPPING_JWT_ORDER = {"01": "verify the JWT (401) -> begin the transaction, lock the caller user and check the current credential (401) -> existence of the order and of the order items (404) -> permission of the caller (403)"}
+SHIPPING_JWT_ORDER = {
+    "01": "verify the JWT (401) -> begin the transaction, lock the caller user and check the current credential (401) -> existence of the order and of the order items (404) -> permission of the caller (403)",
+    "02": "validate the request (400) -> verify the JWT (401) -> begin the transaction, lock the caller user and check the current credential (401) -> existence of the shipping (404) -> permission of the caller (403)",
+}
 SHIPPING_JWT_GONE = ["QUERY - Get the platform administrator role", "QUERY - Check platform administrator", "infra -> m_role", "infra -> t_user_role", "(../../../schema/author/"]
 
 
