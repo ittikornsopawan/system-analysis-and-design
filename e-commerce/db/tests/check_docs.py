@@ -933,8 +933,7 @@ def check_storefront_example(md: str) -> list[str]:
 
 # Shop specs moved to the verified JWT roles claim (API review Q2, Q4, Q10, Q13): spec key -> the heading of its shop membership query (still read from
 # shop.t_shop_user). The needles are searched in the file where the text lives, the spec or the sequence, never both combined.
-SHOP_JWT_MEMBER = {"01": ("QUERY - Check shop member", "alt The caller is not an ACTIVE ADMIN or STAFF member of the shop"),
-                   "02": ("QUERY - Check shop members", "alt A shop of the request has no ACTIVE ADMIN or STAFF member row for the caller")}
+SHOP_JWT_MEMBER = {"01": "QUERY - Check shop member"}
 SHOP_JWT_SPEC = ["Q2, Q4, Q10 and Q13", "the exact case-sensitive role `PLATFORM_ADMIN` in the verified `roles` claim", "do not query `author.m_role` or `author.t_user_role`",
                  "Membership of a shop is not a token claim and is still read from `shop.t_shop_user`", "#### QUERY - Lock the caller user", "WHERE u.id = '<sequence.callerUserId>'\nFOR UPDATE",
                  "#### QUERY - Check current credential and user", "AND at.expired_at > '<sequence.now>'", "(../../../schema/authen/m_user.md)", "(../../../schema/authen/t_user_access_token.md)",
@@ -944,7 +943,7 @@ SHOP_JWT_SEQ = ["Verify JWT signature/issuer/audience/expiry/UUID sub and the ro
 SHOP_JWT_GONE = ["QUERY - Get the platform administrator role", "QUERY - Check platform administrator", "(../../../schema/author/", "infra -> m_role", "infra -> t_user_role"]
 
 
-def shop_jwt_errors(path: str, md: str, wsd: str, member: str, no_member: str) -> list[str]:
+def shop_jwt_errors(path: str, md: str, wsd: str, member: str) -> list[str]:
     errors = []
     flat = re.sub(r"\n\s+", " ", wsd)
     errors += [f"{path} missing: {n!r}" for n in missing_needles(md, SHOP_JWT_SPEC)]
@@ -959,7 +958,7 @@ def shop_jwt_errors(path: str, md: str, wsd: str, member: str, no_member: str) -
     if "FOR UPDATE" not in sql.get("QUERY - Lock the caller user", "") or "NOW()" in sql.get("QUERY - Check current credential and user", ""):
         errors.append(f"{path}: the caller lock needs FOR UPDATE and the credential check the bound time")
     marks = ["app -> app: Verify JWT", "HTTP 401 E10002", "app -> infra: BEGIN READ COMMITTED", "app -> infra: QUERY - Lock the caller user", "Capture fresh server UTC now",
-             "app -> infra: QUERY - Check current credential and user", "app -> infra: " + member, no_member, "alt The verified roles claim has no PLATFORM_ADMIN", "app -> api: HTTP 403 E10009 ", "app -> infra: COMMIT"]
+             "app -> infra: QUERY - Check current credential and user", "app -> infra: " + member, "alt The caller is not an ACTIVE ADMIN or STAFF member of the shop", "alt The verified roles claim has no PLATFORM_ADMIN", "app -> api: HTTP 403 E10009 ", "app -> infra: COMMIT"]
     pos = [wsd.find(x) for x in marks]
     if -1 in pos or pos != sorted(pos):
         errors.append(f"{path} (sequence): steps must run verify JWT, 401, BEGIN, caller lock, fresh time, credential, member check, no member, the claims decision, 403, COMMIT")
@@ -1008,10 +1007,10 @@ def check_shop_spec() -> int:
         seq = re.sub(r"\n\s+", " ", read(SHOP_SPECS[key].replace("spec.md", "sequence.wsd")))
         for missing in missing_needles(mds[key] + "\n" + seq, need):
             errors.append(f"{SHOP_SPECS[key]} missing: {missing}")
-    for key, (member, no_member) in SHOP_JWT_MEMBER.items():
+    for key, member in SHOP_JWT_MEMBER.items():
         if key in mds:
             wsd_path = SHOP_SPECS[key].replace("spec.md", "sequence.wsd")
-            errors.extend(shop_jwt_errors(SHOP_SPECS[key], mds[key], read(wsd_path), member, no_member))
+            errors.extend(shop_jwt_errors(SHOP_SPECS[key], mds[key], read(wsd_path), member))
     store = mds["04"]
     for forbidden in ["costPrice", "cost_price", "grossMargin", "gross_margin", "authorization"]:
         # the storefront is public and never returns cost or margins
@@ -3297,6 +3296,11 @@ MASTER = {
 # Consent type APIs already moved to the verified JWT roles claim; add the kind in the pull request that migrates it.
 CONSENT_TYPE_JWT_KINDS = {"upsert", "batch", "inquiry"}
 MASTER_GROUPS = {"product-master": ("product-type", "product-brand"), "consent-type": ("consent-type",)}
+# Product type and product brand APIs moved to the verified JWT roles claim (API review Q2, Q4, Q10, Q13): the live role queries are gone and the
+# caller lock with the current credential check take their place. Add a folder here in the pull request that migrates it.
+MASTER_JWT_CLAIMS = {
+    "product/10-upsert-product-type",
+}
 SINGLE_UPSERT_SPECS.extend(f"{MASTER_API}/{m['group']}/{m['nums'][0]}-{m['folder'][0]}/spec.md" for m in MASTER.values())
 BATCH_UPSERT_SPECS.extend(f"{MASTER_API}/{m['group']}/{m['nums'][1]}-{m['folder'][1]}/spec.md" for m in MASTER.values())
 
@@ -3324,6 +3328,10 @@ def master_needles(m: dict) -> list[dict]:
                  "AND at.expired_at > '<sequence.now>'", "(../../../schema/authen/m_user.md)", "(../../../schema/authen/t_user_access_token.md)",
                  f"You do not have permission to change {lower}s.", "Approved by the product owner"]
     admin_kind = {k: admin if k in CONSENT_TYPE_JWT_KINDS else admin_live for k in ("upsert", "batch")}
+    if not m["consent"]:
+        # a migrated product master spec keeps only the 403 example here; its claims rule is checked by master_claims_errors
+        claims_needles = ["- Permission:", "E10009", "#### Fail - Forbidden", f"You do not have permission to change {lower}s.", "Approved by the product owner"]
+        admin_kind = {k: claims_needles if f"product/{m['nums'][i]}-{m['folder'][i]}" in MASTER_JWT_CLAIMS else admin_kind[k] for i, k in enumerate(("upsert", "batch"))}
     upsert = [f"# [POST]: v1/{m['path']}/upsert", f"### {m['title']} Rules", "-> permission (403, E10009) -> duplicate name check", f"(../../../schema/{m['doc']})",
               f"(../../../schema/{m['use_doc']})", f"#### QUERY - Check {m['use_thing']} in use", f"WHERE {ua}.{uc} = '<sequence.id>' -- only when rowStatus is DELETED or ARCHIVED",
               f"AND {ua}.row_status <> 'DELETED'", f"AND {alias}.row_status <> 'DELETED'\nAND {alias}.id <> '<sequence.id>'", f"{cap} name already exists.",
@@ -3565,6 +3573,22 @@ def consent_type_claims_errors(kind: str, md: str, wsd: str) -> list[str]:
     return errors
 
 
+def master_claims_errors(kind: str, md: str, wsd: str) -> list[str]:
+    """A product master upsert that authorizes from the verified JWT roles claim: the rule and the two SQL blocks in the spec, the order in the diagram, no author table."""
+    errors = [f"missing in the spec: {n!r}" for n in missing_needles(md, [
+        ADMIN_WRITE_CLAIMS_RULE, "Q2, Q4, Q10 and Q13", "Never query `author.m_role` or `author.t_user_role`", "The order of the checks and the locks is in the sequence diagram",
+        "#### QUERY - Lock the caller user", "WHERE u.id = '<sequence.callerUserId>'\nFOR UPDATE", "#### QUERY - Check current credential and user",
+        "AND at.expired_at > '<sequence.now>'", "(../../../schema/authen/m_user.md)", "(../../../schema/authen/t_user_access_token.md)"] + (
+        ["so the 403 message has no item position"] if kind == "batch" else []))]
+    for gone in ("#### QUERY - Get the platform administrator role", "#### QUERY - Check platform administrator", "schema/author/"):
+        if gone in md:
+            errors.append(f"the spec must not contain {gone!r}")
+    errors += [f"in the sequence: {e}" for e in admin_write_claims_flow_errors(wsd, kind == "batch")]
+    if kind == "upsert" and "-> permission from the roles claim (403, E10009) -> duplicate name check" not in " ".join(wsd.split()):
+        errors.append("the sequence note must say '-> permission from the roles claim (403, E10009) -> duplicate name check'")
+    return errors
+
+
 def check_master_spec(names: tuple[str, ...], label: str) -> int:
     errors = []
     for name in names:
@@ -3598,12 +3622,15 @@ def check_master_spec(names: tuple[str, ...], label: str) -> int:
                 errors.append(f"{path} sequence note missing: {missing!r}")
             if m["consent"] and kind in CONSENT_TYPE_JWT_KINDS and (ROOT / path).with_name("sequence.wsd").exists():
                 errors.extend(f"{path}: {e}" for e in consent_type_claims_errors(kind, md, (ROOT / path).with_name("sequence.wsd").read_text(encoding="utf-8")))
+            migrated = f"product/{m['nums'][i]}-{m['folder'][i]}" in MASTER_JWT_CLAIMS
+            if migrated:
+                errors.extend(f"{path}: {e}" for e in master_claims_errors(kind, md, (ROOT / path).with_name("sequence.wsd").read_text(encoding="utf-8")))
             for text, times in master_counted(m)[kind]:
                 if md.count(text) != times:
                     errors.append(f"{path}: {text!r} must appear {times} time(s), found {md.count(text)}")
             diagram_path = str(Path(path).with_name("sequence.wsd"))
             if (ROOT / diagram_path).exists():
-                for missing in missing_needles(read(diagram_path), master_diagram_needles(m).get(kind, [])):
+                for missing in missing_needles(read(diagram_path), [] if migrated else master_diagram_needles(m).get(kind, [])):
                     errors.append(f"{diagram_path} missing: {missing!r}")
             for forbidden in MASTER_FORBIDDEN[kind]:
                 if forbidden in md:
@@ -5814,6 +5841,7 @@ ADMIN_WRITE_APPROVED = "Approved by the product owner (answered through the lead
 # current credential check take their place. Add a folder here in the pull request that migrates it.
 ADMIN_WRITE_JWT_CLAIMS = {
     "shop/05-upsert-shop-type",
+    "shop/06-upsert-shop-type-batch",
     "product/01-upsert-product",
     "product/03-upsert-product-batch",
     "product/09-upsert-product-category-attribute-batch",
@@ -5833,6 +5861,9 @@ ADMIN_WRITE_CAMPAIGN = {  # migrated folders that keep the campaign delete rule
 }
 ADMIN_WRITE_RULE_IN_DIAGRAM = {  # folder: the phrases that the visible note of its diagram must say
 }
+# Claims specs whose existing target row is locked (FOR UPDATE) before the permission decision, the in-use check and the write (lead decision of 2026-11-15);
+# the batch locks the rows in ascending id order.
+ADMIN_WRITE_TARGET_LOCK = {"shop/05-upsert-shop-type": "QUERY - Check existing shop type", "shop/06-upsert-shop-type-batch": "QUERY - Check existing shop type"}
 ADMIN_WRITE_CLAIMS_RULE = "the verified JWT `roles` claim (an array of role names, an empty array is valid) must contain the exact case-sensitive role `PLATFORM_ADMIN`"
 ADMIN_WRITE_RULE_BATCH = ("Permission: the same as the single upsert, only a platform administrator (a user with an ACTIVE `author.t_user_role` row for the ACTIVE role `PLATFORM_ADMIN`) "
                           "can call this API, any other caller gets 403 (E10009)")
@@ -5975,6 +6006,16 @@ def check_admin_write_spec() -> int:
             errors.append(f"{path}: the {'caller lock and credential' if claims else 'platform administrator'} queries belong to Database Relations")
         if md.count("E10009") < (2 if claims or in_diagram else 3):
             errors.append(f"{path}: E10009 must appear in the rule, {'' if claims or in_diagram else 'the order of checks, '}and the example")
+        if folder in ADMIN_WRITE_TARGET_LOCK:
+            heading = ADMIN_WRITE_TARGET_LOCK[folder]
+            locked = {h: q for _, h, q in spec_database_operations(read(path))}.get(heading, "")
+            if "FOR UPDATE" not in locked:
+                errors.append(f"{path}: '{heading}' must lock the target row with FOR UPDATE")
+            wsd_text = read(str(Path(path).with_name("sequence.wsd")))
+            if not 0 < wsd_text.find("app -> infra: QUERY - Check current credential and user") < wsd_text.find("app -> infra: " + heading) < wsd_text.find("alt The verified roles claim has no PLATFORM_ADMIN"):
+                errors.append(f"{path}: the target row lock comes after the credential check and before the permission decision")
+            if batch and "loop For each item with an id, in ascending id order" not in wsd_text:
+                errors.append(f"{path}: the batch locks the rows in ascending id order")
         if claims:
             errors.extend(f"{path} (sequence): {error}" for error in admin_write_claims_flow_errors(read(str(Path(path).with_name("sequence.wsd"))), batch, thing))
     if errors:
