@@ -3299,6 +3299,7 @@ MASTER_GROUPS = {"product-master": ("product-type", "product-brand"), "consent-t
 # Product type and product brand APIs moved to the verified JWT roles claim (API review Q2, Q4, Q10, Q13): the live role queries are gone and the
 # caller lock with the current credential check take their place. Add a folder here in the pull request that migrates it.
 MASTER_JWT_CLAIMS = {
+    "product/14-upsert-product-brand-batch",
     "product/11-upsert-product-type-batch",
     "product/10-upsert-product-type",
     "product/13-upsert-product-brand",
