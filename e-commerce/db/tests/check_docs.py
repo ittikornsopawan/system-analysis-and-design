@@ -5724,8 +5724,8 @@ ADMIN_WRITE_APPROVED = "Approved by the product owner (answered through the lead
 # current credential check take their place. Add a folder here in the pull request that migrates it.
 ADMIN_WRITE_JWT_CLAIMS = {
     "product/01-upsert-product",
-    "product/04-upsert-product-category",
     "product/03-upsert-product-batch",
+    "product/04-upsert-product-category",
 }
 # Specs that still use the live role queries but keep their rule and order text in the visible note of the diagram, not in the spec.
 _IN_DIAGRAM_SINGLE = ("only a platform administrator (a user with an ACTIVE author.t_user_role row for the ACTIVE role PLATFORM_ADMIN)", "any other caller gets 403 (E10009)",
@@ -5737,9 +5737,7 @@ ADMIN_WRITE_CAMPAIGN = {  # migrated folders that keep the campaign delete rule
     "product/04-upsert-product-category",
 }
 ADMIN_WRITE_RULE_IN_DIAGRAM = {  # folder: the phrases that the visible note of its diagram must say
-    "product/03-upsert-product-batch": ("the same as the single upsert, only a platform administrator", "ACTIVE role PLATFORM_ADMIN", "any other caller gets 403 (E10009)",
-                                        "so the 403 message has no item position", "permission check (403, E10009, once for the request) -> in-use check (409)"),
-    "product/04-upsert-product-category": _IN_DIAGRAM_SINGLE + (_IN_DIAGRAM_CAMPAIGN,),
+
     "product/06-upsert-product-category-batch": _IN_DIAGRAM_BATCH + (_IN_DIAGRAM_CAMPAIGN,),
     "product/07-upsert-product-category-attribute": _IN_DIAGRAM_SINGLE,
     "product/09-upsert-product-category-attribute-batch": _IN_DIAGRAM_BATCH,
