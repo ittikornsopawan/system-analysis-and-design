@@ -69,3 +69,23 @@ Verification of this plan: not applicable yet; the inventory behind it is 21 que
 Progress (2026-11-14T18:15:55+07:00): the owner answers are recorded and the document is in review.
 
 Verification: `md-frontmatter` check OK for the design file and this task file; no other file is changed.
+
+## e-commerce: migrate 12 consent and shop specs to the verified JWT claims (one API per pull request)
+
+Owner: peter
+Status: In progress
+Created at: 2026-11-15T08:38:49+07:00
+Started at: 2026-11-15T08:38:49+07:00
+
+Authority: the owner decisions of `docs/superpowers/specs/2026-11-07-api-review-design.md` (Q2, Q4, Q10, Q13; `PLATFORM_ADMIN` is the exact role name in the `roles` claim, payload of 2026-11-13), assigned by Josh (SA Lead) with `delivery: open-pr`, `authorized_by: josh`. Shop roles design (OWNER) is not approved and not implemented here; shop membership is still read from `shop.t_shop_user`. Specs stay `in-review`.
+
+- [ ] `consent/06-upsert-consent-type` (also leaves `LEGACY_SEQUENCES` and `LEGACY_TOKEN_SEQUENCES`)
+- [ ] `consent/07-upsert-consent-type-batch` (same)
+- [ ] `consent/08-inquiry-consent-type` (leaves `LEGACY_TOKEN_SEQUENCES`)
+- [ ] `shop/05-upsert-shop-type`, [ ] `shop/06-upsert-shop-type-batch`
+- [ ] `shop/01-upsert-shop-product-sku`, [ ] `shop/02-upsert-shop-product-sku-batch`
+- [ ] `shop/08-upsert-shop`, [ ] `shop/09-upsert-shop-batch`, [ ] `shop/10-inquiry-shop`
+- [ ] `shop/11-upsert-shop-user`, [ ] `shop/12-upsert-shop-user-batch`, [ ] `shop/13-inquiry-shop-user`
+- [ ] Park every merged record after the merges are reported, then stop (design freeze).
+
+Progress: consent/06 branch `fix/peter-consent-type-upsert-claims` (JWT verify + 401, BEGIN READ COMMITTED, caller lock, current credential check, 403 from the roles claim, 400/408/500, COMMIT/ROLLBACK; the two live role queries are removed; the checker `consent-type-spec` takes the claims needles for the upsert kind, `CONSENT_TYPE_JWT_KINDS`). Other SQL is unchanged (the existence, duplicate name, in-use, insert and update statements keep their text and take no new lock).

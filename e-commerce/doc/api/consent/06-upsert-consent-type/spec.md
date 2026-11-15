@@ -1,6 +1,6 @@
 ---
 name: Consent Type Upsert API Specification
-description: Defines the consent type upsert contract (insert, update, delete, archive) for a platform administrator with its SQL; read when reviewing or implementing POST v1/consent/type/upsert.
+description: Defines the consent type upsert contract (insert, update, delete, archive) for a platform administrator authorized from the verified JWT roles claim, with the caller lock, the current credential check and its SQL; read when reviewing or implementing POST v1/consent/type/upsert.
 status: in-review
 approved_by: null
 approved_at: null
@@ -30,7 +30,9 @@ approved_at: null
 - `name` is required in every request, including a delete and an archive.
 - DELETED is final: a DELETED consent type is never reopened and its `id` counts as not found (404, E10004).
 - A consent type cannot be deleted or archived while any consent that is not DELETED uses it (`consent.t_consent.consent_type_id`), 409 (E10006).
-- Permission: only a platform administrator (a user with an ACTIVE `author.t_user_role` row for the ACTIVE role `PLATFORM_ADMIN`) can change consent types.
+- Governing decisions: owner-confirmed API review Q2, Q4, Q10 and Q13 (JWT payload of 2026-11-13).
+- Permission: only a platform administrator can change consent types: the verified JWT `roles` claim (an array of role names, an empty array is valid) must contain the exact case-sensitive role `PLATFORM_ADMIN`, otherwise 403 (E10009). Never query `author.m_role` or `author.t_user_role`: a change of the role assignments does not change a token that was already issued.
+- The transaction locks the caller user first and checks the current credential, a missing user or credential is 401 (E10002).
 - The order of the checks, the locks and every outcome is in the sequence diagram.
 
 ---
@@ -351,9 +353,54 @@ HTTP/1.1 204 No Content
 }
 ```
 
+#### Fail - Internal Server Error
+
+```JSON
+{
+    "status": {
+        "code": 500,
+        "message": "Internal Server Error",
+        "bizMessage": "An unexpected error occurred.",
+        "requestId": "req-500a1b2c-3d4e-5f6a-7b8c-9d0e1f2a3b4c",
+        "timestamp": "2026-11-05T12:46:10.123Z",
+        "status": "ERROR"
+    }
+}
+```
+
 ---
 
 ## Database Relations
+
+One READ COMMITTED transaction. The caller identity (`callerUserId`, the `sub` of the verified JWT) is distinct from the consent type; the fresh UTC time is bound. The caller user is locked first, then the current credential is checked.
+
+### Table: [authen.m_user](../../../schema/authen/m_user.md)
+
+#### QUERY - Lock the caller user
+
+```SQL
+SELECT
+    u.id as user_id
+FROM authen.m_user u
+WHERE u.id = '<sequence.callerUserId>'
+FOR UPDATE
+```
+
+### Table: [authen.t_user_access_token](../../../schema/authen/t_user_access_token.md)
+
+#### QUERY - Check current credential and user
+
+```SQL
+SELECT
+    at.id as access_token_id
+FROM authen.t_user_access_token at
+JOIN authen.m_user u ON u.id = at.user_id
+WHERE at.token = '<sequence.accessTokenHash>'
+AND at.user_id = '<sequence.callerUserId>'
+AND at.row_status = 'ACTIVE'
+AND at.expired_at > '<sequence.now>'
+AND u.row_status = 'ACTIVE'
+```
 
 ### Table: [consent.m_consent_type](../../../schema/consent/m_consent_type.md)
 
@@ -423,29 +470,4 @@ SELECT
 FROM consent.t_consent c
 WHERE c.consent_type_id = '<sequence.id>' -- only when rowStatus is DELETED or ARCHIVED
 AND c.row_status <> 'DELETED'
-```
-
-### Table: [author.m_role](../../../schema/author/m_role.md)
-
-#### QUERY - Get the platform administrator role
-
-```SQL
-SELECT
-    r.id as role_id
-FROM author.m_role r
-WHERE r.name = 'PLATFORM_ADMIN'
-AND r.row_status = 'ACTIVE'
-```
-
-### Table: [author.t_user_role](../../../schema/author/t_user_role.md)
-
-#### QUERY - Check platform administrator
-
-```SQL
-SELECT
-    ur.id as user_role_id
-FROM author.t_user_role ur
-WHERE ur.user_id = '<sequence.userId>'
-AND ur.role_id = '<sequence.roleId>'
-AND ur.row_status = 'ACTIVE'
 ```
