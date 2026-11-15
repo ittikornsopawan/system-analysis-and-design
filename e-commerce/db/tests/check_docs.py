@@ -1470,7 +1470,7 @@ SHOP_INQUIRY_JWT_SEQ = ["Verify JWT signature/issuer/audience/expiry/UUID sub an
                         "The author tables are never queried", "BEGIN READ ONLY"]
 
 
-def shop_inquiry_jwt_errors(path: str, md: str, wsd: str, member: str) -> list[str]:
+def shop_inquiry_jwt_errors(path: str, md: str, wsd: str, first: str, second: str) -> list[str]:
     """Read-only shop inquiry on the verified JWT: credential check first, no lock, claims decide the platform administrator, COMMIT before every 200, ROLLBACK before every rejection."""
     errors = []
     flat = re.sub(r"\n\s+", " ", wsd)
@@ -1484,14 +1484,14 @@ def shop_inquiry_jwt_errors(path: str, md: str, wsd: str, member: str) -> list[s
     if [h for _, h, _ in ops][0] != "QUERY - Check current credential and user" or "NOW()" in credential or any(SEQUENCE_LOCK.search(q) for _, _, q in ops):
         errors.append(f"{path}: the credential check comes first with the bound time and the read-only inquiry takes no lock")
     marks = ["app -> app: Verify JWT", "HTTP 401 E10002", "app -> infra: BEGIN REPEATABLE READ READ ONLY", "Capture fresh server UTC now", "app -> infra: QUERY - Check current credential and user",
-             "app -> infra: QUERY - Get shops", "app -> infra: " + member, "app -> infra: COMMIT"]
+             "app -> infra: " + first, "app -> infra: " + second, "app -> infra: COMMIT"]
     pos = [wsd.find(x) for x in marks[:-1]] + [wsd.rfind(marks[-1])]  # the last COMMIT closes the path with the member check, an earlier one closes the empty result
     if -1 in pos or pos != sorted(pos):
-        errors.append(f"{path} (sequence): steps must run verify JWT, 401, BEGIN READ ONLY, fresh time, credential, page, members, COMMIT")
+        errors.append(f"{path} (sequence): steps must run verify JWT, 401, BEGIN READ ONLY, fresh time, credential, the two reads, COMMIT")
     lines = wsd.splitlines()
     begin = next((i for i, l in enumerate(lines) if "app -> infra: BEGIN" in l), len(lines))
     for i, l in enumerate(lines):
-        if i > begin and re.search(r"app -> api: HTTP (?:401|408|500)", l) and "app -> infra: ROLLBACK" not in lines[i - 1]:
+        if i > begin and re.search(r"app -> api: HTTP (?:401|403|408|500)", l) and "app -> infra: ROLLBACK" not in lines[i - 1]:
             errors.append(f"{path} (sequence): post-BEGIN rejection needs ROLLBACK first: {l.strip()}")
         if re.search(r"app -> api: HTTP 200", l) and "app -> infra: COMMIT" not in "\n".join(lines[max(0, i - 8):i]):
             errors.append(f"{path} (sequence): a 200 answer needs the COMMIT first: {l.strip()}")
@@ -1503,7 +1503,8 @@ def shop_inquiry_jwt_errors(path: str, md: str, wsd: str, member: str) -> list[s
     return errors
 
 
-SHOP_INQUIRY_JWT = {"10": "QUERY - Check shop members"}
+# spec key -> the two reads in the order of the diagram
+SHOP_INQUIRY_JWT = {"10": ("QUERY - Get shops", "QUERY - Check shop members"), "13": ("QUERY - Check shop member", "QUERY - Get shop users")}
 
 # Shop profile specs moved to the verified JWT roles claim: spec key -> (heading of the membership query, the member decision of the diagram).
 SHOP_PROFILE_JWT = {"08": ("QUERY - Check shop administrator", "alt update, delete or archive by a caller who is not an ADMIN of the shop"),
@@ -1570,8 +1571,9 @@ def check_shop_profile_spec() -> int:
         wsd_text = read(SHOP_PROFILE_SPECS[key].replace("spec.md", "sequence.wsd"))
         errors.extend(shop_jwt_errors(SHOP_PROFILE_SPECS[key], mds[key], wsd_text, member, no_member))
         errors.extend(f"{SHOP_PROFILE_SPECS[key]} (sequence) missing: {n!r}" for n in missing_needles(wsd_text, SHOP_PROFILE_JWT_SEQ.get(key, [])))
-    for key, member in SHOP_INQUIRY_JWT.items():
-        errors.extend(shop_inquiry_jwt_errors(SHOP_PROFILE_SPECS[key], mds[key], read(SHOP_PROFILE_SPECS[key].replace("spec.md", "sequence.wsd")), member))
+    for key, (first, second) in SHOP_INQUIRY_JWT.items():
+        if key in SHOP_PROFILE_SPECS:
+            errors.extend(shop_inquiry_jwt_errors(SHOP_PROFILE_SPECS[key], mds[key], read(SHOP_PROFILE_SPECS[key].replace("spec.md", "sequence.wsd")), first, second))
     try:
         errors.extend(check_shop_profile_upsert_examples(mds["08"]))
         errors.extend(check_shop_profile_batch_examples(mds["09"]))
@@ -2061,8 +2063,8 @@ def check_shop_user_spec() -> int:
                "shopUsers[2]: Id is duplicated with shopUsers[1].", "shopUsers[2]: Shop Id and User Id are duplicated with shopUsers[0].", "Shop users must contain 1 to 100 items.",
                "#### QUERY - Count the ADMIN members of the shop after the write", "except the ADMIN rule that is checked once for each shop after all the items", "it must lock the row of the shop (`shop.m_shop`"],
         "13": ["# [GET]: v1/shop/user", "- `shopId` or `userId` must be specified", approval, permission, "#### Shop User Object", "#### QUERY - Get shop users", "#### QUERY - Get total items",
-               "#### QUERY - Check shop member", "#### QUERY - Check platform administrator", "ORDER BY su.created_at DESC, su.id", "(../../../schema/shop/t_shop_user.md)",
-               "(../../../schema/authen/m_user.md)", "(../../../schema/author/t_user_role.md)", "Shop Id or User Id is required.",
+               "#### QUERY - Check shop member", "ORDER BY su.created_at DESC, su.id", "(../../../schema/shop/t_shop_user.md)",
+               "(../../../schema/authen/m_user.md)", "Shop Id or User Id is required.",
                "You do not have permission to view the members of this shop.", "The user name and the email address of a user are never returned",
                "list the shops of the caller", "Page Index and Page Size must be greater than 0", "ILIKE", "#### Success - My Shops"],
     }
@@ -2079,6 +2081,11 @@ def check_shop_user_spec() -> int:
         for forbidden in ("pageSize", "pageIndex"):
             if forbidden in mds[key]:
                 errors.append(f"{SHOP_USER_SPECS[key]} must not contain '{forbidden}'")
+    for key, (first, second) in SHOP_INQUIRY_JWT.items():
+        if key in SHOP_USER_SPECS:
+            wsd_text = read(SHOP_USER_SPECS[key].replace("spec.md", "sequence.wsd"))
+            errors.extend(shop_inquiry_jwt_errors(SHOP_USER_SPECS[key], mds[key], wsd_text, first, second))
+            errors.extend(f"{SHOP_USER_SPECS[key]} (sequence) missing: {n!r}" for n in missing_needles(wsd_text, ["app -> api: HTTP 403 E10009 You do not have permission to view the members of this shop.", "or userId is not the caller and the verified roles claim has no PLATFORM_ADMIN"]))
     for key, (member, no_member) in SHOP_USER_JWT.items():
         wsd_text = read(SHOP_USER_SPECS[key].replace("spec.md", "sequence.wsd"))
         errors.extend(shop_jwt_errors(SHOP_USER_SPECS[key], mds[key], wsd_text, member, no_member))

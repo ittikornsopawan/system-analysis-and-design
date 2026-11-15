@@ -1,6 +1,6 @@
 ---
 name: "Inquiry Shop User API"
-description: "Inquiry the members of a shop, or the shops of the caller, with paging, search and filters. Read it when you implement, review or test GET v1/shop/user."
+description: "Inquiry the members of a shop, or the shops of the caller, with paging, search and filters, for a member of the shop or a platform administrator from the verified JWT roles claim after the current credential check. Read it when you implement, review or test GET v1/shop/user."
 status: in-review
 approved_by: null
 approved_at: null
@@ -27,8 +27,10 @@ approved_at: null
 | PRODUCTION     | https://www.domain.com/api          |
 
 - The rules of this section, including the permission model (the ADMIN of the shop or a platform administrator, 403 E10009), were approved by the product owner.
-- `shopId` or `userId` must be specified (400, E10001). With `shopId` the caller must be a member of the shop (see the definition of a member in the upsert (shop/11)) or a platform administrator, otherwise 403 (E10009), also when the shop does not exist.
-- A `userId` that is not the caller can be used only by a platform administrator, otherwise 403 (E10009). `userId` of the caller without `shopId` lists the shops of the caller ("my shops"), there is no separate endpoint.
+- Governing decisions: owner-confirmed API review Q2, Q4, Q10 and Q13 (JWT payload of 2026-11-13).
+- `shopId` or `userId` must be specified (400, E10001). With `shopId` the caller must be a member of the shop (see the definition of a member in the upsert (shop/11)) or have the exact case-sensitive role `PLATFORM_ADMIN` in the verified `roles` claim (an array of role names, an empty array is valid), otherwise 403 (E10009), also when the shop does not exist.
+- A `userId` that is not the caller can be used only by a caller with `PLATFORM_ADMIN` in the verified `roles` claim, otherwise 403 (E10009). `userId` of the caller without `shopId` lists the shops of the caller ("my shops"), there is no separate endpoint.
+- The platform administrator is read only from the verified `roles` claim: do not query `author.m_role` or `author.t_user_role`, a change of the role assignments does not change a token that was already issued. Membership of a shop is not a token claim and is still read from `shop.t_shop_user`. The JWT is verified and the current credential and user are checked in a read-only transaction (401, E10002), no lock is taken.
 - Shop users with `rowStatus` DELETED and shop users of a shop that is DELETED are never returned. INACTIVE, LOCKED and ARCHIVED rows are returned with their `rowStatus`.
 - The user is described by `displayName` and `profilePicturePath` only. The user name and the email address of a user are never returned (they are personal data that is stored encrypted).
 - The caller of the examples is the user `3e4f5a6b-7c8d-4e9f-8a0b-1c2d3e4f5a6b`, an ACTIVE ADMIN of the shop `5a1b2c3d-4e5f-4a6b-8c7d-9e0f1a2b3c4d` and an ACTIVE STAFF of the shop `9e0f1a2b-3c4d-4e5f-8a6b-7c8d9e0f1a2c`, and is not a platform administrator.
@@ -367,9 +369,42 @@ curl --location --request GET 'https://www.domain.com/api-dev/v1/shop/user?shopI
 }
 ```
 
+#### Fail - Internal Server Error
+
+```JSON
+{
+    "status": {
+        "code": 500,
+        "message": "Internal Server Error",
+        "bizMessage": "An unexpected error occurred.",
+        "requestId": "req-500a1b2c-3d4e-5f6a-7b8c-9d0e1f2a3b4c",
+        "timestamp": "2026-11-05T12:46:10.123Z",
+        "status": "ERROR"
+    }
+}
+```
+
 ---
 
 ## Database Relations
+
+One REPEATABLE READ READ ONLY transaction. The caller identity (`callerUserId`, the `sub` of the verified JWT) is used to check the current credential and the memberships of the caller; the fresh UTC time is bound.
+
+### Table: [authen.t_user_access_token](../../../schema/authen/t_user_access_token.md)
+
+#### QUERY - Check current credential and user
+
+```SQL
+SELECT
+    at.id as access_token_id
+FROM authen.t_user_access_token at
+JOIN authen.m_user u ON u.id = at.user_id
+WHERE at.token = '<sequence.accessTokenHash>'
+AND at.user_id = '<sequence.callerUserId>'
+AND at.row_status = 'ACTIVE'
+AND at.expired_at > '<sequence.now>'
+AND u.row_status = 'ACTIVE'
+```
 
 ### Table: [shop.t_shop_user](../../../schema/shop/t_shop_user.md)
 
@@ -441,28 +476,3 @@ The shop name and the shop status come from the join of the query above.
 ### Table: [authen.m_user](../../../schema/authen/m_user.md)
 
 The display name and the profile picture come from the join of the query above, the user name and the email address are not selected.
-
-### Table: [author.m_role](../../../schema/author/m_role.md)
-
-#### QUERY - Get the platform administrator role
-
-```SQL
-SELECT
-    r.id as role_id
-FROM author.m_role r
-WHERE r.name = 'PLATFORM_ADMIN'
-AND r.row_status = 'ACTIVE'
-```
-
-### Table: [author.t_user_role](../../../schema/author/t_user_role.md)
-
-#### QUERY - Check platform administrator
-
-```SQL
-SELECT
-    ur.id as user_role_id
-FROM author.t_user_role ur
-WHERE ur.user_id = '<sequence.callerUserId>'
-AND ur.role_id = '<sequence.roleId>'
-AND ur.row_status = 'ACTIVE'
-```
