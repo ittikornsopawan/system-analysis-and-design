@@ -39,72 +39,136 @@ box "Web API" #F8FAFC
 end box
 
 box "Database" #F8FAFC
+    database "t_user_access_token" as t_user_access_token
     database "m_consent_type" as m_consent_type
 end box
 
 user -> page: Request Inquiry Consent Type
 
 activate page
-    page -> api: Call GET v1/consent/type
+    page -> api: GET v1/consent/type (Bearer JWT, UTC timestamp; query only)
     activate api
         api -> app: [**InquiryConsentTypeQueryHandler**] Process request
         activate app
-            app -> app: Validate request parameters and business rules
-            alt If request is invalid
-                app -> api: Return error response
-                api -> page: Return error response
-                page -> user: Display error message
-            else If request is valid
-                app -> infra: Execute database operations
-                activate infra
-                    infra -> m_consent_type: QUERY - Get consent types
-                    activate m_consent_type
-                        note right of m_consent_type
-                            SELECT
-                                ct.id as consent_type_id,
-                                ct.name,
-                                ct.description,
-                                ct.is_required,
-                                ct.row_status
-                            FROM consent.m_consent_type ct
-                            WHERE ct.row_status <> 'DELETED'
-                            AND ct.id = '<sequence.id>' -- only when id is specified
-                            AND (ct.name ILIKE '%<sequence.search>%' OR ct.description ILIKE '%<sequence.search>%') -- only when search is specified
-                            AND ct.is_required = '<sequence.isRequired>' -- only when isRequired is specified
-                            AND ct.row_status = '<sequence.rowStatus>' -- only when rowStatus is specified
-                            ORDER BY ct.created_at DESC, ct.id
-                            LIMIT <sequence.pageSize> OFFSET (<sequence.pageIndex> - 1) * <sequence.pageSize>
-                        end note
-                        m_consent_type -> infra: Return query result
-                    deactivate m_consent_type
-
-                    infra -> m_consent_type: QUERY - Get total items
-                    activate m_consent_type
-                        note right of m_consent_type
-                            SELECT
-                                COUNT(ct.id) as total_items
-                            FROM consent.m_consent_type ct
-                            WHERE ct.row_status <> 'DELETED'
-                            AND ct.id = '<sequence.id>' -- only when id is specified
-                            AND (ct.name ILIKE '%<sequence.search>%' OR ct.description ILIKE '%<sequence.search>%') -- only when search is specified
-                            AND ct.is_required = '<sequence.isRequired>' -- only when isRequired is specified
-                            AND ct.row_status = '<sequence.rowStatus>' -- only when rowStatus is specified
-                        end note
-                        m_consent_type -> infra: Return query result
-                    deactivate m_consent_type
-
-                    infra -> app: Return database result
-                deactivate infra
-
-                app -> domain: Apply domain rules and prepare response
-                activate domain
-                    domain -> app: Return response data
-                deactivate domain
-
-                app -> api: Return success response
-                api -> page: Return success response
-                page -> user: Display success result
-            end alt
+            note over app, infra
+                Order: validate query/header (400) -> verify the JWT (401) -> BEGIN READ ONLY -> fresh now and expiry recheck (401) ->
+                current credential and user (401) -> page -> total -> COMMIT -> 200. No role claim is read: every caller with a valid
+                access token can read. A read-only transaction takes no lock. Every rejection after BEGIN rolls back.
+            end note
+            app -> app: Generate requestId; validate UTC timestamp, known single query keys and no body, UUID id, positive pageIndex and pageSize (defaults 1 and 10, pageSize at most 100), boolean isRequired, rowStatus ACTIVE/INACTIVE/LOCKED/ARCHIVED
+            alt Invalid input/header
+                break Reject this request
+                    app -> api: HTTP 400 E10001
+                    api -> page: Show failure; no consent types shown
+                    page -> user: Display failure; keep the filters
+                end break
+            else Check passed
+            end
+            app -> app: Verify JWT signature/issuer/audience/expiry/UUID sub; the roles claim is not used by this API
+            alt Missing/invalid JWT
+                break Reject this request
+                    app -> api: HTTP 401 E10002 Invalid or expired access token.
+                    api -> page: Show failure; no consent types shown
+                    page -> user: Display failure; keep the filters
+                end break
+            else Check passed
+            end
+            app -> app: callerUserId = verified sub; accessTokenHash = SHA-256 exact JWT; omitted id, search, isRequired and rowStatus are typed SQL NULL (filters not applied)
+            app -> infra: BEGIN REPEATABLE READ READ ONLY
+            activate infra
+            alt Work completes before commit
+                app -> app: Capture fresh server UTC now; recheck JWT exp
+                alt JWT expired
+                    break Reject this request
+                        app -> infra: ROLLBACK
+                        app -> api: HTTP 401 E10002 Invalid or expired access token.
+                        api -> page: Show failure; no successful consent type read action
+                        page -> user: Display failure; keep unsaved input
+                    end break
+                else Check passed
+                end
+                app -> infra: QUERY - Check current credential and user
+                infra -> t_user_access_token: QUERY - Check current credential and user
+                activate t_user_access_token
+                    note right of t_user_access_token
+                        SELECT
+                            at.id as access_token_id
+                        FROM authen.t_user_access_token at
+                        JOIN authen.m_user u ON u.id = at.user_id
+                        WHERE at.token = '<sequence.accessTokenHash>'
+                        AND at.user_id = '<sequence.callerUserId>'
+                        AND at.row_status = 'ACTIVE'
+                        AND at.expired_at > '<sequence.now>'
+                        AND u.row_status = 'ACTIVE'
+                    end note
+                    t_user_access_token -> infra: Return ACTIVE matching unexpired token/user or no row
+                deactivate t_user_access_token
+                infra -> app: Return ACTIVE matching unexpired token/user or no row
+                alt Current token/user missing/inactive/revoked/expired/mismatched
+                    break Reject this request
+                        app -> infra: ROLLBACK
+                        app -> api: HTTP 401 E10002 Invalid or expired access token.
+                        api -> page: Show failure; no successful consent type read action
+                        page -> user: Display failure; keep unsaved input
+                    end break
+                else Check passed
+                end
+                app -> infra: QUERY - Get consent types
+                infra -> m_consent_type: QUERY - Get consent types
+                activate m_consent_type
+                    note right of m_consent_type
+                        SELECT
+                            ct.id as consent_type_id,
+                            ct.name,
+                            ct.description,
+                            ct.is_required,
+                            ct.row_status
+                        FROM consent.m_consent_type ct
+                        WHERE ct.row_status <> 'DELETED'
+                        AND ct.id = '<sequence.id>' -- only when id is specified
+                        AND (ct.name ILIKE '%<sequence.search>%' OR ct.description ILIKE '%<sequence.search>%') -- only when search is specified
+                        AND ct.is_required = '<sequence.isRequired>' -- only when isRequired is specified
+                        AND ct.row_status = '<sequence.rowStatus>' -- only when rowStatus is specified
+                        ORDER BY ct.created_at DESC, ct.id
+                        LIMIT <sequence.pageSize> OFFSET (<sequence.pageIndex> - 1) * <sequence.pageSize>
+                    end note
+                    m_consent_type -> infra: Return the page of consent types
+                deactivate m_consent_type
+                infra -> app: Return the page of consent types
+                app -> infra: QUERY - Get total items
+                infra -> m_consent_type: QUERY - Get total items
+                activate m_consent_type
+                    note right of m_consent_type
+                        SELECT
+                            COUNT(ct.id) as total_items
+                        FROM consent.m_consent_type ct
+                        WHERE ct.row_status <> 'DELETED'
+                        AND ct.id = '<sequence.id>' -- only when id is specified
+                        AND (ct.name ILIKE '%<sequence.search>%' OR ct.description ILIKE '%<sequence.search>%') -- only when search is specified
+                        AND ct.is_required = '<sequence.isRequired>' -- only when isRequired is specified
+                        AND ct.row_status = '<sequence.rowStatus>' -- only when rowStatus is specified
+                    end note
+                    m_consent_type -> infra: Return total_items
+                deactivate m_consent_type
+                infra -> app: Return total_items
+                app -> app: Map data.items and the totals (totalItems, totalPages, pageIndex, pageSize) from the two results before COMMIT
+                app -> infra: COMMIT
+                infra -> app: Return committed read
+                app -> api: HTTP 200 S10000 Inquiry Consent Type Success
+                api -> page: Return the consent types
+                page -> user: Display the consent types
+            else Timeout before COMMIT
+                app -> infra: ROLLBACK
+                app -> api: HTTP 408 E90001
+                api -> page: Request timeout
+                page -> user: Display the outcome
+            else Unexpected SQL/result/mapping failure before COMMIT
+                app -> infra: ROLLBACK
+                app -> api: HTTP 500 Internal Server Error; omit bizCode
+                api -> page: Internal server error
+                page -> user: Display the outcome
+            end
+            deactivate infra
         note over app, infra
             Approved by the product owner (answered through the lead SA, 2026-11-06).
             Without the `rowStatus` filter every other status is returned.
