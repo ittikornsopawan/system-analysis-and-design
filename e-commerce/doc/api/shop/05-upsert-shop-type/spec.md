@@ -406,6 +406,7 @@ SELECT
 FROM shop.m_shop_type st
 WHERE st.id = '<sequence.id>'
 AND st.row_status <> 'DELETED' -- the id of a DELETED shop type counts as not found
+FOR UPDATE
 ```
 
 #### QUERY - Check duplicate name
