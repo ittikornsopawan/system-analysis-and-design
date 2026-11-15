@@ -1,6 +1,6 @@
 ---
 name: "Upsert Shop Batch API"
-description: "Insert, update or delete multiple shops with their images at the same time. Read it when you implement, review or test POST v1/shop/upsert/batch."
+description: "Insert, update or delete multiple shops with their images at the same time, for any caller with a valid token (insert), an ADMIN of the shop or a platform administrator from the verified JWT roles claim after the caller lock and the current credential check. Read it when you implement, review or test POST v1/shop/upsert/batch."
 status: in-review
 approved_by: null
 approved_at: null
@@ -31,7 +31,9 @@ approved_at: null
 - `typeId`, `name` and `description` are required in every request, including a delete and an archive. `typeId` must be an ACTIVE shop type when the shop is inserted or when `typeId` changes, otherwise 404 (E10005). A shop whose shop type became INACTIVE later can still be updated while it keeps the same `typeId`.
 - `platformMarginRate` and `shopMarginRate` are percentages from 0.00 to 100.00 with at most 2 decimals (400, E10001). Their sum must not exceed 100.00 (400, E10001), the ceiling was approved by the product owner and the database enforces it with the check `ck_m_shop_margin_rate_total`.
 - Changing the margin rates of a shop never changes the lots that already exist (no retroactive effect): the margins of a lot are calculated when the lot is saved by the shop product SKU API, with the rates of the shop at that time.
-- Insert: any caller with a valid access token can create a shop, and the caller becomes the ADMIN of the new shop (a row in `shop.t_shop_user`) in the same transaction. Update, delete and archive need the caller to be an ADMIN of the shop or a platform administrator (a user that has the role `PLATFORM_ADMIN`), otherwise 403 (E10009). Only a platform administrator can send a `platformMarginRate` that differs from the current one (0.00 on insert), otherwise 403 (E10009). This permission model (the role `PLATFORM_ADMIN`, the ADMIN of the shop and the code E10009) was approved by the product owner.
+- Governing decisions: owner-confirmed API review Q2, Q4, Q10 and Q13 (JWT payload of 2026-11-13).
+- Insert: any caller with a valid access token can create a shop, and the caller becomes the ADMIN of the new shop (a row in `shop.t_shop_user`) in the same transaction. Update, delete and archive need the caller to be an ADMIN of the shop or to have the exact case-sensitive role `PLATFORM_ADMIN` in the verified `roles` claim (an array of role names, an empty array is valid), otherwise 403 (E10009). Only a caller with `PLATFORM_ADMIN` in the verified `roles` claim can send a `platformMarginRate` that differs from the current one (0.00 on insert), otherwise 403 (E10009). The platform administrator is read only from the verified `roles` claim: do not query `author.m_role` or `author.t_user_role`, a change of the role assignments does not change a token that was already issued. Membership of a shop is not a token claim and is still read from `shop.t_shop_user`. This permission model (the role `PLATFORM_ADMIN`, the ADMIN of the shop and the code E10009) was approved by the product owner.
+- The transaction locks the caller user first and checks the current credential, a missing user or credential is 401 (E10002). The order of the checks and the locks is in the sequence diagram.
 - DELETED is final: a DELETED shop is never reopened and its `id` counts as not found (404, E10004). INACTIVE, LOCKED and ARCHIVED are reversible: an update with `rowStatus` ACTIVE opens the shop again. `rowStatus` DELETED is rejected with 400 (E10001) when the request inserts a shop.
 - A shop cannot be deleted while it has a product (`shop.t_shop_product` that is not DELETED) or an order (`sales.t_order` that is not DELETED), 409 (E10006). Deleting a shop deletes (soft) all of its images. Archiving is always allowed and keeps everything.
 - Images follow the rule of the nested lists of the project: an image without `id` is inserted, an image with `id` is updated, `rowStatus` DELETED deletes it and images that are not in the list are kept. An `id` that does not belong to the shop is rejected with 404 (E10004), `id` must not be duplicated in the request, `type` and `imagePath` are required (400, E10001), and the id of a DELETED image counts as not found.
@@ -662,9 +664,54 @@ curl --location --request POST 'https://www.domain.com/api-dev/v1/shop/upsert/ba
 }
 ```
 
+#### Fail - Internal Server Error
+
+```JSON
+{
+    "status": {
+        "code": 500,
+        "message": "Internal Server Error",
+        "bizMessage": "An unexpected error occurred.",
+        "requestId": "req-500a1b2c-3d4e-5f6a-7b8c-9d0e1f2a3b4c",
+        "timestamp": "2026-11-05T12:46:10.123Z",
+        "status": "ERROR"
+    }
+}
+```
+
 ---
 
 ## Database Relations
+
+One READ COMMITTED transaction. The caller identity (`callerUserId`, the `sub` of the verified JWT, the same user as `userId` of the administrator check) is distinct from the shops; the fresh UTC time is bound. The caller user is locked first, then the current credential is checked.
+
+### Table: [authen.m_user](../../../schema/authen/m_user.md)
+
+#### QUERY - Lock the caller user
+
+```SQL
+SELECT
+    u.id as user_id
+FROM authen.m_user u
+WHERE u.id = '<sequence.callerUserId>'
+FOR UPDATE
+```
+
+### Table: [authen.t_user_access_token](../../../schema/authen/t_user_access_token.md)
+
+#### QUERY - Check current credential and user
+
+```SQL
+SELECT
+    at.id as access_token_id
+FROM authen.t_user_access_token at
+JOIN authen.m_user u ON u.id = at.user_id
+WHERE at.token = '<sequence.accessTokenHash>'
+AND at.user_id = '<sequence.callerUserId>'
+AND at.row_status = 'ACTIVE'
+AND at.expired_at > '<sequence.now>'
+AND u.row_status = 'ACTIVE'
+```
 
 ### Table: [shop.m_shop](../../../schema/shop/m_shop.md)
 
@@ -775,31 +822,6 @@ VALUES (
     'ADMIN'
 )
 RETURNING id as shop_user_id
-```
-
-### Table: [author.m_role](../../../schema/author/m_role.md)
-
-#### QUERY - Get the platform administrator role
-
-```SQL
-SELECT
-    r.id as role_id
-FROM author.m_role r
-WHERE r.name = 'PLATFORM_ADMIN'
-AND r.row_status = 'ACTIVE'
-```
-
-### Table: [author.t_user_role](../../../schema/author/t_user_role.md)
-
-#### QUERY - Check platform administrator
-
-```SQL
-SELECT
-    ur.id as user_role_id
-FROM author.t_user_role ur
-WHERE ur.user_id = '<sequence.userId>'
-AND ur.role_id = '<sequence.roleId>'
-AND ur.row_status = 'ACTIVE'
 ```
 
 ### Table: [shop.t_shop_product](../../../schema/shop/t_shop_product.md)
