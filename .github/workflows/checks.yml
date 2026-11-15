@@ -1,7 +1,8 @@
 name: checks
 
-# Runs every documentation checker, the database tests and the tests of the tooling on each pull request and on each push
-# to main. Nothing here uses a secret: the job only reads the repository (permissions: contents: read).
+# Runs every documentation checker and the tests of the tooling on each pull request and on each push to main. The
+# database tests (run_db_tests.sh) are left out of CI by owner order of 2026-11-15; run them locally until the API work.
+# Nothing here uses a secret: the job only reads the repository (permissions: contents: read).
 #
 # The repository owner sets up the branch protection of main in GitHub (Settings > Branches): require the status check
 # "checks" and require branches to be up to date before merging. A workflow cannot set that for itself.
@@ -32,21 +33,9 @@ jobs:
         with:
           python-version: "3.12"
 
-      # run_db_tests.sh starts its own throw-away cluster with initdb, pg_ctl and psql from the PATH and needs the
-      # en_US.UTF-8 locale. It was written against PostgreSQL 17, so 17 is installed from the PostgreSQL apt repository.
-      - name: Install PostgreSQL 17 and the locale
-        run: |
-          sudo apt-get install -y postgresql-common
-          sudo /usr/share/postgresql-common/pgdg/apt.postgresql.org.sh -y
-          sudo apt-get install -y postgresql-17
-          sudo locale-gen en_US.UTF-8
-          echo "/usr/lib/postgresql/17/bin" >> "$GITHUB_PATH"
-
       - name: Show the versions
         run: |
           python3 --version
-          psql --version
-          initdb --version
           git --version
 
       - name: check_docs.py (every sub-command)
@@ -72,10 +61,6 @@ jobs:
       - name: audit_all.py
         if: ${{ !cancelled() }}
         run: python3 e-commerce/db/tests/audit_all.py
-
-      - name: run_db_tests.sh (migrations up, down, up again and the SQL tests)
-        if: ${{ !cancelled() }}
-        run: bash e-commerce/db/tests/run_db_tests.sh
 
       - name: test_sequence_skeleton.py
         if: ${{ !cancelled() }}
