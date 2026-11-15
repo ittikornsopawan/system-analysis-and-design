@@ -933,17 +933,18 @@ def check_storefront_example(md: str) -> list[str]:
 
 # Shop specs moved to the verified JWT roles claim (API review Q2, Q4, Q10, Q13): spec key -> the heading of its shop membership query (still read from
 # shop.t_shop_user). The needles are searched in the file where the text lives, the spec or the sequence, never both combined.
-SHOP_JWT_MEMBER = {"01": "QUERY - Check shop member"}
+SHOP_JWT_MEMBER = {"01": ("QUERY - Check shop member", "alt The caller is not an ACTIVE ADMIN or STAFF member of the shop"),
+                   "02": ("QUERY - Check shop members", "alt A shop of the request has no ACTIVE ADMIN or STAFF member row for the caller")}
 SHOP_JWT_SPEC = ["Q2, Q4, Q10 and Q13", "the exact case-sensitive role `PLATFORM_ADMIN` in the verified `roles` claim", "do not query `author.m_role` or `author.t_user_role`",
                  "Membership of a shop is not a token claim and is still read from `shop.t_shop_user`", "#### QUERY - Lock the caller user", "WHERE u.id = '<sequence.callerUserId>'\nFOR UPDATE",
                  "#### QUERY - Check current credential and user", "AND at.expired_at > '<sequence.now>'", "(../../../schema/authen/m_user.md)", "(../../../schema/authen/t_user_access_token.md)",
-                 "The order of the checks and the locks is in the sequence diagram", "- Permission:", "E10009", "#### Fail - Forbidden"]
+                 "The order of the checks and the locks is in the sequence diagram", "E10009", "#### Fail - Forbidden"]
 SHOP_JWT_SEQ = ["Verify JWT signature/issuer/audience/expiry/UUID sub and the roles claim", "verify the JWT and its roles claim (401)", "lock the caller user (FOR UPDATE)",
                 "The author tables are never queried", "alt The verified roles claim has no PLATFORM_ADMIN", "app -> infra: BEGIN READ COMMITTED"]
 SHOP_JWT_GONE = ["QUERY - Get the platform administrator role", "QUERY - Check platform administrator", "(../../../schema/author/", "infra -> m_role", "infra -> t_user_role"]
 
 
-def shop_jwt_errors(path: str, md: str, wsd: str, member: str) -> list[str]:
+def shop_jwt_errors(path: str, md: str, wsd: str, member: str, no_member: str) -> list[str]:
     errors = []
     flat = re.sub(r"\n\s+", " ", wsd)
     errors += [f"{path} missing: {n!r}" for n in missing_needles(md, SHOP_JWT_SPEC)]
@@ -958,7 +959,7 @@ def shop_jwt_errors(path: str, md: str, wsd: str, member: str) -> list[str]:
     if "FOR UPDATE" not in sql.get("QUERY - Lock the caller user", "") or "NOW()" in sql.get("QUERY - Check current credential and user", ""):
         errors.append(f"{path}: the caller lock needs FOR UPDATE and the credential check the bound time")
     marks = ["app -> app: Verify JWT", "HTTP 401 E10002", "app -> infra: BEGIN READ COMMITTED", "app -> infra: QUERY - Lock the caller user", "Capture fresh server UTC now",
-             "app -> infra: QUERY - Check current credential and user", "app -> infra: " + member, "alt The caller is not an ACTIVE ADMIN or STAFF member of the shop", "alt The verified roles claim has no PLATFORM_ADMIN", "app -> api: HTTP 403 E10009 ", "app -> infra: COMMIT"]
+             "app -> infra: QUERY - Check current credential and user", "app -> infra: " + member, no_member, "alt The verified roles claim has no PLATFORM_ADMIN", "app -> api: HTTP 403 E10009 ", "app -> infra: COMMIT"]
     pos = [wsd.find(x) for x in marks]
     if -1 in pos or pos != sorted(pos):
         errors.append(f"{path} (sequence): steps must run verify JWT, 401, BEGIN, caller lock, fresh time, credential, member check, no member, the claims decision, 403, COMMIT")
@@ -1007,10 +1008,10 @@ def check_shop_spec() -> int:
         seq = re.sub(r"\n\s+", " ", read(SHOP_SPECS[key].replace("spec.md", "sequence.wsd")))
         for missing in missing_needles(mds[key] + "\n" + seq, need):
             errors.append(f"{SHOP_SPECS[key]} missing: {missing}")
-    for key, member in SHOP_JWT_MEMBER.items():
+    for key, (member, no_member) in SHOP_JWT_MEMBER.items():
         if key in mds:
             wsd_path = SHOP_SPECS[key].replace("spec.md", "sequence.wsd")
-            errors.extend(shop_jwt_errors(SHOP_SPECS[key], mds[key], read(wsd_path), member))
+            errors.extend(shop_jwt_errors(SHOP_SPECS[key], mds[key], read(wsd_path), member, no_member))
     store = mds["04"]
     for forbidden in ["costPrice", "cost_price", "grossMargin", "gross_margin", "authorization"]:
         # the storefront is public and never returns cost or margins
@@ -1462,6 +1463,12 @@ def check_shop_profile_inquiry_examples(md: str) -> list[str]:
     return errors
 
 
+# Shop profile specs moved to the verified JWT roles claim: spec key -> (heading of the membership query, the member decision of the diagram).
+SHOP_PROFILE_JWT = {"08": ("QUERY - Check shop administrator", "alt update, delete or archive by a caller who is not an ADMIN of the shop")}
+SHOP_PROFILE_JWT_SEQ = {"08": ["app -> api: HTTP 403 E10009 You do not have permission to manage this shop.", "alt platformMarginRate differs from the current one and the verified roles claim has no PLATFORM_ADMIN",
+                               "app -> api: HTTP 403 E10009 Only a platform administrator can change the platform margin rate."]}
+
+
 def check_shop_profile_spec() -> int:
     errors = []
     mds = {}
@@ -1486,7 +1493,7 @@ def check_shop_profile_spec() -> int:
         return fail("; ".join(errors))
     needles = {
         "08": ["# [POST]: v1/shop/upsert", "- `name` is unique among shops that are not DELETED", "#### Image Object", "#### QUERY - Check shop products in use", "#### QUERY - Check shop orders in use",
-               "#### INSERT - Add the caller as ADMIN of the new shop", "#### QUERY - Check platform administrator", "#### QUERY - Get next seq of the image type",
+               "#### INSERT - Add the caller as ADMIN of the new shop", "#### QUERY - Get next seq of the image type",
                "#### UPDATE - Delete the images of a deleted shop", "AND s.row_status <> 'DELETED'\nAND s.id <> '<sequence.id>'", "(../../../schema/shop/m_shop.md)",
                "(../../../schema/shop/m_shop_image.md)", "(../../../schema/shop/m_shop_type.md)", "(../../../schema/shop/t_shop_user.md)", "(../../../schema/sales/t_order.md)",
                "Shop name already exists.", "Shop is used by products or orders.", "Shop not found.", "Shop image not found.", "Shop type not found.",
@@ -1514,6 +1521,10 @@ def check_shop_profile_spec() -> int:
         for forbidden in ("pageSize", "pageIndex"):
             if forbidden in mds[key]:
                 errors.append(f"{SHOP_PROFILE_SPECS[key]} must not contain '{forbidden}'")
+    for key, (member, no_member) in SHOP_PROFILE_JWT.items():
+        wsd_text = read(SHOP_PROFILE_SPECS[key].replace("spec.md", "sequence.wsd"))
+        errors.extend(shop_jwt_errors(SHOP_PROFILE_SPECS[key], mds[key], wsd_text, member, no_member))
+        errors.extend(f"{SHOP_PROFILE_SPECS[key]} (sequence) missing: {n!r}" for n in missing_needles(wsd_text, SHOP_PROFILE_JWT_SEQ.get(key, [])))
     try:
         errors.extend(check_shop_profile_upsert_examples(mds["08"]))
         errors.extend(check_shop_profile_batch_examples(mds["09"]))
