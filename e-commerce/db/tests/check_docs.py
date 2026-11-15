@@ -1463,6 +1463,48 @@ def check_shop_profile_inquiry_examples(md: str) -> list[str]:
     return errors
 
 
+SHOP_INQUIRY_JWT_SPEC = ["Q2, Q4, Q10 and Q13", "the exact case-sensitive role `PLATFORM_ADMIN` in the verified `roles` claim", "do not query `author.m_role` or `author.t_user_role`",
+                         "Membership of a shop is not a token claim and is still read from `shop.t_shop_user`", "#### QUERY - Check current credential and user",
+                         "AND at.expired_at > '<sequence.now>'", "(../../../schema/authen/t_user_access_token.md)", "no lock is taken"]
+SHOP_INQUIRY_JWT_SEQ = ["Verify JWT signature/issuer/audience/expiry/UUID sub and the roles claim", "isPlatformAdmin = roles contains PLATFORM_ADMIN (no database query)",
+                        "The author tables are never queried", "BEGIN READ ONLY"]
+
+
+def shop_inquiry_jwt_errors(path: str, md: str, wsd: str, member: str) -> list[str]:
+    """Read-only shop inquiry on the verified JWT: credential check first, no lock, claims decide the platform administrator, COMMIT before every 200, ROLLBACK before every rejection."""
+    errors = []
+    flat = re.sub(r"\n\s+", " ", wsd)
+    errors += [f"{path} missing: {n!r}" for n in missing_needles(md, SHOP_INQUIRY_JWT_SPEC)]
+    errors += [f"{path} (sequence) missing: {n!r}" for n in missing_needles(flat, SHOP_INQUIRY_JWT_SEQ)]
+    errors += [f"{path} must not contain {n!r}" for n in SHOP_JWT_GONE if n in md or n in wsd]
+    if "status: in-review\napproved_by: null\napproved_at: null" not in md:
+        errors.append(f"{path}: spec stays in-review until approved")
+    ops = spec_database_operations(md)
+    credential = dict((h, q) for _, h, q in ops).get("QUERY - Check current credential and user", "")
+    if [h for _, h, _ in ops][0] != "QUERY - Check current credential and user" or "NOW()" in credential or any(SEQUENCE_LOCK.search(q) for _, _, q in ops):
+        errors.append(f"{path}: the credential check comes first with the bound time and the read-only inquiry takes no lock")
+    marks = ["app -> app: Verify JWT", "HTTP 401 E10002", "app -> infra: BEGIN REPEATABLE READ READ ONLY", "Capture fresh server UTC now", "app -> infra: QUERY - Check current credential and user",
+             "app -> infra: QUERY - Get shops", "app -> infra: " + member, "app -> infra: COMMIT"]
+    pos = [wsd.find(x) for x in marks[:-1]] + [wsd.rfind(marks[-1])]  # the last COMMIT closes the path with the member check, an earlier one closes the empty result
+    if -1 in pos or pos != sorted(pos):
+        errors.append(f"{path} (sequence): steps must run verify JWT, 401, BEGIN READ ONLY, fresh time, credential, page, members, COMMIT")
+    lines = wsd.splitlines()
+    begin = next((i for i, l in enumerate(lines) if "app -> infra: BEGIN" in l), len(lines))
+    for i, l in enumerate(lines):
+        if i > begin and re.search(r"app -> api: HTTP (?:401|408|500)", l) and "app -> infra: ROLLBACK" not in lines[i - 1]:
+            errors.append(f"{path} (sequence): post-BEGIN rejection needs ROLLBACK first: {l.strip()}")
+        if re.search(r"app -> api: HTTP 200", l) and "app -> infra: COMMIT" not in "\n".join(lines[max(0, i - 8):i]):
+            errors.append(f"{path} (sequence): a 200 answer needs the COMMIT first: {l.strip()}")
+    if "app -> api: HTTP 500 Internal Server Error; omit bizCode" not in wsd:
+        errors.append(f"{path} (sequence): the 500 answer without a bizCode must be drawn")
+    internal = json_examples(md, "Fail - Internal Server Error")
+    if not internal or internal["status"]["code"] != 500 or "bizCode" in internal["status"]:
+        errors.append(f"{path}: the Fail - Internal Server Error example must be 500 without a bizCode")
+    return errors
+
+
+SHOP_INQUIRY_JWT = {"10": "QUERY - Check shop members"}
+
 # Shop profile specs moved to the verified JWT roles claim: spec key -> (heading of the membership query, the member decision of the diagram).
 SHOP_PROFILE_JWT = {"08": ("QUERY - Check shop administrator", "alt update, delete or archive by a caller who is not an ADMIN of the shop"),
                     "09": ("QUERY - Check shop administrator", "alt items[i]: update, delete or archive by a caller who is not an ADMIN of the shop")}
@@ -1508,8 +1550,8 @@ def check_shop_profile_spec() -> int:
                "shops[2]: Name is duplicated with shops[0].", "Shops must contain 1 to 100 items.", "Swapping the names", "shops[2]: Shop is used by products or orders.",
                "shops[1].images[0]: Shop image not found.", "#### QUERY - Check shop orders in use", "approved by the product owner", "This permission model (the role `PLATFORM_ADMIN`, the ADMIN of the shop and the code E10009) was approved by the product owner.", "never changes the lots that already exist"],
         "10": ["# [GET]: v1/shop", "- Shops with `rowStatus` DELETED and images with `rowStatus` DELETED are never returned", "#### Shop Object", "#### Image Object", "#### QUERY - Get shops", "#### QUERY - Get total items",
-               "#### QUERY - Get shop type names", "#### QUERY - Get shop images", "#### QUERY - Check shop members", "#### QUERY - Check platform administrator",
-               "(../../../schema/shop/t_shop_user.md)", "(../../../schema/author/t_user_role.md)", "approved by the product owner", "Null when the caller is not an ACTIVE member", "ORDER BY si.type, si.seq, si.created_at, si.id", "then creation time, then `id`",
+               "#### QUERY - Get shop type names", "#### QUERY - Get shop images", "#### QUERY - Check shop members",
+               "(../../../schema/shop/t_shop_user.md)", "approved by the product owner", "Null when the caller is not an ACTIVE member", "ORDER BY si.type, si.seq, si.created_at, si.id", "then creation time, then `id`",
                "Row status must be one of ACTIVE, INACTIVE, LOCKED, ARCHIVED.", "Page Index and Page Size must be greater than 0", "ILIKE", "typeName"],
     }
     for key, need in needles.items():
@@ -1528,6 +1570,8 @@ def check_shop_profile_spec() -> int:
         wsd_text = read(SHOP_PROFILE_SPECS[key].replace("spec.md", "sequence.wsd"))
         errors.extend(shop_jwt_errors(SHOP_PROFILE_SPECS[key], mds[key], wsd_text, member, no_member))
         errors.extend(f"{SHOP_PROFILE_SPECS[key]} (sequence) missing: {n!r}" for n in missing_needles(wsd_text, SHOP_PROFILE_JWT_SEQ.get(key, [])))
+    for key, member in SHOP_INQUIRY_JWT.items():
+        errors.extend(shop_inquiry_jwt_errors(SHOP_PROFILE_SPECS[key], mds[key], read(SHOP_PROFILE_SPECS[key].replace("spec.md", "sequence.wsd")), member))
     try:
         errors.extend(check_shop_profile_upsert_examples(mds["08"]))
         errors.extend(check_shop_profile_batch_examples(mds["09"]))

@@ -1,6 +1,6 @@
 ---
 name: "Inquiry Shop API"
-description: "Inquiry the list of shops with their shop type and images, with paging, search and filters. Read it when you implement, review or test GET v1/shop."
+description: "Inquiry the list of shops with their shop type and images, with paging, search and filters, for any caller with a valid token (verified JWT and current credential check); margin rates are shown to a member of the shop or a platform administrator from the verified roles claim. Read it when you implement, review or test GET v1/shop."
 status: in-review
 approved_by: null
 approved_at: null
@@ -28,7 +28,9 @@ approved_at: null
 
 - Shops with `rowStatus` DELETED and images with `rowStatus` DELETED are never returned. INACTIVE, LOCKED and ARCHIVED shops and images are returned with their `rowStatus`.
 - `images` is ordered by `type` (alphabetical: BANNER, LOGO, WALLPAPER), then `seq`, then creation time, then `id` (so images with the same `seq` always come in the same order).
-- `platformMarginRate` and `shopMarginRate` are returned only for the shops that the caller is a member of (a row of `shop.t_shop_user` with the role ADMIN or STAFF that is ACTIVE) and to a platform administrator (a user that has the role `PLATFORM_ADMIN`). For every other shop of the same list both fields are null and the keys are kept. This rule was approved by the product owner.
+- Governing decisions: owner-confirmed API review Q2, Q4, Q10 and Q13 (JWT payload of 2026-11-13).
+- `platformMarginRate` and `shopMarginRate` are returned only for the shops that the caller is a member of (a row of `shop.t_shop_user` with the role ADMIN or STAFF that is ACTIVE) and to a caller who has the exact case-sensitive role `PLATFORM_ADMIN` in the verified `roles` claim (an array of role names, an empty array is valid). For every other shop of the same list both fields are null and the keys are kept. This rule was approved by the product owner.
+- Any caller with a valid access token can call this API: the JWT is verified and the current credential and user are checked in a read-only transaction (401, E10002), no lock is taken. The platform administrator is read only from the verified `roles` claim: do not query `author.m_role` or `author.t_user_role`, a change of the role assignments does not change a token that was already issued. Membership of a shop is not a token claim and is still read from `shop.t_shop_user`.
 - The caller of the examples is an ACTIVE member of the shop `5a1b2c3d-4e5f-4a6b-8c7d-9e0f1a2b3c4d` and is not a platform administrator, so the margin rates of the other shops are null.
 - The public shop page of a customer is not served by this API (it needs no access token).
 
@@ -339,9 +341,42 @@ curl --location --request GET 'https://www.domain.com/api-dev/v1/shop?id=5a1b2c3
 }
 ```
 
+#### Fail - Internal Server Error
+
+```JSON
+{
+    "status": {
+        "code": 500,
+        "message": "Internal Server Error",
+        "bizMessage": "An unexpected error occurred.",
+        "requestId": "req-500a1b2c-3d4e-5f6a-7b8c-9d0e1f2a3b4c",
+        "timestamp": "2026-11-05T12:46:10.123Z",
+        "status": "ERROR"
+    }
+}
+```
+
 ---
 
 ## Database Relations
+
+One REPEATABLE READ READ ONLY transaction. The caller identity (`callerUserId`, the `sub` of the verified JWT, the same user as `userId` of the member check) is only used to check the current credential and to find the shops the caller is a member of; the fresh UTC time is bound.
+
+### Table: [authen.t_user_access_token](../../../schema/authen/t_user_access_token.md)
+
+#### QUERY - Check current credential and user
+
+```SQL
+SELECT
+    at.id as access_token_id
+FROM authen.t_user_access_token at
+JOIN authen.m_user u ON u.id = at.user_id
+WHERE at.token = '<sequence.accessTokenHash>'
+AND at.user_id = '<sequence.callerUserId>'
+AND at.row_status = 'ACTIVE'
+AND at.expired_at > '<sequence.now>'
+AND u.row_status = 'ACTIVE'
+```
 
 ### Table: [shop.m_shop](../../../schema/shop/m_shop.md)
 
@@ -403,31 +438,6 @@ WHERE su.shop_id IN ('<sequence.shopIds>')
 AND su.user_id = '<sequence.userId>'
 AND su.role IN ('ADMIN', 'STAFF')
 AND su.row_status = 'ACTIVE'
-```
-
-### Table: [author.m_role](../../../schema/author/m_role.md)
-
-#### QUERY - Get the platform administrator role
-
-```SQL
-SELECT
-    r.id as role_id
-FROM author.m_role r
-WHERE r.name = 'PLATFORM_ADMIN'
-AND r.row_status = 'ACTIVE'
-```
-
-### Table: [author.t_user_role](../../../schema/author/t_user_role.md)
-
-#### QUERY - Check platform administrator
-
-```SQL
-SELECT
-    ur.id as user_role_id
-FROM author.t_user_role ur
-WHERE ur.user_id = '<sequence.userId>'
-AND ur.role_id = '<sequence.roleId>'
-AND ur.row_status = 'ACTIVE'
 ```
 
 ### Table: [shop.m_shop_image](../../../schema/shop/m_shop_image.md)
