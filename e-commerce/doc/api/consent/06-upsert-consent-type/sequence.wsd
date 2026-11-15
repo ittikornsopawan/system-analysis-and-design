@@ -54,7 +54,7 @@ activate page
         activate app
             note over app, infra
                 Order: validate (400) -> verify the JWT and its roles claim (401) -> BEGIN -> lock the caller user (FOR UPDATE) -> current credential (401) ->
-                existence check (404, only when id is specified) -> permission (403, E10009) -> duplicate name check (409, E10003) ->
+                lock and existence check of the consent type (FOR UPDATE, 404, only when id is specified) -> permission (403, E10009) -> duplicate name check (409, E10003) ->
                 in-use check (409, E10006, only when `rowStatus` is DELETED or ARCHIVED) -> write -> COMMIT. The permission comes from the verified roles claim only; the author tables are never queried.
                 HTTP status of the single upsert: Insert 201 Created, Update 200 Ok, Delete 204 No Content (no response body), Archive 200 Ok.
             end note
@@ -148,10 +148,11 @@ activate page
                             FROM consent.m_consent_type ct
                             WHERE ct.id = '<sequence.id>'
                             AND ct.row_status <> 'DELETED' -- the id of a DELETED consent type counts as not found
+                            FOR UPDATE
                         end note
-                        m_consent_type -> infra: Return consent_type_id or no row
+                        m_consent_type -> infra: Return locked consent_type_id or no row
                     deactivate m_consent_type
-                    infra -> app: Return consent_type_id or no row
+                    infra -> app: Return locked consent_type_id or no row
                     alt Consent type not found or DELETED
                         break Reject this request
                             app -> infra: ROLLBACK

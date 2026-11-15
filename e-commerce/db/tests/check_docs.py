@@ -3241,7 +3241,7 @@ MASTER = {
         id="a7b8c9d0-1e2f-4a3b-8c4d-5e6f7a8b9c0d", other_spec=("consent/02-upsert-consent/spec.md", '"consentTypeId"'), consent=True),
 }
 # Consent type APIs already moved to the verified JWT roles claim; add the kind in the pull request that migrates it.
-CONSENT_TYPE_JWT_KINDS = {"upsert"}
+CONSENT_TYPE_JWT_KINDS = {"upsert", "batch"}
 MASTER_GROUPS = {"product-master": ("product-type", "product-brand"), "consent-type": ("consent-type",)}
 SINGLE_UPSERT_SPECS.extend(f"{MASTER_API}/{m['group']}/{m['nums'][0]}-{m['folder'][0]}/spec.md" for m in MASTER.values())
 BATCH_UPSERT_SPECS.extend(f"{MASTER_API}/{m['group']}/{m['nums'][1]}-{m['folder'][1]}/spec.md" for m in MASTER.values())
@@ -3475,8 +3475,16 @@ def consent_type_claims_errors(kind: str, md: str, wsd: str) -> list[str]:
         errors.append(f"the first SQL definitions must be {want}")
     if kind != "inquiry" and "FOR UPDATE" not in sql.get(want[0], ""):
         errors.append("the caller user must be locked with FOR UPDATE")
-    if any(SEQUENCE_LOCK.search(q) for h, q in sql.items() if h != want[0] or kind == "inquiry"):
-        errors.append("only the caller lock may lock")
+    locking = "QUERY - Check existing consent type"  # locks the target consent type before the in-use check and the write (lead decision, 2026-11-15)
+    if any(SEQUENCE_LOCK.search(q) for h, q in sql.items() if h not in (want[0], locking) or kind == "inquiry"):
+        errors.append("only the caller lock and the consent type lock may lock")
+    if kind != "inquiry":
+        if "FOR UPDATE" not in sql.get(locking, ""):
+            errors.append("the existing consent type must be locked with FOR UPDATE")
+        if not 0 < wsd.find("app -> infra: " + locking) < wsd.find("Authorize once") < wsd.find("app -> infra: QUERY - Check consent in use"):
+            errors.append("the consent type lock comes after the credential check and before the permission decision and the in-use check")
+        if kind == "batch" and "loop Each item with id, in ascending id order" not in wsd:
+            errors.append("the batch locks the consent types in ascending id order")
     if "'<sequence.now>'" not in sql.get("QUERY - Check current credential and user", "") or "NOW()" in sql.get("QUERY - Check current credential and user", ""):
         errors.append("the credential check compares the bound time")
     begin = "BEGIN REPEATABLE READ READ ONLY" if kind == "inquiry" else "BEGIN READ COMMITTED"
@@ -4133,14 +4141,12 @@ REQUIRED_GROUPS = ("authen-and-author", "consent")
 LEGACY_SEQUENCES = (
     # authen-and-author: waiting for a retrofit to the login standard
     # consent: waiting for a retrofit to the login standard
-    "consent/07-upsert-consent-type-batch",
 )
 # Diagrams written before the access token and timeout answers became part of the check. Each is exempt from the token
 # rule (Verify JWT and 401 E10002 when the spec has a mandatory authorization header) and from the 408 E90001 rule, and
 # must still fail at least one of them: a file that passes both has to leave this list. Remove an entry in the same
 # change that adds the missing answers to the diagram.
 LEGACY_TOKEN_SEQUENCES = (
-    "consent/07-upsert-consent-type-batch",         # no Verify JWT / 401 step, no 408
     "consent/08-inquiry-consent-type",              # no Verify JWT / 401 step, no 408
 )
 
