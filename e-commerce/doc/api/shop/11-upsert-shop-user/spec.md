@@ -1,6 +1,6 @@
 ---
 name: "Upsert Shop User API"
-description: "Insert, update or delete a member of a shop. Read it when you implement, review or test POST v1/shop/user/upsert."
+description: "Insert, update or delete a member of a shop, for an ADMIN of the shop or a platform administrator from the verified JWT roles claim after the caller lock and the current credential check. Read it when you implement, review or test POST v1/shop/user/upsert."
 status: in-review
 approved_by: null
 approved_at: null
@@ -32,7 +32,9 @@ approved_at: null
 - A user can be a member of a shop once among the rows that are not DELETED (409, E10003). A row that is INACTIVE, LOCKED or ARCHIVED still holds the place, an update with `rowStatus` ACTIVE opens it again. After a delete the user can be added to the shop again, which creates a new row.
 - `shopId` and `userId` are required in every request and cannot be changed by an update: when they differ from the row of `id` the request is rejected with 400 (E10001). The shop must be ACTIVE and the user must be ACTIVE, otherwise 404 (E10005).
 - DELETED is final: a DELETED shop user is never reopened and its `id` counts as not found (404, E10004). `rowStatus` DELETED is rejected with 400 (E10001) when the request inserts a shop user. `role` is ADMIN or STAFF (400, E10001).
-- Permission: an ADMIN of the shop or a platform administrator (a user that has the role `PLATFORM_ADMIN`) can add members and can change the role or the row status of every member, otherwise 403 (E10009). A caller that is only a STAFF member can only delete or archive their own membership (leave the shop), every other change is 403 (E10009). A platform administrator that is not a member of the shop is not counted in the ADMIN rule below.
+- Governing decisions: owner-confirmed API review Q2, Q4, Q10 and Q13 (JWT payload of 2026-11-13).
+- Permission: an ADMIN of the shop or a caller with the exact case-sensitive role `PLATFORM_ADMIN` in the verified `roles` claim (an array of role names, an empty array is valid) can add members and can change the role or the row status of every member, otherwise 403 (E10009). A caller that is only a STAFF member can only delete or archive their own membership (leave the shop), every other change is 403 (E10009). A platform administrator that is not a member of the shop is not counted in the ADMIN rule below. The platform administrator is read only from the verified `roles` claim: do not query `author.m_role` or `author.t_user_role`, a change of the role assignments does not change a token that was already issued. Membership of a shop is not a token claim and is still read from `shop.t_shop_user`.
+- The transaction locks the caller user first and checks the current credential, a missing user or credential is 401 (E10002); the row of the shop is locked after it. The order of the checks and the locks is in the sequence diagram.
 - The shop must keep at least one ADMIN that is ACTIVE. A request that leaves the shop without one is rejected with 409 (E10006): this covers deleting or archiving the last ADMIN, changing it to STAFF, setting it to INACTIVE, LOCKED or ARCHIVED, and leaving the shop. A platform administrator cannot skip this rule. The rule is checked on the state after the whole request is applied, so an ADMIN can be replaced in one request, and the whole request is rolled back when it fails.
 - HTTP status of the single upsert: Insert 201 Created, Update 200 Ok, Delete 204 No Content (no response body), Archive 200 Ok.
 
@@ -418,9 +420,54 @@ HTTP/1.1 204 No Content
 }
 ```
 
+#### Fail - Internal Server Error
+
+```JSON
+{
+    "status": {
+        "code": 500,
+        "message": "Internal Server Error",
+        "bizMessage": "An unexpected error occurred.",
+        "requestId": "req-500a1b2c-3d4e-5f6a-7b8c-9d0e1f2a3b4c",
+        "timestamp": "2026-11-05T12:46:10.123Z",
+        "status": "ERROR"
+    }
+}
+```
+
 ---
 
 ## Database Relations
+
+One READ COMMITTED transaction. The caller identity (`callerUserId`, the `sub` of the verified JWT, the same user as `userId` of the member checks) is distinct from the member row that is written; the fresh UTC time is bound. The caller user is locked first, then the current credential is checked.
+
+### Table: [authen.m_user](../../../schema/authen/m_user.md)
+
+#### QUERY - Lock the caller user
+
+```SQL
+SELECT
+    u.id as user_id
+FROM authen.m_user u
+WHERE u.id = '<sequence.callerUserId>'
+FOR UPDATE
+```
+
+### Table: [authen.t_user_access_token](../../../schema/authen/t_user_access_token.md)
+
+#### QUERY - Check current credential and user
+
+```SQL
+SELECT
+    at.id as access_token_id
+FROM authen.t_user_access_token at
+JOIN authen.m_user u ON u.id = at.user_id
+WHERE at.token = '<sequence.accessTokenHash>'
+AND at.user_id = '<sequence.callerUserId>'
+AND at.row_status = 'ACTIVE'
+AND at.expired_at > '<sequence.now>'
+AND u.row_status = 'ACTIVE'
+```
 
 ### Table: [shop.m_shop](../../../schema/shop/m_shop.md)
 
@@ -541,29 +588,4 @@ FROM shop.t_shop_user su
 WHERE su.shop_id = '<sequence.shopId>'
 AND su.role = 'ADMIN'
 AND su.row_status = 'ACTIVE' -- the request is rolled back when the count is 0
-```
-
-### Table: [author.m_role](../../../schema/author/m_role.md)
-
-#### QUERY - Get the platform administrator role
-
-```SQL
-SELECT
-    r.id as role_id
-FROM author.m_role r
-WHERE r.name = 'PLATFORM_ADMIN'
-AND r.row_status = 'ACTIVE'
-```
-
-### Table: [author.t_user_role](../../../schema/author/t_user_role.md)
-
-#### QUERY - Check platform administrator
-
-```SQL
-SELECT
-    ur.id as user_role_id
-FROM author.t_user_role ur
-WHERE ur.user_id = '<sequence.userId>'
-AND ur.role_id = '<sequence.roleId>'
-AND ur.row_status = 'ACTIVE'
 ```
