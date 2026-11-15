@@ -4633,14 +4633,14 @@ CAMPAIGN_NEEDLES = {
            "#### QUERY - Check shop member", "#### QUERY - Check shop", "#### QUERY - Check platform administrator", "#### Fail - Forbidden",
            "#### Fail - Not Found Reference", "activeOnly", "#### QUERY - Get the budgets of the campaigns", "#### QUERY - Get the shops of the campaigns",
            "validate the request (400) -> existence of the shop (404) -> permission (403) -> read"],
-    "03": ["- Only a platform administrator (a user that has the role `PLATFORM_ADMIN`) can call this API", "ORDER BY l.created_at DESC, l.id", "#### QUERY - Count the ledger entries", "#### Fail - Forbidden",
+    "03": ["- The caller needs a verified JWT, then only a platform administrator", "ORDER BY l.created_at DESC, l.id", "#### QUERY - Count the ledger entries", "#### Fail - Forbidden",
            "#### Fail - Not Found", "budget - remaining = sum of RESERVE usage - sum of RELEASE usage", "#### QUERY - Check campaign",
-           "#### QUERY - Check platform administrator", "validate the request (400) -> existence of the campaign (404) -> permission (403) -> read"],
+           "validate the request (400) -> verify the JWT (401)"],
 }
 CAMPAIGN_COUNTS = {
     "01": {"approved by the product owner": 2, "'<sequence.discount.": 8, "E10006": 3},
     "02": {"approved by the product owner": 2, "FROM campaign.t_campaign_shop cs": 3, "OR NOT EXISTS (": 2, "AND cs.row_status = 'ACTIVE'": 4},
-    "03": {"approved by the product owner": 2, "-- only when entryType is specified": 2, "-- only when orderId is specified": 2},
+    "03": {"approved by the product owner": 1, "-- only when entryType is specified": 2, "-- only when orderId is specified": 2},
 }
 CAMPAIGN_DISCOUNT_TYPES = ("PERCENTAGE", "FIXED_AMOUNT")
 
@@ -4886,6 +4886,37 @@ def check_campaign_effects() -> list[str]:
     return errors
 
 
+# the JWT needles of a campaign API are searched in the spec and in the sequence separately; 01 writes (caller lock), 02 and 03 are inquiries without a transaction
+CAMPAIGN_JWT_ORDER = {
+    "03": "validate the request (400) -> verify the JWT (401) -> check the current credential and user (401) -> existence of the campaign (404) -> permission (403)",
+}
+CAMPAIGN_JWT_INQUIRY_SPEC = ["#### QUERY - Check active credential and user", "(../../../schema/authen/t_user_access_token.md)", "AND EXISTS ("]
+CAMPAIGN_JWT_INQUIRY_SEQ = ["app -> infra: QUERY - Check active credential and user", "The inquiry has no transaction: every query is one autocommit SELECT",
+                            "recheck the JWT expiry at `now`", "app -> infra: Execute database operations"]
+
+
+def check_campaign_jwt(key: str, md: str, wsd: str) -> list[str]:
+    errors = []
+    path = CAMPAIGN_SPECS[key]
+    seq_path = path.replace("spec.md", "sequence.wsd")
+    seq = re.sub(r"\n\s+", " ", wsd)
+    inquiry = key != "01"
+    base_spec = [n for n in SHIPPING_JWT_SPEC if not inquiry or ("caller user" not in n and "credential" not in n and "m_user.md" not in n)]
+    base_seq = [n for n in SHIPPING_JWT_SEQ if not inquiry or ("caller user" not in n and "credential" not in n)]
+    for missing in missing_needles(md, base_spec + (CAMPAIGN_JWT_INQUIRY_SPEC if inquiry else [])):
+        errors.append(f"{path} missing: {missing}")
+    for missing in missing_needles(seq, base_seq + (CAMPAIGN_JWT_INQUIRY_SEQ if inquiry else []) + [CAMPAIGN_JWT_ORDER[key]]):
+        errors.append(f"{seq_path} missing: {missing}")
+    if seq.count("HTTP 401 E10002 Invalid or expired access token.") < 2:
+        errors.append(f"{seq_path}: the 401 must be answered by the JWT check and by the credential check")
+    for gone in SHIPPING_JWT_GONE:
+        if gone in md:
+            errors.append(f"{path}: must not contain {gone!r}")
+        if gone in wsd:
+            errors.append(f"{seq_path}: must not contain {gone!r}")
+    return errors
+
+
 def check_campaign_spec() -> int:
     errors = []
     mds = {}
@@ -4909,6 +4940,8 @@ def check_campaign_spec() -> int:
         seq = re.sub(r"\n\s+", " ", read(CAMPAIGN_SPECS[key].replace("spec.md", "sequence.wsd")))
         for missing in missing_needles(mds[key] + "\n" + seq, need):
             errors.append(f"{CAMPAIGN_SPECS[key]} missing: {missing}")
+    for key in CAMPAIGN_JWT_ORDER:
+        errors.extend(check_campaign_jwt(key, mds[key], read(CAMPAIGN_SPECS[key].replace("spec.md", "sequence.wsd"))))
     for key, counts in CAMPAIGN_COUNTS.items():
         for phrase, n in counts.items():
             if mds[key].count(phrase) < n:
