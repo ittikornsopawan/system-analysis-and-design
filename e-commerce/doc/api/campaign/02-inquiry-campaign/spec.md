@@ -26,7 +26,9 @@ approved_at: null
 | PRE-PRODUCTION | https://www.domain.com/api-pre-prod |
 | PRODUCTION     | https://www.domain.com/api          |
 
-- A platform administrator (a user that has the role `PLATFORM_ADMIN`) sees every campaign that is not DELETED with its budget, its remaining amount and its shops. Any other caller must send `shopId` of a shop that the caller is an ACTIVE member of (a row of `shop.t_shop_user` with the role ADMIN or STAFF that is ACTIVE), otherwise 403 (E10009), and sees only the campaigns that apply to that shop: the shop is in a live `t_campaign_shop` row of the campaign, or the campaign has no live shop row (it is for every shop, C2). A shop that does not exist or is DELETED is not found (404, E10005). This permission model was approved by the product owner.
+- The caller needs a verified JWT. A platform administrator (the role `PLATFORM_ADMIN` in the verified `roles` claim) sees every campaign that is not DELETED with its budget, its remaining amount and its shops. Any other caller must send `shopId` of a shop that the caller is an ACTIVE member of (a row of `shop.t_shop_user` with the role ADMIN or STAFF that is ACTIVE), otherwise 403 (E10009), and sees only the campaigns that apply to that shop: the shop is in a live `t_campaign_shop` row of the campaign, or the campaign has no live shop row (it is for every shop, C2). A shop that does not exist or is DELETED is not found (404, E10005).
+- The platform administrator is the exact case-sensitive role `PLATFORM_ADMIN` in the verified `roles` claim; do not query `author.m_role` or `author.t_user_role`, and a change of the assignment after the token was issued does not change this token (it may stay usable until its expiry). Membership of a shop is not a token claim and is still read from `shop.t_shop_user`.
+- The JWT and credential checks, the order of the checks and the inquiry without a transaction are in the sequence diagram.
 - The members of a shop never see `budget` and the shop list, both are returned as `null` and the keys stay. They see the discount and the products and categories of the campaign. Campaigns with `rowStatus` DELETED are never returned.
 - `activeOnly` keeps the campaigns that give discounts right now: `row_status = 'ACTIVE'` and `start_at <= now < end_at` (UTC). Campaigns are ordered by `start_at` (newest first) then `id`. `search` matches the name (case-insensitive, partial). Nothing found is 200 with an empty list.
 - This behaviour follows the campaign design, approved by the product owner on 2026-11-06 (the proposals to the delivered specs in its section 4 are decided by the lead SA).
@@ -430,31 +432,6 @@ AND su.role IN ('ADMIN', 'STAFF')
 AND su.row_status = 'ACTIVE'
 ```
 
-### Table: [author.m_role](../../../schema/author/m_role.md)
-
-#### QUERY - Get the platform administrator role
-
-```SQL
-SELECT
-    r.id as role_id
-FROM author.m_role r
-WHERE r.name = 'PLATFORM_ADMIN'
-AND r.row_status = 'ACTIVE'
-```
-
-### Table: [author.t_user_role](../../../schema/author/t_user_role.md)
-
-#### QUERY - Check platform administrator
-
-```SQL
-SELECT
-    ur.id as user_role_id
-FROM author.t_user_role ur
-WHERE ur.user_id = '<sequence.userId>'
-AND ur.role_id = '<sequence.roleId>'
-AND ur.row_status = 'ACTIVE'
-```
-
 ### Table: [campaign.m_campaign](../../../schema/campaign/m_campaign.md)
 
 #### QUERY - Get the campaigns
@@ -578,4 +555,24 @@ FROM campaign.t_campaign_product cp
 WHERE cp.campaign_id IN ('<sequence.campaignIds>')
 AND cp.row_status <> 'DELETED'
 ORDER BY cp.created_at, cp.id
+```
+
+### Table: [authen.t_user_access_token](../../../schema/authen/t_user_access_token.md)
+
+#### QUERY - Check active credential and user
+
+```SQL
+SELECT
+    at.user_id
+FROM authen.t_user_access_token at
+WHERE at.token = '<sequence.accessTokenHash>'
+AND at.user_id = '<sequence.userId>'
+AND at.row_status = 'ACTIVE'
+AND at.expired_at > '<sequence.now>'
+AND EXISTS (
+    SELECT 1
+    FROM authen.m_user u
+    WHERE u.id = at.user_id
+    AND u.row_status = 'ACTIVE'
+)
 ```

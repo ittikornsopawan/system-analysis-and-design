@@ -4714,17 +4714,17 @@ CAMPAIGN_NEEDLES = {
            "#### Fail - Conflict In Use", "#### Fail - Conflict Budget Below Used", "#### Fail - Not Found Reference", "#### Fail - Forbidden",
            "#### Fail - Bad Request Row Status", "E10003", "E10005", "E10006", "E10009", "Delete 204 No Content (no response body)",
            "validate the request (400) -> verify the JWT (401)", "#### QUERY - Check existing campaign shop", "#### QUERY - Check existing campaign product", "#### UPDATE - Delete the discount of a deleted campaign", "#### UPDATE - Delete the shops of a deleted campaign", "#### UPDATE - Delete the products of a deleted campaign", "one statement for all the rows of the campaign", "approved by the product owner on 2026-11-08"],
-    "02": ["- A platform administrator (a user that has the role `PLATFORM_ADMIN`) sees every campaign", "ORDER BY c.start_at DESC, c.id", "NOT EXISTS (", "cs.row_status = 'ACTIVE'", "#### QUERY - Count the campaigns",
-           "#### QUERY - Check shop member", "#### QUERY - Check shop", "#### QUERY - Check platform administrator", "#### Fail - Forbidden",
+    "02": ["- The caller needs a verified JWT. A platform administrator (the role `PLATFORM_ADMIN` in the verified `roles` claim) sees every campaign", "ORDER BY c.start_at DESC, c.id", "NOT EXISTS (", "cs.row_status = 'ACTIVE'", "#### QUERY - Count the campaigns",
+           "#### QUERY - Check shop member", "#### QUERY - Check shop", "#### Fail - Forbidden",
            "#### Fail - Not Found Reference", "activeOnly", "#### QUERY - Get the budgets of the campaigns", "#### QUERY - Get the shops of the campaigns",
-           "validate the request (400) -> existence of the shop (404) -> permission (403) -> read"],
+           "validate the request (400) -> verify the JWT (401)"],
     "03": ["- The caller needs a verified JWT, then only a platform administrator", "ORDER BY l.created_at DESC, l.id", "#### QUERY - Count the ledger entries", "#### Fail - Forbidden",
            "#### Fail - Not Found", "budget - remaining = sum of RESERVE usage - sum of RELEASE usage", "#### QUERY - Check campaign",
            "validate the request (400) -> verify the JWT (401)"],
 }
 CAMPAIGN_COUNTS = {
+    "02": {"approved by the product owner": 1, "FROM campaign.t_campaign_shop cs": 3, "OR NOT EXISTS (": 2, "AND cs.row_status = 'ACTIVE'": 4},
     "01": {"approved by the product owner": 1, "'<sequence.discount.": 8, "E10006": 3},
-    "02": {"approved by the product owner": 2, "FROM campaign.t_campaign_shop cs": 3, "OR NOT EXISTS (": 2, "AND cs.row_status = 'ACTIVE'": 4},
     "03": {"approved by the product owner": 1, "-- only when entryType is specified": 2, "-- only when orderId is specified": 2},
 }
 CAMPAIGN_DISCOUNT_TYPES = ("PERCENTAGE", "FIXED_AMOUNT")
@@ -4973,6 +4973,7 @@ def check_campaign_effects() -> list[str]:
 
 # the JWT needles of a campaign API are searched in the spec and in the sequence separately; 01 writes (caller lock), 02 and 03 are inquiries without a transaction
 CAMPAIGN_JWT_ORDER = {
+    "02": "validate the request (400) -> verify the JWT (401) -> check the current credential and user (401) -> existence of the shop (404) -> permission (403)",
     "03": "validate the request (400) -> verify the JWT (401) -> check the current credential and user (401) -> existence of the campaign (404) -> permission (403)",
     "01": "validate the request (400) -> verify the JWT (401) -> begin the transaction, lock the caller user and check the current credential (401) -> existence of the campaign, the children and the shops, products and categories (404) -> permission (403)",
 }
