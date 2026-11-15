@@ -26,7 +26,10 @@ approved_at: null
 | PRE-PRODUCTION | https://www.domain.com/api-pre-prod |
 | PRODUCTION     | https://www.domain.com/api          |
 
-- Only a platform administrator (a user that has the role `PLATFORM_ADMIN`) can call this API, any other user gets 403 (E10009). This permission model was approved by the product owner. Shops take part when a platform administrator adds them to the campaign.
+- The caller needs a verified JWT, then only a platform administrator (the role `PLATFORM_ADMIN` in the verified `roles` claim) can call this API, any other user gets 403 (E10009).
+- The platform administrator is the exact case-sensitive role `PLATFORM_ADMIN` in the verified `roles` claim; do not query `author.m_role` or `author.t_user_role`, and a change of the assignment after the token was issued does not change this token (it may stay usable until its expiry).
+- The JWT and credential checks, the lock order and the order of the checks are in the sequence diagram.
+- Shops take part when a platform administrator adds them to the campaign.
 - `name`, `startAt` and `endAt` are required in every request, including a delete and an archive. `endAt` must be after `startAt` (400, E10001, the database enforces it with `ck_m_campaign_period`). `name` is unique among campaigns that are not DELETED, the comparison is exact and the name of an INACTIVE, LOCKED or ARCHIVED campaign is still taken (409, E10003). The name of a DELETED campaign can be used again.
 - DELETED is final: a DELETED campaign is never reopened and its `id` counts as not found (404, E10004). INACTIVE, LOCKED and ARCHIVED are reversible: an update with `rowStatus` ACTIVE opens the campaign again. `rowStatus` DELETED is rejected with 400 (E10001) when the request inserts a campaign. Only a campaign with `rowStatus` ACTIVE and a time that covers the moment of the order gives discounts, an INACTIVE, LOCKED, ARCHIVED or DELETED campaign gives none and the orders that already took a discount are not changed.
 - A campaign that has ledger rows (an order used its budget) cannot be deleted, 409 (E10006), archive it instead. A campaign without ledger rows can be deleted and its budget, discount, shops and products are deleted (soft) with it in the same transaction.
@@ -973,27 +976,30 @@ WHERE pc.id = '<sequence.products.productCategoryId>'
 AND pc.row_status <> 'DELETED'
 ```
 
-### Table: [author.m_role](../../../schema/author/m_role.md)
+### Table: [authen.m_user](../../../schema/authen/m_user.md)
 
-#### QUERY - Get the platform administrator role
+#### QUERY - Lock the caller user
 
 ```SQL
 SELECT
-    r.id as role_id
-FROM author.m_role r
-WHERE r.name = 'PLATFORM_ADMIN'
-AND r.row_status = 'ACTIVE'
+    u.id as user_id
+FROM authen.m_user u
+WHERE u.id = '<sequence.userId>'
+FOR UPDATE -- the caller user is locked first, before any other row of the request
 ```
 
-### Table: [author.t_user_role](../../../schema/author/t_user_role.md)
+### Table: [authen.t_user_access_token](../../../schema/authen/t_user_access_token.md)
 
-#### QUERY - Check platform administrator
+#### QUERY - Check current credential and user
 
 ```SQL
 SELECT
-    ur.id as user_role_id
-FROM author.t_user_role ur
-WHERE ur.user_id = '<sequence.userId>'
-AND ur.role_id = '<sequence.roleId>'
-AND ur.row_status = 'ACTIVE'
+    at.id as access_token_id
+FROM authen.t_user_access_token at
+JOIN authen.m_user u ON u.id = at.user_id
+WHERE at.token = '<sequence.accessTokenHash>'
+AND at.user_id = '<sequence.userId>'
+AND at.row_status = 'ACTIVE'
+AND at.expired_at > '<sequence.now>'
+AND u.row_status = 'ACTIVE'
 ```

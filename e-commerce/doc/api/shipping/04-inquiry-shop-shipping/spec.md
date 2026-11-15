@@ -26,7 +26,9 @@ approved_at: null
 | PRE-PRODUCTION | https://www.domain.com/api-pre-prod |
 | PRODUCTION     | https://www.domain.com/api          |
 
-- The caller must be an ACTIVE member of the shop (a row of `shop.t_shop_user` with the role ADMIN or STAFF that is ACTIVE) or a platform administrator (a user that has the role `PLATFORM_ADMIN`), otherwise 403 (E10009). A shop that does not exist or is DELETED is not found (404, E10005). This permission model was approved by the product owner.
+- The caller needs a verified JWT, then must be an ACTIVE member of the shop (a row of `shop.t_shop_user` with the role ADMIN or STAFF that is ACTIVE) or have the role `PLATFORM_ADMIN` in the verified `roles` claim, otherwise 403 (E10009). A shop that does not exist or is DELETED is not found (404, E10005).
+- The platform administrator is the exact case-sensitive role `PLATFORM_ADMIN` in the verified `roles` claim; do not query `author.m_role` or `author.t_user_role`, and a change of the assignment after the token was issued does not change this token (it may stay usable until its expiry). Membership of a shop is not a token claim and is still read from `shop.t_shop_user`.
+- The JWT and credential checks, the order of the checks and the inquiry without a transaction are in the sequence diagram.
 - The shippings of the orders of the shop are returned, newest first by creation time, then `id`. Shippings with `rowStatus` DELETED never exist (the API does not delete a shipping). Every shipping carries its items and its stops. The stops are the ones that are not DELETED, in `stopNumber` order, with their `rowStatus`.
 - The shop sees what it needs to hand over the parcel: the copy of the shipping address that was stored when the order was created. The customer name and the profit of the items are not part of this response.
 - `search` matches the order code or the tracking number (case-insensitive, partial). Nothing found is 200 with an empty list.
@@ -371,31 +373,6 @@ AND su.role IN ('ADMIN', 'STAFF')
 AND su.row_status = 'ACTIVE'
 ```
 
-### Table: [author.m_role](../../../schema/author/m_role.md)
-
-#### QUERY - Get the platform administrator role
-
-```SQL
-SELECT
-    r.id as role_id
-FROM author.m_role r
-WHERE r.name = 'PLATFORM_ADMIN'
-AND r.row_status = 'ACTIVE'
-```
-
-### Table: [author.t_user_role](../../../schema/author/t_user_role.md)
-
-#### QUERY - Check platform administrator
-
-```SQL
-SELECT
-    ur.id as user_role_id
-FROM author.t_user_role ur
-WHERE ur.user_id = '<sequence.userId>'
-AND ur.role_id = '<sequence.roleId>'
-AND ur.row_status = 'ACTIVE'
-```
-
 ### Table: [shipping.t_shipping](../../../schema/shipping/t_shipping.md)
 
 #### QUERY - Get the shippings of the shop
@@ -491,4 +468,24 @@ FROM shipping.t_shipping_stop ss
 WHERE ss.shipping_id IN ('<sequence.shippingIds>')
 AND ss.row_status <> 'DELETED'
 ORDER BY ss.shipping_id, ss.stop_number, ss.id
+```
+
+### Table: [authen.t_user_access_token](../../../schema/authen/t_user_access_token.md)
+
+#### QUERY - Check active credential and user
+
+```SQL
+SELECT
+    at.user_id
+FROM authen.t_user_access_token at
+WHERE at.token = '<sequence.accessTokenHash>'
+AND at.user_id = '<sequence.userId>'
+AND at.row_status = 'ACTIVE'
+AND at.expired_at > '<sequence.now>'
+AND EXISTS (
+    SELECT 1
+    FROM authen.m_user u
+    WHERE u.id = at.user_id
+    AND u.row_status = 'ACTIVE'
+)
 ```
