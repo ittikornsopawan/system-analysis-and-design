@@ -5782,15 +5782,10 @@ _IN_DIAGRAM_CAMPAIGN = ("A product category cannot be deleted while it is in a c
                         "whose end_at is after now), 409 (E10006) with the campaign name in the message.")
 _IN_DIAGRAM_BATCH = _IN_DIAGRAM_SINGLE + ("the same as the single upsert, only a platform administrator", "so the 403 message has no item position")
 ADMIN_WRITE_CAMPAIGN = {  # migrated folders that keep the campaign delete rule
+    "product/04-upsert-product-category",
     "product/06-upsert-product-category-batch",
 }
 ADMIN_WRITE_RULE_IN_DIAGRAM = {  # folder: the phrases that the visible note of its diagram must say
-    "product/04-upsert-product-category": _IN_DIAGRAM_SINGLE + (_IN_DIAGRAM_CAMPAIGN,),
-    "product/04-upsert-product-category",
-}
-ADMIN_WRITE_RULE_IN_DIAGRAM = {  # folder: the phrases that the visible note of its diagram must say
-
-    "product/06-upsert-product-category-batch": _IN_DIAGRAM_BATCH + (_IN_DIAGRAM_CAMPAIGN,),
     "product/07-upsert-product-category-attribute": _IN_DIAGRAM_SINGLE,
     "product/09-upsert-product-category-attribute-batch": _IN_DIAGRAM_BATCH,
 }
