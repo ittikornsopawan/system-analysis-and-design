@@ -5708,18 +5708,23 @@ ADMIN_WRITE_REFERENCE = "e-commerce/doc/api/shop/05-upsert-shop-type/spec.md"  #
 ADMIN_WRITE_APPROVED = "Approved by the product owner (answered through the lead SA, 2026-11-06)."
 # Specs moved to the verified JWT roles claim (API review Q2, Q4, Q10, Q13): the two live role queries are gone, the caller lock and the
 # current credential check take their place. Add a folder here in the pull request that migrates it.
-ADMIN_WRITE_JWT_CLAIMS = {"product/01-upsert-product"}
+ADMIN_WRITE_JWT_CLAIMS = {
+    "product/01-upsert-product",
+    "product/06-upsert-product-category-batch",
+}
 # Specs that still use the live role queries but keep their rule and order text in the visible note of the diagram, not in the spec.
 _IN_DIAGRAM_SINGLE = ("only a platform administrator (a user with an ACTIVE author.t_user_role row for the ACTIVE role PLATFORM_ADMIN)", "any other caller gets 403 (E10009)",
                       "Order of checks: validate the request (400) -> existence checks (404) -> permission (403, E10009) -> duplicate, in-use and other conflicts (409) -> write")
 _IN_DIAGRAM_CAMPAIGN = ("A product category cannot be deleted while it is in a campaign that is not DELETED and has not ended (a live campaign.t_campaign_product row of a campaign "
                         "whose end_at is after now), 409 (E10006) with the campaign name in the message.")
 _IN_DIAGRAM_BATCH = _IN_DIAGRAM_SINGLE + ("the same as the single upsert, only a platform administrator", "so the 403 message has no item position")
+ADMIN_WRITE_CAMPAIGN = {  # migrated folders that keep the campaign delete rule
+    "product/06-upsert-product-category-batch",
+}
 ADMIN_WRITE_RULE_IN_DIAGRAM = {  # folder: the phrases that the visible note of its diagram must say
     "product/03-upsert-product-batch": ("the same as the single upsert, only a platform administrator", "ACTIVE role PLATFORM_ADMIN", "any other caller gets 403 (E10009)",
                                         "so the 403 message has no item position", "permission check (403, E10009, once for the request) -> in-use check (409)"),
     "product/04-upsert-product-category": _IN_DIAGRAM_SINGLE + (_IN_DIAGRAM_CAMPAIGN,),
-    "product/06-upsert-product-category-batch": _IN_DIAGRAM_BATCH + (_IN_DIAGRAM_CAMPAIGN,),
     "product/07-upsert-product-category-attribute": _IN_DIAGRAM_SINGLE,
     "product/09-upsert-product-category-attribute-batch": _IN_DIAGRAM_BATCH,
 }
@@ -5740,16 +5745,14 @@ def admin_write_reference_queries() -> list[str]:
     return found
 
 
-def admin_write_claims_flow_errors(wsd: str) -> list[str]:
-    """Order of a diagram that authorizes from the verified roles claim: lock, current credential, existence, claims permission, conflicts, writes."""
+def admin_write_claims_flow_errors(wsd: str, batch: bool = False) -> list[str]:
+    """Order of a diagram that authorizes from the verified roles claim: lock, current credential, existence reads, claims permission, conflict reads, writes."""
     errors = []
     marks = [
         ("BEGIN", r"^\s*app -> infra: BEGIN READ COMMITTED"),
         ("caller lock", r"^\s*app -> infra: QUERY - Lock the caller user"),
         ("current credential check", r"^\s*app -> infra: QUERY - Check current credential and user"),
-        ("first existence check", r"^\s*app -> infra: QUERY - Check product type\b"),
         ("claims permission", r"^\s*alt The verified roles claim has no PLATFORM_ADMIN"),
-        ("first conflict check", r"^\s*app -> infra: QUERY - Check product SKUs in use"),
         ("first write", r"^\s*app -> infra: (?:INSERT|UPDATE) - "),
     ]
     found = []
@@ -5758,12 +5761,21 @@ def admin_write_claims_flow_errors(wsd: str) -> list[str]:
         if not match:
             errors.append(f"the diagram has no {name}")
         else:
-            found.append((match.start(), name))
-    if not errors and [name for _, name in sorted(found)] != [name for name, _ in marks]:
+            found.append((match.start(), name, match.end()))
+    if not errors and [name for _, name, _ in sorted(found)] != [name for name, _ in marks]:
         errors.append("the diagram must run: " + " -> ".join(name for name, _ in marks))
+    if not errors:
+        credential_end, permission, write = found[2][2], found[3][0], found[4][0]
+        if not re.search(r"^\s*app -> infra: QUERY - ", wsd[credential_end:permission], re.MULTILINE):
+            errors.append("an existence check (404) must run between the current credential check and the claims permission")
+        if not re.search(r"^\s*app -> infra: QUERY - ", wsd[permission:write], re.MULTILINE):
+            errors.append("a conflict check (409) must run between the claims permission and the first write")
     if not re.search(r"^\s*app -> app: Verify JWT\b.*roles claim", wsd, re.MULTILINE):
         errors.append("the JWT step must verify the roles claim")
-    for phrase in ("verify the JWT and its roles claim (401)", "lock the caller user (FOR UPDATE)", "permission from the roles claim (403, E10009)", "the author tables are never queried"):
+    phrases = ["verify the JWT and its roles claim (401)", "lock the caller user (FOR UPDATE)", "permission from the roles claim (403, E10009", "the author tables are never queried"]
+    if batch:
+        phrases += ["permission from the roles claim (403, E10009, once for the request)", "so the 403 message has no item position"]
+    for phrase in phrases:
         if phrase not in wsd:
             errors.append(f"the visible order note of the diagram must say {phrase!r}")
     if re.search(r"infra -> (?:m_role|t_user_role):", wsd):
@@ -5806,6 +5818,16 @@ def check_admin_write_spec() -> int:
             for gone in ("#### QUERY - Get the platform administrator role", "#### QUERY - Check platform administrator", "(../../../schema/author/m_role.md)", "(../../../schema/author/t_user_role.md)"):
                 if gone in md:
                     errors.append(f"{path}: the live platform administrator query must be gone, found {gone!r}")
+            if batch:
+                need += ["so the 403 message has no item position"]
+            if folder in ADMIN_WRITE_CAMPAIGN:
+                need += ["A product category cannot be deleted while it is in a campaign that is not DELETED and has not ended (409, E10006, with the campaign name in the message)"]
+                if _IN_DIAGRAM_CAMPAIGN not in read(str(Path(path).with_name("sequence.wsd"))):
+                    errors.append(f"{path} (sequence): the visible note must say {_IN_DIAGRAM_CAMPAIGN!r}")
+            # the spec text and the diagram text are checked in their own files, never combined
+            for missing in missing_needles(read(path), need):
+                errors.append(f"{path} (spec) missing: {missing!r}")
+            need = []
         in_diagram = folder in ADMIN_WRITE_RULE_IN_DIAGRAM
         if in_diagram:
             need = [ADMIN_WRITE_APPROVED, "Only a platform administrator can call this API", "The order of the checks is in the sequence diagram",
@@ -5819,7 +5841,7 @@ def check_admin_write_spec() -> int:
             for phrase in ADMIN_WRITE_RULE_IN_DIAGRAM[folder]:
                 if phrase not in note:
                     errors.append(f"{path}: the visible note of the diagram must say {phrase!r}")
-        if batch and not in_diagram:
+        if batch and not in_diagram and not claims:
             need += ["so the 403 message has no item position", "the same as the single upsert, only a platform administrator"]
         if folder.startswith("product/0") and folder.split("/")[1].startswith(("01", "03")):
             need += []
@@ -5854,7 +5876,7 @@ def check_admin_write_spec() -> int:
         if md.count("E10009") < (2 if claims or in_diagram else 3):
             errors.append(f"{path}: E10009 must appear in the rule, {'' if claims or in_diagram else 'the order of checks, '}and the example")
         if claims:
-            errors.extend(f"{path}: {error}" for error in admin_write_claims_flow_errors(read(str(Path(path).with_name("sequence.wsd")))))
+            errors.extend(f"{path} (sequence): {error}" for error in admin_write_claims_flow_errors(read(str(Path(path).with_name("sequence.wsd"))), batch))
     if errors:
         return fail("; ".join(errors))
     print("OK: admin-write-spec (9 specs)")
