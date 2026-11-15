@@ -4690,14 +4690,14 @@ CAMPAIGN_NEEDLES = {
            "#### QUERY - Check shop member", "#### QUERY - Check shop", "#### QUERY - Check platform administrator", "#### Fail - Forbidden",
            "#### Fail - Not Found Reference", "activeOnly", "#### QUERY - Get the budgets of the campaigns", "#### QUERY - Get the shops of the campaigns",
            "validate the request (400) -> existence of the shop (404) -> permission (403) -> read"],
-    "03": ["- Only a platform administrator (a user that has the role `PLATFORM_ADMIN`) can call this API", "ORDER BY l.created_at DESC, l.id", "#### QUERY - Count the ledger entries", "#### Fail - Forbidden",
+    "03": ["- The caller needs a verified JWT, then only a platform administrator", "ORDER BY l.created_at DESC, l.id", "#### QUERY - Count the ledger entries", "#### Fail - Forbidden",
            "#### Fail - Not Found", "budget - remaining = sum of RESERVE usage - sum of RELEASE usage", "#### QUERY - Check campaign",
-           "#### QUERY - Check platform administrator", "validate the request (400) -> existence of the campaign (404) -> permission (403) -> read"],
+           "validate the request (400) -> verify the JWT (401)"],
 }
 CAMPAIGN_COUNTS = {
     "01": {"approved by the product owner": 1, "'<sequence.discount.": 8, "E10006": 3},
     "02": {"approved by the product owner": 2, "FROM campaign.t_campaign_shop cs": 3, "OR NOT EXISTS (": 2, "AND cs.row_status = 'ACTIVE'": 4},
-    "03": {"approved by the product owner": 2, "-- only when entryType is specified": 2, "-- only when orderId is specified": 2},
+    "03": {"approved by the product owner": 1, "-- only when entryType is specified": 2, "-- only when orderId is specified": 2},
 }
 CAMPAIGN_DISCOUNT_TYPES = ("PERCENTAGE", "FIXED_AMOUNT")
 
@@ -4945,6 +4945,7 @@ def check_campaign_effects() -> list[str]:
 
 # the JWT needles of a campaign API are searched in the spec and in the sequence separately; 01 writes (caller lock), 02 and 03 are inquiries without a transaction
 CAMPAIGN_JWT_ORDER = {
+    "03": "validate the request (400) -> verify the JWT (401) -> check the current credential and user (401) -> existence of the campaign (404) -> permission (403)",
     "01": "validate the request (400) -> verify the JWT (401) -> begin the transaction, lock the caller user and check the current credential (401) -> existence of the campaign, the children and the shops, products and categories (404) -> permission (403)",
 }
 CAMPAIGN_JWT_INQUIRY_SPEC = ["#### QUERY - Check active credential and user", "(../../../schema/authen/t_user_access_token.md)", "AND EXISTS ("]
@@ -5815,6 +5816,7 @@ ADMIN_WRITE_JWT_CLAIMS = {
     "shop/05-upsert-shop-type",
     "product/01-upsert-product",
     "product/03-upsert-product-batch",
+    "product/09-upsert-product-category-attribute-batch",
     "product/07-upsert-product-category-attribute",
     "product/06-upsert-product-category-batch",
     "product/04-upsert-product-category",
@@ -5830,7 +5832,6 @@ ADMIN_WRITE_CAMPAIGN = {  # migrated folders that keep the campaign delete rule
     "product/06-upsert-product-category-batch",
 }
 ADMIN_WRITE_RULE_IN_DIAGRAM = {  # folder: the phrases that the visible note of its diagram must say
-    "product/09-upsert-product-category-attribute-batch": _IN_DIAGRAM_BATCH,
 }
 ADMIN_WRITE_CLAIMS_RULE = "the verified JWT `roles` claim (an array of role names, an empty array is valid) must contain the exact case-sensitive role `PLATFORM_ADMIN`"
 ADMIN_WRITE_RULE_BATCH = ("Permission: the same as the single upsert, only a platform administrator (a user with an ACTIVE `author.t_user_role` row for the ACTIVE role `PLATFORM_ADMIN`) "
