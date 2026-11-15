@@ -5772,6 +5772,7 @@ ADMIN_WRITE_JWT_CLAIMS = {
     "shop/05-upsert-shop-type",
     "product/01-upsert-product",
     "product/03-upsert-product-batch",
+    "product/07-upsert-product-category-attribute",
     "product/06-upsert-product-category-batch",
     "product/04-upsert-product-category",
 }
@@ -5786,6 +5787,8 @@ ADMIN_WRITE_CAMPAIGN = {  # migrated folders that keep the campaign delete rule
     "product/06-upsert-product-category-batch",
 }
 ADMIN_WRITE_RULE_IN_DIAGRAM = {  # folder: the phrases that the visible note of its diagram must say
+
+    "product/06-upsert-product-category-batch": _IN_DIAGRAM_BATCH + (_IN_DIAGRAM_CAMPAIGN,),
     "product/07-upsert-product-category-attribute": _IN_DIAGRAM_SINGLE,
     "product/09-upsert-product-category-attribute-batch": _IN_DIAGRAM_BATCH,
 }
