@@ -5760,11 +5760,16 @@ ADMIN_WRITE_SPECS = {  # folder: (the thing it manages, batch)
     "product/07-upsert-product-category-attribute": ("product category attributes", False),
     "product/09-upsert-product-category-attribute-batch": ("product category attributes", True),
 }
-ADMIN_WRITE_REFERENCE = "e-commerce/doc/api/shop/05-upsert-shop-type/spec.md"  # sales/05 now reads the administrator from the JWT claims
+# The two live role queries that the specs which have not moved to the JWT claims yet must copy exactly (shop/05 was their reference until it moved).
+ADMIN_WRITE_LIVE_QUERIES = (
+    "SELECT\n    r.id as role_id\nFROM author.m_role r\nWHERE r.name = 'PLATFORM_ADMIN'\nAND r.row_status = 'ACTIVE'\n",
+    "SELECT\n    ur.id as user_role_id\nFROM author.t_user_role ur\nWHERE ur.user_id = '<sequence.userId>'\nAND ur.role_id = '<sequence.roleId>'\nAND ur.row_status = 'ACTIVE'\n",
+)
 ADMIN_WRITE_APPROVED = "Approved by the product owner (answered through the lead SA, 2026-11-06)."
 # Specs moved to the verified JWT roles claim (API review Q2, Q4, Q10, Q13): the two live role queries are gone, the caller lock and the
 # current credential check take their place. Add a folder here in the pull request that migrates it.
 ADMIN_WRITE_JWT_CLAIMS = {
+    "shop/05-upsert-shop-type",
     "product/01-upsert-product",
     "product/03-upsert-product-batch",
     "product/06-upsert-product-category-batch",
@@ -5797,16 +5802,11 @@ ADMIN_WRITE_RULE = ("Permission: only a platform administrator (a user with an A
 
 
 def admin_write_reference_queries() -> list[str]:
-    """The two named queries of the reference spec (the text every spec must copy)."""
-    md = read(ADMIN_WRITE_REFERENCE)
-    found = []
-    for title in ("QUERY - Get the platform administrator role", "QUERY - Check platform administrator"):
-        match = re.search(rf"#### {re.escape(title)}\n\n```SQL\n(.*?)```", md, re.DOTALL)
-        found.append(match.group(1) if match else "")
-    return found
+    """The two live platform administrator queries (the text every spec that has not moved to the JWT claims must copy)."""
+    return list(ADMIN_WRITE_LIVE_QUERIES)
 
 
-def admin_write_claims_flow_errors(wsd: str, batch: bool = False) -> list[str]:
+def admin_write_claims_flow_errors(wsd: str, batch: bool = False, thing: str = "") -> list[str]:
     """Order of a diagram that authorizes from the verified roles claim: lock, current credential, existence reads, claims permission, conflict reads, writes."""
     errors = []
     marks = [
@@ -5841,14 +5841,14 @@ def admin_write_claims_flow_errors(wsd: str, batch: bool = False) -> list[str]:
             errors.append(f"the visible order note of the diagram must say {phrase!r}")
     if re.search(r"infra -> (?:m_role|t_user_role):", wsd):
         errors.append("the diagram must not read author.m_role or author.t_user_role")
+    if thing and f"app -> api: HTTP 403 E10009 You do not have permission to manage {thing}." not in wsd:
+        errors.append(f"the diagram must answer 'HTTP 403 E10009 You do not have permission to manage {thing}.'")
     return errors
 
 
 def check_admin_write_spec() -> int:
     errors = []
     queries = admin_write_reference_queries()
-    if not all(queries):
-        errors.append(f"{ADMIN_WRITE_REFERENCE} has no platform administrator queries to copy")
     for folder, (thing, batch) in ADMIN_WRITE_SPECS.items():
         path = f"e-commerce/doc/api/{folder}/spec.md"
         try:
@@ -5908,7 +5908,7 @@ def check_admin_write_spec() -> int:
             need += []
         elif folder != "shop/05-upsert-shop-type" and not claims and not in_diagram:
             need += ["- Order of checks: validate the request (400) -> existence checks (404) -> permission (403, E10009) -> duplicate, in-use and other conflicts (409) -> write."]
-        if folder == "shop/05-upsert-shop-type":
+        if folder == "shop/05-upsert-shop-type" and not claims:
             need += ["existence check (404) -> permission (403, E10009) -> duplicate name check"]
         for missing in missing_needles(md, need):
             errors.append(f"{path} missing: {missing!r}")
@@ -5937,7 +5937,7 @@ def check_admin_write_spec() -> int:
         if md.count("E10009") < (2 if claims or in_diagram else 3):
             errors.append(f"{path}: E10009 must appear in the rule, {'' if claims or in_diagram else 'the order of checks, '}and the example")
         if claims:
-            errors.extend(f"{path} (sequence): {error}" for error in admin_write_claims_flow_errors(read(str(Path(path).with_name("sequence.wsd"))), batch))
+            errors.extend(f"{path} (sequence): {error}" for error in admin_write_claims_flow_errors(read(str(Path(path).with_name("sequence.wsd"))), batch, thing))
     if errors:
         return fail("; ".join(errors))
     print("OK: admin-write-spec (9 specs)")
