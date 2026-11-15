@@ -366,7 +366,7 @@ HTTP/1.1 204 No Content
 
 ## Database Relations
 
-One READ COMMITTED transaction. The caller identity (`callerUserId`, the `sub` of the verified JWT) is distinct from the shop type; the fresh UTC time is bound. The caller user is locked first, then the current credential is checked, then the target shop type is locked (`FOR UPDATE`) before the permission decision, the in-use check and the write.
+One READ COMMITTED transaction. The caller identity (`callerUserId`, the `sub` of the verified JWT) is distinct from the shop type; the fresh UTC time is bound. The caller user is locked first, then the current credential is checked.
 
 ### Table: [authen.m_user](../../../schema/authen/m_user.md)
 
