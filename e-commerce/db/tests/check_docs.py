@@ -2824,8 +2824,8 @@ SHIPPING_NEEDLES = {
     "03": ["- The caller needs a verified JWT, then must be an ACTIVE member of the shop of the order", "#### INSERT - Create the stop", "#### UPDATE - Update, delete or archive the stop", "#### QUERY - Check duplicate stop number",
            "#### QUERY - Lock the order", "FOR UPDATE", "#### Fail - Bad Request Row Status", "#### Fail - Conflict Status", "E10003", "E10006", "E10009",
            "Delete 204 No Content (no response body)", "approved by the product owner", "#### QUERY - Check shop member", "#### Fail - Not Found Shipping", "`Shipping not found.`", "approved by the product owner on 2026-11-08"],
-    "04": ["- The caller must be an ACTIVE member of the shop (", "E10009", "#### Fail - Forbidden", "#### Fail - Not Found Reference", "#### QUERY - Check shop member",
-           "#### QUERY - Check platform administrator", "#### QUERY - Check shop", "ORDER BY s.created_at DESC, s.id", "o.shop_id = '<sequence.shopId>'",
+    "04": ["- The caller needs a verified JWT, then must be an ACTIVE member of the shop (", "E10009", "#### Fail - Forbidden", "#### Fail - Not Found Reference", "#### QUERY - Check shop member",
+           "#### QUERY - Check shop", "ORDER BY s.created_at DESC, s.id", "o.shop_id = '<sequence.shopId>'",
            "#### QUERY - Count the shippings of the shop", "#### QUERY - Get the stops of the shippings", "o.ship_address", "approved by the product owner"],
     "05": ["- Only the shippings of the orders of the user", "ORDER BY s.created_at DESC, s.id", "o.user_id = '<sequence.userId>'", "#### QUERY - Count the shippings of the user",
            "ss.row_status = 'ACTIVE'", "sh.name ILIKE", "#### QUERY - Get the stops of the shippings", "approved by the product owner"],
@@ -2848,7 +2848,7 @@ SHIPPING_COUNTS = {
     "02": {"AND status = 'PENDING' -- no row changed means the status changed in the meantime": 2,
            "AND status = 'SHIPPED' -- no row changed means the status changed in the meantime": 1, "approved by the product owner": 2},
     "03": {"approved by the product owner": 2},
-    "04": {"o.shop_id = '<sequence.shopId>'": 2, "approved by the product owner": 2, "-- only when search is specified": 2},
+    "04": {"o.shop_id = '<sequence.shopId>'": 2, "approved by the product owner": 1, "-- only when search is specified": 2},
     "05": {"o.user_id = '<sequence.userId>'": 2, "approved by the product owner": 1, "-- only when search is specified": 2},
     "06": {"approved by the product owner": 1, "AND s.row_status <> 'DELETED'": 6, "AND s.status = 'SHIPPED'": 2, "AND s.status = 'PENDING'": 1},
 }
@@ -3120,6 +3120,13 @@ SHIPPING_JWT_SEQ = ["Verify JWT signature, issuer, audience, exp, UUID sub and t
 SHIPPING_JWT_ORDER = {
     "01": "verify the JWT (401) -> begin the transaction, lock the caller user and check the current credential (401) -> existence of the order and of the order items (404) -> permission of the caller (403)",
     "02": "validate the request (400) -> verify the JWT (401) -> begin the transaction, lock the caller user and check the current credential (401) -> existence of the shipping (404) -> permission of the caller (403)",
+    "04": "validate the request (400) -> verify the JWT (401) -> check the current credential and user (401) -> existence of the shop (404) -> permission (403)",
+}
+# an inquiry has no transaction: no caller lock, one autocommit credential query
+SHIPPING_JWT_INQUIRY = {
+    "04": {"spec": ["#### QUERY - Check active credential and user", "(../../../schema/authen/t_user_access_token.md)", "AND EXISTS ("],
+           "seq": ["app -> infra: QUERY - Check active credential and user", "The inquiry has no transaction: every query is one autocommit SELECT",
+                   "recheck the JWT expiry at `now`", "app -> infra: Execute database operations"]},
     "03": "validate the request (400) -> verify the JWT (401) -> begin the transaction, lock the caller user and check the current credential (401) -> existence of the shipping and of the stop (404) -> permission of the caller (403)",
 }
 SHIPPING_JWT_GONE = ["QUERY - Get the platform administrator role", "QUERY - Check platform administrator", "infra -> m_role", "infra -> t_user_role", "(../../../schema/author/"]
@@ -3129,9 +3136,12 @@ def check_shipping_jwt(key: str, md: str, wsd: str) -> list[str]:
     errors = []
     path = SHIPPING_SPECS[key]
     seq = re.sub(r"\n\s+", " ", wsd)
-    for missing in missing_needles(md, SHIPPING_JWT_SPEC):
+    inquiry = SHIPPING_JWT_INQUIRY.get(key)
+    spec_need = SHIPPING_JWT_SPEC if not inquiry else [n for n in SHIPPING_JWT_SPEC if "caller user" not in n and "credential" not in n and "m_user.md" not in n] + inquiry["spec"]
+    seq_need = SHIPPING_JWT_SEQ if not inquiry else [n for n in SHIPPING_JWT_SEQ if "caller user" not in n and "credential" not in n] + inquiry["seq"]
+    for missing in missing_needles(md, spec_need):
         errors.append(f"{path} missing: {missing}")
-    for missing in missing_needles(seq, SHIPPING_JWT_SEQ + [SHIPPING_JWT_ORDER[key]]):
+    for missing in missing_needles(seq, seq_need + [SHIPPING_JWT_ORDER[key]]):
         errors.append(f"{path.replace('spec.md', 'sequence.wsd')} missing: {missing}")
     if seq.count("HTTP 401 E10002 Invalid or expired access token.") < 2:
         errors.append(f"{path.replace('spec.md', 'sequence.wsd')}: the 401 must be answered by the JWT check and by the credential check")
@@ -4625,7 +4635,7 @@ CAMPAIGN_SUCCESS_CODES = {
     "03": {"Success": 200, "Success - Empty": 200},
 }
 CAMPAIGN_NEEDLES = {
-    "01": ["- Only a platform administrator (a user that has the role `PLATFORM_ADMIN`) can call this API", "ck_m_campaign_period", "#### QUERY - Check existing campaign", "#### QUERY - Check duplicate campaign name",
+    "01": ["- The caller needs a verified JWT, then only a platform administrator", "ck_m_campaign_period", "#### QUERY - Check existing campaign", "#### QUERY - Check duplicate campaign name",
            "#### INSERT - Create campaign", "#### UPDATE - Update, delete or archive campaign", "#### QUERY - Check campaign used",
            "#### INSERT - Create budget", "#### UPDATE - Change budget", "AND (budget - remaining) <= '<sequence.budget.budget>'",
            "'<sequence.budget.budget>', '<sequence.budget.budget>'", "#### INSERT - Create discount", "#### INSERT - Create campaign shop",
@@ -4636,6 +4646,9 @@ CAMPAIGN_NEEDLES = {
            "validate the request (400) -> existence of the campaign, the children and the shops, products and categories (404) -> permission (403)", "#### QUERY - Check existing campaign shop", "#### QUERY - Check existing campaign product", "#### UPDATE - Delete the discount of a deleted campaign", "#### UPDATE - Delete the shops of a deleted campaign", "#### UPDATE - Delete the products of a deleted campaign", "one statement for all the rows of the campaign", "approved by the product owner on 2026-11-08"],
     "02": ["- The caller needs a verified JWT. A platform administrator (the role `PLATFORM_ADMIN` in the verified `roles` claim) sees every campaign", "ORDER BY c.start_at DESC, c.id", "NOT EXISTS (", "cs.row_status = 'ACTIVE'", "#### QUERY - Count the campaigns",
            "#### QUERY - Check shop member", "#### QUERY - Check shop", "#### Fail - Forbidden",
+           "validate the request (400) -> verify the JWT (401)", "#### QUERY - Check existing campaign shop", "#### QUERY - Check existing campaign product", "#### UPDATE - Delete the discount of a deleted campaign", "#### UPDATE - Delete the shops of a deleted campaign", "#### UPDATE - Delete the products of a deleted campaign", "one statement for all the rows of the campaign", "approved by the product owner on 2026-11-08"],
+    "02": ["- A platform administrator (a user that has the role `PLATFORM_ADMIN`) sees every campaign", "ORDER BY c.start_at DESC, c.id", "NOT EXISTS (", "cs.row_status = 'ACTIVE'", "#### QUERY - Count the campaigns",
+           "#### QUERY - Check shop member", "#### QUERY - Check shop", "#### QUERY - Check platform administrator", "#### Fail - Forbidden",
            "#### Fail - Not Found Reference", "activeOnly", "#### QUERY - Get the budgets of the campaigns", "#### QUERY - Get the shops of the campaigns",
            "validate the request (400) -> verify the JWT (401)"],
     "03": ["- Only a platform administrator (a user that has the role `PLATFORM_ADMIN`) can call this API", "ORDER BY l.created_at DESC, l.id", "#### QUERY - Count the ledger entries", "#### Fail - Forbidden",
@@ -4645,6 +4658,8 @@ CAMPAIGN_NEEDLES = {
 CAMPAIGN_COUNTS = {
     "01": {"approved by the product owner": 2, "'<sequence.discount.": 8, "E10006": 3},
     "02": {"approved by the product owner": 1, "FROM campaign.t_campaign_shop cs": 3, "OR NOT EXISTS (": 2, "AND cs.row_status = 'ACTIVE'": 4},
+    "01": {"approved by the product owner": 1, "'<sequence.discount.": 8, "E10006": 3},
+    "02": {"approved by the product owner": 2, "FROM campaign.t_campaign_shop cs": 3, "OR NOT EXISTS (": 2, "AND cs.row_status = 'ACTIVE'": 4},
     "03": {"approved by the product owner": 2, "-- only when entryType is specified": 2, "-- only when orderId is specified": 2},
 }
 CAMPAIGN_DISCOUNT_TYPES = ("PERCENTAGE", "FIXED_AMOUNT")
@@ -4894,6 +4909,7 @@ def check_campaign_effects() -> list[str]:
 # the JWT needles of a campaign API are searched in the spec and in the sequence separately; 01 writes (caller lock), 02 and 03 are inquiries without a transaction
 CAMPAIGN_JWT_ORDER = {
     "02": "validate the request (400) -> verify the JWT (401) -> check the current credential and user (401) -> existence of the shop (404) -> permission (403)",
+    "01": "validate the request (400) -> verify the JWT (401) -> begin the transaction, lock the caller user and check the current credential (401) -> existence of the campaign, the children and the shops, products and categories (404) -> permission (403)",
 }
 CAMPAIGN_JWT_INQUIRY_SPEC = ["#### QUERY - Check active credential and user", "(../../../schema/authen/t_user_access_token.md)", "AND EXISTS ("]
 CAMPAIGN_JWT_INQUIRY_SEQ = ["app -> infra: QUERY - Check active credential and user", "The inquiry has no transaction: every query is one autocommit SELECT",
@@ -5751,13 +5767,20 @@ ADMIN_WRITE_SPECS = {  # folder: (the thing it manages, batch)
     "product/07-upsert-product-category-attribute": ("product category attributes", False),
     "product/09-upsert-product-category-attribute-batch": ("product category attributes", True),
 }
-ADMIN_WRITE_REFERENCE = "e-commerce/doc/api/shop/05-upsert-shop-type/spec.md"  # sales/05 now reads the administrator from the JWT claims
+# The two live role queries that the specs which have not moved to the JWT claims yet must copy exactly (shop/05 was their reference until it moved).
+ADMIN_WRITE_LIVE_QUERIES = (
+    "SELECT\n    r.id as role_id\nFROM author.m_role r\nWHERE r.name = 'PLATFORM_ADMIN'\nAND r.row_status = 'ACTIVE'\n",
+    "SELECT\n    ur.id as user_role_id\nFROM author.t_user_role ur\nWHERE ur.user_id = '<sequence.userId>'\nAND ur.role_id = '<sequence.roleId>'\nAND ur.row_status = 'ACTIVE'\n",
+)
 ADMIN_WRITE_APPROVED = "Approved by the product owner (answered through the lead SA, 2026-11-06)."
 # Specs moved to the verified JWT roles claim (API review Q2, Q4, Q10, Q13): the two live role queries are gone, the caller lock and the
 # current credential check take their place. Add a folder here in the pull request that migrates it.
 ADMIN_WRITE_JWT_CLAIMS = {
+    "shop/05-upsert-shop-type",
     "product/01-upsert-product",
     "product/03-upsert-product-batch",
+    "product/06-upsert-product-category-batch",
+    "product/04-upsert-product-category",
 }
 # Specs that still use the live role queries but keep their rule and order text in the visible note of the diagram, not in the spec.
 _IN_DIAGRAM_SINGLE = ("only a platform administrator (a user with an ACTIVE author.t_user_role row for the ACTIVE role PLATFORM_ADMIN)", "any other caller gets 403 (E10009)",
@@ -5765,8 +5788,15 @@ _IN_DIAGRAM_SINGLE = ("only a platform administrator (a user with an ACTIVE auth
 _IN_DIAGRAM_CAMPAIGN = ("A product category cannot be deleted while it is in a campaign that is not DELETED and has not ended (a live campaign.t_campaign_product row of a campaign "
                         "whose end_at is after now), 409 (E10006) with the campaign name in the message.")
 _IN_DIAGRAM_BATCH = _IN_DIAGRAM_SINGLE + ("the same as the single upsert, only a platform administrator", "so the 403 message has no item position")
+ADMIN_WRITE_CAMPAIGN = {  # migrated folders that keep the campaign delete rule
+    "product/06-upsert-product-category-batch",
+}
 ADMIN_WRITE_RULE_IN_DIAGRAM = {  # folder: the phrases that the visible note of its diagram must say
     "product/04-upsert-product-category": _IN_DIAGRAM_SINGLE + (_IN_DIAGRAM_CAMPAIGN,),
+    "product/04-upsert-product-category",
+}
+ADMIN_WRITE_RULE_IN_DIAGRAM = {  # folder: the phrases that the visible note of its diagram must say
+
     "product/06-upsert-product-category-batch": _IN_DIAGRAM_BATCH + (_IN_DIAGRAM_CAMPAIGN,),
     "product/07-upsert-product-category-attribute": _IN_DIAGRAM_SINGLE,
     "product/09-upsert-product-category-attribute-batch": _IN_DIAGRAM_BATCH,
@@ -5779,16 +5809,11 @@ ADMIN_WRITE_RULE = ("Permission: only a platform administrator (a user with an A
 
 
 def admin_write_reference_queries() -> list[str]:
-    """The two named queries of the reference spec (the text every spec must copy)."""
-    md = read(ADMIN_WRITE_REFERENCE)
-    found = []
-    for title in ("QUERY - Get the platform administrator role", "QUERY - Check platform administrator"):
-        match = re.search(rf"#### {re.escape(title)}\n\n```SQL\n(.*?)```", md, re.DOTALL)
-        found.append(match.group(1) if match else "")
-    return found
+    """The two live platform administrator queries (the text every spec that has not moved to the JWT claims must copy)."""
+    return list(ADMIN_WRITE_LIVE_QUERIES)
 
 
-def admin_write_claims_flow_errors(wsd: str, batch: bool = False) -> list[str]:
+def admin_write_claims_flow_errors(wsd: str, batch: bool = False, thing: str = "") -> list[str]:
     """Order of a diagram that authorizes from the verified roles claim: lock, current credential, existence reads, claims permission, conflict reads, writes."""
     errors = []
     marks = [
@@ -5823,14 +5848,14 @@ def admin_write_claims_flow_errors(wsd: str, batch: bool = False) -> list[str]:
             errors.append(f"the visible order note of the diagram must say {phrase!r}")
     if re.search(r"infra -> (?:m_role|t_user_role):", wsd):
         errors.append("the diagram must not read author.m_role or author.t_user_role")
+    if thing and f"app -> api: HTTP 403 E10009 You do not have permission to manage {thing}." not in wsd:
+        errors.append(f"the diagram must answer 'HTTP 403 E10009 You do not have permission to manage {thing}.'")
     return errors
 
 
 def check_admin_write_spec() -> int:
     errors = []
     queries = admin_write_reference_queries()
-    if not all(queries):
-        errors.append(f"{ADMIN_WRITE_REFERENCE} has no platform administrator queries to copy")
     for folder, (thing, batch) in ADMIN_WRITE_SPECS.items():
         path = f"e-commerce/doc/api/{folder}/spec.md"
         try:
@@ -5863,6 +5888,10 @@ def check_admin_write_spec() -> int:
                     errors.append(f"{path}: the live platform administrator query must be gone, found {gone!r}")
             if batch:
                 need += ["so the 403 message has no item position"]
+            if folder in ADMIN_WRITE_CAMPAIGN:
+                need += ["A product category cannot be deleted while it is in a campaign that is not DELETED and has not ended (409, E10006, with the campaign name in the message)"]
+                if _IN_DIAGRAM_CAMPAIGN not in read(str(Path(path).with_name("sequence.wsd"))):
+                    errors.append(f"{path} (sequence): the visible note must say {_IN_DIAGRAM_CAMPAIGN!r}")
             # the spec text and the diagram text are checked in their own files, never combined
             for missing in missing_needles(read(path), need):
                 errors.append(f"{path} (spec) missing: {missing!r}")
@@ -5886,7 +5915,7 @@ def check_admin_write_spec() -> int:
             need += []
         elif folder != "shop/05-upsert-shop-type" and not claims and not in_diagram:
             need += ["- Order of checks: validate the request (400) -> existence checks (404) -> permission (403, E10009) -> duplicate, in-use and other conflicts (409) -> write."]
-        if folder == "shop/05-upsert-shop-type":
+        if folder == "shop/05-upsert-shop-type" and not claims:
             need += ["existence check (404) -> permission (403, E10009) -> duplicate name check"]
         for missing in missing_needles(md, need):
             errors.append(f"{path} missing: {missing!r}")
@@ -5915,7 +5944,7 @@ def check_admin_write_spec() -> int:
         if md.count("E10009") < (2 if claims or in_diagram else 3):
             errors.append(f"{path}: E10009 must appear in the rule, {'' if claims or in_diagram else 'the order of checks, '}and the example")
         if claims:
-            errors.extend(f"{path} (sequence): {error}" for error in admin_write_claims_flow_errors(read(str(Path(path).with_name("sequence.wsd"))), batch))
+            errors.extend(f"{path} (sequence): {error}" for error in admin_write_claims_flow_errors(read(str(Path(path).with_name("sequence.wsd"))), batch, thing))
     if errors:
         return fail("; ".join(errors))
     print("OK: admin-write-spec (9 specs)")
