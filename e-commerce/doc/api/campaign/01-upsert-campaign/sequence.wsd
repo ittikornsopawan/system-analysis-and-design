@@ -37,6 +37,8 @@ box "Web API" #F8FAFC
     participant "Infrastructure" as infra
 end box
 box "Database" #F8FAFC
+    database "m_user" as m_user
+    database "t_user_access_token" as t_user_access_token
     database "m_campaign" as m_campaign
     database "m_campaign_budget" as m_campaign_budget
     database "t_campaign_discount" as t_campaign_discount
@@ -45,8 +47,6 @@ box "Database" #F8FAFC
     database "m_product" as m_product
     database "m_product_category" as m_product_category
     database "t_campaign_product" as t_campaign_product
-    database "m_role" as m_role
-    database "t_user_role" as t_user_role
     database "m_campaign_budget_ledger" as m_campaign_budget_ledger
 end box
 
@@ -63,185 +63,350 @@ activate page
                 api -> page: Bad request
                 page -> user: Display validation error
             else Valid input
-                app -> app: Verify JWT signature, issuer, audience, exp and UUID sub
-                alt Missing, malformed or invalid JWT
+                app -> app: Verify JWT signature, issuer, audience, exp, UUID sub and the roles claim (an array of role names)
+                alt Missing, malformed or invalid JWT or roles claim
                     app -> api: HTTP 401 E10002 Invalid or expired access token.
                     api -> page: Authentication error
                     page -> user: Ask the user to sign in again
                 else Verified JWT
-                    app -> app: userId = verified sub
+                    app -> app: userId = verified sub; accessTokenHash = SHA-256 of the exact JWT; isPlatformAdmin = roles contains PLATFORM_ADMIN (no database query)
                     note over app, infra
                         - When a campaign is deleted, its discount, shops and products are soft-deleted with it by `UPDATE - Delete the discount of a deleted campaign`, `UPDATE
                           - Delete the shops of a deleted campaign` and `UPDATE - Delete the products of a deleted campaign`, one statement for all the rows of the campaign,
                           in the same transaction as `UPDATE - Delete the budget of a deleted campaign` (approved by the product owner on 2026-11-08).
-                        - Execution order: validate the request (400) -> existence of the campaign, the children and the shops, products and categories (404) -> permission
-                          (403) -> duplicate name, duplicate child, budget below used and in-use checks (409) -> write the campaign and its children in one transaction.
+                        - Governing behavior: owner-confirmed API review, Q2/Q4/Q10/Q13. Authorization comes from the verified JWT: `roles` must be an
+                          array of non-empty role name strings (an empty array is valid), a missing or malformed claim is a 401 and is never recovered
+                          from the database. The platform administrator is the exact case-sensitive role `PLATFORM_ADMIN` in the verified `roles`
+                          claim; do not query `author.m_role` or `author.t_user_role`. Membership of the shop is not a token claim and is still read
+                          from `shop.t_shop_user`.
+                        - Begin one READ COMMITTED transaction, lock the caller user first (`QUERY - Lock the caller user`, `FOR UPDATE`), capture the
+                          fresh server UTC `now` after the lock, recheck the JWT expiry at `now`, then run `QUERY - Check current credential and
+                          user`; no row (a missing, revoked or expired stored token or an inactive user) returns the same 401 and rolls back before
+                          any other row is read. `userId` comes only from the verified `sub`.
+                        - Execution order: validate the request (400) -> verify the JWT (401) -> begin the transaction, lock the caller user and check
+                          the current credential (401) -> existence of the campaign, the children and the shops, products and categories (404) ->
+                          permission (403) -> duplicate name, duplicate child, budget below used and in-use checks (409) -> write the campaign and its
+                          children in one transaction.
                     end note
                     app -> infra: BEGIN READ COMMITTED
                     activate infra
                     alt Work completes before commit
-                        alt id is specified (update, delete or archive)
-                            app -> infra: QUERY - Check existing campaign
-                            infra -> m_campaign: QUERY - Check existing campaign
-                            activate m_campaign
-                                note right of m_campaign
-                                    SELECT
-                                        c.id as campaign_id,
-                                        c.row_status
-                                    FROM campaign.m_campaign c
-                                    WHERE c.id = '<sequence.id>'
-                                    AND c.row_status <> 'DELETED' -- a DELETED campaign counts as not found
-                                end note
-                                m_campaign -> infra: Return query result
-                            deactivate m_campaign
-                            infra -> app: Return the campaign or no row
-                            alt Campaign not found or DELETED
-                                app -> infra: ROLLBACK
-                                app -> api: HTTP 404 E10004 Campaign not found.
-                                api -> page: Not found
-                                page -> user: Display the campaign is not found
+                        app -> infra: QUERY - Lock the caller user
+                        infra -> m_user: QUERY - Lock the caller user
+                        activate m_user
+                            note right of m_user
+                                SELECT
+                                    u.id as user_id
+                                FROM authen.m_user u
+                                WHERE u.id = '<sequence.userId>'
+                                FOR UPDATE -- the caller user is locked first, before any other row of the request
+                            end note
+                            m_user -> infra: Return query result
+                        deactivate m_user
+                        infra -> app: Return the locked caller user
+                        app -> app: Capture the fresh UTC now after the lock; recheck the JWT exp at now
+                        app -> infra: QUERY - Check current credential and user
+                        infra -> t_user_access_token: QUERY - Check current credential and user
+                        activate t_user_access_token
+                            note right of t_user_access_token
+                                SELECT
+                                    at.id as access_token_id
+                                FROM authen.t_user_access_token at
+                                JOIN authen.m_user u ON u.id = at.user_id
+                                WHERE at.token = '<sequence.accessTokenHash>'
+                                AND at.user_id = '<sequence.userId>'
+                                AND at.row_status = 'ACTIVE'
+                                AND at.expired_at > '<sequence.now>'
+                                AND u.row_status = 'ACTIVE'
+                            end note
+                            t_user_access_token -> infra: Return query result
+                        deactivate t_user_access_token
+                        infra -> app: Return the credential row or no row
+                        alt No ACTIVE stored token for this hash and user, or the user is not ACTIVE
+                            app -> infra: ROLLBACK
+                            app -> api: HTTP 401 E10002 Invalid or expired access token.
+                            api -> page: Authentication error
+                            page -> user: Ask the user to sign in again
+                        else Current credential
+                            alt id is specified (update, delete or archive)
+                                app -> infra: QUERY - Check existing campaign
+                                infra -> m_campaign: QUERY - Check existing campaign
+                                activate m_campaign
+                                    note right of m_campaign
+                                        SELECT
+                                            c.id as campaign_id,
+                                            c.row_status
+                                        FROM campaign.m_campaign c
+                                        WHERE c.id = '<sequence.id>'
+                                        AND c.row_status <> 'DELETED' -- a DELETED campaign counts as not found
+                                    end note
+                                    m_campaign -> infra: Return query result
+                                deactivate m_campaign
+                                infra -> app: Return the campaign or no row
+                                alt Campaign not found or DELETED
+                                    app -> infra: ROLLBACK
+                                    app -> api: HTTP 404 E10004 Campaign not found.
+                                    api -> page: Not found
+                                    page -> user: Display the campaign is not found
+                                end
                             end
-                        end
-                        alt budget is in the request
-                            app -> infra: QUERY - Check existing budget
-                            infra -> m_campaign_budget: QUERY - Check existing budget
-                            activate m_campaign_budget
-                                note right of m_campaign_budget
-                                    SELECT
-                                        b.id as budget_id,
-                                        b.budget,
-                                        b.remaining,
-                                        (b.budget - b.remaining) as used
-                                    FROM campaign.m_campaign_budget b
-                                    WHERE b.campaign_id = '<sequence.campaignId>'
-                                    AND b.row_status <> 'DELETED'
-                                    AND b.id = '<sequence.budget.id>' -- only when the budget has an id
-                                end note
-                                m_campaign_budget -> infra: Return query result
-                            deactivate m_campaign_budget
-                            infra -> app: Return the live budget of the campaign, its budget and remaining, or no row
-                            alt budget.id does not belong to the campaign or is DELETED
-                                app -> infra: ROLLBACK
-                                app -> api: HTTP 404 E10004 Campaign budget not found.
-                                api -> page: Not found
-                                page -> user: Display the budget is not found
+                            alt budget is in the request
+                                app -> infra: QUERY - Check existing budget
+                                infra -> m_campaign_budget: QUERY - Check existing budget
+                                activate m_campaign_budget
+                                    note right of m_campaign_budget
+                                        SELECT
+                                            b.id as budget_id,
+                                            b.budget,
+                                            b.remaining,
+                                            (b.budget - b.remaining) as used
+                                        FROM campaign.m_campaign_budget b
+                                        WHERE b.campaign_id = '<sequence.campaignId>'
+                                        AND b.row_status <> 'DELETED'
+                                        AND b.id = '<sequence.budget.id>' -- only when the budget has an id
+                                    end note
+                                    m_campaign_budget -> infra: Return query result
+                                deactivate m_campaign_budget
+                                infra -> app: Return the live budget of the campaign, its budget and remaining, or no row
+                                alt budget.id does not belong to the campaign or is DELETED
+                                    app -> infra: ROLLBACK
+                                    app -> api: HTTP 404 E10004 Campaign budget not found.
+                                    api -> page: Not found
+                                    page -> user: Display the budget is not found
+                                end
                             end
-                        end
-                        alt discount is in the request
-                            app -> infra: QUERY - Check existing discount
-                            infra -> t_campaign_discount: QUERY - Check existing discount
-                            activate t_campaign_discount
-                                note right of t_campaign_discount
-                                    SELECT
-                                        d.id as discount_id
-                                    FROM campaign.t_campaign_discount d
-                                    WHERE d.campaign_id = '<sequence.campaignId>'
-                                    AND d.row_status <> 'DELETED'
-                                    AND d.id = '<sequence.discount.id>' -- only when the discount has an id
-                                end note
-                                t_campaign_discount -> infra: Return query result
-                            deactivate t_campaign_discount
-                            infra -> app: Return the live discount of the campaign or no row
-                            alt discount.id does not belong to the campaign or is DELETED
-                                app -> infra: ROLLBACK
-                                app -> api: HTTP 404 E10004 Campaign discount not found.
-                                api -> page: Not found
-                                page -> user: Display the discount is not found
+                            alt discount is in the request
+                                app -> infra: QUERY - Check existing discount
+                                infra -> t_campaign_discount: QUERY - Check existing discount
+                                activate t_campaign_discount
+                                    note right of t_campaign_discount
+                                        SELECT
+                                            d.id as discount_id
+                                        FROM campaign.t_campaign_discount d
+                                        WHERE d.campaign_id = '<sequence.campaignId>'
+                                        AND d.row_status <> 'DELETED'
+                                        AND d.id = '<sequence.discount.id>' -- only when the discount has an id
+                                    end note
+                                    t_campaign_discount -> infra: Return query result
+                                deactivate t_campaign_discount
+                                infra -> app: Return the live discount of the campaign or no row
+                                alt discount.id does not belong to the campaign or is DELETED
+                                    app -> infra: ROLLBACK
+                                    app -> api: HTTP 404 E10004 Campaign discount not found.
+                                    api -> page: Not found
+                                    page -> user: Display the discount is not found
+                                end
                             end
-                        end
-                        alt shops is in the request
-                            loop For every row of shops
-                                alt shopId is specified
-                                    app -> infra: QUERY - Check shop
-                                    infra -> m_shop: QUERY - Check shop
-                                    activate m_shop
-                                        note right of m_shop
-                                            SELECT
-                                                s.id as shop_id
-                                            FROM shop.m_shop s
-                                            WHERE s.id = '<sequence.shops.shopId>'
-                                            AND s.row_status <> 'DELETED'
-                                        end note
-                                        m_shop -> infra: Return query result
-                                    deactivate m_shop
-                                    infra -> app: Return the shop or no row
-                                    alt Shop not found or DELETED
-                                        app -> infra: ROLLBACK
-                                        app -> api: HTTP 404 E10005 shops[i]: Shop not found.
-                                        api -> page: Not found
-                                        page -> user: Display which shop is not found
+                            alt shops is in the request
+                                loop For every row of shops
+                                    alt shopId is specified
+                                        app -> infra: QUERY - Check shop
+                                        infra -> m_shop: QUERY - Check shop
+                                        activate m_shop
+                                            note right of m_shop
+                                                SELECT
+                                                    s.id as shop_id
+                                                FROM shop.m_shop s
+                                                WHERE s.id = '<sequence.shops.shopId>'
+                                                AND s.row_status <> 'DELETED'
+                                            end note
+                                            m_shop -> infra: Return query result
+                                        deactivate m_shop
+                                        infra -> app: Return the shop or no row
+                                        alt Shop not found or DELETED
+                                            app -> infra: ROLLBACK
+                                            app -> api: HTTP 404 E10005 shops[i]: Shop not found.
+                                            api -> page: Not found
+                                            page -> user: Display which shop is not found
+                                        end
+                                    end
+                                    alt The row has an id
+                                        app -> infra: QUERY - Check existing campaign shop
+                                        infra -> t_campaign_shop: QUERY - Check existing campaign shop
+                                        activate t_campaign_shop
+                                            note right of t_campaign_shop
+                                                SELECT
+                                                    cs.id as campaign_shop_id
+                                                FROM campaign.t_campaign_shop cs
+                                                WHERE cs.campaign_id = '<sequence.campaignId>'
+                                                AND cs.row_status <> 'DELETED'
+                                                AND cs.id = '<sequence.shops.id>' -- only when the row has an id, no row means the id is not a live row of the campaign
+                                            end note
+                                            t_campaign_shop -> infra: Return query result
+                                        deactivate t_campaign_shop
+                                        infra -> app: Return the live shop row of the campaign or no row
+                                        alt The id is not a live row of the campaign
+                                            app -> infra: ROLLBACK
+                                            app -> api: HTTP 404 E10004 shops[i]: Campaign shop not found.
+                                            api -> page: Not found
+                                            page -> user: Display which row is not found
+                                        end
                                     end
                                 end
-                                alt The row has an id
-                                    app -> infra: QUERY - Check existing campaign shop
-                                    infra -> t_campaign_shop: QUERY - Check existing campaign shop
+                            end
+                            alt products is in the request
+                                loop For every row of products
+                                    alt productId is specified
+                                        app -> infra: QUERY - Check product
+                                        infra -> m_product: QUERY - Check product
+                                        activate m_product
+                                            note right of m_product
+                                                SELECT
+                                                    p.id as product_id
+                                                FROM product.m_product p
+                                                WHERE p.id = '<sequence.products.productId>'
+                                                AND p.row_status <> 'DELETED'
+                                            end note
+                                            m_product -> infra: Return query result
+                                        deactivate m_product
+                                        infra -> app: Return the product or no row
+                                        alt Product not found or DELETED
+                                            app -> infra: ROLLBACK
+                                            app -> api: HTTP 404 E10005 products[i]: Product not found.
+                                            api -> page: Not found
+                                            page -> user: Display which product is not found
+                                        end
+                                    else productCategoryId is specified
+                                        app -> infra: QUERY - Check product category
+                                        infra -> m_product_category: QUERY - Check product category
+                                        activate m_product_category
+                                            note right of m_product_category
+                                                SELECT
+                                                    pc.id as product_category_id
+                                                FROM product.m_product_category pc
+                                                WHERE pc.id = '<sequence.products.productCategoryId>'
+                                                AND pc.row_status <> 'DELETED'
+                                            end note
+                                            m_product_category -> infra: Return query result
+                                        deactivate m_product_category
+                                        infra -> app: Return the category or no row
+                                        alt Category not found or DELETED
+                                            app -> infra: ROLLBACK
+                                            app -> api: HTTP 404 E10005 products[i]: Product category not found.
+                                            api -> page: Not found
+                                            page -> user: Display which category is not found
+                                        end
+                                    end
+                                    alt The row has an id
+                                        app -> infra: QUERY - Check existing campaign product
+                                        infra -> t_campaign_product: QUERY - Check existing campaign product
+                                        activate t_campaign_product
+                                            note right of t_campaign_product
+                                                SELECT
+                                                    cp.id as campaign_product_id
+                                                FROM campaign.t_campaign_product cp
+                                                WHERE cp.campaign_id = '<sequence.campaignId>'
+                                                AND cp.row_status <> 'DELETED'
+                                                AND cp.id = '<sequence.products.id>' -- only when the row has an id, no row means the id is not a live row of the campaign
+                                            end note
+                                            t_campaign_product -> infra: Return query result
+                                        deactivate t_campaign_product
+                                        infra -> app: Return the live product row of the campaign or no row
+                                        alt The id is not a live row of the campaign
+                                            app -> infra: ROLLBACK
+                                            app -> api: HTTP 404 E10004 products[i]: Campaign product not found.
+                                            api -> page: Not found
+                                            page -> user: Display which row is not found
+                                        end
+                                    end
+                                end
+                            end
+                            alt The roles claim has no PLATFORM_ADMIN
+                                app -> infra: ROLLBACK
+                                app -> api: HTTP 403 E10009 Only a platform administrator can create or change a campaign.
+                                api -> page: Forbidden
+                                page -> user: Display no permission
+                            end
+                            alt name is specified (insert, update or archive)
+                                app -> infra: QUERY - Check duplicate campaign name
+                                infra -> m_campaign: QUERY - Check duplicate campaign name
+                                activate m_campaign
+                                    note right of m_campaign
+                                        SELECT
+                                            c.id as campaign_id
+                                        FROM campaign.m_campaign c
+                                        WHERE c.name = '<sequence.name>'
+                                        AND c.row_status <> 'DELETED'
+                                        AND c.id <> '<sequence.id>' -- only when id is specified
+                                    end note
+                                    m_campaign -> infra: Return query result
+                                deactivate m_campaign
+                                infra -> app: Return the campaign that holds the name or no row
+                                alt Another campaign that is not DELETED holds the name
+                                    app -> infra: ROLLBACK
+                                    app -> api: HTTP 409 E10003 The campaign name <name> already exists.
+                                    api -> page: Conflict
+                                    page -> user: Display the name exists
+                                end
+                            end
+                            alt rowStatus = DELETED (delete)
+                                app -> infra: QUERY - Check campaign used
+                                infra -> m_campaign_budget_ledger: QUERY - Check campaign used
+                                activate m_campaign_budget_ledger
+                                    note right of m_campaign_budget_ledger
+                                        SELECT
+                                            l.id as ledger_id
+                                        FROM campaign.m_campaign_budget_ledger l
+                                        WHERE l.campaign_id = '<sequence.campaignId>'
+                                        LIMIT 1 -- a row means an order used the budget, the campaign cannot be deleted (409, E10006)
+                                    end note
+                                    m_campaign_budget_ledger -> infra: Return query result
+                                deactivate m_campaign_budget_ledger
+                                infra -> app: Return a ledger row of the campaign or no row
+                                alt The campaign has ledger rows
+                                    app -> infra: ROLLBACK
+                                    app -> api: HTTP 409 E10006 The campaign already used its budget (<budget>), archive it instead of deleting it.
+                                    api -> page: Conflict
+                                    page -> user: Display the campaign cannot be deleted
+                                end
+                            end
+                            alt A second budget without id while a live one exists
+                                app -> infra: ROLLBACK
+                                app -> api: HTTP 409 E10003 The campaign already has a live budget.
+                                api -> page: Conflict
+                                page -> user: Display the budget exists
+                            end
+                            alt The new budget is below what the orders took (used = budget - remaining)
+                                app -> infra: ROLLBACK
+                                app -> api: HTTP 409 E10006 The budget cannot be below the amount that the orders took (<used>).
+                                api -> page: Conflict
+                                page -> user: Display the budget is below the used amount
+                            end
+                            alt A second discount without id while a live one exists
+                                app -> infra: ROLLBACK
+                                app -> api: HTTP 409 E10003 The campaign already has a live discount.
+                                api -> page: Conflict
+                                page -> user: Display the discount exists
+                            end
+                            alt shops is in the request
+                                loop For every row of shops
+                                    app -> infra: QUERY - Check duplicate campaign shop
+                                    infra -> t_campaign_shop: QUERY - Check duplicate campaign shop
                                     activate t_campaign_shop
                                         note right of t_campaign_shop
                                             SELECT
                                                 cs.id as campaign_shop_id
                                             FROM campaign.t_campaign_shop cs
                                             WHERE cs.campaign_id = '<sequence.campaignId>'
+                                            AND cs.shop_id = '<sequence.shops.shopId>'
                                             AND cs.row_status <> 'DELETED'
-                                            AND cs.id = '<sequence.shops.id>' -- only when the row has an id, no row means the id is not a live row of the campaign
+                                            AND cs.id <> '<sequence.shops.id>' -- only when the row has an id
                                         end note
                                         t_campaign_shop -> infra: Return query result
                                     deactivate t_campaign_shop
-                                    infra -> app: Return the live shop row of the campaign or no row
-                                    alt The id is not a live row of the campaign
+                                    infra -> app: Return the live row of the shop in the campaign or no row
+                                    alt The shop is already in the campaign
                                         app -> infra: ROLLBACK
-                                        app -> api: HTTP 404 E10004 shops[i]: Campaign shop not found.
-                                        api -> page: Not found
-                                        page -> user: Display which row is not found
+                                        app -> api: HTTP 409 E10003 shops[i]: The shop is already in the campaign.
+                                        api -> page: Conflict
+                                        page -> user: Display the shop is in the campaign
                                     end
                                 end
                             end
-                        end
-                        alt products is in the request
-                            loop For every row of products
-                                alt productId is specified
-                                    app -> infra: QUERY - Check product
-                                    infra -> m_product: QUERY - Check product
-                                    activate m_product
-                                        note right of m_product
-                                            SELECT
-                                                p.id as product_id
-                                            FROM product.m_product p
-                                            WHERE p.id = '<sequence.products.productId>'
-                                            AND p.row_status <> 'DELETED'
-                                        end note
-                                        m_product -> infra: Return query result
-                                    deactivate m_product
-                                    infra -> app: Return the product or no row
-                                    alt Product not found or DELETED
-                                        app -> infra: ROLLBACK
-                                        app -> api: HTTP 404 E10005 products[i]: Product not found.
-                                        api -> page: Not found
-                                        page -> user: Display which product is not found
-                                    end
-                                else productCategoryId is specified
-                                    app -> infra: QUERY - Check product category
-                                    infra -> m_product_category: QUERY - Check product category
-                                    activate m_product_category
-                                        note right of m_product_category
-                                            SELECT
-                                                pc.id as product_category_id
-                                            FROM product.m_product_category pc
-                                            WHERE pc.id = '<sequence.products.productCategoryId>'
-                                            AND pc.row_status <> 'DELETED'
-                                        end note
-                                        m_product_category -> infra: Return query result
-                                    deactivate m_product_category
-                                    infra -> app: Return the category or no row
-                                    alt Category not found or DELETED
-                                        app -> infra: ROLLBACK
-                                        app -> api: HTTP 404 E10005 products[i]: Product category not found.
-                                        api -> page: Not found
-                                        page -> user: Display which category is not found
-                                    end
-                                end
-                                alt The row has an id
-                                    app -> infra: QUERY - Check existing campaign product
-                                    infra -> t_campaign_product: QUERY - Check existing campaign product
+                            alt products is in the request
+                                loop For every row of products
+                                    app -> infra: QUERY - Check duplicate campaign product
+                                    infra -> t_campaign_product: QUERY - Check duplicate campaign product
                                     activate t_campaign_product
                                         note right of t_campaign_product
                                             SELECT
@@ -249,412 +414,269 @@ activate page
                                             FROM campaign.t_campaign_product cp
                                             WHERE cp.campaign_id = '<sequence.campaignId>'
                                             AND cp.row_status <> 'DELETED'
-                                            AND cp.id = '<sequence.products.id>' -- only when the row has an id, no row means the id is not a live row of the campaign
+                                            AND cp.product_id = '<sequence.products.productId>' -- only when the row names a product
+                                            AND cp.product_category_id = '<sequence.products.productCategoryId>' -- only when the row names a category
+                                            AND cp.id <> '<sequence.products.id>' -- only when the row has an id
                                         end note
                                         t_campaign_product -> infra: Return query result
                                     deactivate t_campaign_product
-                                    infra -> app: Return the live product row of the campaign or no row
-                                    alt The id is not a live row of the campaign
+                                    infra -> app: Return the live row of the product or category in the campaign or no row
+                                    alt The product or category is already in the campaign
                                         app -> infra: ROLLBACK
-                                        app -> api: HTTP 404 E10004 products[i]: Campaign product not found.
-                                        api -> page: Not found
-                                        page -> user: Display which row is not found
+                                        app -> api: HTTP 409 E10003 products[i]: The product or category is already in the campaign.
+                                        api -> page: Conflict
+                                        page -> user: Display the product is in the campaign
                                     end
                                 end
                             end
-                        end
-                        app -> infra: QUERY - Get the platform administrator role
-                        infra -> m_role: QUERY - Get the platform administrator role
-                        activate m_role
-                            note right of m_role
-                                SELECT
-                                    r.id as role_id
-                                FROM author.m_role r
-                                WHERE r.name = 'PLATFORM_ADMIN'
-                                AND r.row_status = 'ACTIVE'
-                            end note
-                            m_role -> infra: Return query result
-                        deactivate m_role
-                        infra -> app: Return the role id
-                        app -> infra: QUERY - Check platform administrator
-                        infra -> t_user_role: QUERY - Check platform administrator
-                        activate t_user_role
-                            note right of t_user_role
-                                SELECT
-                                    ur.id as user_role_id
-                                FROM author.t_user_role ur
-                                WHERE ur.user_id = '<sequence.userId>'
-                                AND ur.role_id = '<sequence.roleId>'
-                                AND ur.row_status = 'ACTIVE'
-                            end note
-                            t_user_role -> infra: Return query result
-                        deactivate t_user_role
-                        infra -> app: Return the assignment or no row
-                        alt The caller is not a platform administrator
-                            app -> infra: ROLLBACK
-                            app -> api: HTTP 403 E10009 Only a platform administrator can create or change a campaign.
-                            api -> page: Forbidden
-                            page -> user: Display no permission
-                        end
-                        alt name is specified (insert, update or archive)
-                            app -> infra: QUERY - Check duplicate campaign name
-                            infra -> m_campaign: QUERY - Check duplicate campaign name
-                            activate m_campaign
-                                note right of m_campaign
-                                    SELECT
-                                        c.id as campaign_id
-                                    FROM campaign.m_campaign c
-                                    WHERE c.name = '<sequence.name>'
-                                    AND c.row_status <> 'DELETED'
-                                    AND c.id <> '<sequence.id>' -- only when id is specified
-                                end note
-                                m_campaign -> infra: Return query result
-                            deactivate m_campaign
-                            infra -> app: Return the campaign that holds the name or no row
-                            alt Another campaign that is not DELETED holds the name
-                                app -> infra: ROLLBACK
-                                app -> api: HTTP 409 E10003 The campaign name <name> already exists.
-                                api -> page: Conflict
-                                page -> user: Display the name exists
-                            end
-                        end
-                        alt rowStatus = DELETED (delete)
-                            app -> infra: QUERY - Check campaign used
-                            infra -> m_campaign_budget_ledger: QUERY - Check campaign used
-                            activate m_campaign_budget_ledger
-                                note right of m_campaign_budget_ledger
-                                    SELECT
-                                        l.id as ledger_id
-                                    FROM campaign.m_campaign_budget_ledger l
-                                    WHERE l.campaign_id = '<sequence.campaignId>'
-                                    LIMIT 1 -- a row means an order used the budget, the campaign cannot be deleted (409, E10006)
-                                end note
-                                m_campaign_budget_ledger -> infra: Return query result
-                            deactivate m_campaign_budget_ledger
-                            infra -> app: Return a ledger row of the campaign or no row
-                            alt The campaign has ledger rows
-                                app -> infra: ROLLBACK
-                                app -> api: HTTP 409 E10006 The campaign already used its budget (<budget>), archive it instead of deleting it.
-                                api -> page: Conflict
-                                page -> user: Display the campaign cannot be deleted
-                            end
-                        end
-                        alt A second budget without id while a live one exists
-                            app -> infra: ROLLBACK
-                            app -> api: HTTP 409 E10003 The campaign already has a live budget.
-                            api -> page: Conflict
-                            page -> user: Display the budget exists
-                        end
-                        alt The new budget is below what the orders took (used = budget - remaining)
-                            app -> infra: ROLLBACK
-                            app -> api: HTTP 409 E10006 The budget cannot be below the amount that the orders took (<used>).
-                            api -> page: Conflict
-                            page -> user: Display the budget is below the used amount
-                        end
-                        alt A second discount without id while a live one exists
-                            app -> infra: ROLLBACK
-                            app -> api: HTTP 409 E10003 The campaign already has a live discount.
-                            api -> page: Conflict
-                            page -> user: Display the discount exists
-                        end
-                        alt shops is in the request
-                            loop For every row of shops
-                                app -> infra: QUERY - Check duplicate campaign shop
-                                infra -> t_campaign_shop: QUERY - Check duplicate campaign shop
-                                activate t_campaign_shop
-                                    note right of t_campaign_shop
-                                        SELECT
-                                            cs.id as campaign_shop_id
-                                        FROM campaign.t_campaign_shop cs
-                                        WHERE cs.campaign_id = '<sequence.campaignId>'
-                                        AND cs.shop_id = '<sequence.shops.shopId>'
-                                        AND cs.row_status <> 'DELETED'
-                                        AND cs.id <> '<sequence.shops.id>' -- only when the row has an id
+                            alt id is not specified (insert)
+                                app -> infra: INSERT - Create campaign
+                                infra -> m_campaign: INSERT - Create campaign
+                                activate m_campaign
+                                    note right of m_campaign
+                                        INSERT INTO campaign.m_campaign (created_by, name, description, start_at, end_at, row_status)
+                                        VALUES ('<sequence.userId>', '<sequence.name>', '<sequence.description>', '<sequence.startAt>', '<sequence.endAt>', '<sequence.rowStatus>')
+                                        RETURNING id as campaign_id, name, description, start_at, end_at, row_status
                                     end note
-                                    t_campaign_shop -> infra: Return query result
-                                deactivate t_campaign_shop
-                                infra -> app: Return the live row of the shop in the campaign or no row
-                                alt The shop is already in the campaign
-                                    app -> infra: ROLLBACK
-                                    app -> api: HTTP 409 E10003 shops[i]: The shop is already in the campaign.
-                                    api -> page: Conflict
-                                    page -> user: Display the shop is in the campaign
+                                    m_campaign -> infra: Return inserted result
+                                deactivate m_campaign
+                                infra -> app: Return the new campaign
+                            else id is specified (update, delete or archive)
+                                app -> infra: UPDATE - Update, delete or archive campaign
+                                infra -> m_campaign: UPDATE - Update, delete or archive campaign
+                                activate m_campaign
+                                    note right of m_campaign
+                                        UPDATE campaign.m_campaign
+                                        SET
+                                            updated_by = '<sequence.userId>',
+                                            updated_at = NOW() AT TIME ZONE 'UTC',
+                                            name = '<sequence.name>',
+                                            description = '<sequence.description>',
+                                            start_at = '<sequence.startAt>',
+                                            end_at = '<sequence.endAt>',
+                                            row_status = '<sequence.rowStatus>' -- a delete sets DELETED, an archive sets ARCHIVED
+                                        WHERE id = '<sequence.id>'
+                                        RETURNING id as campaign_id, name, description, start_at, end_at, row_status
+                                    end note
+                                    m_campaign -> infra: Return updated result
+                                deactivate m_campaign
+                                infra -> app: Return the changed campaign
+                            end
+                            alt budget is in the request
+                                alt No budget id (insert, remaining = budget)
+                                    app -> infra: INSERT - Create budget
+                                    infra -> m_campaign_budget: INSERT - Create budget
+                                    activate m_campaign_budget
+                                        note right of m_campaign_budget
+                                            INSERT INTO campaign.m_campaign_budget (created_by, campaign_id, budget, remaining, row_status)
+                                            VALUES ('<sequence.userId>', '<sequence.campaignId>', '<sequence.budget.budget>', '<sequence.budget.budget>', '<sequence.budget.rowStatus>') -- remaining starts as the whole budget
+                                            RETURNING id as budget_id, budget, remaining, row_status
+                                        end note
+                                        m_campaign_budget -> infra: Return inserted result
+                                    deactivate m_campaign_budget
+                                    infra -> app: Return the new budget
+                                else budget id (remaining = new budget - used)
+                                    app -> infra: UPDATE - Change budget
+                                    infra -> m_campaign_budget: UPDATE - Change budget
+                                    activate m_campaign_budget
+                                        note right of m_campaign_budget
+                                            UPDATE campaign.m_campaign_budget
+                                            SET
+                                                updated_by = '<sequence.userId>',
+                                                updated_at = NOW() AT TIME ZONE 'UTC',
+                                                remaining = '<sequence.budget.budget>' - (budget - remaining), -- keeps what the orders took
+                                                budget = '<sequence.budget.budget>',
+                                                row_status = '<sequence.budget.rowStatus>'
+                                            WHERE id = '<sequence.budget.id>'
+                                            AND campaign_id = '<sequence.campaignId>'
+                                            AND (budget - remaining) <= '<sequence.budget.budget>' -- no row changed means the budget is below the used amount, answer 409 (E10006)
+                                            RETURNING id as budget_id, budget, remaining, (budget - remaining) as used, row_status
+                                        end note
+                                        m_campaign_budget -> infra: Return updated result
+                                    deactivate m_campaign_budget
+                                    infra -> app: Return the changed budget
                                 end
                             end
-                        end
-                        alt products is in the request
-                            loop For every row of products
-                                app -> infra: QUERY - Check duplicate campaign product
-                                infra -> t_campaign_product: QUERY - Check duplicate campaign product
-                                activate t_campaign_product
-                                    note right of t_campaign_product
-                                        SELECT
-                                            cp.id as campaign_product_id
-                                        FROM campaign.t_campaign_product cp
-                                        WHERE cp.campaign_id = '<sequence.campaignId>'
-                                        AND cp.row_status <> 'DELETED'
-                                        AND cp.product_id = '<sequence.products.productId>' -- only when the row names a product
-                                        AND cp.product_category_id = '<sequence.products.productCategoryId>' -- only when the row names a category
-                                        AND cp.id <> '<sequence.products.id>' -- only when the row has an id
-                                    end note
-                                    t_campaign_product -> infra: Return query result
-                                deactivate t_campaign_product
-                                infra -> app: Return the live row of the product or category in the campaign or no row
-                                alt The product or category is already in the campaign
-                                    app -> infra: ROLLBACK
-                                    app -> api: HTTP 409 E10003 products[i]: The product or category is already in the campaign.
-                                    api -> page: Conflict
-                                    page -> user: Display the product is in the campaign
-                                end
-                            end
-                        end
-                        alt id is not specified (insert)
-                            app -> infra: INSERT - Create campaign
-                            infra -> m_campaign: INSERT - Create campaign
-                            activate m_campaign
-                                note right of m_campaign
-                                    INSERT INTO campaign.m_campaign (created_by, name, description, start_at, end_at, row_status)
-                                    VALUES ('<sequence.userId>', '<sequence.name>', '<sequence.description>', '<sequence.startAt>', '<sequence.endAt>', '<sequence.rowStatus>')
-                                    RETURNING id as campaign_id, name, description, start_at, end_at, row_status
-                                end note
-                                m_campaign -> infra: Return inserted result
-                            deactivate m_campaign
-                            infra -> app: Return the new campaign
-                        else id is specified (update, delete or archive)
-                            app -> infra: UPDATE - Update, delete or archive campaign
-                            infra -> m_campaign: UPDATE - Update, delete or archive campaign
-                            activate m_campaign
-                                note right of m_campaign
-                                    UPDATE campaign.m_campaign
-                                    SET
-                                        updated_by = '<sequence.userId>',
-                                        updated_at = NOW() AT TIME ZONE 'UTC',
-                                        name = '<sequence.name>',
-                                        description = '<sequence.description>',
-                                        start_at = '<sequence.startAt>',
-                                        end_at = '<sequence.endAt>',
-                                        row_status = '<sequence.rowStatus>' -- a delete sets DELETED, an archive sets ARCHIVED
-                                    WHERE id = '<sequence.id>'
-                                    RETURNING id as campaign_id, name, description, start_at, end_at, row_status
-                                end note
-                                m_campaign -> infra: Return updated result
-                            deactivate m_campaign
-                            infra -> app: Return the changed campaign
-                        end
-                        alt budget is in the request
-                            alt No budget id (insert, remaining = budget)
-                                app -> infra: INSERT - Create budget
-                                infra -> m_campaign_budget: INSERT - Create budget
-                                activate m_campaign_budget
-                                    note right of m_campaign_budget
-                                        INSERT INTO campaign.m_campaign_budget (created_by, campaign_id, budget, remaining, row_status)
-                                        VALUES ('<sequence.userId>', '<sequence.campaignId>', '<sequence.budget.budget>', '<sequence.budget.budget>', '<sequence.budget.rowStatus>') -- remaining starts as the whole budget
-                                        RETURNING id as budget_id, budget, remaining, row_status
-                                    end note
-                                    m_campaign_budget -> infra: Return inserted result
-                                deactivate m_campaign_budget
-                                infra -> app: Return the new budget
-                            else budget id (remaining = new budget - used)
-                                app -> infra: UPDATE - Change budget
-                                infra -> m_campaign_budget: UPDATE - Change budget
+                            alt rowStatus = DELETED (delete)
+                                app -> infra: UPDATE - Delete the budget of a deleted campaign
+                                infra -> m_campaign_budget: UPDATE - Delete the budget of a deleted campaign
                                 activate m_campaign_budget
                                     note right of m_campaign_budget
                                         UPDATE campaign.m_campaign_budget
                                         SET
                                             updated_by = '<sequence.userId>',
                                             updated_at = NOW() AT TIME ZONE 'UTC',
-                                            remaining = '<sequence.budget.budget>' - (budget - remaining), -- keeps what the orders took
-                                            budget = '<sequence.budget.budget>',
-                                            row_status = '<sequence.budget.rowStatus>'
-                                        WHERE id = '<sequence.budget.id>'
-                                        AND campaign_id = '<sequence.campaignId>'
-                                        AND (budget - remaining) <= '<sequence.budget.budget>' -- no row changed means the budget is below the used amount, answer 409 (E10006)
-                                        RETURNING id as budget_id, budget, remaining, (budget - remaining) as used, row_status
+                                            row_status = 'DELETED'
+                                        WHERE campaign_id = '<sequence.campaignId>'
+                                        AND row_status <> 'DELETED'
                                     end note
                                     m_campaign_budget -> infra: Return updated result
                                 deactivate m_campaign_budget
-                                infra -> app: Return the changed budget
-                            end
-                        end
-                        alt rowStatus = DELETED (delete)
-                            app -> infra: UPDATE - Delete the budget of a deleted campaign
-                            infra -> m_campaign_budget: UPDATE - Delete the budget of a deleted campaign
-                            activate m_campaign_budget
-                                note right of m_campaign_budget
-                                    UPDATE campaign.m_campaign_budget
-                                    SET
-                                        updated_by = '<sequence.userId>',
-                                        updated_at = NOW() AT TIME ZONE 'UTC',
-                                        row_status = 'DELETED'
-                                    WHERE campaign_id = '<sequence.campaignId>'
-                                    AND row_status <> 'DELETED'
-                                end note
-                                m_campaign_budget -> infra: Return updated result
-                            deactivate m_campaign_budget
-                            infra -> app: Return the deleted budget
-                            app -> infra: UPDATE - Delete the discount of a deleted campaign
-                            infra -> t_campaign_discount: UPDATE - Delete the discount of a deleted campaign
-                            activate t_campaign_discount
-                                note right of t_campaign_discount
-                                    UPDATE campaign.t_campaign_discount
-                                    SET
-                                        updated_by = '<sequence.userId>',
-                                        updated_at = NOW() AT TIME ZONE 'UTC',
-                                        row_status = 'DELETED'
-                                    WHERE campaign_id = '<sequence.campaignId>'
-                                    AND row_status <> 'DELETED'
-                                end note
-                                t_campaign_discount -> infra: Return updated result
-                            deactivate t_campaign_discount
-                            infra -> app: Return the deleted discount
-                            app -> infra: UPDATE - Delete the shops of a deleted campaign
-                            infra -> t_campaign_shop: UPDATE - Delete the shops of a deleted campaign
-                            activate t_campaign_shop
-                                note right of t_campaign_shop
-                                    UPDATE campaign.t_campaign_shop
-                                    SET
-                                        updated_by = '<sequence.userId>',
-                                        updated_at = NOW() AT TIME ZONE 'UTC',
-                                        row_status = 'DELETED'
-                                    WHERE campaign_id = '<sequence.campaignId>'
-                                    AND row_status <> 'DELETED'
-                                end note
-                                t_campaign_shop -> infra: Return updated result
-                            deactivate t_campaign_shop
-                            infra -> app: Return the deleted shop rows
-                            app -> infra: UPDATE - Delete the products of a deleted campaign
-                            infra -> t_campaign_product: UPDATE - Delete the products of a deleted campaign
-                            activate t_campaign_product
-                                note right of t_campaign_product
-                                    UPDATE campaign.t_campaign_product
-                                    SET
-                                        updated_by = '<sequence.userId>',
-                                        updated_at = NOW() AT TIME ZONE 'UTC',
-                                        row_status = 'DELETED'
-                                    WHERE campaign_id = '<sequence.campaignId>'
-                                    AND row_status <> 'DELETED'
-                                end note
-                                t_campaign_product -> infra: Return updated result
-                            deactivate t_campaign_product
-                            infra -> app: Return the deleted product rows
-                        end
-                        alt discount is in the request
-                            alt No discount id (insert)
-                                app -> infra: INSERT - Create discount
-                                infra -> t_campaign_discount: INSERT - Create discount
-                                activate t_campaign_discount
-                                    note right of t_campaign_discount
-                                        INSERT INTO campaign.t_campaign_discount (created_by, campaign_id, discount_type, discount_value, row_status)
-                                        VALUES ('<sequence.userId>', '<sequence.campaignId>', '<sequence.discount.discountType>', '<sequence.discount.discountValue>', '<sequence.discount.rowStatus>')
-                                        RETURNING id as discount_id, discount_type, discount_value, row_status
-                                    end note
-                                    t_campaign_discount -> infra: Return inserted result
-                                deactivate t_campaign_discount
-                                infra -> app: Return the new discount
-                            else discount id (update or delete)
-                                app -> infra: UPDATE - Update or delete discount
-                                infra -> t_campaign_discount: UPDATE - Update or delete discount
+                                infra -> app: Return the deleted budget
+                                app -> infra: UPDATE - Delete the discount of a deleted campaign
+                                infra -> t_campaign_discount: UPDATE - Delete the discount of a deleted campaign
                                 activate t_campaign_discount
                                     note right of t_campaign_discount
                                         UPDATE campaign.t_campaign_discount
                                         SET
                                             updated_by = '<sequence.userId>',
                                             updated_at = NOW() AT TIME ZONE 'UTC',
-                                            discount_type = '<sequence.discount.discountType>',
-                                            discount_value = '<sequence.discount.discountValue>',
-                                            row_status = '<sequence.discount.rowStatus>'
-                                        WHERE id = '<sequence.discount.id>'
-                                        AND campaign_id = '<sequence.campaignId>'
-                                        RETURNING id as discount_id, discount_type, discount_value, row_status
+                                            row_status = 'DELETED'
+                                        WHERE campaign_id = '<sequence.campaignId>'
+                                        AND row_status <> 'DELETED'
                                     end note
                                     t_campaign_discount -> infra: Return updated result
                                 deactivate t_campaign_discount
-                                infra -> app: Return the changed discount
+                                infra -> app: Return the deleted discount
+                                app -> infra: UPDATE - Delete the shops of a deleted campaign
+                                infra -> t_campaign_shop: UPDATE - Delete the shops of a deleted campaign
+                                activate t_campaign_shop
+                                    note right of t_campaign_shop
+                                        UPDATE campaign.t_campaign_shop
+                                        SET
+                                            updated_by = '<sequence.userId>',
+                                            updated_at = NOW() AT TIME ZONE 'UTC',
+                                            row_status = 'DELETED'
+                                        WHERE campaign_id = '<sequence.campaignId>'
+                                        AND row_status <> 'DELETED'
+                                    end note
+                                    t_campaign_shop -> infra: Return updated result
+                                deactivate t_campaign_shop
+                                infra -> app: Return the deleted shop rows
+                                app -> infra: UPDATE - Delete the products of a deleted campaign
+                                infra -> t_campaign_product: UPDATE - Delete the products of a deleted campaign
+                                activate t_campaign_product
+                                    note right of t_campaign_product
+                                        UPDATE campaign.t_campaign_product
+                                        SET
+                                            updated_by = '<sequence.userId>',
+                                            updated_at = NOW() AT TIME ZONE 'UTC',
+                                            row_status = 'DELETED'
+                                        WHERE campaign_id = '<sequence.campaignId>'
+                                        AND row_status <> 'DELETED'
+                                    end note
+                                    t_campaign_product -> infra: Return updated result
+                                deactivate t_campaign_product
+                                infra -> app: Return the deleted product rows
                             end
-                        end
-                        alt shops is in the request
-                            loop For every row of shops
-                                alt No row id (insert)
-                                    app -> infra: INSERT - Create campaign shop
-                                    infra -> t_campaign_shop: INSERT - Create campaign shop
-                                    activate t_campaign_shop
-                                        note right of t_campaign_shop
-                                            INSERT INTO campaign.t_campaign_shop (created_by, campaign_id, shop_id, row_status)
-                                            VALUES ('<sequence.userId>', '<sequence.campaignId>', '<sequence.shops.shopId>', '<sequence.shops.rowStatus>')
-                                            RETURNING id as campaign_shop_id, shop_id, row_status
+                            alt discount is in the request
+                                alt No discount id (insert)
+                                    app -> infra: INSERT - Create discount
+                                    infra -> t_campaign_discount: INSERT - Create discount
+                                    activate t_campaign_discount
+                                        note right of t_campaign_discount
+                                            INSERT INTO campaign.t_campaign_discount (created_by, campaign_id, discount_type, discount_value, row_status)
+                                            VALUES ('<sequence.userId>', '<sequence.campaignId>', '<sequence.discount.discountType>', '<sequence.discount.discountValue>', '<sequence.discount.rowStatus>')
+                                            RETURNING id as discount_id, discount_type, discount_value, row_status
                                         end note
-                                        t_campaign_shop -> infra: Return inserted result
-                                    deactivate t_campaign_shop
-                                    infra -> app: Return the new row
-                                else row id (update or delete)
-                                    app -> infra: UPDATE - Update or delete campaign shop
-                                    infra -> t_campaign_shop: UPDATE - Update or delete campaign shop
-                                    activate t_campaign_shop
-                                        note right of t_campaign_shop
-                                            UPDATE campaign.t_campaign_shop
+                                        t_campaign_discount -> infra: Return inserted result
+                                    deactivate t_campaign_discount
+                                    infra -> app: Return the new discount
+                                else discount id (update or delete)
+                                    app -> infra: UPDATE - Update or delete discount
+                                    infra -> t_campaign_discount: UPDATE - Update or delete discount
+                                    activate t_campaign_discount
+                                        note right of t_campaign_discount
+                                            UPDATE campaign.t_campaign_discount
                                             SET
                                                 updated_by = '<sequence.userId>',
                                                 updated_at = NOW() AT TIME ZONE 'UTC',
-                                                row_status = '<sequence.shops.rowStatus>'
-                                            WHERE id = '<sequence.shops.id>'
+                                                discount_type = '<sequence.discount.discountType>',
+                                                discount_value = '<sequence.discount.discountValue>',
+                                                row_status = '<sequence.discount.rowStatus>'
+                                            WHERE id = '<sequence.discount.id>'
                                             AND campaign_id = '<sequence.campaignId>'
-                                            RETURNING id as campaign_shop_id, shop_id, row_status
+                                            RETURNING id as discount_id, discount_type, discount_value, row_status
                                         end note
-                                        t_campaign_shop -> infra: Return updated result
-                                    deactivate t_campaign_shop
-                                    infra -> app: Return the changed row
+                                        t_campaign_discount -> infra: Return updated result
+                                    deactivate t_campaign_discount
+                                    infra -> app: Return the changed discount
                                 end
                             end
-                        end
-                        alt products is in the request
-                            loop For every row of products
-                                alt No row id (insert)
-                                    app -> infra: INSERT - Create campaign product
-                                    infra -> t_campaign_product: INSERT - Create campaign product
-                                    activate t_campaign_product
-                                        note right of t_campaign_product
-                                            INSERT INTO campaign.t_campaign_product (created_by, campaign_id, product_category_id, product_id, row_status)
-                                            VALUES ('<sequence.userId>', '<sequence.campaignId>', '<sequence.products.productCategoryId>', '<sequence.products.productId>', '<sequence.products.rowStatus>')
-                                            RETURNING id as campaign_product_id, product_category_id, product_id, row_status
-                                        end note
-                                        t_campaign_product -> infra: Return inserted result
-                                    deactivate t_campaign_product
-                                    infra -> app: Return the new row
-                                else row id (update or delete)
-                                    app -> infra: UPDATE - Update or delete campaign product
-                                    infra -> t_campaign_product: UPDATE - Update or delete campaign product
-                                    activate t_campaign_product
-                                        note right of t_campaign_product
-                                            UPDATE campaign.t_campaign_product
-                                            SET
-                                                updated_by = '<sequence.userId>',
-                                                updated_at = NOW() AT TIME ZONE 'UTC',
-                                                row_status = '<sequence.products.rowStatus>'
-                                            WHERE id = '<sequence.products.id>'
-                                            AND campaign_id = '<sequence.campaignId>'
-                                            RETURNING id as campaign_product_id, product_category_id, product_id, row_status
-                                        end note
-                                        t_campaign_product -> infra: Return updated result
-                                    deactivate t_campaign_product
-                                    infra -> app: Return the changed row
+                            alt shops is in the request
+                                loop For every row of shops
+                                    alt No row id (insert)
+                                        app -> infra: INSERT - Create campaign shop
+                                        infra -> t_campaign_shop: INSERT - Create campaign shop
+                                        activate t_campaign_shop
+                                            note right of t_campaign_shop
+                                                INSERT INTO campaign.t_campaign_shop (created_by, campaign_id, shop_id, row_status)
+                                                VALUES ('<sequence.userId>', '<sequence.campaignId>', '<sequence.shops.shopId>', '<sequence.shops.rowStatus>')
+                                                RETURNING id as campaign_shop_id, shop_id, row_status
+                                            end note
+                                            t_campaign_shop -> infra: Return inserted result
+                                        deactivate t_campaign_shop
+                                        infra -> app: Return the new row
+                                    else row id (update or delete)
+                                        app -> infra: UPDATE - Update or delete campaign shop
+                                        infra -> t_campaign_shop: UPDATE - Update or delete campaign shop
+                                        activate t_campaign_shop
+                                            note right of t_campaign_shop
+                                                UPDATE campaign.t_campaign_shop
+                                                SET
+                                                    updated_by = '<sequence.userId>',
+                                                    updated_at = NOW() AT TIME ZONE 'UTC',
+                                                    row_status = '<sequence.shops.rowStatus>'
+                                                WHERE id = '<sequence.shops.id>'
+                                                AND campaign_id = '<sequence.campaignId>'
+                                                RETURNING id as campaign_shop_id, shop_id, row_status
+                                            end note
+                                            t_campaign_shop -> infra: Return updated result
+                                        deactivate t_campaign_shop
+                                        infra -> app: Return the changed row
+                                    end
                                 end
                             end
-                        end
-                        alt Insert
-                            app -> infra: COMMIT
-                            app -> api: HTTP 201 S10000 Upsert Campaign Success
-                            api -> page: Return the campaign
-                            page -> user: Display the campaign saved
-                        else rowStatus = DELETED (delete)
-                            app -> infra: COMMIT
-                            app -> api: HTTP 204 No Content; no response body
-                            api -> page: No content
-                            page -> user: Display the campaign removed
-                        else Update or archive
-                            app -> infra: COMMIT
-                            app -> api: HTTP 200 S10000 Upsert Campaign Success
-                            api -> page: Return the campaign
-                            page -> user: Display the campaign saved
+                            alt products is in the request
+                                loop For every row of products
+                                    alt No row id (insert)
+                                        app -> infra: INSERT - Create campaign product
+                                        infra -> t_campaign_product: INSERT - Create campaign product
+                                        activate t_campaign_product
+                                            note right of t_campaign_product
+                                                INSERT INTO campaign.t_campaign_product (created_by, campaign_id, product_category_id, product_id, row_status)
+                                                VALUES ('<sequence.userId>', '<sequence.campaignId>', '<sequence.products.productCategoryId>', '<sequence.products.productId>', '<sequence.products.rowStatus>')
+                                                RETURNING id as campaign_product_id, product_category_id, product_id, row_status
+                                            end note
+                                            t_campaign_product -> infra: Return inserted result
+                                        deactivate t_campaign_product
+                                        infra -> app: Return the new row
+                                    else row id (update or delete)
+                                        app -> infra: UPDATE - Update or delete campaign product
+                                        infra -> t_campaign_product: UPDATE - Update or delete campaign product
+                                        activate t_campaign_product
+                                            note right of t_campaign_product
+                                                UPDATE campaign.t_campaign_product
+                                                SET
+                                                    updated_by = '<sequence.userId>',
+                                                    updated_at = NOW() AT TIME ZONE 'UTC',
+                                                    row_status = '<sequence.products.rowStatus>'
+                                                WHERE id = '<sequence.products.id>'
+                                                AND campaign_id = '<sequence.campaignId>'
+                                                RETURNING id as campaign_product_id, product_category_id, product_id, row_status
+                                            end note
+                                            t_campaign_product -> infra: Return updated result
+                                        deactivate t_campaign_product
+                                        infra -> app: Return the changed row
+                                    end
+                                end
+                            end
+                            alt Insert
+                                app -> infra: COMMIT
+                                app -> api: HTTP 201 S10000 Upsert Campaign Success
+                                api -> page: Return the campaign
+                                page -> user: Display the campaign saved
+                            else rowStatus = DELETED (delete)
+                                app -> infra: COMMIT
+                                app -> api: HTTP 204 No Content; no response body
+                                api -> page: No content
+                                page -> user: Display the campaign removed
+                            else Update or archive
+                                app -> infra: COMMIT
+                                app -> api: HTTP 200 S10000 Upsert Campaign Success
+                                api -> page: Return the campaign
+                                page -> user: Display the campaign saved
+                            end
                         end
                     else Timeout before COMMIT
                         note over app, infra
