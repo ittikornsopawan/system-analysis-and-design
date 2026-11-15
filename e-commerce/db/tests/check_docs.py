@@ -5723,6 +5723,7 @@ ADMIN_WRITE_APPROVED = "Approved by the product owner (answered through the lead
 # current credential check take their place. Add a folder here in the pull request that migrates it.
 ADMIN_WRITE_JWT_CLAIMS = {
     "shop/05-upsert-shop-type",
+    "shop/06-upsert-shop-type-batch",
     "product/01-upsert-product",
     "product/03-upsert-product-batch",
 }
@@ -5738,6 +5739,9 @@ ADMIN_WRITE_RULE_IN_DIAGRAM = {  # folder: the phrases that the visible note of 
     "product/07-upsert-product-category-attribute": _IN_DIAGRAM_SINGLE,
     "product/09-upsert-product-category-attribute-batch": _IN_DIAGRAM_BATCH,
 }
+# Claims specs whose existing target row is locked (FOR UPDATE) before the permission decision, the in-use check and the write (lead decision of 2026-11-15);
+# the batch locks the rows in ascending id order.
+ADMIN_WRITE_TARGET_LOCK = {"shop/05-upsert-shop-type": "QUERY - Check existing shop type", "shop/06-upsert-shop-type-batch": "QUERY - Check existing shop type"}
 ADMIN_WRITE_CLAIMS_RULE = "the verified JWT `roles` claim (an array of role names, an empty array is valid) must contain the exact case-sensitive role `PLATFORM_ADMIN`"
 ADMIN_WRITE_RULE_BATCH = ("Permission: the same as the single upsert, only a platform administrator (a user with an ACTIVE `author.t_user_role` row for the ACTIVE role `PLATFORM_ADMIN`) "
                           "can call this API, any other caller gets 403 (E10009)")
@@ -5876,6 +5880,16 @@ def check_admin_write_spec() -> int:
             errors.append(f"{path}: the {'caller lock and credential' if claims else 'platform administrator'} queries belong to Database Relations")
         if md.count("E10009") < (2 if claims or in_diagram else 3):
             errors.append(f"{path}: E10009 must appear in the rule, {'' if claims or in_diagram else 'the order of checks, '}and the example")
+        if folder in ADMIN_WRITE_TARGET_LOCK:
+            heading = ADMIN_WRITE_TARGET_LOCK[folder]
+            locked = {h: q for _, h, q in spec_database_operations(read(path))}.get(heading, "")
+            if "FOR UPDATE" not in locked:
+                errors.append(f"{path}: '{heading}' must lock the target row with FOR UPDATE")
+            wsd_text = read(str(Path(path).with_name("sequence.wsd")))
+            if not 0 < wsd_text.find("app -> infra: QUERY - Check current credential and user") < wsd_text.find("app -> infra: " + heading) < wsd_text.find("alt The verified roles claim has no PLATFORM_ADMIN"):
+                errors.append(f"{path}: the target row lock comes after the credential check and before the permission decision")
+            if batch and "loop For each item with an id, in ascending id order" not in wsd_text:
+                errors.append(f"{path}: the batch locks the rows in ascending id order")
         if claims:
             errors.extend(f"{path} (sequence): {error}" for error in admin_write_claims_flow_errors(read(str(Path(path).with_name("sequence.wsd"))), batch, thing))
     if errors:
