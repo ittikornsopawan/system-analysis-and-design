@@ -1,6 +1,6 @@
 ---
 name: "Upsert Shop Type API"
-description: "Insert, update or delete a shop type. Read it when you implement, review or test POST v1/shop/type/upsert."
+description: "Insert, update or delete a shop type, only for a platform administrator authorized from the verified JWT roles claim after the caller lock and the current credential check. Read it when you implement, review or test POST v1/shop/type/upsert."
 status: in-review
 approved_by: null
 approved_at: null
@@ -30,7 +30,9 @@ approved_at: null
 - `name` and `description` are required in every request, including a delete and an archive.
 - DELETED is final: a DELETED shop type is never reopened and its `id` counts as not found (404, E10004). INACTIVE, LOCKED and ARCHIVED are reversible: an update with `rowStatus` ACTIVE opens the shop type again. `rowStatus` DELETED is rejected with 400 (E10001) when the request inserts a shop type.
 - A shop type cannot be deleted or archived while any shop that is not DELETED uses it (`shop.m_shop.type_id`), 409 (E10006). INACTIVE and LOCKED are allowed even when shops use the shop type, the shops are not changed. Whether a shop can be created with a shop type that is not ACTIVE is a rule of the shop API.
-- Permission: only a platform administrator (a user with an ACTIVE `author.t_user_role` row for the ACTIVE role `PLATFORM_ADMIN`) can call this API, any other caller gets 403 (E10009), after the existence checks and before the duplicate, in-use and other conflict checks and before anything is written. Reading is not changed by this rule. Approved by the product owner (answered through the lead SA, 2026-11-06).
+- Governing decisions: owner-confirmed API review Q2, Q4, Q10 and Q13 (JWT payload of 2026-11-13).
+- Permission: only a platform administrator can call this API: the verified JWT `roles` claim (an array of role names, an empty array is valid) must contain the exact case-sensitive role `PLATFORM_ADMIN`, otherwise 403 (E10009), after the existence check and before the duplicate, in-use and other conflict checks and before anything is written. Never query `author.m_role` or `author.t_user_role`: a change of the role assignments does not change a token that was already issued. Reading is not changed by this rule.
+- The transaction locks the caller user first and checks the current credential, a missing user or credential is 401 (E10002). The order of the checks and the locks is in the sequence diagram.
 - HTTP status of the single upsert: Insert 201 Created, Update 200 Ok, Delete 204 No Content (no response body), Archive 200 Ok.
 
 ---
@@ -345,9 +347,54 @@ HTTP/1.1 204 No Content
 }
 ```
 
+#### Fail - Internal Server Error
+
+```JSON
+{
+    "status": {
+        "code": 500,
+        "message": "Internal Server Error",
+        "bizMessage": "An unexpected error occurred.",
+        "requestId": "req-500a1b2c-3d4e-5f6a-7b8c-9d0e1f2a3b4c",
+        "timestamp": "2026-11-05T12:46:10.123Z",
+        "status": "ERROR"
+    }
+}
+```
+
 ---
 
 ## Database Relations
+
+One READ COMMITTED transaction. The caller identity (`callerUserId`, the `sub` of the verified JWT) is distinct from the shop type; the fresh UTC time is bound. The caller user is locked first, then the current credential is checked.
+
+### Table: [authen.m_user](../../../schema/authen/m_user.md)
+
+#### QUERY - Lock the caller user
+
+```SQL
+SELECT
+    u.id as user_id
+FROM authen.m_user u
+WHERE u.id = '<sequence.callerUserId>'
+FOR UPDATE
+```
+
+### Table: [authen.t_user_access_token](../../../schema/authen/t_user_access_token.md)
+
+#### QUERY - Check current credential and user
+
+```SQL
+SELECT
+    at.id as access_token_id
+FROM authen.t_user_access_token at
+JOIN authen.m_user u ON u.id = at.user_id
+WHERE at.token = '<sequence.accessTokenHash>'
+AND at.user_id = '<sequence.callerUserId>'
+AND at.row_status = 'ACTIVE'
+AND at.expired_at > '<sequence.now>'
+AND u.row_status = 'ACTIVE'
+```
 
 ### Table: [shop.m_shop_type](../../../schema/shop/m_shop_type.md)
 
@@ -414,29 +461,4 @@ SELECT
 FROM shop.m_shop s
 WHERE s.type_id = '<sequence.id>' -- only when rowStatus is DELETED or ARCHIVED
 AND s.row_status <> 'DELETED'
-```
-
-### Table: [author.m_role](../../../schema/author/m_role.md)
-
-#### QUERY - Get the platform administrator role
-
-```SQL
-SELECT
-    r.id as role_id
-FROM author.m_role r
-WHERE r.name = 'PLATFORM_ADMIN'
-AND r.row_status = 'ACTIVE'
-```
-
-### Table: [author.t_user_role](../../../schema/author/t_user_role.md)
-
-#### QUERY - Check platform administrator
-
-```SQL
-SELECT
-    ur.id as user_role_id
-FROM author.t_user_role ur
-WHERE ur.user_id = '<sequence.userId>'
-AND ur.role_id = '<sequence.roleId>'
-AND ur.row_status = 'ACTIVE'
 ```
