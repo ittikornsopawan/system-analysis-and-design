@@ -5735,6 +5735,7 @@ ADMIN_WRITE_APPROVED = "Approved by the product owner (answered through the lead
 ADMIN_WRITE_JWT_CLAIMS = {
     "product/01-upsert-product",
     "product/03-upsert-product-batch",
+    "product/04-upsert-product-category",
 }
 # Specs that still use the live role queries but keep their rule and order text in the visible note of the diagram, not in the spec.
 _IN_DIAGRAM_SINGLE = ("only a platform administrator (a user with an ACTIVE author.t_user_role row for the ACTIVE role PLATFORM_ADMIN)", "any other caller gets 403 (E10009)",
@@ -5742,8 +5743,11 @@ _IN_DIAGRAM_SINGLE = ("only a platform administrator (a user with an ACTIVE auth
 _IN_DIAGRAM_CAMPAIGN = ("A product category cannot be deleted while it is in a campaign that is not DELETED and has not ended (a live campaign.t_campaign_product row of a campaign "
                         "whose end_at is after now), 409 (E10006) with the campaign name in the message.")
 _IN_DIAGRAM_BATCH = _IN_DIAGRAM_SINGLE + ("the same as the single upsert, only a platform administrator", "so the 403 message has no item position")
+ADMIN_WRITE_CAMPAIGN = {  # migrated folders that keep the campaign delete rule
+    "product/04-upsert-product-category",
+}
 ADMIN_WRITE_RULE_IN_DIAGRAM = {  # folder: the phrases that the visible note of its diagram must say
-    "product/04-upsert-product-category": _IN_DIAGRAM_SINGLE + (_IN_DIAGRAM_CAMPAIGN,),
+
     "product/06-upsert-product-category-batch": _IN_DIAGRAM_BATCH + (_IN_DIAGRAM_CAMPAIGN,),
     "product/07-upsert-product-category-attribute": _IN_DIAGRAM_SINGLE,
     "product/09-upsert-product-category-attribute-batch": _IN_DIAGRAM_BATCH,
@@ -5840,6 +5844,10 @@ def check_admin_write_spec() -> int:
                     errors.append(f"{path}: the live platform administrator query must be gone, found {gone!r}")
             if batch:
                 need += ["so the 403 message has no item position"]
+            if folder in ADMIN_WRITE_CAMPAIGN:
+                need += ["A product category cannot be deleted while it is in a campaign that is not DELETED and has not ended (409, E10006, with the campaign name in the message)"]
+                if _IN_DIAGRAM_CAMPAIGN not in read(str(Path(path).with_name("sequence.wsd"))):
+                    errors.append(f"{path} (sequence): the visible note must say {_IN_DIAGRAM_CAMPAIGN!r}")
             # the spec text and the diagram text are checked in their own files, never combined
             for missing in missing_needles(read(path), need):
                 errors.append(f"{path} (spec) missing: {missing!r}")
