@@ -26,7 +26,7 @@ approved_at: 2026-11-16T09:24:57+07:00
 | PRE-PRODUCTION | https://www.domain.com/api-pre-prod |
 | PRODUCTION     | https://www.domain.com/api          |
 
-- The caller needs a verified JWT, then must be an ACTIVE member of the shop of the order (a row of `shop.t_shop_user` with the role ADMIN or STAFF that is ACTIVE) or have the role `PLATFORM_ADMIN` in the verified `roles` claim, otherwise 403 (E10009).
+- The caller needs a verified JWT, then must be an ACTIVE member of the shop of the order (a row of `shop.t_shop_user` with the role OWNER, ADMIN or STAFF that is ACTIVE) or have the role `PLATFORM_ADMIN` in the verified `roles` claim, otherwise 403 (E10009).
 - The platform administrator is the exact case-sensitive role `PLATFORM_ADMIN` in the verified `roles` claim; do not query `author.m_role` or `author.t_user_role`, and a change of the assignment after the token was issued does not change this token (it may stay usable until its expiry). Membership of a shop is not a token claim and is still read from `shop.t_shop_user`.
 - The JWT and credential checks, the lock order and the order of the checks are in the sequence diagram.
 - The status moves only along these steps, any other step is 409 (E10006) with the current status in the message: `PENDING` -> `SHIPPED` (the parcel is handed to the carrier), `PENDING` -> `CANCELLED` (the shop gives up before handing it over), `SHIPPED` -> `RETURNED` (the parcel came back to the shop because it could not be delivered). `DELIVERED` is not set here, only the receiver can set it (confirm delivery API). `DELIVERED`, `CANCELLED` and `RETURNED` are final. A parcel that came back is sent again by creating a new shipping.
@@ -483,7 +483,7 @@ SELECT
 FROM shop.t_shop_user su
 WHERE su.shop_id = '<sequence.shopId>'
 AND su.user_id = '<sequence.userId>'
-AND su.role IN ('ADMIN', 'STAFF')
+AND su.role IN ('OWNER', 'ADMIN', 'STAFF')
 AND su.row_status = 'ACTIVE'
 ```
 

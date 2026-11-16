@@ -195,13 +195,13 @@ activate page
                                         FROM shop.t_shop_user su
                                         WHERE su.shop_id = '<sequence.shopId>'
                                         AND su.user_id = '<sequence.userId>'
-                                        AND su.role IN ('ADMIN', 'STAFF')
+                                        AND su.role IN ('OWNER', 'ADMIN', 'STAFF')
                                         AND su.row_status = 'ACTIVE'
                                     end note
                                     t_shop_user -> infra: Return query result
                                 deactivate t_shop_user
-                                infra -> app: Return the ACTIVE ADMIN or STAFF row of the caller or no row
-                                alt The caller is not an ACTIVE ADMIN or STAFF member of the shop
+                                infra -> app: Return the ACTIVE OWNER, ADMIN or STAFF row of the caller or no row
+                                alt The caller is not an ACTIVE OWNER, ADMIN or STAFF member of the shop
                                     alt The roles claim has no PLATFORM_ADMIN
                                         app -> infra: ROLLBACK
                                         app -> api: HTTP 403 E10009 Only a member of the shop of the order or a platform administrator can record a stop.
