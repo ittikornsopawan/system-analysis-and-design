@@ -48,7 +48,7 @@ approved_at: 2026-11-16T09:24:57+07:00
 | --- | -------------- | ------------ | --------- | ---------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------- | ------------------------------------ |
 | 1   | id             | String: UUID | OPTIONAL  | Product Category Attribute Id, Insert when not specified, Update or Delete when specified                                                                                                      | 11a2b3c4-0001-4a0b-8c1d-2e3f4a5b6c7d |
 | 2   | categoryId     | String: UUID | MANDATORY | Product Category Id, Cannot be changed when the attribute is used by products                                                                                                                  | b8c9d0e1-2f3a-4b4c-9d5e-6f7a8b9c0d1e |
-| 3   | name           | String       | MANDATORY | Product Category Attribute Name (max 128 characters), Unique                                                                                                                                   | Color                                |
+| 3   | name           | String       | MANDATORY | Product Category Attribute Name (max 128 characters), Unique among product category attributes that are not DELETED                                                                            | Color                                |
 | 4   | description    | String       | MANDATORY | Product Category Attribute Description (max 256 characters)                                                                                                                                    | Color of the product                 |
 | 5   | rowStatus      | String       | OPTIONAL  | Row status (ACTIVE, INACTIVE, DELETED, LOCKED, ARCHIVED), Defaults to ACTIVE, Delete when DELETED, Archive when ARCHIVED, Delete is allowed only when the attribute is not used by any product | ACTIVE                               |
 
@@ -410,6 +410,7 @@ SELECT
     pca.id as attribute_id
 FROM product.m_product_category_attribute pca
 WHERE pca.name = '<sequence.name>'
+AND pca.row_status <> 'DELETED'
 AND pca.id <> '<sequence.id>' -- only when id is specified
 ```
 

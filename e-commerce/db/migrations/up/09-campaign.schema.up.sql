@@ -96,7 +96,7 @@ CREATE TABLE
             )
         ),
         campaign_id UUID NOT NULL REFERENCES campaign.m_campaign (id) ON DELETE CASCADE,
-        product_category_id UUID REFERENCES product.m_product_category (id) ON DELETE CASCADE,
+        product_category_id UUID REFERENCES product.m_product_category (id) ON DELETE RESTRICT,
         product_id UUID REFERENCES product.m_product (id) ON DELETE CASCADE,
         CONSTRAINT ck_t_campaign_product_target CHECK (
             (product_category_id IS NULL) <> (product_id IS NULL)

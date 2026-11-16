@@ -207,6 +207,7 @@ activate page
                                             pc.id as category_id
                                         FROM product.m_product_category pc
                                         WHERE pc.name = '<sequence.categories.name>'
+                                        AND pc.row_status <> 'DELETED'
                                         AND pc.id <> '<sequence.categories.id>' -- only when id is specified
                                     end note
                                     m_product_category -> infra: Return query result

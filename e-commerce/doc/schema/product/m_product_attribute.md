@@ -27,7 +27,7 @@ Description: Master table of the `product` schema (defined in `db/migrations/up/
 | ----------------------------------- | ------------ | ----------------------------------------------------------------------------- |
 | pk_m_product_attribute_id           | id           | Primary key                                                                   |
 | fk_m_product_attribute_product_id   | product_id   | References product.m_product(id), ON DELETE CASCADE                           |
-| fk_m_product_attribute_attribute_id | attribute_id | References product.m_product_category_attribute(id), ON DELETE CASCADE        |
+| fk_m_product_attribute_attribute_id | attribute_id | References product.m_product_category_attribute(id), ON DELETE RESTRICT       |
 | ck_m_product_attribute_row_status   | row_status   | CHECK (row_status IN ('ACTIVE', 'INACTIVE', 'DELETED', 'LOCKED', 'ARCHIVED')) |
 
 ---
@@ -50,7 +50,7 @@ CREATE TABLE
             )
         ),
         product_id UUID NOT NULL REFERENCES product.m_product (id) ON DELETE CASCADE,
-        attribute_id UUID NOT NULL REFERENCES product.m_product_category_attribute (id) ON DELETE CASCADE,
+        attribute_id UUID NOT NULL REFERENCES product.m_product_category_attribute (id) ON DELETE RESTRICT,
         value VARCHAR(256) NOT NULL
     );
 ```

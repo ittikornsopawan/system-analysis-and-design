@@ -169,6 +169,7 @@ activate page
                                         pca.id as attribute_id
                                     FROM product.m_product_category_attribute pca
                                     WHERE pca.name = '<sequence.name>'
+                                    AND pca.row_status <> 'DELETED'
                                     AND pca.id <> '<sequence.id>' -- only when id is specified
                                 end note
                                 m_product_category_attribute -> infra: Return query result

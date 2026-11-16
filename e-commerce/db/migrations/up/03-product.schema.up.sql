@@ -40,11 +40,15 @@ CREATE TABLE
                 'ARCHIVED'
             )
         ),
-        parent_id UUID REFERENCES product.m_product_category (id) ON DELETE CASCADE,
-        name VARCHAR(128) NOT NULL UNIQUE,
+        parent_id UUID REFERENCES product.m_product_category (id) ON DELETE RESTRICT,
+        name VARCHAR(128) NOT NULL,
         description VARCHAR(256) NOT NULL,
         slug VARCHAR(128) NOT NULL
     );
+
+CREATE UNIQUE INDEX IF NOT EXISTS uq_m_product_category_name ON product.m_product_category (name)
+WHERE
+    row_status <> 'DELETED';
 
 CREATE TABLE
     IF NOT EXISTS product.m_product_category_attribute (
@@ -62,10 +66,14 @@ CREATE TABLE
                 'ARCHIVED'
             )
         ),
-        category_id UUID NOT NULL REFERENCES product.m_product_category (id) ON DELETE CASCADE,
-        name VARCHAR(128) NOT NULL UNIQUE,
+        category_id UUID NOT NULL REFERENCES product.m_product_category (id) ON DELETE RESTRICT,
+        name VARCHAR(128) NOT NULL,
         description VARCHAR(256) NOT NULL
     );
+
+CREATE UNIQUE INDEX IF NOT EXISTS uq_m_product_category_attribute_name ON product.m_product_category_attribute (name)
+WHERE
+    row_status <> 'DELETED';
 
 CREATE TABLE
     IF NOT EXISTS product.m_product_brand (
@@ -108,7 +116,7 @@ CREATE TABLE
             )
         ),
         type_id UUID NOT NULL REFERENCES product.m_product_type (id) ON DELETE RESTRICT,
-        category_id UUID NOT NULL REFERENCES product.m_product_category (id) ON DELETE CASCADE,
+        category_id UUID NOT NULL REFERENCES product.m_product_category (id) ON DELETE RESTRICT,
         brand_id UUID NOT NULL REFERENCES product.m_product_brand (id) ON DELETE RESTRICT,
         name VARCHAR(128) NOT NULL,
         description VARCHAR(256) NOT NULL,
@@ -133,7 +141,7 @@ CREATE TABLE
             )
         ),
         product_id UUID NOT NULL REFERENCES product.m_product (id) ON DELETE CASCADE,
-        attribute_id UUID NOT NULL REFERENCES product.m_product_category_attribute (id) ON DELETE CASCADE,
+        attribute_id UUID NOT NULL REFERENCES product.m_product_category_attribute (id) ON DELETE RESTRICT,
         value VARCHAR(256) NOT NULL
     );
 

@@ -27,7 +27,7 @@ Description: Transaction table of the `campaign` schema (defined in `db/migratio
 | ----------------------------------------------------- | -------------------------------- | ----------------------------------------------------------------------------------- |
 | pk_t_campaign_product_id                              | id                               | Primary key                                                                         |
 | fk_t_campaign_product_campaign_id                     | campaign_id                      | References campaign.m_campaign(id), ON DELETE CASCADE                               |
-| fk_t_campaign_product_product_category_id             | product_category_id              | References product.m_product_category(id), ON DELETE CASCADE                        |
+| fk_t_campaign_product_product_category_id             | product_category_id              | References product.m_product_category(id), ON DELETE RESTRICT                       |
 | fk_t_campaign_product_product_id                      | product_id                       | References product.m_product(id), ON DELETE CASCADE                                 |
 | ck_t_campaign_product_row_status                      | row_status                       | CHECK (row_status IN ('ACTIVE', 'INACTIVE', 'DELETED', 'LOCKED', 'ARCHIVED'))       |
 | ck_t_campaign_product_target                          | product_category_id, product_id  | CHECK ((product_category_id IS NULL) <> (product_id IS NULL))                       |
@@ -54,7 +54,7 @@ CREATE TABLE
             )
         ),
         campaign_id UUID NOT NULL REFERENCES campaign.m_campaign (id) ON DELETE CASCADE,
-        product_category_id UUID REFERENCES product.m_product_category (id) ON DELETE CASCADE,
+        product_category_id UUID REFERENCES product.m_product_category (id) ON DELETE RESTRICT,
         product_id UUID REFERENCES product.m_product (id) ON DELETE CASCADE,
         CONSTRAINT ck_t_campaign_product_target CHECK (
             (product_category_id IS NULL) <> (product_id IS NULL)
