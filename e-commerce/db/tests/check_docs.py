@@ -1589,21 +1589,6 @@ def check_shop_profile_spec() -> int:
 COMMANDS["shop-profile-spec"] = check_shop_profile_spec
 
 
-def er_name_rows(label: str) -> list[str]:
-    """Value of the 'name' row of every table with this header drawn in the ER diagram (one per page)."""
-    import xml.etree.ElementTree as ET
-
-    root = ET.fromstring(read("e-commerce/db/er-diagram.drawio"))
-    cells = list(root.iter("mxCell"))
-    rows = []
-    for cell in cells:
-        if cell.get("value") == label:
-            for child in cells:
-                if child.get("parent") == cell.get("id") and "name :" in (child.get("value") or ""):
-                    rows.append(child.get("value"))
-    return rows
-
-
 def check_shop_profile_schema() -> int:
     """shop.m_shop and shop.m_shop_image: unique name, margin ceiling, RESTRICT on the type, one LOGO and one WALLPAPER."""
     errors = []
@@ -5911,49 +5896,16 @@ ADMIN_WRITE_SPECS = {  # folder: (the thing it manages, batch)
     "product/07-upsert-product-category-attribute": ("product category attributes", False),
     "product/09-upsert-product-category-attribute-batch": ("product category attributes", True),
 }
-# The two live role queries that the specs which have not moved to the JWT claims yet must copy exactly (shop/05 was their reference until it moved).
-ADMIN_WRITE_LIVE_QUERIES = (
-    "SELECT\n    r.id as role_id\nFROM author.m_role r\nWHERE r.name = 'PLATFORM_ADMIN'\nAND r.row_status = 'ACTIVE'\n",
-    "SELECT\n    ur.id as user_role_id\nFROM author.t_user_role ur\nWHERE ur.user_id = '<sequence.userId>'\nAND ur.role_id = '<sequence.roleId>'\nAND ur.row_status = 'ACTIVE'\n",
-)
-ADMIN_WRITE_APPROVED = "Approved by the product owner (answered through the lead SA, 2026-11-06)."
-# Specs moved to the verified JWT roles claim (API review Q2, Q4, Q10, Q13): the two live role queries are gone, the caller lock and the
-# current credential check take their place. Add a folder here in the pull request that migrates it.
-ADMIN_WRITE_JWT_CLAIMS = {
-    "shop/05-upsert-shop-type",
-    "shop/06-upsert-shop-type-batch",
-    "product/01-upsert-product",
-    "product/03-upsert-product-batch",
-    "product/09-upsert-product-category-attribute-batch",
-    "product/07-upsert-product-category-attribute",
-    "product/06-upsert-product-category-batch",
-    "product/04-upsert-product-category",
-}
-# Specs that still use the live role queries but keep their rule and order text in the visible note of the diagram, not in the spec.
-_IN_DIAGRAM_SINGLE = ("only a platform administrator (a user with an ACTIVE author.t_user_role row for the ACTIVE role PLATFORM_ADMIN)", "any other caller gets 403 (E10009)",
-                      "Order of checks: validate the request (400) -> existence checks (404) -> permission (403, E10009) -> duplicate, in-use and other conflicts (409) -> write")
 _IN_DIAGRAM_CAMPAIGN = ("A product category cannot be deleted while it is in a campaign that is not DELETED and has not ended (a live campaign.t_campaign_product row of a campaign "
                         "whose end_at is after now), 409 (E10006) with the campaign name in the message.")
-_IN_DIAGRAM_BATCH = _IN_DIAGRAM_SINGLE + ("the same as the single upsert, only a platform administrator", "so the 403 message has no item position")
 ADMIN_WRITE_CAMPAIGN = {  # migrated folders that keep the campaign delete rule
     "product/04-upsert-product-category",
     "product/06-upsert-product-category-batch",
-}
-ADMIN_WRITE_RULE_IN_DIAGRAM = {  # folder: the phrases that the visible note of its diagram must say
 }
 # Claims specs whose existing target row is locked (FOR UPDATE) before the permission decision, the in-use check and the write (lead decision of 2026-11-15);
 # the batch locks the rows in ascending id order.
 ADMIN_WRITE_TARGET_LOCK = {"shop/05-upsert-shop-type": "QUERY - Check existing shop type", "shop/06-upsert-shop-type-batch": "QUERY - Check existing shop type"}
 ADMIN_WRITE_CLAIMS_RULE = "the verified JWT `roles` claim (an array of role names, an empty array is valid) must contain the exact case-sensitive role `PLATFORM_ADMIN`"
-ADMIN_WRITE_RULE_BATCH = ("Permission: the same as the single upsert, only a platform administrator (a user with an ACTIVE `author.t_user_role` row for the ACTIVE role `PLATFORM_ADMIN`) "
-                          "can call this API, any other caller gets 403 (E10009)")
-ADMIN_WRITE_RULE = ("Permission: only a platform administrator (a user with an ACTIVE `author.t_user_role` row for the ACTIVE role `PLATFORM_ADMIN`) "
-                    "can call this API, any other caller gets 403 (E10009)")
-
-
-def admin_write_reference_queries() -> list[str]:
-    """The two live platform administrator queries (the text every spec that has not moved to the JWT claims must copy)."""
-    return list(ADMIN_WRITE_LIVE_QUERIES)
 
 
 def admin_write_claims_flow_errors(wsd: str, batch: bool = False, thing: str = "") -> list[str]:
@@ -5998,7 +5950,6 @@ def admin_write_claims_flow_errors(wsd: str, batch: bool = False, thing: str = "
 
 def check_admin_write_spec() -> int:
     errors = []
-    queries = admin_write_reference_queries()
     for folder, (thing, batch) in ADMIN_WRITE_SPECS.items():
         path = f"e-commerce/doc/api/{folder}/spec.md"
         try:
@@ -6018,59 +5969,29 @@ def check_admin_write_spec() -> int:
         description = next((line for line in md.split("\n") if line.startswith("| Description |")), "")
         if "only a platform administrator can call it" not in description:
             errors.append(f"{path}: the Description row must say that only a platform administrator can call it")
-        claims = folder in ADMIN_WRITE_JWT_CLAIMS
-        need = [ADMIN_WRITE_RULE_BATCH if batch else ADMIN_WRITE_RULE, ADMIN_WRITE_APPROVED, "permission (403, E10009)", "#### QUERY - Get the platform administrator role", "#### QUERY - Check platform administrator",
-                "(../../../schema/author/m_role.md)", "(../../../schema/author/t_user_role.md)", f"You do not have permission to manage {thing}."]
-        if claims:
-            need = [ADMIN_WRITE_CLAIMS_RULE, "Q2, Q4, Q10 and Q13", "Never query `author.m_role` or `author.t_user_role`", "The order of the checks and the locks is in the sequence diagram",
-                    "#### QUERY - Lock the caller user", "WHERE u.id = '<sequence.callerUserId>'\nFOR UPDATE",
-                    "#### QUERY - Check current credential and user", "AND at.expired_at > '<sequence.now>'", "(../../../schema/authen/m_user.md)",
-                    "(../../../schema/authen/t_user_access_token.md)", f"You do not have permission to manage {thing}."]
-            for gone in ("#### QUERY - Get the platform administrator role", "#### QUERY - Check platform administrator", "(../../../schema/author/m_role.md)", "(../../../schema/author/t_user_role.md)"):
-                if gone in md:
-                    errors.append(f"{path}: the live platform administrator query must be gone, found {gone!r}")
-            if batch:
-                need += ["so the 403 message has no item position"]
-            if folder in ADMIN_WRITE_CAMPAIGN:
-                need += ["A product category cannot be deleted while it is in a campaign that is not DELETED and has not ended (409, E10006, with the campaign name in the message)"]
-                if _IN_DIAGRAM_CAMPAIGN not in read(str(Path(path).with_name("sequence.wsd"))):
-                    errors.append(f"{path} (sequence): the visible note must say {_IN_DIAGRAM_CAMPAIGN!r}")
-            # the spec text and the diagram text are checked in their own files, never combined
-            for missing in missing_needles(read(path), need):
-                errors.append(f"{path} (spec) missing: {missing!r}")
-            need = []
-        in_diagram = folder in ADMIN_WRITE_RULE_IN_DIAGRAM
-        if in_diagram:
-            need = [ADMIN_WRITE_APPROVED, "Only a platform administrator can call this API", "The order of the checks is in the sequence diagram",
-                    "#### QUERY - Get the platform administrator role", "#### QUERY - Check platform administrator", "(../../../schema/author/m_role.md)",
-                    "(../../../schema/author/t_user_role.md)", f"You do not have permission to manage {thing}."]
-            note = read(str(Path(path).with_name("sequence.wsd")))
-            if batch:
-                need += ["so the 403 message has no item position"]
-            if _IN_DIAGRAM_CAMPAIGN in ADMIN_WRITE_RULE_IN_DIAGRAM[folder]:
-                need += ["A product category cannot be deleted while it is in a campaign that is not DELETED and has not ended (409, E10006, with the campaign name in the message)"]
-            for phrase in ADMIN_WRITE_RULE_IN_DIAGRAM[folder]:
-                if phrase not in note:
-                    errors.append(f"{path}: the visible note of the diagram must say {phrase!r}")
-        if batch and not in_diagram and not claims:
-            need += ["so the 403 message has no item position", "the same as the single upsert, only a platform administrator"]
-        if folder.startswith("product/0") and folder.split("/")[1].startswith(("01", "03")):
-            need += []
-        elif folder != "shop/05-upsert-shop-type" and not claims and not in_diagram:
-            need += ["- Order of checks: validate the request (400) -> existence checks (404) -> permission (403, E10009) -> duplicate, in-use and other conflicts (409) -> write."]
-        if folder == "shop/05-upsert-shop-type" and not claims:
-            need += ["existence check (404) -> permission (403, E10009) -> duplicate name check"]
-        for missing in missing_needles(md, need):
-            errors.append(f"{path} missing: {missing!r}")
+        # every admin write authorizes from the verified JWT roles claim (API review Q2, Q4, Q10, Q13); the live role queries are gone
+        need = [ADMIN_WRITE_CLAIMS_RULE, "Q2, Q4, Q10 and Q13", "Never query `author.m_role` or `author.t_user_role`", "The order of the checks and the locks is in the sequence diagram",
+                "#### QUERY - Lock the caller user", "WHERE u.id = '<sequence.callerUserId>'\nFOR UPDATE",
+                "#### QUERY - Check current credential and user", "AND at.expired_at > '<sequence.now>'", "(../../../schema/authen/m_user.md)",
+                "(../../../schema/authen/t_user_access_token.md)", f"You do not have permission to manage {thing}."]
+        for gone in ("#### QUERY - Get the platform administrator role", "#### QUERY - Check platform administrator", "(../../../schema/author/m_role.md)", "(../../../schema/author/t_user_role.md)"):
+            if gone in md:
+                errors.append(f"{path}: the live platform administrator query must be gone, found {gone!r}")
+        if batch:
+            need += ["so the 403 message has no item position"]
+        if folder in ADMIN_WRITE_CAMPAIGN:
+            need += ["A product category cannot be deleted while it is in a campaign that is not DELETED and has not ended (409, E10006, with the campaign name in the message)"]
+            if _IN_DIAGRAM_CAMPAIGN not in read(str(Path(path).with_name("sequence.wsd"))):
+                errors.append(f"{path} (sequence): the visible note must say {_IN_DIAGRAM_CAMPAIGN!r}")
+        # the spec text and the diagram text are checked in their own files, never combined
+        for missing in missing_needles(read(path), need):
+            errors.append(f"{path} (spec) missing: {missing!r}")
         for stale in ("Any caller with a valid access token can call this API", "A role check (for example platform administrators only) is not defined yet"):
             if stale in md:
                 errors.append(f"{path} still says {stale!r}")
-        for query in ([] if claims else queries):
-            if query and md.count(query) != 1:
-                errors.append(f"{path}: the platform administrator query must be copied exactly from the reference spec, found {md.count(query)} copies")
-        queries_once = ("#### QUERY - Lock the caller user", "#### QUERY - Check current credential and user") if claims else ("#### QUERY - Get the platform administrator role", "#### QUERY - Check platform administrator")
+        queries_once = ("#### QUERY - Lock the caller user", "#### QUERY - Check current credential and user")
         if md.count("#### Fail - Forbidden") != 1 or any(md.count(q) != 1 for q in queries_once):
-            errors.append(f"{path}: Fail - Forbidden and each {'caller lock and credential' if claims else 'platform administrator'} query must appear exactly once")
+            errors.append(f"{path}: Fail - Forbidden and each caller lock and credential query must appear exactly once")
         match = re.search(r"#### Fail - Forbidden\n\n```JSON\n(.*?)```", md, re.DOTALL)
         if not match:
             errors.append(f"{path}: no JSON in 'Fail - Forbidden'")
@@ -6082,10 +6003,10 @@ def check_admin_write_spec() -> int:
                 errors.append(f"{path}: the 403 message must have no item position")
             if md.index("#### Fail - Forbidden") > md.index("#### Fail - Conflict"):
                 errors.append(f"{path}: Fail - Forbidden must come before the Conflict examples (after Not Found)")
-        if md.index(queries_once[0]) < md.index("## Database Relations"):
-            errors.append(f"{path}: the {'caller lock and credential' if claims else 'platform administrator'} queries belong to Database Relations")
-        if md.count("E10009") < (2 if claims or in_diagram else 3):
-            errors.append(f"{path}: E10009 must appear in the rule, {'' if claims or in_diagram else 'the order of checks, '}and the example")
+        if queries_once[0] in md and "## Database Relations" in md and md.index(queries_once[0]) < md.index("## Database Relations"):
+            errors.append(f"{path}: the caller lock and credential queries belong to Database Relations")
+        if md.count("E10009") < 2:
+            errors.append(f"{path}: E10009 must appear in the rule and the example")
         if folder in ADMIN_WRITE_TARGET_LOCK:
             heading = ADMIN_WRITE_TARGET_LOCK[folder]
             locked = {h: q for _, h, q in spec_database_operations(read(path))}.get(heading, "")
@@ -6096,8 +6017,7 @@ def check_admin_write_spec() -> int:
                 errors.append(f"{path}: the target row lock comes after the credential check and before the permission decision")
             if batch and "loop For each item with an id, in ascending id order" not in wsd_text:
                 errors.append(f"{path}: the batch locks the rows in ascending id order")
-        if claims:
-            errors.extend(f"{path} (sequence): {error}" for error in admin_write_claims_flow_errors(read(str(Path(path).with_name("sequence.wsd"))), batch, thing))
+        errors.extend(f"{path} (sequence): {error}" for error in admin_write_claims_flow_errors(read(str(Path(path).with_name("sequence.wsd"))), batch, thing))
     if errors:
         return fail("; ".join(errors))
     print("OK: admin-write-spec (9 specs)")

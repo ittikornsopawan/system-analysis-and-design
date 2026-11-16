@@ -1682,7 +1682,7 @@ Authority: owner answers of 2026-11-13 ("ใช้คำแนะนำทั้
 - [x] Checker: slim `consent-upsert-flow`; consent/02 leaves `ADMIN_WRITE_SPECS`, `LEGACY_SEQUENCES`, `LEGACY_TOKEN_SEQUENCES`, `LEGACY_SPEC_TEMPLATE` and `MD_FRONTMATTER_PENDING`.
 
 - [x] Consent/02 owner answer of 2026-11-14 (relayed by Josh): a consent of a type that is not ACTIVE can still be deleted, archived, deactivated or locked; the type must be ACTIVE only when the request creates a consent, opens one that is not ACTIVE to ACTIVE or changes the type of an ACTIVE consent (like Q23). Spec Domain bullets, the lock query (now returns the stored `consent_type_id`), the sequence decision and branch, the `consent-upsert-flow` needles and four more mutations (21/21) follow it.
-- [ ] Record the answer in `api-review-design.md` (outside this assignment's scope; a separate small PR).
+- [x] Record the answer in `api-review-design.md` (outside this assignment's scope; a separate small PR). Evidence (closed by the SA Lead on the owner's order, 2026-11-16): recorded in section "Consent type of a consent (2026-11-14)" of `docs/superpowers/specs/2026-11-07-api-review-design.md` by the next record of this file.
 
 ### Consent type answer of 2026-11-14 recorded
 
