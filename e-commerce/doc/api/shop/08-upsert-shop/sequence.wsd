@@ -70,8 +70,8 @@ activate page
                     app -> app: userId = callerUserId = verified sub; accessTokenHash = SHA-256 of the exact JWT; createdBy/updatedBy = caller UUID string
                     note over app, infra
                         - Execution order: validate the request (400) -> verify the JWT and its roles claim (401) -> BEGIN -> lock the caller user (FOR UPDATE) -> current credential and user (401) ->
-                          existence checks (404) -> permission (403: an ADMIN of the shop, or PLATFORM_ADMIN in the verified roles claim; only PLATFORM_ADMIN may change platformMarginRate) ->
-                          duplicate name check (409, E10003) -> in-use check (409, E10006, only when `rowStatus` is DELETED) -> write the shop, the images and, for an insert, the ADMIN row.
+                          existence checks (404) -> permission (403: an OWNER or an ADMIN of the shop for an update, an OWNER for a delete or an archive, or PLATFORM_ADMIN in the verified roles claim; only PLATFORM_ADMIN may change platformMarginRate) ->
+                          duplicate name check (409, E10003) -> in-use check (409, E10006, only when `rowStatus` is DELETED) -> write the shop, the images and, for an insert, the OWNER row.
                           The author tables are never queried; the membership of the shop is not a token claim and is still read from shop.t_shop_user.
                         - Lock order: the caller user, then the shop and its images in ascending id order (FOR UPDATE), before the permission decision, the in-use checks and the write.
                     end note
@@ -212,21 +212,30 @@ activate page
                                 activate t_shop_user
                                     note right of t_shop_user
                                         SELECT
-                                            su.id as shop_user_id
+                                            su.id as shop_user_id,
+                                            su.role
                                         FROM shop.t_shop_user su
                                         WHERE su.shop_id = '<sequence.id>'
                                         AND su.user_id = '<sequence.userId>'
-                                        AND su.role = 'ADMIN'
+                                        AND su.role IN ('OWNER', 'ADMIN')
                                         AND su.row_status = 'ACTIVE'
                                     end note
                                     t_shop_user -> infra: Return query result
                                 deactivate t_shop_user
                                 infra -> app: Return result of Check shop administrator
                             end
-                            alt update, delete or archive by a caller who is not an ADMIN of the shop
+                            alt update, delete or archive by a caller who is not an OWNER or an ADMIN of the shop
                                 alt The verified roles claim has no PLATFORM_ADMIN
                                     app -> infra: ROLLBACK
                                     app -> api: HTTP 403 E10009 You do not have permission to manage this shop.
+                                    api -> page: Forbidden
+                                    page -> user: Display error message
+                                end
+                            end
+                            alt delete or archive by a caller who is an ADMIN and not an OWNER of the shop
+                                alt The verified roles claim has no PLATFORM_ADMIN
+                                    app -> infra: ROLLBACK
+                                    app -> api: HTTP 403 E10009 Only an OWNER of the shop can delete or archive it.
                                     api -> page: Forbidden
                                     page -> user: Display error message
                                 end
@@ -374,8 +383,8 @@ activate page
                                     m_shop -> infra: Return inserted result
                                 deactivate m_shop
                                 infra -> app: Return result of Create shop
-                                app -> infra: INSERT - Add the caller as ADMIN of the new shop
-                                infra -> t_shop_user: INSERT - Add the caller as ADMIN of the new shop
+                                app -> infra: INSERT - Add the caller as OWNER of the new shop
+                                infra -> t_shop_user: INSERT - Add the caller as OWNER of the new shop
                                 activate t_shop_user
                                     note right of t_shop_user
                                         INSERT INTO shop.t_shop_user (
@@ -388,13 +397,13 @@ activate page
                                             &#39;<sequence.createdBy>',
                                             &#39;<sequence.shopId>',
                                             &#39;<sequence.userId>',
-                                            &#39;ADMIN'
+                                            &#39;OWNER'
                                         )
                                         RETURNING id as shop_user_id
                                     end note
                                     t_shop_user -> infra: Return inserted result
                                 deactivate t_shop_user
-                                infra -> app: Return result of Add the caller as ADMIN of the new shop
+                                infra -> app: Return result of Add the caller as OWNER of the new shop
                             else id is specified (update, delete or archive)
                                 app -> infra: UPDATE - Update, archive or delete shop
                                 infra -> m_shop: UPDATE - Update, archive or delete shop
