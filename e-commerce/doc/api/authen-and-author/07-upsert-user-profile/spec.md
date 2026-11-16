@@ -1,9 +1,9 @@
 ---
 name: Own User Profile Upsert API Specification
 description: Defines user-first current credential verification, own-user partial profile writes, explicit presence/null mapping, separate information insert/update and atomic outcomes for POST v1/user/profile/upsert.
-status: in-review
-approved_by: null
-approved_at: null
+status: approved
+approved_by: Ittikorn
+approved_at: 2026-11-16T09:24:57+07:00
 ---
 
 # [POST]: v1/user/profile/upsert

@@ -1,9 +1,9 @@
 ---
 name: Refresh Token API Specification
 description: Defines refresh rotation, current authorization claims, replay handling, session revocation and exact transactional SQL; read when implementing or reviewing POST v1/auth/refresh-token.
-status: in-review
-approved_by: null
-approved_at: null
+status: approved
+approved_by: Ittikorn
+approved_at: 2026-11-16T09:24:57+07:00
 ---
 
 # [POST]: v1/auth/refresh-token

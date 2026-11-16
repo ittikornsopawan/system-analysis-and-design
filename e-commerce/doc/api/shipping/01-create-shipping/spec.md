@@ -1,9 +1,9 @@
 ---
 name: "Create Shipping API"
 description: "Create a shipping (one parcel) from the items of an order that is paid. Read it when you implement, review or test POST v1/shop/shipping."
-status: in-review
-approved_by: null
-approved_at: null
+status: approved
+approved_by: Ittikorn
+approved_at: 2026-11-16T09:24:57+07:00
 ---
 
 # [POST]: v1/shop/shipping

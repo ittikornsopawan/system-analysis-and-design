@@ -1,9 +1,9 @@
 ---
 name: "Create Order API"
 description: "Create the orders of the logged-in customer from the cart, one order for each shop. Read it when you implement, review or test POST v1/order."
-status: in-review
-approved_by: null
-approved_at: null
+status: approved
+approved_by: Ittikorn
+approved_at: 2026-11-16T09:24:57+07:00
 ---
 
 # [POST]: v1/order

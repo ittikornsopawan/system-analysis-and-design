@@ -1,9 +1,9 @@
 ---
 name: E-commerce Operational Signal Pipeline
 description: อธิบาย application/data instruments, metrics/traces/logs pipelines และ SLO/alerting outputs ใช้ก่อนออกแบบ telemetry contracts หรือ operational acceptance
-status: in-review
-approved_by: null
-approved_at: null
+status: approved
+approved_by: Ittikorn
+approved_at: 2026-11-16T09:24:57+07:00
 ---
 
 # สัญญาณที่มาของข้อมูลและการตัดสินใจปฏิบัติการ

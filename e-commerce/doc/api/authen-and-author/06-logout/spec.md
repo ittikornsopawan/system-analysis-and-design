@@ -1,9 +1,9 @@
 ---
 name: Logout API Specification
 description: Defines user-first serialized logout, fresh credential/session checks, atomic session-wide access/refresh revocation, concurrent refresh behavior, complete outcomes and exact SQL for POST v1/auth/logout.
-status: in-review
-approved_by: null
-approved_at: null
+status: approved
+approved_by: Ittikorn
+approved_at: 2026-11-16T09:24:57+07:00
 ---
 
 # [POST]: v1/auth/logout

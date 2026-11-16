@@ -1,9 +1,9 @@
 ---
 name: E-commerce Configuration Publication Sequence
 description: อธิบาย authorization, revision CAS, local transaction และการกระจาย validated config snapshot ใช้ทบทวนก่อนออกแบบ API และ publisher จริง
-status: in-review
-approved_by: null
-approved_at: null
+status: approved
+approved_by: Ittikorn
+approved_at: 2026-11-16T09:24:57+07:00
 ---
 
 # Config publication: validate, version & activate

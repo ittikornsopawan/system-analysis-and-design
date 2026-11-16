@@ -1,9 +1,9 @@
 ---
 name: "Upsert Shop Type Batch API"
 description: "Insert, update, delete or archive several shop types in one transaction, only for a platform administrator authorized from the verified JWT roles claim after the caller lock and the current credential check. Read it when you implement, review or test POST v1/shop/type/upsert/batch."
-status: in-review
-approved_by: null
-approved_at: null
+status: approved
+approved_by: Ittikorn
+approved_at: 2026-11-16T09:24:57+07:00
 ---
 
 # [POST]: v1/shop/type/upsert/batch

@@ -1,9 +1,9 @@
 ---
 name: Permission Upsert and Scope Link API Specification
 description: Defines JWT administration, current credentials, atomic parent and scope-link writes, final scoping invariants and closed-scope cleanup.
-status: in-review
-approved_by: null
-approved_at: null
+status: approved
+approved_by: Ittikorn
+approved_at: 2026-11-16T09:24:57+07:00
 ---
 
 # [POST]: v1/author/permission/upsert

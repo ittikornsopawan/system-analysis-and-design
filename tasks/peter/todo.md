@@ -17,7 +17,7 @@ Authority: the owner's answers of 2026-11-14 (relayed by Josh, SA Lead): the sho
 - [x] Collect the evidence: the `shop.t_shop_user` role constraint and unique index, the ADMIN and creator rules of `shop/08`, `shop/09`, `shop/11`, `shop/12`, the seventeen specs whose SQL checks the member role, the matrix rows of the shop APIs, the tests and the seed.
 - [x] Write `docs/superpowers/specs/2026-11-14-shop-roles-design.md` with status draft (revised for the several-owner answer): D1 storage (role OWNER in `t_shop_user`, alternative `is_owner`), D2 the fixed permission table per shop API, D3 minimum rules, D4 creator, D5 who changes owners and leaving, D6 JWT or API check, D7 impact and order of work; each with a recommendation, the cost if wrong and a question (Q1–Q7).
 - [x] The SA Lead put the questions to the owner and returned the answers (2026-11-14): Q1 `OWNER` as a third role value, Q2 the permission table as written, Q3 at least one ACTIVE OWNER replaces the ADMIN rule, Q4 the creator is OWNER, Q5 owners are added by promoting members and an owner leaves only while another ACTIVE owner remains, Q6 the role is checked in the database and not in the JWT; Q7 follows the order of work of D7 (SA Lead). Recorded in the document, renamed to `shop-roles-design`, status `in-review`.
-- [ ] The owner changes the status of the document to approved; only then is a schema or specification change planned (work not started, held for the owner's approval).
+- [x] The owner changes the status of the document to approved; only then is a schema or specification change planned (work not started, held for the owner's approval). Evidence: owner answer of 2026-11-16 (AskUserQuestion to the SA Lead); recorded in the frontmatter by the approvals pull request.
 
 Verification: `md-frontmatter` check OK for the new design file and this task file; no other file is changed.
 
@@ -33,7 +33,7 @@ Authority: the SA Lead's assignment of 2026-11-14 (authorized_by josh): add fron
 - [x] Add name, description, `status: in-review`, `approved_by: null`, `approved_at: null` to the product SKU multi-level, cart, order, payment and shop lot pricing design documents.
 - [x] Reconcile `MD_FRONTMATTER_PENDING` with the five newly frontmatter-complete design documents and the six already-complete shop API specs incorrectly added to the list.
 - [x] Run the frontmatter checker and all required documentation checks on the PR branch.
-- [ ] The owner decides whether any of the five documents becomes `approved` (the evidence is listed in the pull request body; no status is changed here).
+- [x] The owner decides whether any of the five documents becomes `approved` (the evidence is listed in the pull request body; no status is changed here). Evidence: owner answer of 2026-11-16 (AskUserQuestion to the SA Lead); recorded in the frontmatter by the approvals pull request.
 
 Progress (2026-11-14T19:49:25+07:00): PR #137's `md-frontmatter` action fails on 11 paths. The original task statement that the five entries were removed is not supported by the PR diff; the branch also added six shop API specs that already have frontmatter. Reproduced the exact failure on PR head `09f73d458aa10625cffa0a1fbfad6f6300635f02`; the earlier successful run was from the primary checkout, not this managed branch.
 
@@ -47,9 +47,12 @@ Verification (after base integration): all 69 `check_docs.py` sub-commands pass;
 ## e-commerce: shop roles rollout plan (owner, admin, staff)
 
 Owner: peter
-Status: Blocked
+Status: Pending (unblocked; the team is frozen until the owner restarts it)
 Created at: 2026-11-14T18:17:55+07:00
 Blocked at: 2026-11-14T18:17:55+07:00
+Unblocked at: 2026-11-16T09:24:57+07:00
+
+Unblocked: the owner approved the design on 2026-11-16 (status approved in its frontmatter).
 
 Blocked: the design `docs/superpowers/specs/2026-11-14-shop-roles-design.md` is `in-review`; the owner has answered Q1–Q6 and approves the document by changing its status to approved. Waiting on: the owner (through the SA Lead). Next action: when the status is approved, start PR 1 below from the then current main. No schema, specification, sequence, checker or test is changed before that.
 

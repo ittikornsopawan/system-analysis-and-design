@@ -1,9 +1,9 @@
 ---
 name: "Upsert Shop Product SKU API"
 description: "Insert, update, delete or archive a SKU of a product sold by a shop together with its lots, for a member of the shop or a platform administrator from the verified JWT roles claim after the caller lock and the current credential check. Read it when you implement, review or test POST v1/shop/product-sku/upsert."
-status: in-review
-approved_by: null
-approved_at: null
+status: approved
+approved_by: Ittikorn
+approved_at: 2026-11-16T09:24:57+07:00
 ---
 
 # [POST]: v1/shop/product-sku/upsert

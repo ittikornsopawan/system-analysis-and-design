@@ -1,9 +1,9 @@
 ---
 name: "Inquiry Shop Product SKU API"
 description: "Inquiry the list of shop product SKUs with their lots for the shop side, with paging and search. Read it when you implement, review or test GET v1/shop/product-sku."
-status: in-review
-approved_by: null
-approved_at: null
+status: approved
+approved_by: Ittikorn
+approved_at: 2026-11-16T09:24:57+07:00
 ---
 
 # [GET]: v1/shop/product-sku

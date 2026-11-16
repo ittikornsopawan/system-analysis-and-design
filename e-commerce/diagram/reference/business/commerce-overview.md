@@ -1,9 +1,9 @@
 ---
 name: E-commerce Capability Ownership Map
 description: อธิบายขอบเขตเจ้าของความสามารถทางธุรกิจและกล่องย่อยใน commerce-overview ใช้อ่านก่อนทบทวนภาพรวมหรือเชื่อมความรับผิดชอบกับ API specs
-status: in-review
-approved_by: null
-approved_at: null
+status: approved
+approved_by: Ittikorn
+approved_at: 2026-11-16T09:24:57+07:00
 ---
 
 # แผนที่ความสามารถและขอบเขตความรับผิดชอบ

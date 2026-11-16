@@ -1,9 +1,9 @@
 ---
 name: Permission Inquiry API Specification
 description: Defines verified JWT administration and consistent paged permission/scope catalog mapping; read when reviewing or implementing permission inquiry.
-status: in-review
-approved_by: null
-approved_at: null
+status: approved
+approved_by: Ittikorn
+approved_at: 2026-11-16T09:24:57+07:00
 ---
 
 # [GET]: v1/author/permission

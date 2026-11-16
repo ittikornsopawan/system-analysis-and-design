@@ -950,8 +950,8 @@ def shop_jwt_errors(path: str, md: str, wsd: str, member: str, no_member: str) -
     errors += [f"{path} missing: {n!r}" for n in missing_needles(md, SHOP_JWT_SPEC)]
     errors += [f"{path} (sequence) missing: {n!r}" for n in missing_needles(flat, SHOP_JWT_SEQ)]
     errors += [f"{path} must not contain {n!r}" for n in SHOP_JWT_GONE if n in md or n in wsd]
-    if "status: in-review\napproved_by: null\napproved_at: null" not in md:
-        errors.append(f"{path}: spec stays in-review until approved")
+    if "status: approved\napproved_by: Ittikorn\napproved_at: " not in md:
+        errors.append(f"{path}: spec must stay approved by the owner")
     ops = spec_database_operations(md)
     sql = {h: q for _, h, q in ops}
     if [h for _, h, _ in ops][:2] != ["QUERY - Lock the caller user", "QUERY - Check current credential and user"]:
@@ -1477,8 +1477,8 @@ def shop_inquiry_jwt_errors(path: str, md: str, wsd: str, first: str, second: st
     errors += [f"{path} missing: {n!r}" for n in missing_needles(md, SHOP_INQUIRY_JWT_SPEC)]
     errors += [f"{path} (sequence) missing: {n!r}" for n in missing_needles(flat, SHOP_INQUIRY_JWT_SEQ)]
     errors += [f"{path} must not contain {n!r}" for n in SHOP_JWT_GONE if n in md or n in wsd]
-    if "status: in-review\napproved_by: null\napproved_at: null" not in md:
-        errors.append(f"{path}: spec stays in-review until approved")
+    if "status: approved\napproved_by: Ittikorn\napproved_at: " not in md:
+        errors.append(f"{path}: spec must stay approved by the owner")
     ops = spec_database_operations(md)
     credential = dict((h, q) for _, h, q in ops).get("QUERY - Check current credential and user", "")
     if [h for _, h, _ in ops][0] != "QUERY - Check current credential and user" or "NOW()" in credential or any(SEQUENCE_LOCK.search(q) for _, _, q in ops):
@@ -3590,8 +3590,8 @@ def consent_type_claims_errors(kind: str, md: str, wsd: str) -> list[str]:
     errors = []
     if "#### QUERY - Get the platform administrator role" in md + wsd or "#### QUERY - Check platform administrator" in md + wsd or "schema/author/" in md or re.search(r"infra -> (?:m_role|t_user_role):", wsd):
         errors.append("must not read the author tables")
-    if "status: in-review\napproved_by: null\napproved_at: null" not in md:
-        errors.append("spec stays in-review until approved")
+    if "status: approved\napproved_by: Ittikorn\napproved_at: " not in md:
+        errors.append("spec must stay approved by the owner")
     heads = [h for _, h, _ in spec_database_operations(md)]
     sql = {h: q for _, h, q in spec_database_operations(md)}
     want = ["QUERY - Lock the caller user", "QUERY - Check current credential and user"]
@@ -6625,7 +6625,7 @@ COMMANDS['active-consent-flow'] = check_active_consent_flow
 def check_address_inquiry_flow() -> int:
     """Check current-caller address count/page consistency and safe bound filters."""
     path=AUTHEN_SPECS['10'];md=read(path);wsd=read(str(Path(path).with_name('sequence.wsd')));errors=[]
-    for needle in ('status: in-review', 'approved_by: null', 'approved_at: null', 'Count and page share the same repeatable-read snapshot'):
+    for needle in ('status: approved', 'approved_by: Ittikorn', 'approved_at: ', 'Count and page share the same repeatable-read snapshot'):
         if needle not in md:errors.append(f'address-inquiry spec missing {needle!r}')
     seq = ' '.join(wsd.split())  # the note texts of the sequence, one line
     for needle in ('exact same userId/non-DELETED/id/searchPattern/rowStatus predicates', 'offset outside nonnegative BIGINT', 'entire pattern as text',
@@ -6742,7 +6742,7 @@ COMMANDS['address-inquiry-flow'] = check_address_inquiry_flow
 def check_profile_inquiry_flow() -> int:
     """Check own-profile live credential projection, read consistency and complete nullable output."""
     path=AUTHEN_SPECS['08'];md=read(path);wsd=read(str(Path(path).with_name('sequence.wsd')));errors=[]
-    for needle in ('status: in-review', 'approved_by: null', 'approved_at: null', 'Read user and information from the same repeatable-read snapshot'):
+    for needle in ('status: approved', 'approved_by: Ittikorn', 'approved_at: ', 'Read user and information from the same repeatable-read snapshot'):
         if needle not in md:errors.append(f'profile-inquiry spec missing {needle!r}')
     seq = ' '.join(wsd.split())  # the note texts of the sequence, one line
     for needle in ('Q20 is approved by the product owner', 'คืน null สำหรับค่าว่างเดิม (แนะนำ)', 'No id/userId/query filters or body are accepted',
@@ -6933,7 +6933,7 @@ COMMANDS['author-me-flow'] = check_author_me_flow
 def check_permission_upsert_flow() -> int:
     """Check scoped permission parent/link phases, owner Q22/Q23 and atomic rollback."""
     path=f'{AUTHOR_DIR}/{AUTHOR_SPECS["04"]}/spec.md';md=read(path);wsd=read(str(Path(path).with_name('sequence.wsd')));errors=[]
-    for n in ('status: in-review', 'approved_by: null', 'approved_at: null'):
+    for n in ('status: approved', 'approved_by: Ittikorn', 'approved_at: '):
         if n not in md:errors.append(f'permission spec missing {n!r}')
     seq = ' '.join(wsd.split())  # the note texts of the sequence, one line
     for n in ('malformed/missing roles is generic 401', 'exact PLATFORM_ADMIN', 'scopes omitted or [] means no link change', 'duplicate parsed child ids',
@@ -7076,7 +7076,7 @@ COMMANDS['permission-upsert-flow'] = check_permission_upsert_flow
 def check_permission_batch_flow() -> int:
     """Check scoped permission parent/link phases, owner Q22/Q23/Q24 and atomic rollback."""
     path=f'{AUTHOR_DIR}/{AUTHOR_SPECS["05"]}/spec.md';md=read(path);wsd=read(str(Path(path).with_name('sequence.wsd')));errors=[]
-    for n in ('status: in-review', 'approved_by: null', 'approved_at: null', 'Q22/Q23 (approved by the product owner)'):
+    for n in ('status: approved', 'approved_by: Ittikorn', 'approved_at: ', 'Q22/Q23 (approved by the product owner)'):
         if n not in md:errors.append(f'permission batch spec missing {n!r}')
     seq = ' '.join(wsd.split())  # the note texts of the sequence, one line
     for n in ('permissions must be an array of 1..100', 'Reject duplicate parsed canonical parent ids',
@@ -7235,7 +7235,7 @@ COMMANDS['permission-batch-flow'] = check_permission_batch_flow
 def check_permission_inquiry_flow() -> int:
     """Check token-claim administration and consistent filtered current role metadata."""
     path=f'{AUTHOR_DIR}/{AUTHOR_SPECS["06"]}/spec.md';md=read(path);wsd=read(str(Path(path).with_name('sequence.wsd')));errors=[]
-    for n in ('status: in-review', 'approved_by: null', 'approved_at: null'):
+    for n in ('status: approved', 'approved_by: Ittikorn', 'approved_at: '):
         if n not in md:errors.append(f'permission-inquiry spec missing {n!r}')
     seq = ' '.join(wsd.split())  # the note texts of the sequence, one line
     for n in ('2026-11-07-api-review-design.md', 'exact PLATFORM_ADMIN in verified JWT role claims', 'positive signed 64-bit integers', 'nonnegative BIGINT',
@@ -7386,7 +7386,7 @@ COMMANDS['permission-inquiry-flow'] = check_permission_inquiry_flow
 def check_scope_upsert_flow() -> int:
     """Check verified-claim scope administration and guarded master/definition lifecycle."""
     path=f'{AUTHOR_DIR}/{AUTHOR_SPECS["07"]}/spec.md';md=read(path);wsd=read(str(Path(path).with_name('sequence.wsd')));errors=[]
-    for n in ('status: in-review', 'approved_by: null', 'approved_at: null', 'Permission: only a platform administrator from the verified JWT roles claim',
+    for n in ('status: approved', 'approved_by: Ittikorn', 'approved_at: ', 'Permission: only a platform administrator from the verified JWT roles claim',
             'exact case-sensitive role name PLATFORM_ADMIN'):
         if n not in md:errors.append(f'scope-upsert spec missing {n!r}')
     seq = ' '.join(wsd.split())  # the note texts of the sequence, one line
@@ -7493,7 +7493,7 @@ COMMANDS['scope-upsert-flow'] = check_scope_upsert_flow
 def check_scope_batch_flow() -> int:
     """Verify whole-batch preflight, sorted target locks before usage checks and ordered atomic scope mutations; unroll one representative item."""
     path=f'{AUTHOR_DIR}/{AUTHOR_SPECS["08"]}/spec.md';md=read(path);wsd=read(str(Path(path).with_name('sequence.wsd')));errors=[]
-    for n in ('status: in-review', 'approved_by: null', 'approved_at: null', 'Validate the whole request before SQL', 'Compare parsed canonical UUIDs',
+    for n in ('status: approved', 'approved_by: Ittikorn', 'approved_at: ', 'Validate the whole request before SQL', 'Compare parsed canonical UUIDs',
             'exact case-sensitive PLATFORM_ADMIN'):
         if n not in md:errors.append(f'scope-batch spec missing {n!r}')
     seq = ' '.join(wsd.split())  # the note texts of the sequence, one line
@@ -7620,7 +7620,7 @@ COMMANDS['scope-batch-flow'] = check_scope_batch_flow
 def check_role_upsert_flow() -> int:
     """Verify role upsert claim authorization independently of live business-invariant reads."""
     path=f'{AUTHOR_DIR}/{AUTHOR_SPECS["01"]}/spec.md';md=read(path);wsd=read(str(Path(path).with_name('sequence.wsd')));errors=[]
-    for n in ('status: in-review', 'approved_by: null', 'approved_at: null'):
+    for n in ('status: approved', 'approved_by: Ittikorn', 'approved_at: '):
         if n not in md:errors.append(f'role-upsert spec missing {n!r}')
     seq = ' '.join(wsd.split())  # the note texts of the sequence, one line
     for n in ('Permission: only a platform administrator from the verified JWT roles claim', 'exact case-sensitive role name PLATFORM_ADMIN',
@@ -7733,7 +7733,7 @@ COMMANDS['role-upsert-flow'] = check_role_upsert_flow
 def check_role_batch_flow() -> int:
     """Verify whole-batch preflight and ordered atomic role mutations; unroll one representative item."""
     path=f'{AUTHOR_DIR}/{AUTHOR_SPECS["02"]}/spec.md';md=read(path);wsd=read(str(Path(path).with_name('sequence.wsd')));errors=[]
-    for n in ('status: in-review', 'approved_by: null', 'approved_at: null', 'Validate the whole request before SQL', 'exact case-sensitive PLATFORM_ADMIN'):
+    for n in ('status: approved', 'approved_by: Ittikorn', 'approved_at: ', 'Validate the whole request before SQL', 'exact case-sensitive PLATFORM_ADMIN'):
         if n not in md:errors.append(f'role-batch spec missing {n!r}')
     seq = ' '.join(wsd.split())  # the note texts of the sequence, one line
     for n in ('Compare parsed canonical UUIDs', 'all target existence checks', 'after all target existence checks and before any conflict or write',
@@ -7858,7 +7858,7 @@ COMMANDS['role-batch-flow'] = check_role_batch_flow
 def check_role_inquiry_flow() -> int:
     """Check token-claim administration and consistent filtered current role metadata."""
     path=f'{AUTHOR_DIR}/{AUTHOR_SPECS["03"]}/spec.md';md=read(path);wsd=read(str(Path(path).with_name('sequence.wsd')));errors=[]
-    for n in ('status: in-review', 'approved_by: null', 'approved_at: null'):
+    for n in ('status: approved', 'approved_by: Ittikorn', 'approved_at: '):
         if n not in md:errors.append(f'role-inquiry spec missing {n!r}')
     seq = ' '.join(wsd.split())  # the note texts of the sequence, one line
     for n in ('2026-11-07-api-review-design.md', 'exact PLATFORM_ADMIN in verified JWT role claims', 'positive signed 64-bit integers', 'nonnegative BIGINT',
@@ -7982,7 +7982,7 @@ def author_inquiry_flow(key: str, page_head: str, columns: str, forbidden: str, 
     lines=wsd.splitlines();begin=next((i for i,l in enumerate(lines) if 'BEGIN REPEATABLE READ' in l),len(lines))
     for i,l in enumerate(lines):
         if i>begin and re.search(r'app -> api: HTTP (?:401|403|408|500)',l) and 'app -> infra: ROLLBACK' not in lines[i-1]:errors.append(f'post-BEGIN rejection needs ROLLBACK first: {l.strip()}')
-    if not md.startswith('---\nname:') or 'status: in-review\napproved_by: null\napproved_at: null' not in md:errors.append('spec stays in-review until approved')
+    if not md.startswith('---\nname:') or 'status: approved\napproved_by: Ittikorn\napproved_at: ' not in md:errors.append('spec must stay approved by the owner')
     page=next((q for _,k,q in ops if k==page_head),'');proj=re.search(r'SELECT\s+(.*?)\s+FROM\s',page,re.S)
     if not proj or normalize(proj[1])!=normalize(columns):errors.append('page returns exactly the documented columns')
     errors+=[f'claims wording missing {n!r}' for n in ('verified token roles',) if n not in md]
@@ -8044,7 +8044,7 @@ def check_consent_upsert_flow() -> int:
     """Check only what parity checks cannot: claims-only admin, caller -> type -> consent lock order, DELETED final, one decision and commit, rollbacks."""
     path='e-commerce/doc/api/consent/02-upsert-consent/spec.md';md=read(path);wsd=read(str(Path(path).with_name('sequence.wsd')));errors=[]
     if 'QUERY - Get the platform administrator role' in md+wsd or 'QUERY - Check platform administrator' in md+wsd or re.search(r'infra -> (?:m_role|t_user_role):',wsd):errors.append('must not read the author tables')
-    if not md.startswith('---\nname:') or 'status: in-review\napproved_by: null\napproved_at: null' not in md:errors.append('spec stays in-review until approved')
+    if not md.startswith('---\nname:') or 'status: approved\napproved_by: Ittikorn\napproved_at: ' not in md:errors.append('spec must stay approved by the owner')
     ops=spec_database_operations(md);heads=[h for _,h,_ in ops]
     want=['QUERY - Lock the caller user','QUERY - Check current credential and user','QUERY - Lock the consent type','QUERY - Lock existing consent','QUERY - Check duplicate code','INSERT - Create consent','UPDATE - Update or delete consent']
     if heads!=want:errors.append('needs the seven caller/credential/type/consent/duplicate/write SQL definitions in order')
@@ -8080,7 +8080,7 @@ def check_user_role_upsert_flow() -> int:
     """Check only what parity checks cannot: claims-only admin, user -> role -> assignment lock order, one decision/commit, rollbacks, missing-user 404."""
     path=f'{AUTHOR_DIR}/{AUTHOR_SPECS["10"]}/spec.md';md=read(path);wsd=read(str(Path(path).with_name('sequence.wsd')));errors=[]
     if 'QUERY - Get the platform administrator role' in md+wsd or 'QUERY - Check platform administrator' in md+wsd:errors.append('must not reload live caller grants')
-    if not md.startswith('---\nname:') or 'status: in-review\napproved_by: null\napproved_at: null' not in md:errors.append('spec stays in-review until approved')
+    if not md.startswith('---\nname:') or 'status: approved\napproved_by: Ittikorn\napproved_at: ' not in md:errors.append('spec must stay approved by the owner')
     ops=spec_database_operations(md);heads=[h for _,h,_ in ops]
     want=['QUERY - Lock the users','QUERY - Check current credential and user','QUERY - Lock the role','QUERY - Lock existing user role','QUERY - Check duplicate user role','INSERT - Create user role','UPDATE - Update, archive or delete user role','QUERY - Count the platform administrators after the write']
     if heads!=want:errors.append('needs the eight caller/user/role/assignment/write/count SQL definitions in order')
@@ -8115,7 +8115,7 @@ COMMANDS['user-role-upsert-flow'] = check_user_role_upsert_flow
 def check_address_upsert_flow() -> int:
     """Check caller-scoped address lifecycle, quota and atomic default transitions."""
     path=AUTHEN_SPECS['09'];md=read(path);wsd=read(str(Path(path).with_name('sequence.wsd')));errors=[]
-    for needle in ('status: in-review', 'approved_by: null', 'approved_at: null'):
+    for needle in ('status: approved', 'approved_by: Ittikorn', 'approved_at: '):
         if needle not in md:errors.append(f'address-upsert spec missing {needle!r}')
     seq = ' '.join(wsd.split())  # the note texts of the sequence, one line
     for needle in ('Q21 approved by the product owner', 'ตอบ 400 เมื่อ Delete ส่ง true (แนะนำ)', 'mandatory non-blank strings for insert, update and delete',
@@ -8321,7 +8321,7 @@ COMMANDS['logout-flow'] = check_logout_flow
 def check_profile_upsert_flow() -> int:
     """Check own-user credential gating, presence/null semantics and mutually exclusive writes."""
     path=AUTHEN_SPECS['07'];md=read(path);wsd=read(str(Path(path).with_name('sequence.wsd')));errors=[]
-    for needle in ('status: in-review', 'approved_by: null', 'approved_at: null', 'explicit null clears them', "on or before today's UTC date"):
+    for needle in ('status: approved', 'approved_by: Ittikorn', 'approved_at: ', 'explicit null clears them', "on or before today's UTC date"):
         if needle not in md:errors.append(f'profile-upsert spec missing {needle!r}')
     seq = ' '.join(wsd.split())  # the note texts of the sequence, one line
     for needle in ('A body {} is valid', 'JSON key presence, never truthiness', 'Skip the m_user UPDATE entirely', 'Skip information lookup/INSERT/UPDATE',
@@ -8423,7 +8423,7 @@ COMMANDS['profile-upsert-flow'] = check_profile_upsert_flow
 def check_create_password_flow() -> int:
     """Check reset single-use serialization, password replacement and all-session revocation."""
     path=AUTHEN_SPECS['04'];md=read(path);wsd=read(str(Path(path).with_name('sequence.wsd')));errors=[]
-    for needle in ('status: in-review', 'approved_by: null', 'approved_at: null', 'lookup is only a routing hint'):
+    for needle in ('status: approved', 'approved_by: Ittikorn', 'approved_at: ', 'lookup is only a routing hint'):
         if needle not in md:errors.append(f'create-password spec missing {needle!r}')
     seq = ' '.join(wsd.split())  # the note texts of the sequence, one line
     for needle in ('fresh server UTC now after the lock', 'No reset/password/token UPDATE may run before the user lock',
@@ -8526,7 +8526,7 @@ COMMANDS['create-password-flow'] = check_create_password_flow
 def check_reset_request_flow() -> int:
     """Check uniform public issuance outcomes, fresh throttling and atomic replacement."""
     path=AUTHEN_SPECS['03'];md=read(path);wsd=read(str(Path(path).with_name('sequence.wsd')));errors=[]
-    for needle in ('status: in-review', 'approved_by: null', 'approved_at: null', '32-byte token', 'hash the exact encoded token', 'whatever their status'):
+    for needle in ('status: approved', 'approved_by: Ittikorn', 'approved_at: ', '32-byte token', 'hash the exact encoded token', 'whatever their status'):
         if needle not in md:errors.append(f'reset-request spec missing {needle!r}')
     seq = ' '.join(wsd.split())  # the note texts of the sequence, one line
     for needle in ('Do not trim, lowercase or normalize', 'same configured response-latency policy', 'equality is outside the window', 'requests >= 3', 'requests < 3',

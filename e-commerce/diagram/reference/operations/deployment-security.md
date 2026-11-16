@@ -1,9 +1,9 @@
 ---
 name: E-commerce Proposed Deployment and Security Placement
 description: อธิบาย environment, network zones, host pools และ artifact placement ใน deployment-security ใช้ก่อนทบทวน topology หรือเลือก hosting จริง
-status: in-review
-approved_by: null
-approved_at: null
+status: approved
+approved_by: Ittikorn
+approved_at: 2026-11-16T09:24:57+07:00
 ---
 
 # Proposed private deployment และ security placement

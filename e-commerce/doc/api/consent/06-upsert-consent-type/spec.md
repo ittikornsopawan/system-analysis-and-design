@@ -1,9 +1,9 @@
 ---
 name: Consent Type Upsert API Specification
 description: Defines the consent type upsert contract (insert, update, delete, archive) for a platform administrator authorized from the verified JWT roles claim, with the caller lock, the current credential check and its SQL; read when reviewing or implementing POST v1/consent/type/upsert.
-status: in-review
-approved_by: null
-approved_at: null
+status: approved
+approved_by: Ittikorn
+approved_at: 2026-11-16T09:24:57+07:00
 ---
 
 # [POST]: v1/consent/type/upsert

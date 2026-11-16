@@ -1,9 +1,9 @@
 ---
 name: Pending Consent API Specification
 description: Defines authenticated pending-consent inquiry using canonical current-version read/acceptance evidence, active types, a coherent read-only snapshot, response mapping and exact SQL for GET v1/consent/pending.
-status: in-review
-approved_by: null
-approved_at: null
+status: approved
+approved_by: Ittikorn
+approved_at: 2026-11-16T09:24:57+07:00
 ---
 
 # [GET]: v1/consent/pending

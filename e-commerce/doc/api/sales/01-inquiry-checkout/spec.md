@@ -1,9 +1,9 @@
 ---
 name: "Inquiry Checkout API"
 description: "Preview the orders that the logged-in customer would create from the cart, grouped by shop with the current selling price of the lot that is on sale, the totals of each order and the lines that cannot be ordered. Read it when you implement, review or test GET v1/checkout."
-status: in-review
-approved_by: null
-approved_at: null
+status: approved
+approved_by: Ittikorn
+approved_at: 2026-11-16T09:24:57+07:00
 ---
 
 # [GET]: v1/checkout

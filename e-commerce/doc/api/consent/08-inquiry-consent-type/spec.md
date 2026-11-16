@@ -1,9 +1,9 @@
 ---
 name: Consent Type Inquiry API Specification
 description: Defines the consent type list and lookup for a caller with a valid access token (verified JWT and current credential check, no role claim), with paging, search and SQL; read when reviewing or implementing GET v1/consent/type.
-status: in-review
-approved_by: null
-approved_at: null
+status: approved
+approved_by: Ittikorn
+approved_at: 2026-11-16T09:24:57+07:00
 ---
 
 # [GET]: v1/consent/type

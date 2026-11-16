@@ -1,9 +1,9 @@
 ---
 name: "Inquiry Shop User API"
 description: "Inquiry the members of a shop, or the shops of the caller, with paging, search and filters, for a member of the shop or a platform administrator from the verified JWT roles claim after the current credential check. Read it when you implement, review or test GET v1/shop/user."
-status: in-review
-approved_by: null
-approved_at: null
+status: approved
+approved_by: Ittikorn
+approved_at: 2026-11-16T09:24:57+07:00
 ---
 
 # [GET]: v1/shop/user

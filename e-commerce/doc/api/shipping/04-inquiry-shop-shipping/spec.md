@@ -1,9 +1,9 @@
 ---
 name: "Inquiry Shop Shipping API"
 description: "Inquiry the shippings of a shop for the members of the shop with the items, the stops and the copy of the shipping address. Read it when you implement, review or test GET v1/shop/shipping."
-status: in-review
-approved_by: null
-approved_at: null
+status: approved
+approved_by: Ittikorn
+approved_at: 2026-11-16T09:24:57+07:00
 ---
 
 # [GET]: v1/shop/shipping

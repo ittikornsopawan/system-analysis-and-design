@@ -1,9 +1,9 @@
 ---
 name: "Confirm Delivery API"
 description: "The receiver confirms that a parcel arrived. Read it when you implement, review or test POST v1/shipping/confirm."
-status: in-review
-approved_by: null
-approved_at: null
+status: approved
+approved_by: Ittikorn
+approved_at: 2026-11-16T09:24:57+07:00
 ---
 
 # [POST]: v1/shipping/confirm

@@ -1,9 +1,9 @@
 ---
 name: สิทธิ์ผู้ใช้ (author) — WP5
 description: เอกสารออกแบบรอบ 1 ของ WP5 ใช้อ่านก่อนแก้ schema author, เขียน seed ของ role PLATFORM_ADMIN, เขียน API role, permission, scope, การกำหนดสิทธิ์ และการตรวจสิทธิ์ และก่อนย้อนแก้ API ที่ส่งแล้วซึ่งยังเปิดให้ทุก token เขียน
-status: in-review
-approved_by: null
-approved_at: null
+status: approved
+approved_by: Ittikorn
+approved_at: 2026-11-16T09:24:57+07:00
 ---
 
 # สิทธิ์ผู้ใช้ (author) — WP5

@@ -1,9 +1,9 @@
 ---
 name: E-commerce Redis Architecture Proposal
 description: Review the proposed Redis cache, distributed rate policies, failure semantics and diagram impact before approving any Redis implementation or API contract changes.
-status: in-review
-approved_by: null
-approved_at: null
+status: approved
+approved_by: Ittikorn
+approved_at: 2026-11-16T09:24:57+07:00
 ---
 
 # Redis Cache and Distributed Admission Proposal

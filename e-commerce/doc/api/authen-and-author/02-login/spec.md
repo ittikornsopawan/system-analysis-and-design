@@ -1,9 +1,9 @@
 ---
 name: Login API Specification
 description: Defines the login request, authentication controls, authorization claims, token session, responses, and database operations for POST v1/auth/login.
-status: in-review
-approved_by: null
-approved_at: null
+status: approved
+approved_by: Ittikorn
+approved_at: 2026-11-16T09:24:57+07:00
 ---
 
 # [POST]: v1/auth/login

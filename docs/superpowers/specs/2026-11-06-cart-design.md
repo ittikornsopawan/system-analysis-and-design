@@ -1,9 +1,9 @@
 ---
 name: "Cart Design"
 description: "ออกแบบตะกร้าสินค้า (cart.t_cart) ที่อ่านราคาจาก lot ที่เปิดขายสดทุกครั้ง sku_id NOT NULL และ soft delete พร้อมกติกา R27-R32 อ่านก่อนแก้ API ตะกร้า"
-status: in-review
-approved_by: null
-approved_at: null
+status: approved
+approved_by: Ittikorn
+approved_at: 2026-11-16T09:24:57+07:00
 ---
 
 # ตะกร้าสินค้า (cart)

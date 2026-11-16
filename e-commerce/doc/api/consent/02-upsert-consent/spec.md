@@ -1,9 +1,9 @@
 ---
 name: Consent Upsert API Specification
 description: Defines the consent insert, update, delete and archive for a platform administrator with verified JWT roles, current credential gating, consent type then consent locks, DELETED as final and the consent period check; read when reviewing or implementing POST v1/consent/upsert.
-status: in-review
-approved_by: null
-approved_at: null
+status: approved
+approved_by: Ittikorn
+approved_at: 2026-11-16T09:24:57+07:00
 ---
 
 # [POST]: v1/consent/upsert

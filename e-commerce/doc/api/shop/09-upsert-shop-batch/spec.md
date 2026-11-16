@@ -1,9 +1,9 @@
 ---
 name: "Upsert Shop Batch API"
 description: "Insert, update or delete multiple shops with their images at the same time, for any caller with a valid token (insert), an ADMIN of the shop or a platform administrator from the verified JWT roles claim after the caller lock and the current credential check. Read it when you implement, review or test POST v1/shop/upsert/batch."
-status: in-review
-approved_by: null
-approved_at: null
+status: approved
+approved_by: Ittikorn
+approved_at: 2026-11-16T09:24:57+07:00
 ---
 
 # [POST]: v1/shop/upsert/batch

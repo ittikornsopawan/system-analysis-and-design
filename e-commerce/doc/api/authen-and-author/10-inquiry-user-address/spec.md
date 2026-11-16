@@ -1,9 +1,9 @@
 ---
 name: Own User Address Inquiry API Specification
 description: Defines current caller credential gating, identical nullable address filters, consistent count/page snapshots, safe pagination and complete mapping for GET v1/user/address.
-status: in-review
-approved_by: null
-approved_at: null
+status: approved
+approved_by: Ittikorn
+approved_at: 2026-11-16T09:24:57+07:00
 ---
 
 # [GET]: v1/user/address

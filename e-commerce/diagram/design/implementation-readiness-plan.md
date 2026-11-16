@@ -1,9 +1,9 @@
 ---
 name: E-commerce Supporting Design Plan
 description: แผนและสารบัญชุด diagram เสริมพร้อมเหตุผลและเกณฑ์ตรวจ ใช้ทบทวนขอบเขตและข้อเสนอสำหรับเตรียมพัฒนาระบบหลังชุดภาพหลัก
-status: in-review
-approved_by: null
-approved_at: null
+status: approved
+approved_by: Ittikorn
+approved_at: 2026-11-16T09:24:57+07:00
 ---
 
 # แผนชุดภาพเสริมสำหรับเตรียมพัฒนาระบบ

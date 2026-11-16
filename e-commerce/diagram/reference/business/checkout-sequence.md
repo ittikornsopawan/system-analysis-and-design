@@ -1,9 +1,9 @@
 ---
 name: ลำดับ Checkout และการ commit แหล่งข้อมูลหลัก
 description: อธิบายภาพ checkout ตั้งแต่ admission จนจอง stock และ campaign budget พร้อมแยก outbox ที่เสนอ ใช้ทบทวนก่อนอนุมัติการออกแบบและพัฒนา
-status: in-review
-approved_by: null
-approved_at: null
+status: approved
+approved_by: Ittikorn
+approved_at: 2026-11-16T09:24:57+07:00
 ---
 
 # Checkout: commit คำสั่งซื้อก่อนส่งสำเนา

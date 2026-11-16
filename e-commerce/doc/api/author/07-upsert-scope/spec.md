@@ -1,9 +1,9 @@
 ---
 name: Scope Upsert API Specification
 description: Defines JWT administration, current credentials and atomic scope lifecycle/usage checks; read when reviewing or implementing scope upsert.
-status: in-review
-approved_by: null
-approved_at: null
+status: approved
+approved_by: Ittikorn
+approved_at: 2026-11-16T09:24:57+07:00
 ---
 
 # [POST]: v1/author/scope/upsert

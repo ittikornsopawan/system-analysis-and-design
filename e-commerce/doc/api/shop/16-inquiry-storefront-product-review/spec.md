@@ -1,9 +1,9 @@
 ---
 name: "Inquiry Storefront Product Review API"
 description: "Inquiry the reviews of a product sold by a shop with the average rating and the number of reviews of each rating, with paging, rating filter and sort. Read it when you implement, review or test GET v1/storefront/product-review."
-status: in-review
-approved_by: null
-approved_at: null
+status: approved
+approved_by: Ittikorn
+approved_at: 2026-11-16T09:24:57+07:00
 ---
 
 # [GET]: v1/storefront/product-review

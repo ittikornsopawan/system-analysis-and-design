@@ -9,23 +9,23 @@ Checked on 2026-11-16 against `main` (c190f70) and the pull requests on GitHub. 
 
 | Group                                           | Tasks  |
 | ----------------------------------------------- | ------ |
-| 1. Owner decisions and actions                  | 7      |
-| 2. Shop roles rollout (blocked on approval)     | 12     |
-| 3. Deferred work and backlog                    | 6      |
-| **Real work still open**                        | **25** |
+| 1. Owner decisions and actions                  | 1      |
+| 2. Shop roles rollout (unblocked 2026-11-16)    | 12     |
+| 3. Deferred work and backlog                    | 7      |
+| **Real work still open**                        | **20** |
 | 4. Records closed on 2026-11-16                 | 27     |
 
 ## 1. Owner decisions and actions
 
-- [ ] Approve the 83 API specs in `e-commerce/doc/api/` (all `status: in-review`).
-- [ ] Approve the 8 design documents in `docs/superpowers/specs/` that are `in-review`: product SKU multi-level, author, authen, payment, order, cart, shop lot pricing and storefront, shop roles.
-- [ ] Approve the detailed Redis/MongoDB policy documents of Jinny's diagrams before any backend, collection/outbox schema or endpoint work (`tasks/todo.md`).
-- [ ] Decide whether the target-row queries of shop SKU, shop and shop user get `FOR UPDATE` (the lock decision of 2026-11-15 covered only consent type and shop type).
+- [x] Approve the 83 API specs in `e-commerce/doc/api/` (all `status: in-review`). Approved by the owner on 2026-11-16; `status: approved` in every spec.
+- [x] Approve the 8 design documents in `docs/superpowers/specs/` that are `in-review`: product SKU multi-level, author, authen, payment, order, cart, shop lot pricing and storefront, shop roles. Approved by the owner on 2026-11-16.
+- [x] Approve the detailed Redis/MongoDB policy documents of Jinny's diagrams before any backend, collection/outbox schema or endpoint work (`tasks/todo.md`). Approved by the owner on 2026-11-16: the 19 in-review documents of `e-commerce/diagram/`.
+- [x] Decide whether the target-row queries of shop SKU, shop and shop user get `FOR UPDATE` (the lock decision of 2026-11-15 covered only consent type and shop type). Owner decision of 2026-11-16: add `FOR UPDATE`; the work is in group 3.
 - [ ] Set the branch protection of `main` in GitHub: required check `checks`, branches must be up to date.
-- [ ] Run `run_db_tests.sh` locally before the API work; CI no longer runs it (owner order of 2026-11-15).
-- [ ] Have Barry (Head of Technology) review the final report of the JWT round; his session is not running.
+- [x] Run `run_db_tests.sh` before the API work; CI no longer runs it (owner order of 2026-11-15). Owner decision of 2026-11-16: the SA Lead runs it on main and reports. Done 2026-11-16 by the SA Lead on main c453316 (PostgreSQL 17.11): `ALL PASSED`, 82 PASS lines: migrations up, down and up again with every SQL test.
+- [x] Have Barry (Head of Technology) review the final report of the JWT round; his session is not running. Owner decision of 2026-11-16: no Barry review for this round; the owner approves directly.
 
-## 2. Shop roles rollout (Peter, blocked until the shop roles design is approved)
+## 2. Shop roles rollout (Peter; unblocked, the design was approved on 2026-11-16)
 
 Source: `tasks/peter/todo.md`, design `docs/superpowers/specs/2026-11-14-shop-roles-design.md`. Today 30 spec and sequence files still use the old role set `role IN ('ADMIN', 'STAFF')`.
 
@@ -44,11 +44,12 @@ Source: `tasks/peter/todo.md`, design `docs/superpowers/specs/2026-11-14-shop-ro
 
 ## 3. Deferred work and backlog
 
-- [ ] WP5b: author specs 13–17 (role permission upsert and inquiry, user permission upsert and inquiry, check); deferred until an API enforces permissions.
+- [ ] WP5b: author specs 13–17 (role permission upsert and inquiry, user permission upsert and inquiry, check); deferred until an API enforces permissions (owner confirmed on 2026-11-16).
 - [x] Remove `ADMIN_WRITE_LIVE_QUERIES` from `check_docs.py`; no spec uses the live role queries any more. Done in the checker cleanup pull request of 2026-11-16: `admin-write-spec` now checks only the JWT claims path.
 - [x] Merge the two `er_name_rows` helpers of `check_docs.py`. Done in the same pull request: the first one, which the second overrode, is removed.
 - [x] Extend `audit_all.py` to a column without an alias in the `WHERE` of an `UPDATE`. Done 2026-11-16: 129 UPDATE statements are now checked, 0 findings; a subquery or `UPDATE ... FROM` is skipped.
-- [ ] Retrofit the plain `UNIQUE` and `CASCADE` of the older master tables.
+- [ ] Retrofit the plain `UNIQUE` and `CASCADE` of the older master tables (owner approved on 2026-11-16).
+- [ ] Add `FOR UPDATE` to the target-row queries of shop SKU (01, 02), shop (08, 09) and shop user (11, 12), after the credential check and before the permission decision (owner decision of 2026-11-16).
 - [ ] Rewrite the team protocol in `docs/handoff/` to match the named-agent rule.
 - [x] Record the consent/02 answer in `docs/superpowers/specs/2026-11-07-api-review-design.md` (the root item was misread as a Head of Technology answer). Already done: section "Consent type of a consent (2026-11-14)" of that file.
 - [ ] Owner: verify the resource registry and the diagram role after Jinny's scope is released (`tasks/owner/todo.md`).

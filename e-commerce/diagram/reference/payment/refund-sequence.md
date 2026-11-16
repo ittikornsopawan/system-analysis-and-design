@@ -1,9 +1,9 @@
 ---
 name: ลำดับคืนเงินและยืนยันผลก่อนคืนสินค้าคงคลัง
 description: อธิบาย proposed refund operation และเงื่อนไขคืน stock กับ campaign budget เพียงครั้งเดียว ใช้ทบทวน provider semantics และ canonical contracts ก่อนพัฒนา
-status: in-review
-approved_by: null
-approved_at: null
+status: approved
+approved_by: Ittikorn
+approved_at: 2026-11-16T09:24:57+07:00
 ---
 
 # คืนเงิน: ยืนยันผลทางการเงินก่อนปล่อย stock และงบ

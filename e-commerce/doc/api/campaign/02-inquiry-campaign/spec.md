@@ -1,9 +1,9 @@
 ---
 name: "Inquiry Campaign API"
 description: "Inquiry the campaigns with their discount, products, and for a platform administrator the budget and the shops. Read it when you implement, review or test GET v1/campaign."
-status: in-review
-approved_by: null
-approved_at: null
+status: approved
+approved_by: Ittikorn
+approved_at: 2026-11-16T09:24:57+07:00
 ---
 
 # [GET]: v1/campaign

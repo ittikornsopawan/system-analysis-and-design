@@ -1,9 +1,9 @@
 ---
 name: E-commerce MongoDB Configuration and Event Proposal
 description: Review the proposed MongoDB configuration, audit/integration events and transaction projections, together with the Redis proposal, before any collection, API or backend implementation.
-status: in-review
-approved_by: null
-approved_at: null
+status: approved
+approved_by: Ittikorn
+approved_at: 2026-11-16T09:24:57+07:00
 ---
 
 # MongoDB Configuration and Transaction-Related Documents

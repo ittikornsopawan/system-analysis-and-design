@@ -1,9 +1,9 @@
 ---
 name: Upsert Product Batch API Specification
 description: Defines the all-or-nothing insert, update, delete and archive of several products in one request with the platform administrator authorization from the verified JWT roles claim checked once and the SQL of every step; read when reviewing or implementing the product batch upsert.
-status: in-review
-approved_by: null
-approved_at: null
+status: approved
+approved_by: Ittikorn
+approved_at: 2026-11-16T09:24:57+07:00
 ---
 
 # [POST]: v1/product/upsert/batch
