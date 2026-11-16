@@ -4,7 +4,7 @@ description: Defines the verified-JWT authorization, the current credential chec
 status: approved
 approved_by: Ittikorn
 approved_at: 2026-11-16T09:24:57+07:00
-- The caller needs a verified JWT, then an ACTIVE member row of the shop (a row of `shop.t_shop_user` with the role ADMIN or STAFF that is ACTIVE) or the role `PLATFORM_ADMIN` in the verified `roles` claim, otherwise 403 (E10009). A shop that does not exist or is DELETED is not found (404, E10005). This permission model was approved by the product owner.
+- The caller needs a verified JWT, then an ACTIVE member row of the shop (a row of `shop.t_shop_user` with the role OWNER, ADMIN or STAFF that is ACTIVE) or the role `PLATFORM_ADMIN` in the verified `roles` claim, otherwise 403 (E10009). A shop that does not exist or is DELETED is not found (404, E10005). This permission model was approved by the product owner.
 - The platform administrator is the exact case-sensitive role `PLATFORM_ADMIN` in the verified `roles` claim; do not query `author.m_role` or `author.t_user_role`, and a change of the assignment after the token was issued does not change this token (it may stay usable until its expiry). Membership of a shop is not a token claim and is still read from `shop.t_shop_user`.
 - Orders with `rowStatus` DELETED are never returned. The orders are ordered by creation time (newest first) then `id`.
 - The shop sees what it needs to prepare the parcel: the customer (display name only, never the user name or the e-mail address), the full copy of the shipping address that was made when the order was created, and the items with the lot they were taken from.
@@ -395,7 +395,7 @@ SELECT
 FROM shop.t_shop_user su
 WHERE su.shop_id = '<sequence.shopId>'
 AND su.user_id = '<sequence.userId>'
-AND su.role IN ('ADMIN', 'STAFF')
+AND su.role IN ('OWNER', 'ADMIN', 'STAFF')
 AND su.row_status = 'ACTIVE'
 ```
 

@@ -1883,17 +1883,19 @@ def check_order_spec() -> int:
         "03": ["- Only the orders of the user of the access token are returned", "ORDER BY o.created_at DESC, o.id", "o.user_id = '<sequence.userId>'", "#### QUERY - Count the orders of the user", "ILIKE"],
         "04": ["- The caller needs a verified JWT, then an ACTIVE member row of the shop", "E10009", "#### Fail - Forbidden", "#### QUERY - Check shop member", "#### QUERY - Check active credential and user",
                "the role `PLATFORM_ADMIN` in the verified `roles` claim", "do not query `author.m_role` or `author.t_user_role`",
-               "approved by the product owner", "platformProfit", "ORDER BY o.created_at DESC, o.id", "INNER JOIN authen.m_user ui"],
+               "approved by the product owner", "platformProfit", "ORDER BY o.created_at DESC, o.id", "INNER JOIN authen.m_user ui", "AND su.role IN ('OWNER', 'ADMIN', 'STAFF')"],
         "05": ["- The caller needs a verified JWT, then must be the owner of the order", "#### UPDATE - Cancel the order", "AND status = 'WAIT_PAYMENT'", "#### UPDATE - Give the quantity back to the lot", "E10006",
                "restoredItems", "#### QUERY - Check shop member", "FOR UPDATE -- the order row is locked first", "ORDER BY oi.lot_id",
                "`Idempotency-Key` `cancel-<paymentIntentId>`", "approved by the product owner on 2026-11-08",
-               "#### QUERY - Lock the caller user", "#### QUERY - Check current credential and user", "do not query `author.m_role` or `author.t_user_role`"],
+               "#### QUERY - Lock the caller user", "#### QUERY - Check current credential and user", "do not query `author.m_role` or `author.t_user_role`", "AND su.role IN ('OWNER', 'ADMIN', 'STAFF')"],
     }
     for key, need in needles.items():
         # rules that moved into a note of the sequence diagram are searched there, one line per wrapped note
         seq = re.sub(r"\n\s+", " ", read(ORDER_SPECS[key].replace("spec.md", "sequence.wsd")))
         for missing in missing_needles(mds[key] + "\n" + seq, need):
             errors.append(f"{ORDER_SPECS[key]} missing: {missing}")
+        if "role IN ('ADMIN', 'STAFF')" in mds[key] + seq:  # shop roles design D1: OWNER is a member too
+            errors.append(f"{ORDER_SPECS[key]}: the shop member check must be role IN ('OWNER', 'ADMIN', 'STAFF')")
     for key, want in {"01": {"Success": 200, "Success - With Campaign": 200, "Success - With Problems": 200},
                       "02": {"Success": 201, "Success - With Campaign": 201, "Success - With Capped Discount": 201}, "03": {"Success": 200, "Success - Empty": 200},
                       "04": {"Success": 200, "Success - Empty": 200}, "05": {"Success": 200}}.items():
@@ -1932,13 +1934,13 @@ SHOP_USER_SPECS = {
     "13": "e-commerce/doc/api/shop/13-inquiry-shop-user/spec.md",
 }
 SHOP_USER_INDEX = "CREATE UNIQUE INDEX IF NOT EXISTS uq_t_shop_user_shop_id_user_id ON shop.t_shop_user (shop_id, user_id) WHERE row_status <> 'DELETED'"
-SHOP_ROLES = ("ADMIN", "STAFF")
+SHOP_ROLES = ("OWNER", "ADMIN", "STAFF")
 
 
 def shop_user_item_errors(label: str, item: dict) -> list[str]:
     errors = []
     if item.get("role", "STAFF") not in SHOP_ROLES:
-        errors.append(f"{label}: role must be ADMIN or STAFF")
+        errors.append(f"{label}: role must be OWNER, ADMIN or STAFF")
     return errors
 
 
@@ -1952,8 +1954,8 @@ def check_shop_user_upsert_examples(md: str) -> list[str]:
     bodies = {t: json.loads(re.search(rf"##### {t}\n\n```JSON\n(.*?)```", md, re.DOTALL).group(1)) for t in ("Insert", "Update", "Delete")}
     for title, body in bodies.items():
         errors.extend(shop_user_item_errors(f"11 {title}", body))
-    if "id" in bodies["Insert"] or bodies["Insert"].get("rowStatus") == "DELETED":
-        errors.append("11: the Insert example must have no id and must not be DELETED")
+    if "id" in bodies["Insert"] or bodies["Insert"].get("rowStatus") == "DELETED" or bodies["Insert"].get("role") == "OWNER":
+        errors.append("11: the Insert example must have no id, must not be DELETED and must not insert an OWNER")
     update, delete = bodies["Update"], bodies["Delete"]
     if (update["id"], update["shopId"], update["userId"]) != (delete["id"], delete["shopId"], delete["userId"]):
         errors.append("11: the Update and Delete examples must describe the same shop user")
@@ -1981,6 +1983,8 @@ def check_shop_user_batch_examples(md: str) -> list[str]:
         action = {"DELETED": "DELETE", "ARCHIVED": "ARCHIVE"}.get(item.get("rowStatus"), "UPDATE" if "id" in item else "INSERT")
         if "id" not in item and item.get("rowStatus") == "DELETED":
             errors.append(f"12: request item {position} deletes without an id")
+        if "id" not in item and item.get("role") == "OWNER":
+            errors.append(f"12: request item {position} inserts an OWNER (owners are only promoted)")
         if res["index"] != position or res["action"] != action:
             errors.append(f"12: result {position} should be index {position}, action {action}, found {res['index']}/{res['action']}")
         if "id" in item and res["shopUserId"] != item["id"]:
@@ -2032,10 +2036,15 @@ def check_shop_user_inquiry_examples(md: str) -> list[str]:
 
 
 # Shop user specs moved to the verified JWT roles claim: spec key -> (heading of the first membership query, the member decision of the diagram).
-SHOP_USER_JWT = {"11": ("QUERY - Check shop administrator", "alt caller is not an ADMIN of the shop and not a STAFF member leaving their own membership"),
-                 "12": ("QUERY - Check shop administrator", "alt items[i]: caller is not an ADMIN of the shop and not a STAFF member leaving their own membership")}
-SHOP_USER_JWT_SEQ = {"11": ["app -> api: HTTP 403 E10009 You do not have permission to manage the members of the shop."],
-                     "12": ["app -> api: HTTP 403 E10009 items[i]: You do not have permission to manage the members of the shop."]}
+SHOP_ROLE_DECISION = "the role of the caller in the shop does not allow this change (OWNER: every member; ADMIN: STAFF members and leaving; STAFF: leaving)"
+SHOP_USER_JWT = {"11": ("QUERY - Check shop administrator", "alt " + SHOP_ROLE_DECISION),
+                 "12": ("QUERY - Check shop administrator", "alt items[i]: " + SHOP_ROLE_DECISION)}
+SHOP_USER_JWT_SEQ = {"11": ["app -> api: HTTP 403 E10009 You do not have permission to manage the members of the shop.",
+                            "app -> api: HTTP 409 E10006 Only an ACTIVE member can be promoted to OWNER.", "app -> api: HTTP 409 E10006 The shop must keep at least one OWNER.",
+                            "role OWNER is rejected when inserting a shop user"],
+                     "12": ["app -> api: HTTP 403 E10009 items[i]: You do not have permission to manage the members of the shop.",
+                            "app -> api: HTTP 409 E10006 items[i]: Only an ACTIVE member can be promoted to OWNER.", "app -> api: HTTP 409 E10006 items[i]: The shop must keep at least one OWNER.",
+                            "role OWNER is rejected when an item inserts a shop user", "loop For each shop of the request (OWNER rule, after the last item)"]}
 
 
 def check_shop_user_spec() -> int:
@@ -2063,18 +2072,27 @@ def check_shop_user_spec() -> int:
     approval = ("The rules of this section, including the permission model (the ADMIN of the shop or a platform administrator, 403 E10009), "
                 "were approved by the product owner.")
     permission = approval
+    # Shop roles design of 2026-11-14 (D2, D3, D5), approved 2026-11-16: fixed OWNER/ADMIN/STAFF tiers and at least one ACTIVE OWNER.
+    owner_approval = ("The rules of this section, including the permission model (the fixed shop roles OWNER, ADMIN and STAFF or a platform administrator, 403 E10009), "
+                      "were approved by the product owner.")
+    owner_rules = ["the shop roles design of 2026-11-14 (D2, D3, D5)", "AND su.role IN ('OWNER', 'ADMIN')\nAND su.row_status = 'ACTIVE'",
+                   "AND su.role = 'OWNER'\nAND su.row_status = 'ACTIVE' -- the request is rolled back when the count is 0", "su.role,\n    su.row_status\nFROM shop.t_shop_user su",
+                   "this rule replaces the former rule of at least one ACTIVE ADMIN", "An ADMIN of the shop can add a STAFF member", "adding, changing or removing an ADMIN or an OWNER is 403 (E10009)",
+                   "An OWNER is added only by promoting a member", "Only an OWNER of the shop or a platform administrator can promote or demote an OWNER.",
+                   "An OWNER can only be added by promoting an existing ACTIVE member.", "Only an ACTIVE member can be promoted to OWNER.", "The shop must keep at least one OWNER.",
+                   "#### Fail - Bad Request New Owner", "#### Fail - Conflict Owner Promotion", "#### Fail - Conflict Last Owner", "Role must be OWNER, ADMIN or STAFF."]
     needles = {
-        "11": ["# [POST]: v1/shop/user/upsert", "- A member of a shop is a user that has a row in `shop.t_shop_user`", approval, permission, "#### QUERY - Check shop member", "#### QUERY - Check shop administrator",
-               "#### QUERY - Count the ADMIN members of the shop after the write", "#### QUERY - Check duplicate member",
+        "11": ["# [POST]: v1/shop/user/upsert", "- A member of a shop is a user that has a row in `shop.t_shop_user`", owner_approval, *owner_rules, "#### QUERY - Check shop member", "#### QUERY - Check shop administrator",
+               "#### QUERY - Count the OWNER members of the shop after the write", "#### QUERY - Check duplicate member",
                "(../../../schema/shop/t_shop_user.md)", "(../../../schema/authen/m_user.md)",
-               "AND su.row_status <> 'DELETED'\nAND su.id <> '<sequence.id>'", "User is already a member of the shop.", "The shop must keep at least one ADMIN.",
+               "AND su.row_status <> 'DELETED'\nAND su.id <> '<sequence.id>'", "User is already a member of the shop.",
                "You do not have permission to manage the members of this shop.", "Shop user not found.", "Shop not found.", "User not found.",
-               "Shop Id and User Id cannot be changed.", "Role must be ADMIN or STAFF.", "Row status must not be DELETED when inserting a shop user.",
+               "Shop Id and User Id cannot be changed.", "Row status must not be DELETED when inserting a shop user.",
                "A platform administrator cannot skip this rule", "can only delete or archive their own membership", "it must lock the row of the shop (`shop.m_shop`", "E10003", "E10004", "E10005", "E10006", "E10009", "E90001",
                "Insert Shop User Success"],
-        "12": ["# [POST]: v1/shop/user/upsert/batch", "- A member of a shop is a user that has a row in `shop.t_shop_user`", approval, permission, "#### Shop User Object",
+        "12": ["# [POST]: v1/shop/user/upsert/batch", "- A member of a shop is a user that has a row in `shop.t_shop_user`", owner_approval, *owner_rules, "#### Shop User Object",
                "shopUsers[2]: Id is duplicated with shopUsers[1].", "shopUsers[2]: Shop Id and User Id are duplicated with shopUsers[0].", "Shop users must contain 1 to 100 items.",
-               "#### QUERY - Count the ADMIN members of the shop after the write", "except the ADMIN rule that is checked once for each shop after all the items", "it must lock the row of the shop (`shop.m_shop`"],
+               "#### QUERY - Count the OWNER members of the shop after the write", "except the OWNER rule that is checked once for each shop after all the items", "it must lock the row of the shop (`shop.m_shop`"],
         "13": ["# [GET]: v1/shop/user", "- `shopId` or `userId` must be specified", approval, permission, "#### Shop User Object", "#### QUERY - Get shop users", "#### QUERY - Get total items",
                "#### QUERY - Check shop member", "ORDER BY su.created_at DESC, su.id", "(../../../schema/shop/t_shop_user.md)",
                "(../../../schema/authen/m_user.md)", "Shop Id or User Id is required.",

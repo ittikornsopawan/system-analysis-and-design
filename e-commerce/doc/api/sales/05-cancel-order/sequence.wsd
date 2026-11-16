@@ -161,12 +161,12 @@ activate page
                                             FROM shop.t_shop_user su
                                             WHERE su.shop_id = '<sequence.shopId>'
                                             AND su.user_id = '<sequence.userId>'
-                                            AND su.role IN ('ADMIN', 'STAFF')
+                                            AND su.role IN ('OWNER', 'ADMIN', 'STAFF')
                                             AND su.row_status = 'ACTIVE'
                                         end note
                                         t_shop_user -> infra: Return query result
                                     deactivate t_shop_user
-                                    infra -> app: Return the ACTIVE ADMIN or STAFF row of the caller or no row
+                                    infra -> app: Return the ACTIVE OWNER, ADMIN or STAFF row of the caller or no row
                                     alt The caller is not a member of the shop and the roles claim has no PLATFORM_ADMIN: the order counts as not found
                                         app -> infra: ROLLBACK
                                         app -> api: HTTP 404 E10004 Order not found.
