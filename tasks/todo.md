@@ -297,7 +297,7 @@ MongoDB extension requested by Ittikorn during the Redis design (2026-11-07): ad
 - [x] Research MongoDB primary sources for configuration documents, validation/versioning, indexes, TTL, transactions and cross-store consistency.
 - [x] Extend the proposed architecture and three diagram views based on the owner's answers, with explicit current/proposed status and no invented financial ownership.
 - [x] Verify the combined Redis/MongoDB design and rendered artifacts before the owner handoff.
-- [ ] Obtain approval of the detailed in-review policies before any backend, collection/outbox schema or endpoint contract implementation; this is outside the completed diagram work.
+- [x] Obtain approval of the detailed in-review policies before any backend, collection/outbox schema or endpoint contract implementation; this is outside the completed diagram work. Evidence: the owner approved the 19 in-review documents of `e-commerce/diagram/` on 2026-11-16 (AskUserQuestion to the SA Lead); `status: approved` in their frontmatter.
 
 Owner clarification (2026-11-07): MongoDB stores feature flags/general configuration including cache/rate policy, plus audit/integration events and transaction copies for historical search. PostgreSQL retains business/financial authority. `mongodb-design.md` records the selected ownership and proposed publication/outage rules. Remaining policy approval is not inferred from the selection. Runtime view merges in-process HTTP/CQRS use cases into one host node so two Redis roles, MongoDB and PostgreSQL fit the nine-node budget without pretending layers are separate services. Existing source references and order states remain unchanged.
 

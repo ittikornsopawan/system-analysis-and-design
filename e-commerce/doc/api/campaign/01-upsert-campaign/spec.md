@@ -1,9 +1,9 @@
 ---
 name: "Upsert Campaign API"
 description: "Insert, update, delete or archive one campaign with its budget, its discount, its shops and its products. Read it when you implement, review or test POST v1/campaign/upsert."
-status: in-review
-approved_by: null
-approved_at: null
+status: approved
+approved_by: Ittikorn
+approved_at: 2026-11-16T09:24:57+07:00
 ---
 
 # [POST]: v1/campaign/upsert

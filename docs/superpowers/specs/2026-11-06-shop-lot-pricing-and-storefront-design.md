@@ -1,9 +1,9 @@
 ---
 name: "Shop Lot Pricing and Storefront Design"
 description: "ออกแบบราคา ต้นทุน และสต็อกแบบ lot ฝั่งร้าน พร้อม API หน้าสินค้า ลูกค้าซื้อในราคาของ lot ที่เปิดขาย กติกา R14-R24 อ่านก่อนแก้ราคา สต็อก หรือหน้าสินค้า"
-status: in-review
-approved_by: null
-approved_at: null
+status: approved
+approved_by: Ittikorn
+approved_at: 2026-11-16T09:24:57+07:00
 ---
 
 # ราคา ต้นทุน สต็อกแบบ lot ฝั่งร้าน และ API หน้าสินค้า

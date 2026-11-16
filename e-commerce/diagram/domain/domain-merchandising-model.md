@@ -1,9 +1,9 @@
 ---
 name: Catalog, shop listings & stock concepts — explanation and SQL traceability
 description: อธิบาย domain diagram domain-merchandising-model พร้อมเหตุผล ตารางต้นทาง ความสัมพันธ์และcardinalityจากSQL ใช้ก่อนreviewหรือแก้ภาพนี้
-status: in-review
-approved_by: null
-approved_at: null
+status: approved
+approved_by: Ittikorn
+approved_at: 2026-11-16T09:24:57+07:00
 ---
 
 # Catalog, shop listings & stock concepts

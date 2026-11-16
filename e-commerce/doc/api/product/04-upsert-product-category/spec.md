@@ -1,9 +1,9 @@
 ---
 name: Upsert Product Category API Specification
 description: Defines the insert, update, delete and archive of one product category with its parent, the platform administrator authorization from the verified JWT roles claim, the in-use and campaign checks and the SQL of every step; read when reviewing or implementing the product category upsert.
-status: in-review
-approved_by: null
-approved_at: null
+status: approved
+approved_by: Ittikorn
+approved_at: 2026-11-16T09:24:57+07:00
 ---
 
 # [POST]: v1/product-category/upsert

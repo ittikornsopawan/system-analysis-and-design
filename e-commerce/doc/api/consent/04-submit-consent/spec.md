@@ -1,9 +1,9 @@
 ---
 name: Submit Consent API Specification
 description: Defines authenticated read-only consent display, later answers, no-op repeated reads, current active-type eligibility, atomic user-scoped batch SQL and history preservation for POST v1/consent/submit.
-status: in-review
-approved_by: null
-approved_at: null
+status: approved
+approved_by: Ittikorn
+approved_at: 2026-11-16T09:24:57+07:00
 ---
 
 # [POST]: v1/consent/submit

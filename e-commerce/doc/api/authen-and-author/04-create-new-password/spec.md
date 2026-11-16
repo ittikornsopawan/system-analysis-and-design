@@ -1,9 +1,9 @@
 ---
 name: Create New Password API Specification
 description: Defines public reset-token verification, user-first serialization, post-lock single-use consumption, password history and atomic all-session revocation for POST v1/auth/create-new-password.
-status: in-review
-approved_by: null
-approved_at: null
+status: approved
+approved_by: Ittikorn
+approved_at: 2026-11-16T09:24:57+07:00
 ---
 
 # [POST]: v1/auth/create-new-password

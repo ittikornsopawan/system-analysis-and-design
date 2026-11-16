@@ -1,9 +1,9 @@
 ---
 name: Role Batch Upsert API Specification
 description: Defines whole-request validation, verified JWT authorization, sorted target locks, ordered atomic role mutations and indexed result mapping.
-status: in-review
-approved_by: null
-approved_at: null
+status: approved
+approved_by: Ittikorn
+approved_at: 2026-11-16T09:24:57+07:00
 ---
 
 # [POST]: v1/author/role/upsert/batch

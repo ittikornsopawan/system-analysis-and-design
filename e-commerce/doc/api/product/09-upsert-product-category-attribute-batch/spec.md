@@ -1,9 +1,9 @@
 ---
 name: Upsert Product Category Attribute Batch API Specification
 description: Defines the all-or-nothing insert, update, delete and archive of several product category attributes in one request with the permission checked once and the SQL of every step; read when reviewing or implementing the attribute batch upsert.
-status: in-review
-approved_by: null
-approved_at: null
+status: approved
+approved_by: Ittikorn
+approved_at: 2026-11-16T09:24:57+07:00
 ---
 
 # [POST]: v1/product-category-attribute/upsert/batch

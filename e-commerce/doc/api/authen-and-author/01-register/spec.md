@@ -1,9 +1,9 @@
 ---
 name: Register API Specification
 description: Defines atomic registration, required current consent acceptance, displayed-consent read evidence, optional address and referral, validation and exact SQL for POST v1/auth/register.
-status: in-review
-approved_by: null
-approved_at: null
+status: approved
+approved_by: Ittikorn
+approved_at: 2026-11-16T09:24:57+07:00
 ---
 
 # [POST]: v1/auth/register

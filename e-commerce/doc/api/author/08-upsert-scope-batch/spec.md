@@ -1,9 +1,9 @@
 ---
 name: Scope Batch Upsert API Specification
 description: Defines whole-request validation, verified JWT authorization, sorted target locks, ordered atomic scope mutations and indexed result mapping; read when reviewing or implementing scope batch upsert.
-status: in-review
-approved_by: null
-approved_at: null
+status: approved
+approved_by: Ittikorn
+approved_at: 2026-11-16T09:24:57+07:00
 ---
 
 # [POST]: v1/author/scope/upsert/batch

@@ -1,9 +1,9 @@
 ---
 name: User Role Upsert API Specification
 description: Defines verified JWT administration, current credentials, user/role/assignment lock order, last-administrator protection and atomic assignment lifecycle; read when reviewing or implementing user role upsert.
-status: in-review
-approved_by: null
-approved_at: null
+status: approved
+approved_by: Ittikorn
+approved_at: 2026-11-16T09:24:57+07:00
 ---
 
 # [POST]: v1/author/user/role/upsert

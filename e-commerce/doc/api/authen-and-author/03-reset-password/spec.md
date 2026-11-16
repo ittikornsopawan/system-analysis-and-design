@@ -1,9 +1,9 @@
 ---
 name: Reset Password Request API Specification
 description: Defines public uniform reset-request outcomes, user-first serialized issuance, fresh rolling-hour throttle and timestamps, atomic reset replacement and post-commit email handoff for POST v1/auth/reset-password.
-status: in-review
-approved_by: null
-approved_at: null
+status: approved
+approved_by: Ittikorn
+approved_at: 2026-11-16T09:24:57+07:00
 ---
 
 # [POST]: v1/auth/reset-password

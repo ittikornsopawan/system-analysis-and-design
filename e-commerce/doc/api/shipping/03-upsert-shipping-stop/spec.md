@@ -1,9 +1,9 @@
 ---
 name: "Upsert Shipping Stop API"
 description: "Insert, update, delete or archive one stop (a hub the parcel passes) of a shipping. Read it when you implement, review or test POST v1/shop/shipping/stop/upsert."
-status: in-review
-approved_by: null
-approved_at: null
+status: approved
+approved_by: Ittikorn
+approved_at: 2026-11-16T09:24:57+07:00
 ---
 
 # [POST]: v1/shop/shipping/stop/upsert

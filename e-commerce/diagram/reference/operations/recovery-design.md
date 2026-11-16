@@ -1,9 +1,9 @@
 ---
 name: E-commerce Recovery Activity and Owner Gates
 description: อธิบาย owner swimlanes, recovery actions, financial reconciliation และ reopening decision gates ใช้อ่านก่อนกำหนด runbook หรือทดสอบ restore/replay
-status: in-review
-approved_by: null
-approved_at: null
+status: approved
+approved_by: Ittikorn
+approved_at: 2026-11-16T09:24:57+07:00
 ---
 
 # Recovery activity และ handoff ระหว่างเจ้าของงาน

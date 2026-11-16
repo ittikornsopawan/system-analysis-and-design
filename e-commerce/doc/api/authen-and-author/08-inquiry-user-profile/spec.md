@@ -1,9 +1,9 @@
 ---
 name: Own User Profile Inquiry API Specification
 description: Defines current token and ACTIVE user gating, consistent read-only profile snapshots, exact nullable field mapping and complete outcomes for GET v1/user/profile.
-status: in-review
-approved_by: null
-approved_at: null
+status: approved
+approved_by: Ittikorn
+approved_at: 2026-11-16T09:24:57+07:00
 ---
 
 # [GET]: v1/user/profile

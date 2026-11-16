@@ -1,9 +1,9 @@
 ---
 name: E-commerce MongoDB Logical Collection Model
 description: อธิบาย ownership ของ collection, identity/payload/integrity compartments และ logical cardinality ของ MongoDB ใช้ก่อนทบทวนแบบจำลองหรือออกแบบ schema จริง
-status: in-review
-approved_by: null
-approved_at: null
+status: approved
+approved_by: Ittikorn
+approved_at: 2026-11-16T09:24:57+07:00
 ---
 
 # แบบจำลอง collection และ logical references

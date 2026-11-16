@@ -1,9 +1,9 @@
 ---
 name: Role Inquiry API Specification
 description: Defines verified JWT administration, current credential gating, bound nullable filters and consistent read-only role pagination.
-status: in-review
-approved_by: null
-approved_at: null
+status: approved
+approved_by: Ittikorn
+approved_at: 2026-11-16T09:24:57+07:00
 ---
 
 # [GET]: v1/author/role

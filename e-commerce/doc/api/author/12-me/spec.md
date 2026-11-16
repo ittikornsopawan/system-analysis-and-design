@@ -1,9 +1,9 @@
 ---
 name: Author Me API Specification
 description: Defines the calling JWT role snapshot and platform-administrator flag, current credential/user validation, deterministic mapping, read-only SQL and complete outcomes for GET v1/author/me.
-status: in-review
-approved_by: null
-approved_at: null
+status: approved
+approved_by: Ittikorn
+approved_at: 2026-11-16T09:24:57+07:00
 ---
 
 # [GET]: v1/author/me

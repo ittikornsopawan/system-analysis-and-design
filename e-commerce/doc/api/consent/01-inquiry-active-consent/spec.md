@@ -1,9 +1,9 @@
 ---
 name: Active Consent API Specification
 description: Defines public current consent visibility, ACTIVE type filtering, mandatory type-name mapping, read-only response consistency, empty/error outcomes and exact SQL for GET v1/consent/active.
-status: in-review
-approved_by: null
-approved_at: null
+status: approved
+approved_by: Ittikorn
+approved_at: 2026-11-16T09:24:57+07:00
 ---
 
 # [GET]: v1/consent/active

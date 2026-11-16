@@ -1,9 +1,9 @@
 ---
 name: Consent Inquiry API Specification
 description: Defines the platform-administrator management inquiry of all consent records with verified JWT roles, current credential gating, bound nullable filters and consistent read-only pagination; read when reviewing or implementing consent inquiry.
-status: in-review
-approved_by: null
-approved_at: null
+status: approved
+approved_by: Ittikorn
+approved_at: 2026-11-16T09:24:57+07:00
 ---
 
 # [GET]: v1/consent

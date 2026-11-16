@@ -1,9 +1,9 @@
 ---
 name: Cancel Order API Specification
 description: Defines the verified-JWT authorization, the caller lock and current credential gate, the owner, shop member and administrator rule, and the cancel flow of an order; read when reviewing or implementing this endpoint.
-status: in-review
-approved_by: null
-approved_at: null
+status: approved
+approved_by: Ittikorn
+approved_at: 2026-11-16T09:24:57+07:00
 - The caller needs a verified JWT, then must be the owner of the order (the user of the access token), an ACTIVE member of the shop of the order (ADMIN or STAFF in `shop.t_shop_user`) or have the role `PLATFORM_ADMIN` in the verified `roles` claim. For any other user the order counts as not found (404, E10004), the same answer as an order that does not exist or is DELETED.
 - The platform administrator is the exact case-sensitive role `PLATFORM_ADMIN` in the verified `roles` claim; do not query `author.m_role` or `author.t_user_role`, and a change of the assignment after the token was issued does not change this token (it may stay usable until its expiry). Membership of a shop is not a token claim and is still read from `shop.t_shop_user`.
 - Only an order with the status `WAIT_PAYMENT` can be cancelled, otherwise 409 (E10006) with the current status in the message. An order that has been paid is refunded through the payment API, it is not cancelled here.

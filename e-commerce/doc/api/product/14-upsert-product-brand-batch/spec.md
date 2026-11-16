@@ -1,9 +1,9 @@
 ---
 name: Upsert Product Brand Batch API Specification
 description: Defines the insert, update, delete and archive of several product brands in one transaction, the platform administrator authorization from the verified JWT roles claim, the duplicate and in-use checks and the SQL of every step; read when reviewing or implementing the product brand batch upsert.
-status: in-review
-approved_by: null
-approved_at: null
+status: approved
+approved_by: Ittikorn
+approved_at: 2026-11-16T09:24:57+07:00
 ---
 
 # [POST]: v1/product-brand/upsert/batch

@@ -1,9 +1,9 @@
 ---
 name: Inquiry Product Type API Specification
 description: Defines the paged list and the by-id read of product types, the filters, the sort order and the SQL of every step; read when reviewing or implementing the product type inquiry.
-status: in-review
-approved_by: null
-approved_at: null
+status: approved
+approved_by: Ittikorn
+approved_at: 2026-11-16T09:24:57+07:00
 ---
 
 # [GET]: v1/product-type

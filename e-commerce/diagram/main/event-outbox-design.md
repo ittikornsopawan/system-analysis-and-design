@@ -1,9 +1,9 @@
 ---
 name: E-commerce Event Outbox Lifecycle Design
 description: อธิบาย proposed publication states, lease/retry/quarantine และ stable envelope ใช้ตรวจ state diagram ก่อนออกแบบ SQL schema และ worker จริง
-status: in-review
-approved_by: null
-approved_at: null
+status: approved
+approved_by: Ittikorn
+approved_at: 2026-11-16T09:24:57+07:00
 ---
 
 # Publication lifecycle & delivery guarantees

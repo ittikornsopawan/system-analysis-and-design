@@ -1,9 +1,9 @@
 ---
 name: "Order Design WP1"
 description: "ออกแบบการสร้างออเดอร์ (WP1): checkout preview หนึ่งออเดอร์ต่อร้าน ล็อกราคาและ lot ตัดสต็อกตอนสร้าง ยกเลิกก่อนจ่ายแล้วคืนสต็อก กติกา R38-R48 อ่านก่อนแก้ API ออเดอร์"
-status: in-review
-approved_by: null
-approved_at: null
+status: approved
+approved_by: Ittikorn
+approved_at: 2026-11-16T09:24:57+07:00
 ---
 
 # สั่งซื้อ (order) — WP1

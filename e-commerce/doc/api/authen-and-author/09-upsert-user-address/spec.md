@@ -1,9 +1,9 @@
 ---
 name: Own User Address Upsert API Specification
 description: Defines current caller credential gating, owned address lifecycle, serialized quota and default selection, Q21 validation and atomic insert/update/delete for POST v1/user/address/upsert.
-status: in-review
-approved_by: null
-approved_at: null
+status: approved
+approved_by: Ittikorn
+approved_at: 2026-11-16T09:24:57+07:00
 ---
 
 # [POST]: v1/user/address/upsert

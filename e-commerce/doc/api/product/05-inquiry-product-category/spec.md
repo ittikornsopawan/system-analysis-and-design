@@ -1,9 +1,9 @@
 ---
 name: Inquiry Product Category API Specification
 description: Defines the product category list inquiry with paging and search, inquiry by id and the parent of each category; read when reviewing or implementing the product category inquiry.
-status: in-review
-approved_by: null
-approved_at: null
+status: approved
+approved_by: Ittikorn
+approved_at: 2026-11-16T09:24:57+07:00
 ---
 
 # [GET]: v1/product-category

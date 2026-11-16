@@ -1,9 +1,9 @@
 ---
 name: Single Role Upsert API Specification
 description: Defines JWT-claim authorization, current credentials, immutable system role, guarded lifecycle writes and complete transactional outcomes for a single role.
-status: in-review
-approved_by: null
-approved_at: null
+status: approved
+approved_by: Ittikorn
+approved_at: 2026-11-16T09:24:57+07:00
 ---
 
 # [POST]: v1/author/role/upsert

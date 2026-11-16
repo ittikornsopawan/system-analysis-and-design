@@ -1,9 +1,9 @@
 ---
 name: ยืนยันตัวตนให้ครบ (authen) — WP4
 description: เอกสารออกแบบรอบ 1 ของ WP4 ใช้อ่านก่อนแก้ schema authen, เขียน API refresh, logout, reset password, create new password, โปรไฟล์และที่อยู่ และก่อนแก้สัญญา token ที่ spec ทุกเส้นพึ่งอยู่
-status: in-review
-approved_by: null
-approved_at: null
+status: approved
+approved_by: Ittikorn
+approved_at: 2026-11-16T09:24:57+07:00
 ---
 
 # ยืนยันตัวตนให้ครบ (authen) — WP4

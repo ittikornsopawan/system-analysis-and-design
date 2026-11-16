@@ -1,9 +1,9 @@
 ---
 name: E-commerce domain map from the database — explanation and SQL traceability
 description: อธิบาย domain diagram domain-model พร้อมเหตุผล ตารางต้นทาง ความสัมพันธ์และcardinalityจากSQL ใช้ก่อนreviewหรือแก้ภาพนี้
-status: in-review
-approved_by: null
-approved_at: null
+status: approved
+approved_by: Ittikorn
+approved_at: 2026-11-16T09:24:57+07:00
 ---
 
 # E-commerce domain map from the database

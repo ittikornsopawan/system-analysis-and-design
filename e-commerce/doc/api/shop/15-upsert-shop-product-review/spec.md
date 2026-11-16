@@ -1,9 +1,9 @@
 ---
 name: "Upsert Shop Product Review API"
 description: "Insert, update or delete the review of the caller for a product sold by a shop. Read it when you implement, review or test POST v1/shop/product-review/upsert."
-status: in-review
-approved_by: null
-approved_at: null
+status: approved
+approved_by: Ittikorn
+approved_at: 2026-11-16T09:24:57+07:00
 ---
 
 # [POST]: v1/shop/product-review/upsert

@@ -1,9 +1,9 @@
 ---
 name: "Upsert Shop Product SKU Batch API"
 description: "Insert, update, delete or archive multiple shop product SKUs with their lots at the same time, for a member of every shop of the request or a platform administrator from the verified JWT roles claim after the caller lock and the current credential check. Read it when you implement, review or test POST v1/shop/product-sku/upsert/batch."
-status: in-review
-approved_by: null
-approved_at: null
+status: approved
+approved_by: Ittikorn
+approved_at: 2026-11-16T09:24:57+07:00
 ---
 
 # [POST]: v1/shop/product-sku/upsert/batch

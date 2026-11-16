@@ -1,9 +1,9 @@
 ---
 name: ลำดับเริ่มชำระเงินและกู้ผล provider ที่ไม่แน่นอน
 description: อธิบาย stable payment operation และทางเลือก known result กับ reconciliation ใช้อ่านคู่ภาพก่อนทบทวน canonical API และ schema
-status: in-review
-approved_by: null
-approved_at: null
+status: approved
+approved_by: Ittikorn
+approved_at: 2026-11-16T09:24:57+07:00
 ---
 
 # เริ่มชำระเงิน: เก็บตัวตนคำสั่งก่อนเรียก provider

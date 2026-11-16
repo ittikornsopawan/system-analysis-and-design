@@ -1,9 +1,9 @@
 ---
 name: Shop Roles Design
 description: Design of the shop roles owner, admin and staff with fixed permissions, with the owner answers of 2026-11-14: where the role is stored, the fixed permission table per shop API, the minimum rules, who creates and changes owners, the form in the JWT and the impact on schema, tests and specs, with a recommendation, a cost if wrong and an owner question for each point; read before changing shop.t_shop_user, the shop APIs or the owner rows of the permission matrix.
-status: in-review
-approved_by: null
-approved_at: null
+status: approved
+approved_by: Ittikorn
+approved_at: 2026-11-16T09:24:57+07:00
 ---
 
 # Shop roles: owner, admin, staff (in review)

@@ -1,9 +1,9 @@
 ---
 name: "Inquiry Storefront Shop Product API"
 description: "Inquiry the products of a shop for the page of the shop, with the first image, the price range and the stock status of each product and the shop itself (name, description, shop type and images), with paging, search, category filter, stock filter and sort. Read it when you implement, review or test GET v1/storefront/shop/product."
-status: in-review
-approved_by: null
-approved_at: null
+status: approved
+approved_by: Ittikorn
+approved_at: 2026-11-16T09:24:57+07:00
 ---
 
 # [GET]: v1/storefront/shop/product

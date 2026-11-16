@@ -1,9 +1,9 @@
 ---
 name: Upsert Product Type API Specification
 description: Defines the insert, update, delete and archive of one product type, the platform administrator authorization from the verified JWT roles claim, the in-use check and the SQL of every step; read when reviewing or implementing the product type upsert.
-status: in-review
-approved_by: null
-approved_at: null
+status: approved
+approved_by: Ittikorn
+approved_at: 2026-11-16T09:24:57+07:00
 ---
 
 # [POST]: v1/product-type/upsert

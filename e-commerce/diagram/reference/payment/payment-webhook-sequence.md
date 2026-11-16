@@ -1,9 +1,9 @@
 ---
 name: ลำดับ Stripe webhook และการรับ event อย่างกู้คืนได้
 description: อธิบาย proposed durable receipt กับการใช้ SQL guards และแยก event ที่ต้องพัก ใช้ทบทวน webhook recovery ก่อนเปลี่ยน API หรือ schema
-status: in-review
-approved_by: null
-approved_at: null
+status: approved
+approved_by: Ittikorn
+approved_at: 2026-11-16T09:24:57+07:00
 ---
 
 # Stripe webhook: รับผิดชอบ event ก่อนประมวลผลสุดท้าย

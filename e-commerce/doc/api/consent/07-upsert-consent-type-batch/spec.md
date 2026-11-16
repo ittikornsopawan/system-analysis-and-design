@@ -1,9 +1,9 @@
 ---
 name: Consent Type Batch Upsert API Specification
 description: Defines the all-or-nothing batch upsert of consent types for a platform administrator authorized from the verified JWT roles claim, with the caller lock, the current credential check and its SQL; read when reviewing or implementing POST v1/consent/type/upsert/batch.
-status: in-review
-approved_by: null
-approved_at: null
+status: approved
+approved_by: Ittikorn
+approved_at: 2026-11-16T09:24:57+07:00
 ---
 
 # [POST]: v1/consent/type/upsert/batch
