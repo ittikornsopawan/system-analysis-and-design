@@ -1,10 +1,10 @@
 ---
 name: Refund Payment API Specification
-description: Defines the verified-JWT authorization, the caller lock and current credential gate, the shop membership rule and the refund flow of a payment; read when reviewing or implementing this endpoint.
+description: Defines the verified-JWT authorization, the caller lock and current credential gate, the shop owner or administrator rule and the refund flow of a payment; read when reviewing or implementing this endpoint.
 status: approved
 approved_by: Ittikorn
 approved_at: 2026-11-16T09:24:57+07:00
-- A member of the shop of the order (an ACTIVE `shop.t_shop_user` row with the role ADMIN or STAFF) or the role `PLATFORM_ADMIN` in the verified `roles` claim can refund, otherwise 403 (E10009); the customer cannot refund. A payment that does not exist or is DELETED is 404 (E10004).
+- An OWNER or ADMIN of the shop of the order (an ACTIVE `shop.t_shop_user` row with the role OWNER or ADMIN) or the role `PLATFORM_ADMIN` in the verified `roles` claim can refund, otherwise 403 (E10009); a STAFF member of the shop and the customer cannot refund. A payment that does not exist or is DELETED is 404 (E10004).
 - The platform administrator is the exact case-sensitive role `PLATFORM_ADMIN` in the verified `roles` claim; do not query `author.m_role` or `author.t_user_role`. Membership of a shop is not a token claim and is still read from `shop.t_shop_user`.
 - Only a `COMPLETED` payment of a `PAYMENT_CONFIRMED` order can be refunded, otherwise 409 (E10006); after the first shipment the order is `PROCESSING` and cannot be refunded here until the shipping API gives it back to `PAYMENT_CONFIRMED`.
 - The refund is always the whole `amount` of the payment, shipping fee included, asked from Stripe with an Idempotency-Key. When Stripe does not answer or refuses, nothing is written and the answer is 408 (E90001).
@@ -15,13 +15,13 @@ approved_at: 2026-11-16T09:24:57+07:00
 
 # [POST]: v1/shop/payment/refund
 
-| Title       | Description                                                                                                                                                                                                                                                                                                         |
-| ----------- | ------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------- |
-| Name        | Refund Payment API                                                                                                                                                                                                                                                                                                  |
-| Method      | POST                                                                                                                                                                                                                                                                                                                |
-| Endpoint    | v{version}/shop/payment/refund                                                                                                                                                                                                                                                                                      |
-| Version     | 1                                                                                                                                                                                                                                                                                                                   |
-| Description | Refund the whole payment of an order that is paid and has not started to ship, The shop members or a platform administrator refund through Stripe, The order becomes REFUNDED and the quantity of every item goes back to its lot, Part of a payment cannot be refunded and a shipped order cannot be refunded here |
+| Title       | Description                                                                                                                                                                                                                                                                                                                       |
+| ----------- | --------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------- |
+| Name        | Refund Payment API                                                                                                                                                                                                                                                                                                                |
+| Method      | POST                                                                                                                                                                                                                                                                                                                              |
+| Endpoint    | v{version}/shop/payment/refund                                                                                                                                                                                                                                                                                                    |
+| Version     | 1                                                                                                                                                                                                                                                                                                                                 |
+| Description | Refund the whole payment of an order that is paid and has not started to ship, An OWNER or ADMIN of the shop or a platform administrator refunds through Stripe, The order becomes REFUNDED and the quantity of every item goes back to its lot, Part of a payment cannot be refunded and a shipped order cannot be refunded here |
 
 ## Domain
 
@@ -368,7 +368,7 @@ RETURNING id as lot_id, quantity
 
 ### Table: [shop.t_shop_user](../../../schema/shop/t_shop_user.md)
 
-#### QUERY - Check shop member
+#### QUERY - Check shop owner or administrator
 
 ```SQL
 SELECT
@@ -376,7 +376,7 @@ SELECT
 FROM shop.t_shop_user su
 WHERE su.shop_id = '<sequence.shopId>'
 AND su.user_id = '<sequence.userId>'
-AND su.role IN ('ADMIN', 'STAFF')
+AND su.role IN ('OWNER', 'ADMIN')
 AND su.row_status = 'ACTIVE'
 ```
 
