@@ -52,7 +52,7 @@ Source: `tasks/peter/todo.md`, design `docs/superpowers/specs/2026-11-14-shop-ro
 - [x] Add `FOR UPDATE` to the target-row queries of shop SKU (01, 02), shop (08, 09) and shop user (11, 12), after the credential check and before the permission decision (owner decision of 2026-11-16). Done 2026-11-16: the six specs lock their target rows; batches 02 and 09 first lock their existing rows in ascending id order; the shop SKU check keeps the membership check before the lock; `shop-spec` guards it.
 - [x] Rewrite the team protocol in `docs/handoff/` to match the named-agent rule. Done 2026-11-16: `docs/handoff/2026-11-16-team-protocol.md`; the 2026-11-06 protocol points to it as superseded.
 - [x] Record the consent/02 answer in `docs/superpowers/specs/2026-11-07-api-review-design.md` (the root item was misread as a Head of Technology answer). Already done: section "Consent type of a consent (2026-11-14)" of that file.
-- [x] Owner: verify the resource registry and the diagram role after Jinny's scope is released (`tasks/owner/todo.md`). Done 2026-11-16: moved to `tasks/owner/success-task.md` with the evidence.
+- [x] Owner: verify the resource registry and the diagram role after Jinny's scope is released (`tasks/owner/todo.md`). Done 2026-11-16: the record in `tasks/owner/todo.md` is Complete with the evidence; moving it to `success-task.md` needs an assignment that owns that file.
 - [ ] Owner: resolve every legacy task of `tasks/todo.md` with evidence or closure (blocked).
 - [ ] Owner: move the closed legacy records to the owner folders and turn `tasks/todo.md` into an index (blocked by the item above).
 
