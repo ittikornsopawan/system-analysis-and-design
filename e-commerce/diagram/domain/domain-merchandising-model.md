@@ -1,9 +1,9 @@
 ---
 name: Catalog, shop listings & stock concepts — explanation and SQL traceability
 description: อธิบาย domain diagram domain-merchandising-model พร้อมเหตุผล ตารางต้นทาง ความสัมพันธ์และcardinalityจากSQL ใช้ก่อนreviewหรือแก้ภาพนี้
-status: approved
-approved_by: Ittikorn
-approved_at: 2026-11-16T09:24:57+07:00
+status: in-review
+approved_by: null
+approved_at: null
 ---
 
 # Catalog, shop listings & stock concepts
@@ -90,13 +90,13 @@ Candidateสำหรับ `<Feature>/Domain/` ได้แก่ SKU combinati
 
 | Child FK | Parent table | Parentต่อchild | Childต่อparent | ON DELETE | ในภาพ |
 | --- | --- | --- | --- | --- | --- |
-| `product.m_product_category.parent_id` | `product.m_product_category` | 0..1 | 0..* | CASCADE | field / catalogue |
-| `product.m_product_category_attribute.category_id` | `product.m_product_category` | 1 | 0..* | CASCADE | field / catalogue |
+| `product.m_product_category.parent_id` | `product.m_product_category` | 0..1 | 0..* | RESTRICT | field / catalogue |
+| `product.m_product_category_attribute.category_id` | `product.m_product_category` | 1 | 0..* | RESTRICT | field / catalogue |
 | `product.m_product.type_id` | `product.m_product_type` | 1 | 0..* | RESTRICT | วาดเส้น |
-| `product.m_product.category_id` | `product.m_product_category` | 1 | 0..* | CASCADE | วาดเส้น |
+| `product.m_product.category_id` | `product.m_product_category` | 1 | 0..* | RESTRICT | วาดเส้น |
 | `product.m_product.brand_id` | `product.m_product_brand` | 1 | 0..* | RESTRICT | field / catalogue |
 | `product.m_product_attribute.product_id` | `product.m_product` | 1 | 0..* | CASCADE | field / catalogue |
-| `product.m_product_attribute.attribute_id` | `product.m_product_category_attribute` | 1 | 0..* | CASCADE | field / catalogue |
+| `product.m_product_attribute.attribute_id` | `product.m_product_category_attribute` | 1 | 0..* | RESTRICT | field / catalogue |
 | `product.m_product_option.product_id` | `product.m_product` | 1 | 0..* | CASCADE | field / catalogue |
 | `product.m_product_option_value.option_id` | `product.m_product_option` | 1 | 0..* | CASCADE | วาดเส้น |
 | `product.m_product_image.product_id` | `product.m_product` | 1 | 0..* | CASCADE | field / catalogue |
@@ -121,6 +121,8 @@ Candidateสำหรับ `<Feature>/Domain/` ได้แก่ SKU combinati
 | Table | Unique index / predicate |
 | --- | --- |
 | `product.m_product_type` | `uq_m_product_type_name ON product.m_product_type (name) WHERE row_status <> 'DELETED';` |
+| `product.m_product_category` | `uq_m_product_category_name ON product.m_product_category (name) WHERE row_status <> 'DELETED';` |
+| `product.m_product_category_attribute` | `uq_m_product_category_attribute_name ON product.m_product_category_attribute (name) WHERE row_status <> 'DELETED';` |
 | `product.m_product_brand` | `uq_m_product_brand_name ON product.m_product_brand (name) WHERE row_status <> 'DELETED';` |
 | `product.m_product_option` | `uq_m_product_option_product_id_level_no ON product.m_product_option (product_id, level_no) WHERE row_status <> 'DELETED';` |
 | `product.m_product_option` | `uq_m_product_option_product_id_name ON product.m_product_option (product_id, name) WHERE row_status <> 'DELETED';` |
@@ -158,4 +160,4 @@ python3 -B e-commerce/scripts/diagrams/generate_domain_diagrams.py --finalize-pn
 - [Microsoft domain analysis](https://learn.microsoft.com/en-us/azure/architecture/microservices/model/domain-analysis): ใช้ประกอบการแยกconcept/ขอบเขตเชิงธุรกิจ; ไม่ถือว่าSQLschemaเท่ากับboundedcontext
 - [PostgreSQL constraints](https://www.postgresql.org/docs/18/ddl-constraints.html) และ [partial indexes](https://www.postgresql.org/docs/18/indexes-partial.html): ใช้ตีความFK, nullabilityและconditionaluniqueness
 
-SQL/schema baseline commit: `7007015ba770973daab0460f850b01bb789a4989`; file hashesบันทึกในinventoryเพื่อให้ตรวจdriftได้ แม้ภายหลังbranchมีcommitงานภาพเพิ่ม
+SQL/schema baseline commit: `1e5d2a27db7145ace709fbedc052e586e17954b3`; file hashesบันทึกในinventoryเพื่อให้ตรวจdriftได้ แม้ภายหลังbranchมีcommitงานภาพเพิ่ม

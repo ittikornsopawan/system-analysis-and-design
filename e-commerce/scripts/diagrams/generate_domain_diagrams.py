@@ -162,6 +162,13 @@ python3 -B e-commerce/scripts/diagrams/generate_domain_diagrams.py --finalize-pn
  text+=f"\nSQL/schema baseline commit: `{source['source_commit']}`; file hashesบันทึกในinventoryเพื่อให้ตรวจdriftได้ แม้ภายหลังbranchมีcommitงานภาพเพิ่ม\n"
  return text
 
+APPROVAL=re.compile(r'^status: .*\napproved_by: .*\napproved_at: .*$',re.M)
+def keep_approval(text,path):
+ # Approval survives only when nothing but frontmatter and the baseline-commit provenance line differs; a changed body returns to in-review.
+ if not path.exists():return text
+ old=path.read_text();body=lambda s:re.sub(r'^SQL/schema baseline commit: .*$','',APPROVAL.sub('',s),flags=re.M)
+ return APPROVAL.sub(lambda _:APPROVAL.search(old).group(0),text,count=1)if body(old)==body(text)else text
+
 def main():
  parser=argparse.ArgumentParser();parser.add_argument('--check',action='store_true');parser.add_argument('--refresh-inventory',action='store_true');parser.add_argument('--finalize-pngs',action='store_true');args=parser.parse_args()
  source=sync_inventory(evidence(),args.refresh_inventory);coverage=[];fk_count=0
@@ -169,7 +176,7 @@ def main():
   labels=validate(d,source);html,xml=render(d,labels)
   if d['schemas']:
    tables=[k for k,t in source['tables'].items()if t['schema']in d['schemas']];coverage.extend(tables);fk_count+=sum(bool(c['ref'])for k in tables for c in source['tables'][k]['cols'])
-  md=companion(d,source)
+  md=keep_approval(companion(d,source),OUT/f'{d["slug"]}.md')
   if args.finalize_pngs:g.finalise_png(d,output_dir=OUT)
   elif args.check:
    assert(OUT/f'{d["slug"]}.html').read_text()==html and(OUT/f'{d["slug"]}.drawio').read_text()==xml,d['slug']+' renderer drift'

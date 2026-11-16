@@ -1,6 +1,6 @@
 ---
 name: "Upsert Shop User API"
-description: "Insert, update or delete a member of a shop, for an ADMIN of the shop or a platform administrator from the verified JWT roles claim after the caller lock and the current credential check. Read it when you implement, review or test POST v1/shop/user/upsert."
+description: "Insert, update or delete a member of a shop, for an OWNER or ADMIN of the shop under the fixed shop roles or a platform administrator from the verified JWT roles claim after the caller lock and the current credential check. Read it when you implement, review or test POST v1/shop/user/upsert."
 status: approved
 approved_by: Ittikorn
 approved_at: 2026-11-16T09:24:57+07:00
@@ -26,16 +26,17 @@ approved_at: 2026-11-16T09:24:57+07:00
 | PRE-PRODUCTION | https://www.domain.com/api-pre-prod |
 | PRODUCTION     | https://www.domain.com/api          |
 
-- The rules of this section, including the permission model (the ADMIN of the shop or a platform administrator, 403 E10009), were approved by the product owner.
-- A member of a shop is a user that has a row in `shop.t_shop_user` with the role ADMIN or STAFF that is ACTIVE, in a shop that is ACTIVE. The queries "Check shop member" and "Check shop members" of the shop product SKU APIs use this definition. INACTIVE, LOCKED, ARCHIVED and DELETED rows are not members. The caller is the user of the access token, never a field of the request.
+- The rules of this section, including the permission model (the fixed shop roles OWNER, ADMIN and STAFF or a platform administrator, 403 E10009), were approved by the product owner.
+- A member of a shop is a user that has a row in `shop.t_shop_user` with the role OWNER, ADMIN or STAFF that is ACTIVE, in a shop that is ACTIVE. The queries "Check shop member" and "Check shop members" of the shop product SKU APIs use this definition. INACTIVE, LOCKED, ARCHIVED and DELETED rows are not members. The caller is the user of the access token, never a field of the request.
 - Adding a member takes effect at once: the user does not accept an invitation and is not notified.
 - A user can be a member of a shop once among the rows that are not DELETED (409, E10003). A row that is INACTIVE, LOCKED or ARCHIVED still holds the place, an update with `rowStatus` ACTIVE opens it again. After a delete the user can be added to the shop again, which creates a new row.
 - `shopId` and `userId` are required in every request and cannot be changed by an update: when they differ from the row of `id` the request is rejected with 400 (E10001). The shop must be ACTIVE and the user must be ACTIVE, otherwise 404 (E10005).
-- DELETED is final: a DELETED shop user is never reopened and its `id` counts as not found (404, E10004). `rowStatus` DELETED is rejected with 400 (E10001) when the request inserts a shop user. `role` is ADMIN or STAFF (400, E10001).
-- Governing decisions: owner-confirmed API review Q2, Q4, Q10 and Q13 (JWT payload of 2026-11-13).
-- Permission: an ADMIN of the shop or a caller with the exact case-sensitive role `PLATFORM_ADMIN` in the verified `roles` claim (an array of role names, an empty array is valid) can add members and can change the role or the row status of every member, otherwise 403 (E10009). A caller that is only a STAFF member can only delete or archive their own membership (leave the shop), every other change is 403 (E10009). A platform administrator that is not a member of the shop is not counted in the ADMIN rule below. The platform administrator is read only from the verified `roles` claim: do not query `author.m_role` or `author.t_user_role`, a change of the role assignments does not change a token that was already issued. Membership of a shop is not a token claim and is still read from `shop.t_shop_user`.
+- DELETED is final: a DELETED shop user is never reopened and its `id` counts as not found (404, E10004). `rowStatus` DELETED is rejected with 400 (E10001) when the request inserts a shop user. `role` is OWNER, ADMIN or STAFF (400, E10001).
+- Governing decisions: owner-confirmed API review Q2, Q4, Q10 and Q13 (JWT payload of 2026-11-13), and the shop roles design of 2026-11-14 (D2, D3, D5), approved by the owner on 2026-11-16.
+- Permission: the shop roles are fixed and the role of the caller is read from the ACTIVE row of the caller in `shop.t_shop_user`. An OWNER of the shop or a caller with the exact case-sensitive role `PLATFORM_ADMIN` in the verified `roles` claim (an array of role names, an empty array is valid) can add members and can change the role or the row status of every member, also of the other owners. An ADMIN of the shop can add a STAFF member and can change or remove a shop user whose role is STAFF before and after the change; adding, changing or removing an ADMIN or an OWNER is 403 (E10009). An ADMIN or a STAFF member can delete or archive their own membership (leave the shop); a caller that is only a STAFF member can only delete or archive their own membership, every other change is 403 (E10009). A platform administrator that is not a member of the shop is not counted in the OWNER rule below. The platform administrator is read only from the verified `roles` claim: do not query `author.m_role` or `author.t_user_role`, a change of the role assignments does not change a token that was already issued. Membership of a shop is not a token claim and is still read from `shop.t_shop_user`.
 - The transaction locks the caller user first and checks the current credential, a missing user or credential is 401 (E10002); the row of the shop is locked after it. The order of the checks and the locks is in the sequence diagram.
-- The shop must keep at least one ADMIN that is ACTIVE. A request that leaves the shop without one is rejected with 409 (E10006): this covers deleting or archiving the last ADMIN, changing it to STAFF, setting it to INACTIVE, LOCKED or ARCHIVED, and leaving the shop. A platform administrator cannot skip this rule. The rule is checked on the state after the whole request is applied, so an ADMIN can be replaced in one request, and the whole request is rolled back when it fails.
+- The shop must keep at least one OWNER that is ACTIVE; this rule replaces the former rule of at least one ACTIVE ADMIN. A request that leaves the shop without one is rejected with 409 (E10006): this covers deleting or archiving the last OWNER, changing it to ADMIN or STAFF, setting it to INACTIVE, LOCKED or ARCHIVED, and leaving the shop, so an OWNER can leave the shop or change their own role only while another ACTIVE OWNER remains. A platform administrator cannot skip this rule. The rule is checked on the state after the whole request is applied, and the whole request is rolled back when it fails.
+- An OWNER is added only by promoting a member: `role` OWNER is rejected when the request inserts a shop user (400, E10001), and an update can change the role of a shop user to OWNER only when the shop user is ACTIVE before the request (409, E10006). Only an OWNER of the shop or a platform administrator can promote or demote an OWNER.
 - HTTP status of the single upsert: Insert 201 Created, Update 200 Ok, Delete 204 No Content (no response body), Archive 200 Ok.
 
 ---
@@ -58,8 +59,8 @@ approved_at: 2026-11-16T09:24:57+07:00
 | 1   | id             | String: UUID | OPTIONAL  | Shop User Id, Insert when not specified, Update, Delete or Archive when specified, The id of a DELETED shop user counts as not found                                                                                  | 2c3d4e5f-0002-4a1b-8c2d-3e4f5a6b7c8d |
 | 2   | shopId         | String: UUID | MANDATORY | Shop Id, Must be an existing ACTIVE shop, Cannot be changed on update (it must be the shop of the shop user)                                                                                                          | 5a1b2c3d-4e5f-4a6b-8c7d-9e0f1a2b3c4d |
 | 3   | userId         | String: UUID | MANDATORY | User Id, Must be an existing ACTIVE user, Cannot be changed on update (it must be the user of the shop user)                                                                                                          | 9f1e2d3c-4b5a-4c6d-8e7f-0a1b2c3d4e5f |
-| 4   | role           | String       | OPTIONAL  | Role in the shop (ADMIN, STAFF), STAFF when not specified on insert, Keep the current role when not specified on update                                                                                               | STAFF                                |
-| 5   | rowStatus      | String       | OPTIONAL  | Row status (ACTIVE, INACTIVE, DELETED, LOCKED, ARCHIVED), Defaults to ACTIVE, Delete when DELETED, Archive when ARCHIVED, DELETED is not allowed when inserting, The shop must keep at least one ADMIN that is ACTIVE | ACTIVE                               |
+| 4   | role           | String       | OPTIONAL  | Role in the shop (OWNER, ADMIN, STAFF), STAFF when not specified on insert, OWNER is not allowed on insert and only for a member that is ACTIVE on update, Keep the current role when not specified on update         | STAFF                                |
+| 5   | rowStatus      | String       | OPTIONAL  | Row status (ACTIVE, INACTIVE, DELETED, LOCKED, ARCHIVED), Defaults to ACTIVE, Delete when DELETED, Archive when ARCHIVED, DELETED is not allowed when inserting, The shop must keep at least one OWNER that is ACTIVE | ACTIVE                               |
 
 #### Example Body Parameters
 
@@ -268,9 +269,25 @@ HTTP/1.1 204 No Content
         "code": 400,
         "message": "Bad Request",
         "bizCode": "E10001",
-        "bizMessage": "Role must be ADMIN or STAFF.",
+        "bizMessage": "Role must be OWNER, ADMIN or STAFF.",
         "requestId": "req-420a1b2c-3d4e-5f6a-7b8c-9d0e1f2a3b4c",
         "timestamp": "2026-11-05T12:40:54.123Z",
+        "status": "ERROR"
+    }
+}
+```
+
+#### Fail - Bad Request New Owner
+
+```JSON
+{
+    "status": {
+        "code": 400,
+        "message": "Bad Request",
+        "bizCode": "E10001",
+        "bizMessage": "An OWNER can only be added by promoting an existing ACTIVE member.",
+        "requestId": "req-430a1b2c-3d4e-5f6a-7b8c-9d0e1f2a3b4c",
+        "timestamp": "2026-11-05T12:41:20.123Z",
         "status": "ERROR"
     }
 }
@@ -388,7 +405,7 @@ HTTP/1.1 204 No Content
 }
 ```
 
-#### Fail - Conflict Last Admin
+#### Fail - Conflict Last Owner
 
 ```JSON
 {
@@ -396,9 +413,25 @@ HTTP/1.1 204 No Content
         "code": 409,
         "message": "Conflict",
         "bizCode": "E10006",
-        "bizMessage": "The shop must keep at least one ADMIN.",
+        "bizMessage": "The shop must keep at least one OWNER.",
         "requestId": "req-450b1b2c-3d4e-5f6a-7b8c-9d0e1f2a3b4c",
         "timestamp": "2026-11-05T12:43:15.123Z",
+        "status": "ERROR"
+    }
+}
+```
+
+#### Fail - Conflict Owner Promotion
+
+```JSON
+{
+    "status": {
+        "code": 409,
+        "message": "Conflict",
+        "bizCode": "E10006",
+        "bizMessage": "Only an ACTIVE member can be promoted to OWNER.",
+        "requestId": "req-460b1b2c-3d4e-5f6a-7b8c-9d0e1f2a3b4c",
+        "timestamp": "2026-11-05T12:43:25.123Z",
         "status": "ERROR"
     }
 }
@@ -502,7 +535,8 @@ SELECT
     su.id as shop_user_id,
     su.shop_id,
     su.user_id,
-    su.role
+    su.role,
+    su.row_status
 FROM shop.t_shop_user su
 WHERE su.id = '<sequence.id>'
 AND su.row_status <> 'DELETED' -- the id of a DELETED shop user counts as not found
@@ -525,11 +559,12 @@ AND su.id <> '<sequence.id>' -- only when id is specified
 
 ```SQL
 SELECT
-    su.id as shop_user_id
+    su.id as shop_user_id,
+    su.role
 FROM shop.t_shop_user su
 WHERE su.shop_id = '<sequence.shopId>'
 AND su.user_id = '<sequence.userId>'
-AND su.role = 'ADMIN'
+AND su.role IN ('OWNER', 'ADMIN')
 AND su.row_status = 'ACTIVE'
 ```
 
@@ -541,7 +576,7 @@ SELECT
 FROM shop.t_shop_user su
 WHERE su.shop_id = '<sequence.shopId>'
 AND su.user_id = '<sequence.userId>'
-AND su.role IN ('ADMIN', 'STAFF')
+AND su.role IN ('OWNER', 'ADMIN', 'STAFF')
 AND su.row_status = 'ACTIVE'
 ```
 
@@ -580,13 +615,13 @@ AND user_id = '<sequence.userId>'
 RETURNING id as shop_user_id
 ```
 
-#### QUERY - Count the ADMIN members of the shop after the write
+#### QUERY - Count the OWNER members of the shop after the write
 
 ```SQL
 SELECT
-    COUNT(su.id) as admin_count
+    COUNT(su.id) as owner_count
 FROM shop.t_shop_user su
 WHERE su.shop_id = '<sequence.shopId>'
-AND su.role = 'ADMIN'
+AND su.role = 'OWNER'
 AND su.row_status = 'ACTIVE' -- the request is rolled back when the count is 0
 ```

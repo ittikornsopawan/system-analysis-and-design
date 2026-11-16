@@ -50,7 +50,7 @@ activate page
         api -> app: [**UpsertShopUserCommandHandler**] Process request
         activate app
             app -> app: Create request context; generate requestId when omitted
-            app -> app: Validate headers and body
+            app -> app: Validate headers and body; role OWNER is rejected when inserting a shop user
             alt Invalid input
                 app -> api: HTTP 400 E10001
                 api -> page: Bad request
@@ -64,12 +64,12 @@ activate page
                 else Verified JWT
                     app -> app: userId = callerUserId = verified sub; accessTokenHash = SHA-256 of the exact JWT; createdBy/updatedBy = caller UUID string
                     note over app, infra
-                        - Concurrency: when the service checks the rule of the last ADMIN it must lock the row of the shop (`shop.m_shop`, for example with `SELECT ... FOR
-                          UPDATE`) in the same transaction, so that two requests that leave the shop at the same time cannot leave it without an ADMIN. The lock is part of
+                        - Concurrency: when the service checks the rule of the last OWNER it must lock the row of the shop (`shop.m_shop`, for example with `SELECT ... FOR
+                          UPDATE`) in the same transaction, so that two requests that leave the shop at the same time cannot leave it without an OWNER. The lock is part of
                           the service, no SQL of it is written in this document.
                         - Execution order: validate the request (400) -> verify the JWT and its roles claim (401) -> BEGIN -> lock the caller user (FOR UPDATE) -> current credential and user (401) ->
-                          existence checks (404) -> permission (403: an ADMIN of the shop, a STAFF member leaving their own membership, or PLATFORM_ADMIN in the verified roles claim) ->
-                          duplicate member check (409, E10003) -> write -> ADMIN rule on the result (409, E10006, the request is rolled back) -> COMMIT. Lock order: the caller user, then the row of the shop.
+                          existence checks (404) -> permission (403, fixed shop roles: an OWNER or PLATFORM_ADMIN in the verified roles claim manages every member, an ADMIN manages STAFF members, an ADMIN or a STAFF member can leave) -> OWNER promotion of a member that is not ACTIVE (409, E10006) ->
+                          duplicate member check (409, E10003) -> write -> OWNER rule on the result (409, E10006, the request is rolled back) -> COMMIT. Lock order: the caller user, then the row of the shop.
                           The author tables are never queried; the membership of the shop is not a token claim and is still read from shop.t_shop_user.
                         - Lock order: the caller user, then the row of the shop, then the shop user row that is changed (FOR UPDATE).
                     end note
@@ -181,7 +181,8 @@ activate page
                                             su.id as shop_user_id,
                                             su.shop_id,
                                             su.user_id,
-                                            su.role
+                                            su.role,
+                                            su.row_status
                                         FROM shop.t_shop_user su
                                         WHERE su.id = '<sequence.id>'
                                         AND su.row_status <> 'DELETED' -- the id of a DELETED shop user counts as not found
@@ -202,11 +203,12 @@ activate page
                             activate t_shop_user
                                 note right of t_shop_user
                                     SELECT
-                                        su.id as shop_user_id
+                                        su.id as shop_user_id,
+                                        su.role
                                     FROM shop.t_shop_user su
                                     WHERE su.shop_id = '<sequence.shopId>'
                                     AND su.user_id = '<sequence.userId>'
-                                    AND su.role = 'ADMIN'
+                                    AND su.role IN ('OWNER', 'ADMIN')
                                     AND su.row_status = 'ACTIVE'
                                 end note
                                 t_shop_user -> infra: Return query result
@@ -221,19 +223,25 @@ activate page
                                     FROM shop.t_shop_user su
                                     WHERE su.shop_id = '<sequence.shopId>'
                                     AND su.user_id = '<sequence.userId>'
-                                    AND su.role IN ('ADMIN', 'STAFF')
+                                    AND su.role IN ('OWNER', 'ADMIN', 'STAFF')
                                     AND su.row_status = 'ACTIVE'
                                 end note
                                 t_shop_user -> infra: Return query result
                             deactivate t_shop_user
                             infra -> app: Return result of Check shop member
-                            alt caller is not an ADMIN of the shop and not a STAFF member leaving their own membership
+                            alt the role of the caller in the shop does not allow this change (OWNER: every member; ADMIN: STAFF members and leaving; STAFF: leaving)
                                 alt The verified roles claim has no PLATFORM_ADMIN
                                     app -> infra: ROLLBACK
                                     app -> api: HTTP 403 E10009 You do not have permission to manage the members of the shop.
                                     api -> page: Forbidden
                                     page -> user: Display error message
                                 end
+                            end
+                            alt role is OWNER, the shop user is not an OWNER and is not ACTIVE before the change
+                                app -> infra: ROLLBACK
+                                app -> api: HTTP 409 E10006 Only an ACTIVE member can be promoted to OWNER.
+                                api -> page: Conflict
+                                page -> user: Display error message
                             end
                             app -> infra: QUERY - Check duplicate member
                             infra -> t_shop_user: QUERY - Check duplicate member
@@ -300,23 +308,23 @@ activate page
                                 deactivate t_shop_user
                                 infra -> app: Return result of Update, archive or delete shop user
                             end
-                            app -> infra: QUERY - Count the ADMIN members of the shop after the write
-                            infra -> t_shop_user: QUERY - Count the ADMIN members of the shop after the write
+                            app -> infra: QUERY - Count the OWNER members of the shop after the write
+                            infra -> t_shop_user: QUERY - Count the OWNER members of the shop after the write
                             activate t_shop_user
                                 note right of t_shop_user
                                     SELECT
-                                        COUNT(su.id) as admin_count
+                                        COUNT(su.id) as owner_count
                                     FROM shop.t_shop_user su
                                     WHERE su.shop_id = '<sequence.shopId>'
-                                    AND su.role = 'ADMIN'
+                                    AND su.role = 'OWNER'
                                     AND su.row_status = 'ACTIVE' -- the request is rolled back when the count is 0
                                 end note
                                 t_shop_user -> infra: Return query result
                             deactivate t_shop_user
-                            infra -> app: Return result of Count the ADMIN members of the shop after the write
-                            alt the shop would have no ACTIVE ADMIN member left; the whole request is rolled back
+                            infra -> app: Return result of Count the OWNER members of the shop after the write
+                            alt the shop would have no ACTIVE OWNER member left; the whole request is rolled back
                                 app -> infra: ROLLBACK
-                                app -> api: HTTP 409 E10006 The shop must keep at least one ADMIN.
+                                app -> api: HTTP 409 E10006 The shop must keep at least one OWNER.
                                 api -> page: Conflict
                                 page -> user: Display error message
                             end
