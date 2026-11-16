@@ -19,7 +19,7 @@ Description: Transaction table of the `shop` schema (defined in `db/migrations/u
 |     |                                         | row_status  | VARCHAR   | 32     | FALSE       | Lifecycle status of the row: ACTIVE, INACTIVE, DELETED, LOCKED, ARCHIVED | ACTIVE            |
 | FK  | [shop.m_shop.id](m_shop.md)             | shop_id     | UUID      |        | FALSE       | Reference to `shop.m_shop.id`                                            |                   |
 | FK  | [authen.m_user.id](../authen/m_user.md) | user_id     | UUID      |        | FALSE       | Reference to `authen.m_user.id`                                          |                   |
-|     |                                         | role        | VARCHAR   | 32     | FALSE       | One of: ADMIN, STAFF                                                     | STAFF             |
+|     |                                         | role        | VARCHAR   | 32     | FALSE       | One of: OWNER, ADMIN, STAFF                                              | STAFF             |
 
 ## Constain
 
@@ -30,7 +30,7 @@ Description: Transaction table of the `shop` schema (defined in `db/migrations/u
 | fk_t_shop_user_user_id         | user_id          | References authen.m_user(id), ON DELETE CASCADE                                    |
 | uq_t_shop_user_shop_id_user_id | shop_id, user_id | Unique among rows where row_status <> 'DELETED' (one membership per shop and user) |
 | ck_t_shop_user_row_status      | row_status       | CHECK (row_status IN ('ACTIVE', 'INACTIVE', 'DELETED', 'LOCKED', 'ARCHIVED'))      |
-| ck_t_shop_user_role            | role             | CHECK (role IN ('ADMIN', 'STAFF'))                                                 |
+| ck_t_shop_user_role            | role             | CHECK (role IN ('OWNER', 'ADMIN', 'STAFF'))                                        |
 
 ---
 
@@ -53,7 +53,7 @@ CREATE TABLE
         ),
         shop_id UUID NOT NULL REFERENCES shop.m_shop (id) ON DELETE CASCADE,
         user_id UUID NOT NULL REFERENCES authen.m_user (id) ON DELETE CASCADE,
-        role VARCHAR(32) NOT NULL DEFAULT 'STAFF' CHECK (role IN ('ADMIN', 'STAFF'))
+        role VARCHAR(32) NOT NULL DEFAULT 'STAFF' CHECK (role IN ('OWNER', 'ADMIN', 'STAFF'))
     );
 
 CREATE UNIQUE INDEX IF NOT EXISTS uq_t_shop_user_shop_id_user_id ON shop.t_shop_user (shop_id, user_id)

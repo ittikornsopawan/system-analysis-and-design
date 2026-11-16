@@ -2141,6 +2141,8 @@ def check_shop_user_schema() -> int:
         errors.append("migration 04: t_shop_user must be created without an inline UNIQUE")
     if SHOP_USER_INDEX not in statements:
         errors.append("migration 04: partial unique index uq_t_shop_user_shop_id_user_id is missing or different")
+    if not create or "CHECK (role IN ('OWNER', 'ADMIN', 'STAFF'))" not in create[0]:
+        errors.append("migration 04: t_shop_user.role must be CHECK (role IN ('OWNER', 'ADMIN', 'STAFF'))")
     path = "e-commerce/doc/schema/shop/t_shop_user.md"
     md = read(path)
     for bad in table_lines_aligned(md):

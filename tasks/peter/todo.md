@@ -47,7 +47,8 @@ Verification (after base integration): all 69 `check_docs.py` sub-commands pass;
 ## e-commerce: shop roles rollout plan (owner, admin, staff)
 
 Owner: peter
-Status: Pending (unblocked; the team is frozen until the owner restarts it)
+Status: In progress (the owner restarted the rollout on 2026-11-16)
+Started at: 2026-11-16T14:42:29+07:00
 Created at: 2026-11-14T18:17:55+07:00
 Blocked at: 2026-11-14T18:17:55+07:00
 Unblocked at: 2026-11-16T09:24:57+07:00
@@ -59,6 +60,7 @@ Blocked: the design `docs/superpowers/specs/2026-11-14-shop-roles-design.md` is 
 Plan (draft; one pull request per step, each from main, each with its own `todo` entry, tests and review by the SA Lead; the order follows D7 of the design; Tommy and Marry own the payment, sales, shipping, campaign and product files unless the SA Lead reassigns them):
 
 - [ ] PR 1, schema and test: `e-commerce/db/migrations/up/04-shop.schema.up.sql` (`CREATE TABLE shop.t_shop_user`: `CHECK (role IN ('OWNER', 'ADMIN', 'STAFF'))`, default stays `STAFF`; no `ALTER TABLE`; the down file is unchanged), `e-commerce/doc/schema/shop/t_shop_user.md` (role values and constraint row), `e-commerce/doc/schema/README.md` if it lists the values, the domain model sources that describe the role (`diagram/domain/domain-model.md`, `domain-merchandising-model.md/.html/.drawio`, `domain-source-inventory.json` hashes, `scripts/diagrams/domain_model_content.py`, `db/er-diagram.drawio`) with Jinny, and `db/tests/04-shop-user.test.sql` (test 3 accepts `OWNER` and rejects another value; the ADMIN rule test becomes the OWNER rule). Checks: `shop-user-schema`, `er`, the schema/audit checks, `run_db_tests.sh`, the domain-model checks.
+  - Progress (2026-11-16): PR 1 open on `feat/peter-shop-owner-role-schema`; `shop-user-schema` now also requires the OWNER role constraint; the ADMIN rule test named here does not exist in `04-shop-user.test.sql` (the rule lives in the specs), so only test 3 changes. The domain inventory (`generate_domain_diagrams.py --check`) already drifts on main before this change, so the domain sources are left to Jinny (not in CI).
 - [ ] PR 2, `shop/11-upsert-shop-user` (spec + sequence + SQL): the fixed table of D2 for member management (OWNER manages every role, ADMIN manages STAFF only, STAFF only leaves), `role` accepts `OWNER`, the rule "at least one ACTIVE OWNER" replaces "at least one ACTIVE ADMIN" (`QUERY - Count the ADMIN members of the shop after the write` becomes the owner count), leaving or demoting the last owner is 409 E10006, owners are added only by promoting an existing ACTIVE member, the member and administrator checks use the new role sets; lock order caller user → shop row → member rows; checker `shop-user-spec` and the shop-user flow needles; slim flow check if the shop group has none.
 - [ ] PR 3, `shop/12-upsert-shop-user-batch`: the same rules for the batch (final-state owner rule checked once after all items), paired with PR 2.
 - [ ] PR 4, `shop/08-upsert-shop`: insert writes an OWNER row (`INSERT - Add the caller as ADMIN of the new shop` becomes an OWNER row), update stays ADMIN or OWNER, delete and archive need an OWNER or a platform administrator (404/403 order unchanged), `QUERY - Check shop administrator` covers `OWNER` and `ADMIN`, an OWNER-only query for delete and archive; checker needles.
