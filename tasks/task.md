@@ -11,8 +11,8 @@ Checked on 2026-11-16 against `main` (c190f70) and the pull requests on GitHub. 
 | ----------------------------------------------- | ------ |
 | 1. Owner decisions and actions                  | 7      |
 | 2. Shop roles rollout (blocked on approval)     | 12     |
-| 3. Deferred work and backlog                    | 10     |
-| **Real work still open**                        | **29** |
+| 3. Deferred work and backlog                    | 7      |
+| **Real work still open**                        | **26** |
 | 4. Records closed on 2026-11-16                 | 27     |
 
 ## 1. Owner decisions and actions
@@ -45,12 +45,12 @@ Source: `tasks/peter/todo.md`, design `docs/superpowers/specs/2026-11-14-shop-ro
 ## 3. Deferred work and backlog
 
 - [ ] WP5b: author specs 13–17 (role permission upsert and inquiry, user permission upsert and inquiry, check); deferred until an API enforces permissions.
-- [ ] Remove `ADMIN_WRITE_LIVE_QUERIES` from `check_docs.py`; no spec uses the live role queries any more.
-- [ ] Merge the two `er_name_rows` helpers of `check_docs.py` (both still exist).
+- [x] Remove `ADMIN_WRITE_LIVE_QUERIES` from `check_docs.py`; no spec uses the live role queries any more. Done in the checker cleanup pull request of 2026-11-16: `admin-write-spec` now checks only the JWT claims path.
+- [x] Merge the two `er_name_rows` helpers of `check_docs.py`. Done in the same pull request: the first one, which the second overrode, is removed.
 - [ ] Extend `audit_all.py` to a column without an alias in the `WHERE` of an `UPDATE`.
 - [ ] Retrofit the plain `UNIQUE` and `CASCADE` of the older master tables.
 - [ ] Rewrite the team protocol in `docs/handoff/` to match the named-agent rule.
-- [ ] Record the Head of Technology answer in `docs/superpowers/specs/2026-11-07-api-review-design.md`.
+- [x] Record the consent/02 answer in `docs/superpowers/specs/2026-11-07-api-review-design.md` (the root item was misread as a Head of Technology answer). Already done: section "Consent type of a consent (2026-11-14)" of that file.
 - [ ] Owner: verify the resource registry and the diagram role after Jinny's scope is released (`tasks/owner/todo.md`).
 - [ ] Owner: resolve every legacy task of `tasks/todo.md` with evidence or closure (blocked).
 - [ ] Owner: move the closed legacy records to the owner folders and turn `tasks/todo.md` into an index (blocked by the item above).
