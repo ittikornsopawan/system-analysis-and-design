@@ -1,9 +1,9 @@
 ---
 name: Cart, orders, money & fulfilment concepts — explanation and SQL traceability
 description: อธิบาย domain diagram domain-commerce-model พร้อมเหตุผล ตารางต้นทาง ความสัมพันธ์และcardinalityจากSQL ใช้ก่อนreviewหรือแก้ภาพนี้
-status: approved
-approved_by: Ittikorn
-approved_at: 2026-11-16T09:24:57+07:00
+status: in-review
+approved_by: null
+approved_at: null
 ---
 
 # Cart, orders, money & fulfilment concepts
@@ -105,7 +105,7 @@ Order DDLมี7statusesรวมPENDING ภาพนี้ไม่ได้ค
 | `campaign.m_campaign_budget_ledger.campaign_id` | `campaign.m_campaign` | 1 | 0..* | CASCADE | field / catalogue |
 | `campaign.m_campaign_budget_ledger.order_id` | `sales.t_order` | 1 | 0..* | RESTRICT | field / catalogue |
 | `campaign.t_campaign_product.campaign_id` | `campaign.m_campaign` | 1 | 0..* | CASCADE | วาดเส้น |
-| `campaign.t_campaign_product.product_category_id` | `product.m_product_category` | 0..1 | 0..* | CASCADE | field / catalogue |
+| `campaign.t_campaign_product.product_category_id` | `product.m_product_category` | 0..1 | 0..* | RESTRICT | field / catalogue |
 | `campaign.t_campaign_product.product_id` | `product.m_product` | 0..1 | 0..* | CASCADE | field / catalogue |
 | `campaign.t_campaign_shop.campaign_id` | `campaign.m_campaign` | 1 | 0..* | CASCADE | วาดเส้น |
 | `campaign.t_campaign_shop.shop_id` | `shop.m_shop` | 1 | 0..* | CASCADE | field / catalogue |
@@ -149,4 +149,4 @@ python3 -B e-commerce/scripts/diagrams/generate_domain_diagrams.py --finalize-pn
 - [Microsoft domain analysis](https://learn.microsoft.com/en-us/azure/architecture/microservices/model/domain-analysis): ใช้ประกอบการแยกconcept/ขอบเขตเชิงธุรกิจ; ไม่ถือว่าSQLschemaเท่ากับboundedcontext
 - [PostgreSQL constraints](https://www.postgresql.org/docs/18/ddl-constraints.html) และ [partial indexes](https://www.postgresql.org/docs/18/indexes-partial.html): ใช้ตีความFK, nullabilityและconditionaluniqueness
 
-SQL/schema baseline commit: `7007015ba770973daab0460f850b01bb789a4989`; file hashesบันทึกในinventoryเพื่อให้ตรวจdriftได้ แม้ภายหลังbranchมีcommitงานภาพเพิ่ม
+SQL/schema baseline commit: `1e5d2a27db7145ace709fbedc052e586e17954b3`; file hashesบันทึกในinventoryเพื่อให้ตรวจdriftได้ แม้ภายหลังbranchมีcommitงานภาพเพิ่ม

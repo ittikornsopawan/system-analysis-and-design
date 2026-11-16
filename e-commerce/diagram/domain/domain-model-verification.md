@@ -59,3 +59,9 @@ Final packaging checks:7 authored/modifiedMarkdown frontmattersผ่าน,311l
 ตรวจหลังย้าย: PNGทั้ง4, draw.io sourceทั้ง4และSQLinventoryมีSHA-256ตรงกับก่อนย้ายทุกbyte ภาพที่ตรวจไว้จึงไม่เปลี่ยน Package generator/sourcecheck, finalizerจากfolderใหม่, HTML/SVG4ภาพ, PNGextraction/IRและsavednative roundtripsผ่าน FKcatalogueยังตรง75/75รายการ ภาพ/source/HTML45ไฟล์จากชุดเดิม15viewsไม่เปลี่ยน
 
 Packagingล่าสุด:8Markdown frontmattersและ328local linksผ่าน รวม25pathsในassignment scope Preflightยืนยันdirectowner delivery grantและไม่พบblocker StaticDBaudit:53tables audited,0findings ไม่มีbackend/API/schema filesเปลี่ยน การส่งงานใช้สถานะGit/GitHub; directPRgrantไม่เพิ่มสิทธิ์mergeหรืออนุมัติimplementation
+
+## Evidence refresh — 2026-11-16
+
+`--check` failed on `main` at `1e5d2a2` because the DB evidence had drifted: the product category FKs became `ON DELETE RESTRICT` and two partial unique indexes on name were added (#176), `shop.t_shop_user.role` now accepts `OWNER` (#179), and the schema docs gained approval frontmatter. The model fields do not list role values, so no box, field or association changed: HTML, draw.io and PNG for all 4 views are byte-identical. The inventory was refreshed (`source_commit` `1e5d2a27db7145ace709fbedc052e586e17954b3`).
+
+The generator now keeps a companion's approval frontmatter when only the baseline-commit line differs. Before this, it always wrote `status: in-review`, so `--check` could never pass on an approved companion. A changed body resets the companion to `in-review`. That happened to `domain-merchandising-model.md` (4 FKs now RESTRICT, 2 partial unique indexes) and `domain-commerce-model.md` (`t_campaign_product.product_category_id` now RESTRICT); both need the owner's re-approval. `domain-model.md` and `domain-identity-model.md` keep the 2026-11-16 approval.
