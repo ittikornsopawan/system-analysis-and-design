@@ -2734,9 +2734,10 @@ def check_payment_spec() -> int:
         "03": ["- Only the payments of the orders of the user", "ORDER BY p.created_at DESC, p.id", "o.user_id = '<sequence.userId>'", "#### QUERY - Count the payments of the user", "ILIKE"],
         "04": ["- A member of the shop (an ACTIVE", "E10009", "#### Fail - Forbidden", "#### QUERY - Check shop member", "#### QUERY - Check active credential and user",
                "the role `PLATFORM_ADMIN` in the verified `roles` claim", "do not query `author.m_role` or `author.t_user_role`",
-               "providerPaymentId", "ORDER BY p.created_at DESC, p.id", "#### QUERY - Count the payments of the shop"],
-        "05": ["- A member of the shop of the order", "#### UPDATE - Refund the payment", "AND status = 'COMPLETED'", "#### UPDATE - Refund the order", "AND status = 'PAYMENT_CONFIRMED'",
-               "#### UPDATE - Give the quantity back to the lot", "refund-", "E10006", "E10009", "restoredItems", "#### QUERY - Check shop member", "FOR UPDATE -- taken before the payment is changed",
+               "providerPaymentId", "ORDER BY p.created_at DESC, p.id", "#### QUERY - Count the payments of the shop", "AND su.role IN ('OWNER', 'ADMIN', 'STAFF')"],
+        "05": ["- An OWNER or ADMIN of the shop of the order", "a STAFF member of the shop and the customer cannot refund", "#### UPDATE - Refund the payment", "AND status = 'COMPLETED'", "#### UPDATE - Refund the order", "AND status = 'PAYMENT_CONFIRMED'",
+               "#### UPDATE - Give the quantity back to the lot", "refund-", "E10006", "E10009", "restoredItems", "#### QUERY - Check shop owner or administrator", "AND su.role IN ('OWNER', 'ADMIN')",
+               "alt The caller is not an OWNER or ADMIN of the shop", "FOR UPDATE -- taken before the payment is changed",
                "#### QUERY - Lock the caller user", "#### QUERY - Check current credential and user", "do not query `author.m_role` or `author.t_user_role`",
                "ORDER BY oi.lot_id", "`Idempotency-Key` `refund-<paymentId>`", "If the `COMMIT` fails after Stripe refunded", "approved by the product owner on 2026-11-08"],
     }
@@ -2745,6 +2746,10 @@ def check_payment_spec() -> int:
         seq = re.sub(r"\n\s+", " ", read(PAYMENT_SPECS[key].replace("spec.md", "sequence.wsd")))
         for missing in missing_needles(mds[key] + "\n" + seq, need):
             errors.append(f"{PAYMENT_SPECS[key]} missing: {missing}")
+        # shop roles design D1/D2: OWNER joins the member check; a refund (05) is OWNER or ADMIN only
+        for old in ["role IN ('ADMIN', 'STAFF')"] + (["role IN ('OWNER', 'ADMIN', 'STAFF')"] if key == "05" else []):
+            if old in mds[key] + seq:
+                errors.append(f"{PAYMENT_SPECS[key]} must not contain {old}")
     for key, want in {"01": {"Success": 201, "Success - Reused": 200}, "02": {"Success": 200, "Success - Ignored": 200, "Success - Late Payment Refunded": 200},
                       "03": {"Success": 200, "Success - Empty": 200}, "04": {"Success": 200, "Success - Empty": 200}, "05": {"Success": 200}}.items():
         if success_codes(mds[key]) != want:
