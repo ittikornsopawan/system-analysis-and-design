@@ -1883,17 +1883,19 @@ def check_order_spec() -> int:
         "03": ["- Only the orders of the user of the access token are returned", "ORDER BY o.created_at DESC, o.id", "o.user_id = '<sequence.userId>'", "#### QUERY - Count the orders of the user", "ILIKE"],
         "04": ["- The caller needs a verified JWT, then an ACTIVE member row of the shop", "E10009", "#### Fail - Forbidden", "#### QUERY - Check shop member", "#### QUERY - Check active credential and user",
                "the role `PLATFORM_ADMIN` in the verified `roles` claim", "do not query `author.m_role` or `author.t_user_role`",
-               "approved by the product owner", "platformProfit", "ORDER BY o.created_at DESC, o.id", "INNER JOIN authen.m_user ui"],
+               "approved by the product owner", "platformProfit", "ORDER BY o.created_at DESC, o.id", "INNER JOIN authen.m_user ui", "AND su.role IN ('OWNER', 'ADMIN', 'STAFF')"],
         "05": ["- The caller needs a verified JWT, then must be the owner of the order", "#### UPDATE - Cancel the order", "AND status = 'WAIT_PAYMENT'", "#### UPDATE - Give the quantity back to the lot", "E10006",
                "restoredItems", "#### QUERY - Check shop member", "FOR UPDATE -- the order row is locked first", "ORDER BY oi.lot_id",
                "`Idempotency-Key` `cancel-<paymentIntentId>`", "approved by the product owner on 2026-11-08",
-               "#### QUERY - Lock the caller user", "#### QUERY - Check current credential and user", "do not query `author.m_role` or `author.t_user_role`"],
+               "#### QUERY - Lock the caller user", "#### QUERY - Check current credential and user", "do not query `author.m_role` or `author.t_user_role`", "AND su.role IN ('OWNER', 'ADMIN', 'STAFF')"],
     }
     for key, need in needles.items():
         # rules that moved into a note of the sequence diagram are searched there, one line per wrapped note
         seq = re.sub(r"\n\s+", " ", read(ORDER_SPECS[key].replace("spec.md", "sequence.wsd")))
         for missing in missing_needles(mds[key] + "\n" + seq, need):
             errors.append(f"{ORDER_SPECS[key]} missing: {missing}")
+        if "role IN ('ADMIN', 'STAFF')" in mds[key] + seq:  # shop roles design D1: OWNER is a member too
+            errors.append(f"{ORDER_SPECS[key]}: the shop member check must be role IN ('OWNER', 'ADMIN', 'STAFF')")
     for key, want in {"01": {"Success": 200, "Success - With Campaign": 200, "Success - With Problems": 200},
                       "02": {"Success": 201, "Success - With Campaign": 201, "Success - With Capped Discount": 201}, "03": {"Success": 200, "Success - Empty": 200},
                       "04": {"Success": 200, "Success - Empty": 200}, "05": {"Success": 200}}.items():
