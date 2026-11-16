@@ -1,9 +1,9 @@
 ---
 name: Cart, orders, money & fulfilment concepts — explanation and SQL traceability
 description: อธิบาย domain diagram domain-commerce-model พร้อมเหตุผล ตารางต้นทาง ความสัมพันธ์และcardinalityจากSQL ใช้ก่อนreviewหรือแก้ภาพนี้
-status: in-review
-approved_by: null
-approved_at: null
+status: approved
+approved_by: Ittikorn
+approved_at: 2026-11-16T14:51:05+07:00
 ---
 
 # Cart, orders, money & fulfilment concepts

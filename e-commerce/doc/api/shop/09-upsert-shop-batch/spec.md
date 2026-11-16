@@ -1,6 +1,6 @@
 ---
 name: "Upsert Shop Batch API"
-description: "Insert, update or delete multiple shops with their images at the same time, for any caller with a valid token (insert), an ADMIN of the shop or a platform administrator from the verified JWT roles claim after the caller lock and the current credential check. Read it when you implement, review or test POST v1/shop/upsert/batch."
+description: "Insert, update or delete multiple shops with their images at the same time, for any caller with a valid token (insert), an OWNER or ADMIN of the shop (delete and archive: an OWNER) or a platform administrator from the verified JWT roles claim after the caller lock and the current credential check. Read it when you implement, review or test POST v1/shop/upsert/batch."
 status: approved
 approved_by: Ittikorn
 approved_at: 2026-11-16T09:24:57+07:00
@@ -32,7 +32,7 @@ approved_at: 2026-11-16T09:24:57+07:00
 - `platformMarginRate` and `shopMarginRate` are percentages from 0.00 to 100.00 with at most 2 decimals (400, E10001). Their sum must not exceed 100.00 (400, E10001), the ceiling was approved by the product owner and the database enforces it with the check `ck_m_shop_margin_rate_total`.
 - Changing the margin rates of a shop never changes the lots that already exist (no retroactive effect): the margins of a lot are calculated when the lot is saved by the shop product SKU API, with the rates of the shop at that time.
 - Governing decisions: owner-confirmed API review Q2, Q4, Q10 and Q13 (JWT payload of 2026-11-13).
-- Insert: any caller with a valid access token can create a shop, and the caller becomes the ADMIN of the new shop (a row in `shop.t_shop_user`) in the same transaction. Update, delete and archive need the caller to be an ADMIN of the shop or to have the exact case-sensitive role `PLATFORM_ADMIN` in the verified `roles` claim (an array of role names, an empty array is valid), otherwise 403 (E10009). Only a caller with `PLATFORM_ADMIN` in the verified `roles` claim can send a `platformMarginRate` that differs from the current one (0.00 on insert), otherwise 403 (E10009). The platform administrator is read only from the verified `roles` claim: do not query `author.m_role` or `author.t_user_role`, a change of the role assignments does not change a token that was already issued. Membership of a shop is not a token claim and is still read from `shop.t_shop_user`. This permission model (the role `PLATFORM_ADMIN`, the ADMIN of the shop and the code E10009) was approved by the product owner.
+- Insert: any caller with a valid access token can create a shop, and the caller becomes the OWNER of the new shop (a row in `shop.t_shop_user` with the role OWNER) in the same transaction; the request never carries a role. An update needs the caller to be an OWNER or an ADMIN of the shop, a delete or an archive needs the caller to be an OWNER of the shop, or the caller has the exact case-sensitive role `PLATFORM_ADMIN` in the verified `roles` claim (an array of role names, an empty array is valid), otherwise 403 (E10009); a STAFF member cannot change the shop. These shop roles follow the shop roles design of 2026-11-14 (D2, D4), approved by the owner on 2026-11-16. Only a caller with `PLATFORM_ADMIN` in the verified `roles` claim can send a `platformMarginRate` that differs from the current one (0.00 on insert), otherwise 403 (E10009). The platform administrator is read only from the verified `roles` claim: do not query `author.m_role` or `author.t_user_role`, a change of the role assignments does not change a token that was already issued. Membership of a shop is not a token claim and is still read from `shop.t_shop_user`. This permission model (the role `PLATFORM_ADMIN`, the OWNER and the ADMIN of the shop and the code E10009) was approved by the product owner.
 - The transaction locks the caller user first and checks the current credential, a missing user or credential is 401 (E10002). The order of the checks and the locks is in the sequence diagram.
 - DELETED is final: a DELETED shop is never reopened and its `id` counts as not found (404, E10004). INACTIVE, LOCKED and ARCHIVED are reversible: an update with `rowStatus` ACTIVE opens the shop again. `rowStatus` DELETED is rejected with 400 (E10001) when the request inserts a shop.
 - A shop cannot be deleted while it has a product (`shop.t_shop_product` that is not DELETED) or an order (`sales.t_order` that is not DELETED), 409 (E10006). Deleting a shop deletes (soft) all of its images. Archiving is always allowed and keeps everything.
@@ -40,7 +40,7 @@ approved_at: 2026-11-16T09:24:57+07:00
 - Images of the same type: after the request is applied the shop can have at most 1 LOGO image and 1 WALLPAPER image that are not DELETED. INACTIVE, LOCKED and ARCHIVED images still hold the place. To replace the logo, update the existing image (send its `id`) or delete it in the same request. Sending a new LOGO or WALLPAPER image without `id` while the shop has one that stays is rejected with 409 (E10003) and a message with the type. Two images of the LOGO or WALLPAPER type that are not DELETED in the same request are rejected with 400 (E10001). The shop can have at most 10 BANNER images that are not DELETED (the maximum is configurable), otherwise 400 (E10001). The `type` of an existing image can be changed when the result follows these rules.
 - The shops are processed in the request order in one transaction, so the checks of an item see the changes of the items before it. When any item fails the whole request is rolled back and no shop and no image is changed.
 - `id` must not be duplicated in the request, and `name` must not be duplicated among the items that are not DELETED (400, E10001). The name of a DELETED item is not compared. Swapping the names of two shops in one request is rejected with 409 (E10003) at the first item, because that name is still held by the other shop when the item is checked. Rename them in two requests.
-- An item without `id` and with `rowStatus` DELETED is rejected with 400 (E10001). The caller of a batch becomes the ADMIN of every shop that the batch inserts.
+- An item without `id` and with `rowStatus` DELETED is rejected with 400 (E10001). The caller of a batch becomes the OWNER of every shop that the batch inserts.
 - The response is HTTP 200 for every successful batch, including a batch that deletes.
 - A shop cannot be deleted while it is in a campaign that is not DELETED and has not ended (a live `campaign.t_campaign_shop` row of a campaign whose `end_at` is after now), 409 (E10006) with the campaign name in the message. Take it out of the campaign first with the upsert campaign API (a campaign that ended or was deleted does not block). Archiving is always allowed. (`docs/superpowers/specs/2026-11-06-campaign-design.md`, C13, approved by the product owner on 2026-11-06)
 
@@ -520,6 +520,22 @@ curl --location --request POST 'https://www.domain.com/api-dev/v1/shop/upsert/ba
 }
 ```
 
+#### Fail - Forbidden Delete Or Archive
+
+```JSON
+{
+    "status": {
+        "code": 403,
+        "message": "Forbidden",
+        "bizCode": "E10009",
+        "bizMessage": "shops[1]: Only an OWNER of the shop can delete or archive it.",
+        "requestId": "req-407a1b2c-3d4e-5f6a-7b8c-9d0e1f2a3b4c",
+        "timestamp": "2026-11-05T12:43:45.123Z",
+        "status": "ERROR"
+    }
+}
+```
+
 #### Fail - Forbidden Platform Margin Rate
 
 ```JSON
@@ -810,15 +826,16 @@ AND st.row_status = 'ACTIVE'
 
 ```SQL
 SELECT
-    su.id as shop_user_id
+    su.id as shop_user_id,
+    su.role
 FROM shop.t_shop_user su
 WHERE su.shop_id = '<sequence.shops.id>'
 AND su.user_id = '<sequence.userId>'
-AND su.role = 'ADMIN'
+AND su.role IN ('OWNER', 'ADMIN')
 AND su.row_status = 'ACTIVE'
 ```
 
-#### INSERT - Add the caller as ADMIN of the new shop
+#### INSERT - Add the caller as OWNER of the new shop
 
 ```SQL
 INSERT INTO shop.t_shop_user (
@@ -831,7 +848,7 @@ VALUES (
     '<sequence.createdBy>',
     '<sequence.shopId>',
     '<sequence.userId>',
-    'ADMIN'
+    'OWNER'
 )
 RETURNING id as shop_user_id
 ```

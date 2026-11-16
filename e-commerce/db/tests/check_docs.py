@@ -1535,11 +1535,18 @@ def shop_inquiry_jwt_errors(path: str, md: str, wsd: str, first: str, second: st
 SHOP_INQUIRY_JWT = {"10": ("QUERY - Get shops", "QUERY - Check shop members"), "13": ("QUERY - Check shop member", "QUERY - Get shop users")}
 
 # Shop profile specs moved to the verified JWT roles claim: spec key -> (heading of the membership query, the member decision of the diagram).
-SHOP_PROFILE_JWT = {"08": ("QUERY - Check shop administrator", "alt update, delete or archive by a caller who is not an ADMIN of the shop"),
-                    "09": ("QUERY - Check shop administrator", "alt items[i]: update, delete or archive by a caller who is not an ADMIN of the shop")}
-SHOP_PROFILE_JWT_SEQ = {"08": ["app -> api: HTTP 403 E10009 You do not have permission to manage this shop.", "alt platformMarginRate differs from the current one and the verified roles claim has no PLATFORM_ADMIN",
+SHOP_PROFILE_JWT = {"08": ("QUERY - Check shop administrator", "alt update, delete or archive by a caller who is not an OWNER or an ADMIN of the shop"),
+                    "09": ("QUERY - Check shop administrator", "alt items[i]: update, delete or archive by a caller who is not an OWNER or an ADMIN of the shop")}
+# Shop roles design of 2026-11-14 (D2, D4), approved 2026-11-16: the creator becomes OWNER; delete and archive need an OWNER or a platform administrator.
+SHOP_PROFILE_OWNER = ["the caller becomes the OWNER of the new shop (a row in `shop.t_shop_user` with the role OWNER)", "a delete or an archive needs the caller to be an OWNER of the shop",
+                      "#### INSERT - Add the caller as OWNER of the new shop", "'<sequence.userId>',\n    'OWNER'\n)", "su.id as shop_user_id,\n    su.role\nFROM shop.t_shop_user su",
+                      "AND su.role IN ('OWNER', 'ADMIN')\nAND su.row_status = 'ACTIVE'", "#### Fail - Forbidden Delete Or Archive", "Only an OWNER of the shop can delete or archive it.",
+                      "This permission model (the role `PLATFORM_ADMIN`, the OWNER and the ADMIN of the shop and the code E10009) was approved by the product owner."]
+SHOP_PROFILE_JWT_SEQ = {"08": ["app -> api: HTTP 403 E10009 You do not have permission to manage this shop.",
+                               "alt delete or archive by a caller who is an ADMIN and not an OWNER of the shop", "app -> api: HTTP 403 E10009 Only an OWNER of the shop can delete or archive it.", "alt platformMarginRate differs from the current one and the verified roles claim has no PLATFORM_ADMIN",
                                "app -> api: HTTP 403 E10009 Only a platform administrator can change the platform margin rate."],
-                           "09": ["app -> api: HTTP 403 E10009 items[i]: You do not have permission to manage this shop.", "alt items[i]: platformMarginRate differs from the current one and the verified roles claim has no PLATFORM_ADMIN",
+                           "09": ["app -> api: HTTP 403 E10009 items[i]: You do not have permission to manage this shop.",
+                                  "alt items[i]: delete or archive by a caller who is an ADMIN and not an OWNER of the shop", "app -> api: HTTP 403 E10009 items[i]: Only an OWNER of the shop can delete or archive it.", "alt items[i]: platformMarginRate differs from the current one and the verified roles claim has no PLATFORM_ADMIN",
                                   "app -> api: HTTP 403 E10009 items[i]: Only a platform administrator can change the platform margin rate."]}
 
 
@@ -1567,17 +1574,18 @@ def check_shop_profile_spec() -> int:
         return fail("; ".join(errors))
     needles = {
         "08": ["# [POST]: v1/shop/upsert", "- `name` is unique among shops that are not DELETED", "#### Image Object", "#### QUERY - Check shop products in use", "#### QUERY - Check shop orders in use",
-               "#### INSERT - Add the caller as ADMIN of the new shop", "#### QUERY - Get next seq of the image type",
+               *SHOP_PROFILE_OWNER, "#### QUERY - Get next seq of the image type",
                "#### UPDATE - Delete the images of a deleted shop", "AND s.row_status <> 'DELETED'\nAND s.id <> '<sequence.id>'", "(../../../schema/shop/m_shop.md)",
                "(../../../schema/shop/m_shop_image.md)", "(../../../schema/shop/m_shop_type.md)", "(../../../schema/shop/t_shop_user.md)", "(../../../schema/sales/t_order.md)",
                "Shop name already exists.", "Shop is used by products or orders.", "Shop not found.", "Shop image not found.", "Shop type not found.",
                "You do not have permission to manage this shop.", "Only a platform administrator can change the platform margin rate.",
                "The shop already has a LOGO image, update it with its id or delete it in the same request.", "A shop can have at most 10 BANNER images.",
                "Only one LOGO image and one WALLPAPER image are allowed in the request.", "never changes the lots that already exist",
-               "approved by the product owner", "This permission model (the role `PLATFORM_ADMIN`, the ADMIN of the shop and the code E10009) was approved by the product owner.", "ck_m_shop_margin_rate_total", "E10003", "E10004", "E10005", "E10006", "E10009", "E90001", "Insert Shop Success"],
+               "approved by the product owner", "ck_m_shop_margin_rate_total", "E10003", "E10004", "E10005", "E10006", "E10009", "E90001", "Insert Shop Success"],
         "09": ["# [POST]: v1/shop/upsert/batch", "- Every shop follows the rules of the single upsert (shop/08)", "#### Shop Object", "#### Image Object", "shops[2]: Id is duplicated with shops[1].",
                "shops[2]: Name is duplicated with shops[0].", "Shops must contain 1 to 100 items.", "Swapping the names", "shops[2]: Shop is used by products or orders.",
-               "shops[1].images[0]: Shop image not found.", "#### QUERY - Check shop orders in use", "approved by the product owner", "This permission model (the role `PLATFORM_ADMIN`, the ADMIN of the shop and the code E10009) was approved by the product owner.", "never changes the lots that already exist"],
+               "shops[1].images[0]: Shop image not found.", "#### QUERY - Check shop orders in use", "approved by the product owner", "never changes the lots that already exist",
+               *SHOP_PROFILE_OWNER, "The caller of a batch becomes the OWNER of every shop that the batch inserts."],
         "10": ["# [GET]: v1/shop", "- Shops with `rowStatus` DELETED and images with `rowStatus` DELETED are never returned", "#### Shop Object", "#### Image Object", "#### QUERY - Get shops", "#### QUERY - Get total items",
                "#### QUERY - Get shop type names", "#### QUERY - Get shop images", "#### QUERY - Check shop members", "AND su.role IN ('OWNER', 'ADMIN', 'STAFF')", "with the role OWNER, ADMIN or STAFF that is ACTIVE",
                "(../../../schema/shop/t_shop_user.md)", "approved by the product owner", "Null when the caller is not an ACTIVE member", "ORDER BY si.type, si.seq, si.created_at, si.id", "then creation time, then `id`",
@@ -3329,6 +3337,9 @@ def check_shipping_spec() -> int:
     for key, need in SHIPPING_NEEDLES.items():
         for missing in missing_needles(full[key], need):
             errors.append(f"{SHIPPING_SPECS[key]} missing: {missing}")
+    for key in ("01", "02", "03", "04"):  # shop roles design D1: OWNER is a shop member too
+        if "AND su.role IN ('OWNER', 'ADMIN', 'STAFF')" not in full[key] or "role IN ('ADMIN', 'STAFF')" in full[key]:
+            errors.append(f"{SHIPPING_SPECS[key]}: the shop member check must be role IN ('OWNER', 'ADMIN', 'STAFF') in the spec and the sequence")
     for key in SHIPPING_JWT_ORDER:
         errors.extend(check_shipping_jwt(key, mds[key], read(SHIPPING_SPECS[key].replace("spec.md", "sequence.wsd"))))
     for key, counts in SHIPPING_COUNTS.items():
