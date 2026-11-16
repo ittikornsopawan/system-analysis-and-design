@@ -26,14 +26,14 @@ approved_at: 2026-11-16T09:24:57+07:00
 | PRE-PRODUCTION | https://www.domain.com/api-pre-prod |
 | PRODUCTION     | https://www.domain.com/api          |
 
-- The rules of this section, including the permission model (the ADMIN of the shop or a platform administrator, 403 E10009), were approved by the product owner.
+- The rules of this section, including the permission model (the fixed shop roles OWNER, ADMIN and STAFF or a platform administrator, 403 E10009), were approved by the product owner.
 - Governing decisions: owner-confirmed API review Q2, Q4, Q10 and Q13 (JWT payload of 2026-11-13).
 - `shopId` or `userId` must be specified (400, E10001). With `shopId` the caller must be a member of the shop (see the definition of a member in the upsert (shop/11)) or have the exact case-sensitive role `PLATFORM_ADMIN` in the verified `roles` claim (an array of role names, an empty array is valid), otherwise 403 (E10009), also when the shop does not exist.
 - A `userId` that is not the caller can be used only by a caller with `PLATFORM_ADMIN` in the verified `roles` claim, otherwise 403 (E10009). `userId` of the caller without `shopId` lists the shops of the caller ("my shops"), there is no separate endpoint.
 - The platform administrator is read only from the verified `roles` claim: do not query `author.m_role` or `author.t_user_role`, a change of the role assignments does not change a token that was already issued. Membership of a shop is not a token claim and is still read from `shop.t_shop_user`. The JWT is verified and the current credential and user are checked in a read-only transaction (401, E10002), no lock is taken.
 - Shop users with `rowStatus` DELETED and shop users of a shop that is DELETED are never returned. INACTIVE, LOCKED and ARCHIVED rows are returned with their `rowStatus`.
 - The user is described by `displayName` and `profilePicturePath` only. The user name and the email address of a user are never returned (they are personal data that is stored encrypted).
-- The caller of the examples is the user `3e4f5a6b-7c8d-4e9f-8a0b-1c2d3e4f5a6b`, an ACTIVE ADMIN of the shop `5a1b2c3d-4e5f-4a6b-8c7d-9e0f1a2b3c4d` and an ACTIVE STAFF of the shop `9e0f1a2b-3c4d-4e5f-8a6b-7c8d9e0f1a2c`, and is not a platform administrator.
+- The caller of the examples is the user `3e4f5a6b-7c8d-4e9f-8a0b-1c2d3e4f5a6b`, an ACTIVE OWNER of the shop `5a1b2c3d-4e5f-4a6b-8c7d-9e0f1a2b3c4d` and an ACTIVE STAFF of the shop `9e0f1a2b-3c4d-4e5f-8a6b-7c8d9e0f1a2c`, and is not a platform administrator.
 - The list is ordered by creation time (newest first) and then by `id`.
 
 ---
@@ -55,7 +55,7 @@ approved_at: 2026-11-16T09:24:57+07:00
 | 1   | shopId         | String: UUID | OPTIONAL | Shop Id, Required unless userId is specified, The caller must be a member of the shop or a platform administrator             | 5a1b2c3d-4e5f-4a6b-8c7d-9e0f1a2b3c4d |
 | 2   | id             | String: UUID | OPTIONAL | Shop User Id, Response is a list with one item                                                                                | 2c3d4e5f-0001-4a1b-8c2d-3e4f5a6b7c8d |
 | 3   | userId         | String: UUID | OPTIONAL | User Id, The memberships of the user, Only the caller (the shops of the caller) unless the caller is a platform administrator | 3e4f5a6b-7c8d-4e9f-8a0b-1c2d3e4f5a6b |
-| 4   | role           | String       | OPTIONAL | Role filter (ADMIN, STAFF)                                                                                                    | ADMIN                                |
+| 4   | role           | String       | OPTIONAL | Role filter (OWNER, ADMIN, STAFF)                                                                                             | ADMIN                                |
 | 5   | rowStatus      | String       | OPTIONAL | Row status filter (ACTIVE, INACTIVE, LOCKED, ARCHIVED), All statuses except DELETED when not specified                        | ACTIVE                               |
 | 6   | pageIndex      | Numeric      | OPTIONAL | Page index starting from 1, Defaults to 1                                                                                     | 1                                    |
 | 7   | pageSize       | Numeric      | OPTIONAL | Number of items per page (max 100), Defaults to 10                                                                            | 10                                   |
@@ -66,7 +66,7 @@ approved_at: 2026-11-16T09:24:57+07:00
 ### HTTP Request
 
 ```HTTP
-GET /api-dev/v1/shop/user?shopId=5a1b2c3d-4e5f-4a6b-8c7d-9e0f1a2b3c4d&pageIndex=1&pageSize=10&search=a&role=ADMIN&rowStatus=ACTIVE HTTP/1.1
+GET /api-dev/v1/shop/user?shopId=5a1b2c3d-4e5f-4a6b-8c7d-9e0f1a2b3c4d&pageIndex=1&pageSize=10&search=a&rowStatus=ACTIVE HTTP/1.1
 Host: www.domain.com
 authorization: Bearer eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9...
 timestamp: 2026-11-05T12:42:00.123Z
@@ -76,7 +76,7 @@ requestId: req-9b1deb4d-3b7d-4bad-9bdd-2b0d7b3dcb6d
 ### cUrl Request
 
 ```JSON
-curl --location --request GET 'https://www.domain.com/api-dev/v1/shop/user?shopId=5a1b2c3d-4e5f-4a6b-8c7d-9e0f1a2b3c4d&pageIndex=1&pageSize=10&search=a&role=ADMIN&rowStatus=ACTIVE' \
+curl --location --request GET 'https://www.domain.com/api-dev/v1/shop/user?shopId=5a1b2c3d-4e5f-4a6b-8c7d-9e0f1a2b3c4d&pageIndex=1&pageSize=10&search=a&rowStatus=ACTIVE' \
 --header 'authorization: Bearer eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9...' \
 --header 'timestamp: 2026-11-05T12:42:00.123Z' \
 --header 'requestId: req-9b1deb4d-3b7d-4bad-9bdd-2b0d7b3dcb6d'
@@ -123,7 +123,7 @@ curl --location --request GET 'https://www.domain.com/api-dev/v1/shop/user?shopI
 | 4   | userId             | String: UUID | MANDATORY | Sequence Diagram | data.items[].userId             | User Id                                                       | 3e4f5a6b-7c8d-4e9f-8a0b-1c2d3e4f5a6b |
 | 5   | displayName        | String       | OPTIONAL  | Sequence Diagram | data.items[].displayName        | Display name of the user, Null when the user has none         | Aof Sopawan                          |
 | 6   | profilePicturePath | String       | OPTIONAL  | Sequence Diagram | data.items[].profilePicturePath | Profile picture path of the user, Null when the user has none | /users/aof/profile.png               |
-| 7   | role               | String       | MANDATORY | Sequence Diagram | data.items[].role               | Role in the shop (ADMIN, STAFF)                               | ADMIN                                |
+| 7   | role               | String       | MANDATORY | Sequence Diagram | data.items[].role               | Role in the shop (OWNER, ADMIN, STAFF)                        | ADMIN                                |
 | 8   | rowStatus          | String       | MANDATORY | Sequence Diagram | data.items[].rowStatus          | Row status (ACTIVE, INACTIVE, LOCKED, ARCHIVED)               | ACTIVE                               |
 
 ### Example Response Parameters
@@ -150,7 +150,7 @@ curl --location --request GET 'https://www.domain.com/api-dev/v1/shop/user?shopI
                 "userId": "3e4f5a6b-7c8d-4e9f-8a0b-1c2d3e4f5a6b",
                 "displayName": "Aof Sopawan",
                 "profilePicturePath": "/users/aof/profile.png",
-                "role": "ADMIN",
+                "role": "OWNER",
                 "rowStatus": "ACTIVE"
             },
             {
@@ -194,7 +194,7 @@ curl --location --request GET 'https://www.domain.com/api-dev/v1/shop/user?shopI
                 "userId": "3e4f5a6b-7c8d-4e9f-8a0b-1c2d3e4f5a6b",
                 "displayName": "Aof Sopawan",
                 "profilePicturePath": "/users/aof/profile.png",
-                "role": "ADMIN",
+                "role": "OWNER",
                 "rowStatus": "ACTIVE"
             }
         ],
@@ -228,7 +228,7 @@ curl --location --request GET 'https://www.domain.com/api-dev/v1/shop/user?shopI
                 "userId": "3e4f5a6b-7c8d-4e9f-8a0b-1c2d3e4f5a6b",
                 "displayName": "Aof Sopawan",
                 "profilePicturePath": "/users/aof/profile.png",
-                "role": "ADMIN",
+                "role": "OWNER",
                 "rowStatus": "ACTIVE"
             },
             {
@@ -313,7 +313,7 @@ curl --location --request GET 'https://www.domain.com/api-dev/v1/shop/user?shopI
         "code": 400,
         "message": "Bad Request",
         "bizCode": "E10001",
-        "bizMessage": "Role must be ADMIN or STAFF, Row status must be one of ACTIVE, INACTIVE, LOCKED, ARCHIVED.",
+        "bizMessage": "Role must be OWNER, ADMIN or STAFF, Row status must be one of ACTIVE, INACTIVE, LOCKED, ARCHIVED.",
         "requestId": "req-420a1b2c-3d4e-5f6a-7b8c-9d0e1f2a3b4c",
         "timestamp": "2026-11-05T12:40:54.123Z",
         "status": "ERROR"
@@ -465,7 +465,7 @@ SELECT
 FROM shop.t_shop_user su
 WHERE su.shop_id = '<sequence.shopId>' -- only when shopId is specified
 AND su.user_id = '<sequence.callerUserId>'
-AND su.role IN ('ADMIN', 'STAFF')
+AND su.role IN ('OWNER', 'ADMIN', 'STAFF')
 AND su.row_status = 'ACTIVE'
 ```
 

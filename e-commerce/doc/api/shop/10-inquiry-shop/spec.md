@@ -29,7 +29,7 @@ approved_at: 2026-11-16T09:24:57+07:00
 - Shops with `rowStatus` DELETED and images with `rowStatus` DELETED are never returned. INACTIVE, LOCKED and ARCHIVED shops and images are returned with their `rowStatus`.
 - `images` is ordered by `type` (alphabetical: BANNER, LOGO, WALLPAPER), then `seq`, then creation time, then `id` (so images with the same `seq` always come in the same order).
 - Governing decisions: owner-confirmed API review Q2, Q4, Q10 and Q13 (JWT payload of 2026-11-13).
-- `platformMarginRate` and `shopMarginRate` are returned only for the shops that the caller is a member of (a row of `shop.t_shop_user` with the role ADMIN or STAFF that is ACTIVE) and to a caller who has the exact case-sensitive role `PLATFORM_ADMIN` in the verified `roles` claim (an array of role names, an empty array is valid). For every other shop of the same list both fields are null and the keys are kept. This rule was approved by the product owner.
+- `platformMarginRate` and `shopMarginRate` are returned only for the shops that the caller is a member of (a row of `shop.t_shop_user` with the role OWNER, ADMIN or STAFF that is ACTIVE) and to a caller who has the exact case-sensitive role `PLATFORM_ADMIN` in the verified `roles` claim (an array of role names, an empty array is valid). For every other shop of the same list both fields are null and the keys are kept. This rule was approved by the product owner.
 - Any caller with a valid access token can call this API: the JWT is verified and the current credential and user are checked in a read-only transaction (401, E10002), no lock is taken. The platform administrator is read only from the verified `roles` claim: do not query `author.m_role` or `author.t_user_role`, a change of the role assignments does not change a token that was already issued. Membership of a shop is not a token claim and is still read from `shop.t_shop_user`.
 - The caller of the examples is an ACTIVE member of the shop `5a1b2c3d-4e5f-4a6b-8c7d-9e0f1a2b3c4d` and is not a platform administrator, so the margin rates of the other shops are null.
 - The public shop page of a customer is not served by this API (it needs no access token).
@@ -436,7 +436,7 @@ SELECT
 FROM shop.t_shop_user su
 WHERE su.shop_id IN ('<sequence.shopIds>')
 AND su.user_id = '<sequence.userId>'
-AND su.role IN ('ADMIN', 'STAFF')
+AND su.role IN ('OWNER', 'ADMIN', 'STAFF')
 AND su.row_status = 'ACTIVE'
 ```
 

@@ -70,7 +70,7 @@ activate page
                     app -> app: userId = callerUserId = verified sub; accessTokenHash = SHA-256 of the exact JWT; createdBy/updatedBy = caller UUID string
                     note over app, infra
                         - Execution order: validate the request (400) -> verify the JWT and its roles claim (401) -> BEGIN -> lock the caller user (FOR UPDATE) -> current credential and user (401) ->
-                          existence checks (404) -> permission (403: an ACTIVE ADMIN or STAFF member of every shop of the request, or PLATFORM_ADMIN in the verified roles claim) -> conflict and in-use checks (409) ->
+                          existence checks (404) -> permission (403: an ACTIVE OWNER, ADMIN or STAFF member of every shop of the request, or PLATFORM_ADMIN in the verified roles claim) -> conflict and in-use checks (409) ->
                           write the shop product, the shop product SKU, close the lot on sale when a lot is put on sale, then write the lots. The whole request is one transaction.
                           The author tables are never queried; the membership of the shops is not a token claim and is still read from shop.t_shop_user.
                         - Lock order: the caller user, then every existing shop product SKU of the request in ascending id order before the items, then the lots of each SKU in ascending id order (FOR
@@ -271,13 +271,13 @@ activate page
                                     FROM shop.t_shop_user su
                                     WHERE su.shop_id IN ('<sequence.skus.shopIds>')
                                     AND su.user_id = '<sequence.userId>'
-                                    AND su.role IN ('ADMIN', 'STAFF')
+                                    AND su.role IN ('OWNER', 'ADMIN', 'STAFF')
                                     AND su.row_status = 'ACTIVE'
                                 end note
                                 t_shop_user -> infra: Return query result
                             deactivate t_shop_user
                             infra -> app: Return result of Check shop members
-                            alt A shop of the request has no ACTIVE ADMIN or STAFF member row for the caller
+                            alt A shop of the request has no ACTIVE OWNER, ADMIN or STAFF member row for the caller
                                 alt The verified roles claim has no PLATFORM_ADMIN
                                     app -> infra: ROLLBACK
                                     app -> api: HTTP 403 E10009 skus[i]: You do not have permission to manage SKUs and lots of the shop.
