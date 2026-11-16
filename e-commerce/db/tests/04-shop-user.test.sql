@@ -55,7 +55,7 @@ BEGIN
     RAISE NOTICE 'PASS test 2: a deleted member can be added again';
 END $$;
 
--- test 3: role is ADMIN or STAFF and defaults to STAFF
+-- test 3: role is OWNER, ADMIN or STAFF and defaults to STAFF
 DO $$
 DECLARE
     a UUID := '55555555-5555-4555-8555-555555555555';
@@ -64,12 +64,15 @@ BEGIN
     IF (SELECT role FROM shop.t_shop_user WHERE user_id = 'aaaaaaaa-aaaa-4aaa-8aaa-aaaaaaaaaaaa') <> 'STAFF' THEN
         RAISE EXCEPTION 'FAIL: role must default to STAFF';
     END IF;
+    -- a shop can have several owners
+    INSERT INTO shop.t_shop_user (created_by, shop_id, user_id, role) VALUES ('test', a, 'cccccccc-cccc-4ccc-8ccc-cccccccccccc', 'OWNER');
+    INSERT INTO shop.t_shop_user (created_by, shop_id, user_id, role) VALUES ('test', a, 'dddddddd-dddd-4ddd-8ddd-dddddddddddd', 'OWNER');
     BEGIN
-        INSERT INTO shop.t_shop_user (created_by, shop_id, user_id, role) VALUES ('test', a, 'bbbbbbbb-bbbb-4bbb-8bbb-bbbbbbbbbbbb', 'OWNER');
+        INSERT INTO shop.t_shop_user (created_by, shop_id, user_id, role) VALUES ('test', a, 'bbbbbbbb-bbbb-4bbb-8bbb-bbbbbbbbbbbb', 'MANAGER');
         RAISE EXCEPTION 'FAIL: an unknown role was accepted';
     EXCEPTION WHEN check_violation THEN NULL;
     END;
-    RAISE NOTICE 'PASS test 3: role is ADMIN or STAFF, default STAFF';
+    RAISE NOTICE 'PASS test 3: role is OWNER, ADMIN or STAFF, default STAFF';
 END $$;
 
 ROLLBACK;

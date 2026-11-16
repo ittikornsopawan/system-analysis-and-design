@@ -76,7 +76,7 @@ CREATE TABLE
         ),
         shop_id UUID NOT NULL REFERENCES shop.m_shop (id) ON DELETE CASCADE,
         user_id UUID NOT NULL REFERENCES authen.m_user (id) ON DELETE CASCADE,
-        role VARCHAR(32) NOT NULL DEFAULT 'STAFF' CHECK (role IN ('ADMIN', 'STAFF'))
+        role VARCHAR(32) NOT NULL DEFAULT 'STAFF' CHECK (role IN ('OWNER', 'ADMIN', 'STAFF'))
     );
 
 CREATE UNIQUE INDEX IF NOT EXISTS uq_t_shop_user_shop_id_user_id ON shop.t_shop_user (shop_id, user_id)
