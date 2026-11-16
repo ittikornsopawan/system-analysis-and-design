@@ -11,8 +11,8 @@ Checked on 2026-11-16 against `main` (c190f70) and the pull requests on GitHub. 
 | ----------------------------------------------- | ------ |
 | 1. Owner decisions and actions                  | 1      |
 | 2. Shop roles rollout (unblocked 2026-11-16)    | 12     |
-| 3. Deferred work and backlog                    | 8      |
-| **Real work still open**                        | **21** |
+| 3. Deferred work and backlog                    | 7      |
+| **Real work still open**                        | **20** |
 | 4. Records closed on 2026-11-16                 | 27     |
 
 ## 1. Owner decisions and actions
@@ -47,7 +47,7 @@ Source: `tasks/peter/todo.md`, design `docs/superpowers/specs/2026-11-14-shop-ro
 - [ ] WP5b: author specs 13–17 (role permission upsert and inquiry, user permission upsert and inquiry, check); deferred until an API enforces permissions (owner confirmed on 2026-11-16).
 - [x] Remove `ADMIN_WRITE_LIVE_QUERIES` from `check_docs.py`; no spec uses the live role queries any more. Done in the checker cleanup pull request of 2026-11-16: `admin-write-spec` now checks only the JWT claims path.
 - [x] Merge the two `er_name_rows` helpers of `check_docs.py`. Done in the same pull request: the first one, which the second overrode, is removed.
-- [ ] Extend `audit_all.py` to a column without an alias in the `WHERE` of an `UPDATE`.
+- [x] Extend `audit_all.py` to a column without an alias in the `WHERE` of an `UPDATE`. Done 2026-11-16: 129 UPDATE statements are now checked, 0 findings; a subquery or `UPDATE ... FROM` is skipped.
 - [ ] Retrofit the plain `UNIQUE` and `CASCADE` of the older master tables (owner approved on 2026-11-16).
 - [ ] Add `FOR UPDATE` to the target-row queries of shop SKU (01, 02), shop (08, 09) and shop user (11, 12), after the credential check and before the permission decision (owner decision of 2026-11-16).
 - [ ] Rewrite the team protocol in `docs/handoff/` to match the named-agent rule.
