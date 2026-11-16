@@ -4830,7 +4830,7 @@ CAMPAIGN_NEEDLES = {
            "#### Fail - Bad Request Row Status", "E10003", "E10005", "E10006", "E10009", "Delete 204 No Content (no response body)",
            "validate the request (400) -> verify the JWT (401)", "#### QUERY - Check existing campaign shop", "#### QUERY - Check existing campaign product", "#### UPDATE - Delete the discount of a deleted campaign", "#### UPDATE - Delete the shops of a deleted campaign", "#### UPDATE - Delete the products of a deleted campaign", "one statement for all the rows of the campaign", "approved by the product owner on 2026-11-08"],
     "02": ["- The caller needs a verified JWT. A platform administrator (the role `PLATFORM_ADMIN` in the verified `roles` claim) sees every campaign", "ORDER BY c.start_at DESC, c.id", "NOT EXISTS (", "cs.row_status = 'ACTIVE'", "#### QUERY - Count the campaigns",
-           "#### QUERY - Check shop member", "#### QUERY - Check shop", "#### Fail - Forbidden",
+           "#### QUERY - Check shop member", "AND su.role IN ('OWNER', 'ADMIN', 'STAFF')", "#### QUERY - Check shop", "#### Fail - Forbidden",
            "#### Fail - Not Found Reference", "activeOnly", "#### QUERY - Get the budgets of the campaigns", "#### QUERY - Get the shops of the campaigns",
            "validate the request (400) -> verify the JWT (401)"],
     "03": ["- The caller needs a verified JWT, then only a platform administrator", "ORDER BY l.created_at DESC, l.id", "#### QUERY - Count the ledger entries", "#### Fail - Forbidden",
@@ -5142,6 +5142,8 @@ def check_campaign_spec() -> int:
         seq = re.sub(r"\n\s+", " ", read(CAMPAIGN_SPECS[key].replace("spec.md", "sequence.wsd")))
         for missing in missing_needles(mds[key] + "\n" + seq, need):
             errors.append(f"{CAMPAIGN_SPECS[key]} missing: {missing}")
+        if "role IN ('ADMIN', 'STAFF')" in mds[key] + seq:  # shop roles design D1: OWNER is a shop member too
+            errors.append(f"{CAMPAIGN_SPECS[key]}: the shop member check must be role IN ('OWNER', 'ADMIN', 'STAFF')")
     for key in CAMPAIGN_JWT_ORDER:
         errors.extend(check_campaign_jwt(key, mds[key], read(CAMPAIGN_SPECS[key].replace("spec.md", "sequence.wsd"))))
     for key, counts in CAMPAIGN_COUNTS.items():

@@ -26,7 +26,7 @@ approved_at: 2026-11-16T09:24:57+07:00
 | PRE-PRODUCTION | https://www.domain.com/api-pre-prod |
 | PRODUCTION     | https://www.domain.com/api          |
 
-- The caller needs a verified JWT. A platform administrator (the role `PLATFORM_ADMIN` in the verified `roles` claim) sees every campaign that is not DELETED with its budget, its remaining amount and its shops. Any other caller must send `shopId` of a shop that the caller is an ACTIVE member of (a row of `shop.t_shop_user` with the role ADMIN or STAFF that is ACTIVE), otherwise 403 (E10009), and sees only the campaigns that apply to that shop: the shop is in a live `t_campaign_shop` row of the campaign, or the campaign has no live shop row (it is for every shop, C2). A shop that does not exist or is DELETED is not found (404, E10005).
+- The caller needs a verified JWT. A platform administrator (the role `PLATFORM_ADMIN` in the verified `roles` claim) sees every campaign that is not DELETED with its budget, its remaining amount and its shops. Any other caller must send `shopId` of a shop that the caller is an ACTIVE member of (a row of `shop.t_shop_user` with the role OWNER, ADMIN or STAFF that is ACTIVE), otherwise 403 (E10009), and sees only the campaigns that apply to that shop: the shop is in a live `t_campaign_shop` row of the campaign, or the campaign has no live shop row (it is for every shop, C2). A shop that does not exist or is DELETED is not found (404, E10005).
 - The platform administrator is the exact case-sensitive role `PLATFORM_ADMIN` in the verified `roles` claim; do not query `author.m_role` or `author.t_user_role`, and a change of the assignment after the token was issued does not change this token (it may stay usable until its expiry). Membership of a shop is not a token claim and is still read from `shop.t_shop_user`.
 - The JWT and credential checks, the order of the checks and the inquiry without a transaction are in the sequence diagram.
 - The members of a shop never see `budget` and the shop list, both are returned as `null` and the keys stay. They see the discount and the products and categories of the campaign. Campaigns with `rowStatus` DELETED are never returned.
@@ -428,7 +428,7 @@ SELECT
 FROM shop.t_shop_user su
 WHERE su.shop_id = '<sequence.shopId>'
 AND su.user_id = '<sequence.userId>'
-AND su.role IN ('ADMIN', 'STAFF')
+AND su.role IN ('OWNER', 'ADMIN', 'STAFF')
 AND su.row_status = 'ACTIVE'
 ```
 
