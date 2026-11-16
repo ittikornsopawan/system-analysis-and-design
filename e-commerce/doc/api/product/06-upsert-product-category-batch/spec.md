@@ -55,7 +55,7 @@ approved_at: 2026-11-16T09:24:57+07:00
 | --- | -------------- | ------------ | --------- | ------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------- | ------------------------------------- |
 | 1   | id             | String: UUID | OPTIONAL  | Product Category Id, Insert when not specified, Update or Delete when specified, Must not be duplicated in the request                                                                                        | d4e5f6a7-b8c9-4d0e-8f1a-2b3c4d5e6f7a  |
 | 2   | parentId       | String: UUID | OPTIONAL  | Parent Product Category Id, Root category when not specified, Must be an existing category and must not be the category itself or its sub category                                                            | a7b8c9d0-1e2f-4a3b-8c4d-5e6f7a8b9c0d  |
-| 3   | name           | String       | MANDATORY | Product Category Name (max 128 characters), Unique                                                                                                                                                            | Computer Accessories                  |
+| 3   | name           | String       | MANDATORY | Product Category Name (max 128 characters), Unique among product categories that are not DELETED                                                                                                              | Computer Accessories                  |
 | 4   | description    | String       | MANDATORY | Product Category Description (max 256 characters)                                                                                                                                                             | Accessories for computers and laptops |
 | 5   | slug           | String       | OPTIONAL  | URL friendly name (max 128 characters, a-z, 0-9 and hyphen), Used in the web URL /{id}/{slug}, Generated from name when not specified on insert, Keep the current slug when not specified on update           | computer-accessories                  |
 | 6   | rowStatus      | String       | OPTIONAL  | Row status (ACTIVE, INACTIVE, DELETED, LOCKED, ARCHIVED), Defaults to ACTIVE, Delete when DELETED, Archive when ARCHIVED, Delete is allowed only when the category is not used by any product or sub category | ACTIVE                                |
@@ -526,6 +526,7 @@ SELECT
     pc.id as category_id
 FROM product.m_product_category pc
 WHERE pc.name = '<sequence.categories.name>'
+AND pc.row_status <> 'DELETED'
 AND pc.id <> '<sequence.categories.id>' -- only when id is specified
 ```
 

@@ -18,7 +18,7 @@ Description: Master table of the `product` schema (defined in `db/migrations/up/
 |     |                                                        | updated_at  | TIMESTAMP |        | TRUE        | Timestamp when the row was last updated                                  |                   |
 |     |                                                        | row_status  | VARCHAR   | 32     | FALSE       | Lifecycle status of the row: ACTIVE, INACTIVE, DELETED, LOCKED, ARCHIVED | ACTIVE            |
 | FK  | [product.m_product_category.id](m_product_category.md) | category_id | UUID      |        | FALSE       | Reference to `product.m_product_category.id`                             |                   |
-| UQ  |                                                        | name        | VARCHAR   | 128    | FALSE       | Unique                                                                   |                   |
+|     |                                                        | name        | VARCHAR   | 128    | FALSE       | Unique among rows where row_status <> 'DELETED'                          |                   |
 |     |                                                        | description | VARCHAR   | 256    | FALSE       |                                                                          |                   |
 
 ## Constain
@@ -26,8 +26,8 @@ Description: Master table of the `product` schema (defined in `db/migrations/up/
 | Key Name                                    | Column Name | Description                                                                   |
 | ------------------------------------------- | ----------- | ----------------------------------------------------------------------------- |
 | pk_m_product_category_attribute_id          | id          | Primary key                                                                   |
-| fk_m_product_category_attribute_category_id | category_id | References product.m_product_category(id), ON DELETE CASCADE                  |
-| uq_m_product_category_attribute_name        | name        | Unique                                                                        |
+| fk_m_product_category_attribute_category_id | category_id | References product.m_product_category(id), ON DELETE RESTRICT                 |
+| uq_m_product_category_attribute_name        | name        | Unique among rows where row_status <> 'DELETED'                               |
 | ck_m_product_category_attribute_row_status  | row_status  | CHECK (row_status IN ('ACTIVE', 'INACTIVE', 'DELETED', 'LOCKED', 'ARCHIVED')) |
 
 ---
@@ -49,8 +49,12 @@ CREATE TABLE
                 'ARCHIVED'
             )
         ),
-        category_id UUID NOT NULL REFERENCES product.m_product_category (id) ON DELETE CASCADE,
-        name VARCHAR(128) NOT NULL UNIQUE,
+        category_id UUID NOT NULL REFERENCES product.m_product_category (id) ON DELETE RESTRICT,
+        name VARCHAR(128) NOT NULL,
         description VARCHAR(256) NOT NULL
     );
+
+CREATE UNIQUE INDEX IF NOT EXISTS uq_m_product_category_attribute_name ON product.m_product_category_attribute (name)
+WHERE
+    row_status <> 'DELETED';
 ```

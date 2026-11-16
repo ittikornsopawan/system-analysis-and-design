@@ -3825,6 +3825,10 @@ COMMANDS["product-master-schema"] = lambda: check_master_schema(
     ["product.m_product_type", "product.m_product_brand"], "03-product.schema.up.sql",
     ("03-product.schema.up.sql", "product/m_product", [("type_id", "product.m_product_type"), ("brand_id", "product.m_product_brand")]),
     "03-product-master.test.sql", "product-master-schema")
+COMMANDS["product-category-schema"] = lambda: check_master_schema(
+    ["product.m_product_category", "product.m_product_category_attribute"], "03-product.schema.up.sql",
+    ("03-product.schema.up.sql", "product/m_product", [("category_id", "product.m_product_category")]),
+    "03-product-category.test.sql", "product-category-schema")
 COMMANDS["consent-type-schema"] = lambda: check_master_schema(
     ["consent.m_consent_type"], "00-common.schema.up.sql",
     ("00-common.schema.up.sql", "consent/t_consent", [("consent_type_id", "consent.m_consent_type")]),
