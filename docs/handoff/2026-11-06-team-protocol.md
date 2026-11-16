@@ -2,12 +2,12 @@
 name: Superseded SA Team Protocol
 description: Historical SA handoff retained for context; do not use it for current named-agent workspace or pull-request authority decisions.
 status: superseded
-superseded_by: .agents/rules/named-agent-workspaces.md
+superseded_by: docs/handoff/2026-11-16-team-protocol.md
 ---
 
 # ข้อตกลงทีม SA: บทบาท ช่องทาง และเกณฑ์คุณภาพ
 
-> **ยกเลิกการใช้เป็นกติกาปัจจุบัน:** ข้อตกลงเรื่อง workspace, การ commit, push และเปิด PR ในเอกสารนี้ถูกแทนที่โดย [Named Agent Workspace Rules](../../.agents/rules/named-agent-workspaces.md) และ registry `.agents/team/agents.yaml` แล้ว เนื้อหาด้านคุณภาพด้านล่างเก็บไว้เป็นประวัติเท่านั้น
+> **ยกเลิกการใช้เป็นกติกาปัจจุบัน:** ข้อตกลงเรื่อง workspace, การ commit, push และเปิด PR ในเอกสารนี้ถูกแทนที่โดย [ข้อตกลงทีมฉบับปัจจุบัน](2026-11-16-team-protocol.md), [Named Agent Workspace Rules](../../.agents/rules/named-agent-workspaces.md) และ registry `.agents/team/agents.yaml` แล้ว เนื้อหาด้านคุณภาพด้านล่างเก็บไว้เป็นประวัติเท่านั้น
 
 วันที่: 2026-11-06 · ผู้เขียน: Josh (Lead SA) ตามที่เจ้าของงานสั่ง · ใช้กับ Tommy และ Marry (และ SA ที่เข้ามาทีหลัง)
 

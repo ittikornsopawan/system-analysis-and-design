@@ -11,8 +11,8 @@ Checked on 2026-11-16 against `main` (c190f70) and the pull requests on GitHub. 
 | ----------------------------------------------- | ------ |
 | 1. Owner decisions and actions                  | 1      |
 | 2. Shop roles rollout (unblocked 2026-11-16)    | 12     |
-| 3. Deferred work and backlog                    | 5      |
-| **Real work still open**                        | **18** |
+| 3. Deferred work and backlog                    | 4      |
+| **Real work still open**                        | **17** |
 | 4. Records closed on 2026-11-16                 | 27     |
 
 ## 1. Owner decisions and actions
@@ -50,7 +50,7 @@ Source: `tasks/peter/todo.md`, design `docs/superpowers/specs/2026-11-14-shop-ro
 - [x] Extend `audit_all.py` to a column without an alias in the `WHERE` of an `UPDATE`. Done 2026-11-16: 129 UPDATE statements are now checked, 0 findings; a subquery or `UPDATE ... FROM` is skipped.
 - [x] Retrofit the plain `UNIQUE` and `CASCADE` of the older master tables (owner approved on 2026-11-16). Done 2026-11-16: `product.m_product_category` and `product.m_product_category_attribute` have a partial unique name (not DELETED) and the 5 foreign keys into them are RESTRICT; `03-product-category.test.sql` and `product-category-schema` guard it.
 - [x] Add `FOR UPDATE` to the target-row queries of shop SKU (01, 02), shop (08, 09) and shop user (11, 12), after the credential check and before the permission decision (owner decision of 2026-11-16). Done 2026-11-16: the six specs lock their target rows; batches 02 and 09 first lock their existing rows in ascending id order; the shop SKU check keeps the membership check before the lock; `shop-spec` guards it.
-- [ ] Rewrite the team protocol in `docs/handoff/` to match the named-agent rule.
+- [x] Rewrite the team protocol in `docs/handoff/` to match the named-agent rule. Done 2026-11-16: `docs/handoff/2026-11-16-team-protocol.md`; the 2026-11-06 protocol points to it as superseded.
 - [x] Record the consent/02 answer in `docs/superpowers/specs/2026-11-07-api-review-design.md` (the root item was misread as a Head of Technology answer). Already done: section "Consent type of a consent (2026-11-14)" of that file.
 - [ ] Owner: verify the resource registry and the diagram role after Jinny's scope is released (`tasks/owner/todo.md`).
 - [ ] Owner: resolve every legacy task of `tasks/todo.md` with evidence or closure (blocked).
