@@ -764,6 +764,17 @@ RETURNING id as shop_product_id
 
 ### Table: [shop.t_shop_product_sku](../../../schema/shop/t_shop_product_sku.md)
 
+#### QUERY - Lock the existing shop product SKUs
+
+```SQL
+SELECT
+    ssk.id as shop_product_sku_id
+FROM shop.t_shop_product_sku ssk
+WHERE ssk.id IN ('<sequence.skus.ids>')
+ORDER BY ssk.id
+FOR UPDATE
+```
+
 #### QUERY - Check existing shop product SKU
 
 ```SQL
@@ -773,6 +784,7 @@ SELECT
     ssk.sku_id
 FROM shop.t_shop_product_sku ssk
 WHERE ssk.id = '<sequence.skus.id>'
+FOR UPDATE
 ```
 
 #### QUERY - Check duplicate shop product SKU
@@ -837,6 +849,8 @@ SELECT
 FROM shop.t_shop_product_sku_lot l
 WHERE l.id IN ('<sequence.skus.lots.ids>')
 AND l.shop_product_sku_id = '<sequence.shopProductSkuId>'
+ORDER BY l.id
+FOR UPDATE
 ```
 
 #### QUERY - Check duplicate lot number

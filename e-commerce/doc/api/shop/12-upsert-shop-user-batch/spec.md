@@ -569,6 +569,7 @@ SELECT
 FROM shop.t_shop_user su
 WHERE su.id = '<sequence.shopUsers.id>'
 AND su.row_status <> 'DELETED' -- the id of a DELETED shop user counts as not found
+FOR UPDATE
 ```
 
 #### QUERY - Check duplicate member

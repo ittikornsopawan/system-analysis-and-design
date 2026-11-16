@@ -715,6 +715,17 @@ AND u.row_status = 'ACTIVE'
 
 ### Table: [shop.m_shop](../../../schema/shop/m_shop.md)
 
+#### QUERY - Lock the existing shops
+
+```SQL
+SELECT
+    s.id as shop_id
+FROM shop.m_shop s
+WHERE s.id IN ('<sequence.shops.ids>')
+ORDER BY s.id
+FOR UPDATE
+```
+
 #### QUERY - Check existing shop
 
 ```SQL
@@ -726,6 +737,7 @@ SELECT
 FROM shop.m_shop s
 WHERE s.id = '<sequence.shops.id>'
 AND s.row_status <> 'DELETED' -- the id of a DELETED shop counts as not found
+FOR UPDATE
 ```
 
 #### QUERY - Check duplicate name
@@ -859,6 +871,8 @@ FROM shop.m_shop_image si
 WHERE si.id IN ('<sequence.shops.images.ids>')
 AND si.shop_id = '<sequence.shops.id>'
 AND si.row_status <> 'DELETED'
+ORDER BY si.id
+FOR UPDATE
 ```
 
 #### QUERY - Count the images of the shop that are not in the request

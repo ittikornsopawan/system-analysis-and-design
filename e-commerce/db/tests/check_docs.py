@@ -972,8 +972,36 @@ def shop_jwt_errors(path: str, md: str, wsd: str, member: str, no_member: str) -
     return errors
 
 
-def check_shop_spec() -> int:
+# Owner decision of 2026-11-16: the rows that a shop write changes are locked (FOR UPDATE); a batch first locks its existing rows in ascending id order, so two
+# batches cannot deadlock. folder: (queries that must end with FOR UPDATE, the batch lock query or None)
+SHOP_TARGET_LOCK = {
+    "01-upsert-shop-product-sku": (("Check existing shop product SKU", "Check existing lots"), None),
+    "02-upsert-shop-product-sku-batch": (("Check existing shop product SKU", "Check existing lots"), "Lock the existing shop product SKUs"),
+    "08-upsert-shop": (("Check existing shop", "Check existing shop images"), None),
+    "09-upsert-shop-batch": (("Check existing shop", "Check existing shop images"), "Lock the existing shops"),
+    "11-upsert-shop-user": (("Check existing shop user",), None),
+    "12-upsert-shop-user-batch": (("Check existing shop user",), None),
+}
+
+
+def shop_target_lock_errors() -> list[str]:
     errors = []
+    for folder, (headings, batch_lock) in SHOP_TARGET_LOCK.items():
+        path = f"e-commerce/doc/api/shop/{folder}/spec.md"
+        sql = {h: q for _, h, q in spec_database_operations(read(path))}
+        for heading in headings + ((batch_lock,) if batch_lock else ()):
+            if not sql.get(f"QUERY - {heading}", "").rstrip().endswith("FOR UPDATE"):
+                errors.append(f"{path}: 'QUERY - {heading}' must end with FOR UPDATE")
+        if batch_lock:
+            wsd = read(path.replace("spec.md", "sequence.wsd"))
+            first_item = re.search(r"^\s*loop For each ", wsd, re.M)
+            if "ORDER BY" not in sql.get(f"QUERY - {batch_lock}", "") or not first_item or not 0 < wsd.find("app -> infra: QUERY - " + batch_lock) < first_item.start():
+                errors.append(f"{path}: '{batch_lock}' locks the rows in ascending id order before the first item")
+    return errors
+
+
+def check_shop_spec() -> int:
+    errors = shop_target_lock_errors()
     mds = {}
     for key, path in SHOP_SPECS.items():
         try:
