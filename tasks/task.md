@@ -7,13 +7,13 @@ description: Every task that is still open across the owner, Josh, Tommy, Marry,
 
 Checked on 2026-11-16 against `main` (c190f70) and the pull requests on GitHub. The team is frozen and no pull request is open.
 
-| Group | Tasks |
-|---|---|
-| 1. Owner decisions and actions | 7 |
-| 2. Shop roles rollout (blocked on approval) | 12 |
-| 3. Deferred work and backlog | 10 |
-| **Real work still open** | **29** |
-| 4. Records to close (work done, box not ticked) | 27 |
+| Group                                           | Tasks  |
+| ----------------------------------------------- | ------ |
+| 1. Owner decisions and actions                  | 7      |
+| 2. Shop roles rollout (blocked on approval)     | 12     |
+| 3. Deferred work and backlog                    | 10     |
+| **Real work still open**                        | **29** |
+| 4. Records closed on 2026-11-16                 | 27     |
 
 ## 1. Owner decisions and actions
 
@@ -55,11 +55,13 @@ Source: `tasks/peter/todo.md`, design `docs/superpowers/specs/2026-11-14-shop-ro
 - [ ] Owner: resolve every legacy task of `tasks/todo.md` with evidence or closure (blocked).
 - [ ] Owner: move the closed legacy records to the owner folders and turn `tasks/todo.md` into an index (blocked by the item above).
 
-## 4. Records to close (work is merged, the box was never ticked)
+## 4. Records closed on 2026-11-16
 
-Each item needs only its record ticked and moved to the owner's `success-task.md`. The evidence is the merged pull request.
+The 27 records whose work was merged are closed, on the owner's order of 2026-11-16. Each record has its pull request, merge time and CI result as evidence.
 
-- [ ] Josh (1): CI without the database tests, #157 merged.
-- [ ] Marry (5): product/03, product/04, the `check_docs.py` repair #156, product/10 #155, product/13 #161.
-- [ ] Tommy (10): frontmatter of cart, payment, sales, shipping and campaign; template of shop 01–04, 05–10, 11–16; JWT shipping 01–04; JWT campaign 01 #149 and 03 #154.
-- [ ] Legacy root `tasks/todo.md` (11): WP7 campaign (#15), WP3b shipping auto-complete (#26) and its gate 2 review, WP5c admin-only writes (#20), Peter review items scope upsert, Q24 batch, Q24 single and the permission matrix (#92), M3 GitHub Actions (#91), the payment/05 JWT wording question (fixed on main), M6 roles as objects (no spec left).
+- [x] Josh (1): moved to `tasks/josh/success-task.md` (#157).
+- [x] Marry (5 open boxes, 10 records): moved to `tasks/marry/success-task.md` (#140, #142, #145, #148, #150, #155, #156, #159, #161, #162).
+- [x] Tommy (10 open boxes, 11 records): moved to `tasks/tommy/success-task.md` (#130, #132, #133, #136, #139, #141, #143, #147, #149, #152, #154).
+- [x] Legacy root `tasks/todo.md` (11): ticked in place with evidence (#15, #20, #26, #83, #85, #86, #88, #91, #105, #129); the legacy records are not moved until its 4 open items (in groups 1 and 3 above) are resolved.
+
+#145 and #148 merged while `checks` failed on stale `check_docs.py` lists; #156 and #157 repaired the lists, and `checks` passes on main.
