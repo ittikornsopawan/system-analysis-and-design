@@ -3327,6 +3327,9 @@ def check_shipping_spec() -> int:
     for key, need in SHIPPING_NEEDLES.items():
         for missing in missing_needles(full[key], need):
             errors.append(f"{SHIPPING_SPECS[key]} missing: {missing}")
+    for key in ("01", "02", "03", "04"):  # shop roles design D1: OWNER is a shop member too
+        if "AND su.role IN ('OWNER', 'ADMIN', 'STAFF')" not in full[key] or "role IN ('ADMIN', 'STAFF')" in full[key]:
+            errors.append(f"{SHIPPING_SPECS[key]}: the shop member check must be role IN ('OWNER', 'ADMIN', 'STAFF') in the spec and the sequence")
     for key in SHIPPING_JWT_ORDER:
         errors.extend(check_shipping_jwt(key, mds[key], read(SHIPPING_SPECS[key].replace("spec.md", "sequence.wsd"))))
     for key, counts in SHIPPING_COUNTS.items():

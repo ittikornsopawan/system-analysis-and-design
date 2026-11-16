@@ -26,7 +26,7 @@ approved_at: 2026-11-16T09:24:57+07:00
 | PRE-PRODUCTION | https://www.domain.com/api-pre-prod |
 | PRODUCTION     | https://www.domain.com/api          |
 
-- The caller needs a verified JWT, then must be an ACTIVE member of the shop (a row of `shop.t_shop_user` with the role ADMIN or STAFF that is ACTIVE) or have the role `PLATFORM_ADMIN` in the verified `roles` claim, otherwise 403 (E10009). A shop that does not exist or is DELETED is not found (404, E10005).
+- The caller needs a verified JWT, then must be an ACTIVE member of the shop (a row of `shop.t_shop_user` with the role OWNER, ADMIN or STAFF that is ACTIVE) or have the role `PLATFORM_ADMIN` in the verified `roles` claim, otherwise 403 (E10009). A shop that does not exist or is DELETED is not found (404, E10005).
 - The platform administrator is the exact case-sensitive role `PLATFORM_ADMIN` in the verified `roles` claim; do not query `author.m_role` or `author.t_user_role`, and a change of the assignment after the token was issued does not change this token (it may stay usable until its expiry). Membership of a shop is not a token claim and is still read from `shop.t_shop_user`.
 - The JWT and credential checks, the order of the checks and the inquiry without a transaction are in the sequence diagram.
 - The shippings of the orders of the shop are returned, newest first by creation time, then `id`. Shippings with `rowStatus` DELETED never exist (the API does not delete a shipping). Every shipping carries its items and its stops. The stops are the ones that are not DELETED, in `stopNumber` order, with their `rowStatus`.
@@ -369,7 +369,7 @@ SELECT
 FROM shop.t_shop_user su
 WHERE su.shop_id = '<sequence.shopId>'
 AND su.user_id = '<sequence.userId>'
-AND su.role IN ('ADMIN', 'STAFF')
+AND su.role IN ('OWNER', 'ADMIN', 'STAFF')
 AND su.row_status = 'ACTIVE'
 ```
 
