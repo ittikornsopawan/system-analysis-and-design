@@ -114,7 +114,7 @@ activate page
                                 FROM shop.t_shop_user su
                                 WHERE su.shop_id = '<sequence.shopId>' -- only when shopId is specified
                                 AND su.user_id = '<sequence.callerUserId>'
-                                AND su.role IN ('ADMIN', 'STAFF')
+                                AND su.role IN ('OWNER', 'ADMIN', 'STAFF')
                                 AND su.row_status = 'ACTIVE'
                             end note
                             t_shop_user -> infra: Return query result

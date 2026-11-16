@@ -933,8 +933,8 @@ def check_storefront_example(md: str) -> list[str]:
 
 # Shop specs moved to the verified JWT roles claim (API review Q2, Q4, Q10, Q13): spec key -> the heading of its shop membership query (still read from
 # shop.t_shop_user). The needles are searched in the file where the text lives, the spec or the sequence, never both combined.
-SHOP_JWT_MEMBER = {"01": ("QUERY - Check shop member", "alt The caller is not an ACTIVE ADMIN or STAFF member of the shop"),
-                   "02": ("QUERY - Check shop members", "alt A shop of the request has no ACTIVE ADMIN or STAFF member row for the caller")}
+SHOP_JWT_MEMBER = {"01": ("QUERY - Check shop member", "alt The caller is not an ACTIVE OWNER, ADMIN or STAFF member of the shop"),
+                   "02": ("QUERY - Check shop members", "alt A shop of the request has no ACTIVE OWNER, ADMIN or STAFF member row for the caller")}
 SHOP_JWT_SPEC = ["Q2, Q4, Q10 and Q13", "the exact case-sensitive role `PLATFORM_ADMIN` in the verified `roles` claim", "do not query `author.m_role` or `author.t_user_role`",
                  "Membership of a shop is not a token claim and is still read from `shop.t_shop_user`", "#### QUERY - Lock the caller user", "WHERE u.id = '<sequence.callerUserId>'\nFOR UPDATE",
                  "#### QUERY - Check current credential and user", "AND at.expired_at > '<sequence.now>'", "(../../../schema/authen/m_user.md)", "(../../../schema/authen/t_user_access_token.md)",
@@ -1019,11 +1019,11 @@ def check_shop_spec() -> int:
     if errors:
         return fail("; ".join(errors))
     needles = {
-        "01": ["#### Lot Object", "- The system keeps one row per (shopId, productId, skuId)", "#### UPDATE - Close the lot that is on sale before another lot is put on sale",
+        "01": ["#### Lot Object", "AND su.role IN ('OWNER', 'ADMIN', 'STAFF')", "(an OWNER, an ADMIN or a STAFF in `shop.t_shop_user` that is ACTIVE)", "- The system keeps one row per (shopId, productId, skuId)", "#### UPDATE - Close the lot that is on sale before another lot is put on sale",
                "#### QUERY - Check lots in use", "sales.t_order_item", "Only one lot can be on sale", "E10006",
                "- Permission:", "E10009", "#### Fail - Forbidden", "#### QUERY - Check shop member",
                "must not be lower than costPrice", "ck_t_shop_product_sku_lot_price_not_below_cost"],
-        "02": ["#### Shop Product SKU Object", "#### Lot Object", "always 200", "skus[0].lots[1]", "Duplicate SKU",
+        "02": ["#### Shop Product SKU Object", "AND su.role IN ('OWNER', 'ADMIN', 'STAFF')", "(an OWNER, an ADMIN or a STAFF in `shop.t_shop_user` that is ACTIVE)", "#### Lot Object", "always 200", "skus[0].lots[1]", "Duplicate SKU",
                "must not be lower than costPrice", "ck_t_shop_product_sku_lot_price_not_below_cost",
                "- Permission:", "E10009", "#### Fail - Forbidden", "#### QUERY - Check shop members"],
         "03": ["#### Lot Object", "costPrice", "#### QUERY - Get lots", "ORDER BY l.is_on_sale DESC"],
@@ -1587,7 +1587,7 @@ def check_shop_profile_spec() -> int:
                "shops[1].images[0]: Shop image not found.", "#### QUERY - Check shop orders in use", "approved by the product owner", "never changes the lots that already exist",
                *SHOP_PROFILE_OWNER, "The caller of a batch becomes the OWNER of every shop that the batch inserts."],
         "10": ["# [GET]: v1/shop", "- Shops with `rowStatus` DELETED and images with `rowStatus` DELETED are never returned", "#### Shop Object", "#### Image Object", "#### QUERY - Get shops", "#### QUERY - Get total items",
-               "#### QUERY - Get shop type names", "#### QUERY - Get shop images", "#### QUERY - Check shop members",
+               "#### QUERY - Get shop type names", "#### QUERY - Get shop images", "#### QUERY - Check shop members", "AND su.role IN ('OWNER', 'ADMIN', 'STAFF')", "with the role OWNER, ADMIN or STAFF that is ACTIVE",
                "(../../../schema/shop/t_shop_user.md)", "approved by the product owner", "Null when the caller is not an ACTIVE member", "ORDER BY si.type, si.seq, si.created_at, si.id", "then creation time, then `id`",
                "Row status must be one of ACTIVE, INACTIVE, LOCKED, ARCHIVED.", "Page Index and Page Size must be greater than 0", "ILIKE", "typeName"],
     }
@@ -2038,8 +2038,8 @@ def check_shop_user_inquiry_examples(md: str) -> list[str]:
             errors.append("13: the Not Found example must have no items")
         if title == "Success":
             roster = [item for item in data["items"]]
-            if not any(i["role"] == "ADMIN" and i["rowStatus"] == "ACTIVE" for i in roster):
-                errors.append("13: the roster example of a shop must show an ACTIVE ADMIN")
+            if not any(i["role"] == "OWNER" and i["rowStatus"] == "ACTIVE" for i in roster):
+                errors.append("13: the roster example of a shop must show an ACTIVE OWNER (a shop keeps at least one)")
     return errors
 
 
@@ -2077,9 +2077,6 @@ def check_shop_user_spec() -> int:
             errors.append(f"{path} has no sequence.wsd beside it")
     if errors:
         return fail("; ".join(errors))
-    approval = ("The rules of this section, including the permission model (the ADMIN of the shop or a platform administrator, 403 E10009), "
-                "were approved by the product owner.")
-    permission = approval
     # Shop roles design of 2026-11-14 (D2, D3, D5), approved 2026-11-16: fixed OWNER/ADMIN/STAFF tiers and at least one ACTIVE OWNER.
     owner_approval = ("The rules of this section, including the permission model (the fixed shop roles OWNER, ADMIN and STAFF or a platform administrator, 403 E10009), "
                       "were approved by the product owner.")
@@ -2101,7 +2098,7 @@ def check_shop_user_spec() -> int:
         "12": ["# [POST]: v1/shop/user/upsert/batch", "- A member of a shop is a user that has a row in `shop.t_shop_user`", owner_approval, *owner_rules, "#### Shop User Object",
                "shopUsers[2]: Id is duplicated with shopUsers[1].", "shopUsers[2]: Shop Id and User Id are duplicated with shopUsers[0].", "Shop users must contain 1 to 100 items.",
                "#### QUERY - Count the OWNER members of the shop after the write", "except the OWNER rule that is checked once for each shop after all the items", "it must lock the row of the shop (`shop.m_shop`"],
-        "13": ["# [GET]: v1/shop/user", "- `shopId` or `userId` must be specified", approval, permission, "#### Shop User Object", "#### QUERY - Get shop users", "#### QUERY - Get total items",
+        "13": ["# [GET]: v1/shop/user", "- `shopId` or `userId` must be specified", owner_approval, "AND su.role IN ('OWNER', 'ADMIN', 'STAFF')", "Role filter (OWNER, ADMIN, STAFF)", "#### Shop User Object", "#### QUERY - Get shop users", "#### QUERY - Get total items",
                "#### QUERY - Check shop member", "ORDER BY su.created_at DESC, su.id", "(../../../schema/shop/t_shop_user.md)",
                "(../../../schema/authen/m_user.md)", "Shop Id or User Id is required.",
                "You do not have permission to view the members of this shop.", "The user name and the email address of a user are never returned",
