@@ -669,6 +669,7 @@ SELECT
 FROM shop.m_shop s
 WHERE s.id = '<sequence.id>'
 AND s.row_status <> 'DELETED' -- the id of a DELETED shop counts as not found
+FOR UPDATE
 ```
 
 #### QUERY - Check duplicate name
@@ -802,6 +803,8 @@ FROM shop.m_shop_image si
 WHERE si.id IN ('<sequence.images.ids>')
 AND si.shop_id = '<sequence.id>'
 AND si.row_status <> 'DELETED'
+ORDER BY si.id
+FOR UPDATE
 ```
 
 #### QUERY - Count the images of the shop that are not in the request

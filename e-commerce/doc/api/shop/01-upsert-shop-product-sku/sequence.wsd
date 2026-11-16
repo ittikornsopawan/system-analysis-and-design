@@ -73,6 +73,8 @@ activate page
                           existence checks (404) -> permission (403: an ACTIVE ADMIN or STAFF member of the shop, or PLATFORM_ADMIN in the verified roles claim) -> conflict and in-use checks (409) ->
                           write the shop product, the shop product SKU, close the lot on sale when a lot is put on sale, then write the lots. The whole request is one transaction.
                           The author tables are never queried; the membership of the shop is not a token claim and is still read from shop.t_shop_user.
+                        - Lock order: the caller user, then the shop product SKU of the request and its lots in ascending id order (FOR UPDATE), before the in-use checks and the write. The membership
+                          is checked before the lock, so a caller that is not a member never locks a row of the shop.
                     end note
                     app -> infra: BEGIN READ COMMITTED
                     activate infra
@@ -205,6 +207,7 @@ activate page
                                             ssk.sku_id
                                         FROM shop.t_shop_product_sku ssk
                                         WHERE ssk.id = '<sequence.id>'
+                                        FOR UPDATE
                                     end note
                                     t_shop_product_sku -> infra: Return query result
                                 deactivate t_shop_product_sku
@@ -228,6 +231,8 @@ activate page
                                         FROM shop.t_shop_product_sku_lot l
                                         WHERE l.id IN ('<sequence.lots.ids>')
                                         AND l.shop_product_sku_id = '<sequence.shopProductSkuId>'
+                                        ORDER BY l.id
+                                        FOR UPDATE
                                     end note
                                     t_shop_product_sku_lot -> infra: Return query result
                                 deactivate t_shop_product_sku_lot

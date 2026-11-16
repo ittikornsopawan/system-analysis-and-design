@@ -11,8 +11,8 @@ Checked on 2026-11-16 against `main` (c190f70) and the pull requests on GitHub. 
 | ----------------------------------------------- | ------ |
 | 1. Owner decisions and actions                  | 1      |
 | 2. Shop roles rollout (unblocked 2026-11-16)    | 12     |
-| 3. Deferred work and backlog                    | 7      |
-| **Real work still open**                        | **20** |
+| 3. Deferred work and backlog                    | 6      |
+| **Real work still open**                        | **19** |
 | 4. Records closed on 2026-11-16                 | 27     |
 
 ## 1. Owner decisions and actions
@@ -49,7 +49,7 @@ Source: `tasks/peter/todo.md`, design `docs/superpowers/specs/2026-11-14-shop-ro
 - [x] Merge the two `er_name_rows` helpers of `check_docs.py`. Done in the same pull request: the first one, which the second overrode, is removed.
 - [x] Extend `audit_all.py` to a column without an alias in the `WHERE` of an `UPDATE`. Done 2026-11-16: 129 UPDATE statements are now checked, 0 findings; a subquery or `UPDATE ... FROM` is skipped.
 - [ ] Retrofit the plain `UNIQUE` and `CASCADE` of the older master tables (owner approved on 2026-11-16).
-- [ ] Add `FOR UPDATE` to the target-row queries of shop SKU (01, 02), shop (08, 09) and shop user (11, 12), after the credential check and before the permission decision (owner decision of 2026-11-16).
+- [x] Add `FOR UPDATE` to the target-row queries of shop SKU (01, 02), shop (08, 09) and shop user (11, 12), after the credential check and before the permission decision (owner decision of 2026-11-16). Done 2026-11-16: the six specs lock their target rows; batches 02 and 09 first lock their existing rows in ascending id order; the shop SKU check keeps the membership check before the lock; `shop-spec` guards it.
 - [ ] Rewrite the team protocol in `docs/handoff/` to match the named-agent rule.
 - [x] Record the consent/02 answer in `docs/superpowers/specs/2026-11-07-api-review-design.md` (the root item was misread as a Head of Technology answer). Already done: section "Consent type of a consent (2026-11-14)" of that file.
 - [ ] Owner: verify the resource registry and the diagram role after Jinny's scope is released (`tasks/owner/todo.md`).

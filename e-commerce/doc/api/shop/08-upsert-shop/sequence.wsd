@@ -73,6 +73,7 @@ activate page
                           existence checks (404) -> permission (403: an ADMIN of the shop, or PLATFORM_ADMIN in the verified roles claim; only PLATFORM_ADMIN may change platformMarginRate) ->
                           duplicate name check (409, E10003) -> in-use check (409, E10006, only when `rowStatus` is DELETED) -> write the shop, the images and, for an insert, the ADMIN row.
                           The author tables are never queried; the membership of the shop is not a token claim and is still read from shop.t_shop_user.
+                        - Lock order: the caller user, then the shop and its images in ascending id order (FOR UPDATE), before the permission decision, the in-use checks and the write.
                     end note
                     app -> infra: BEGIN READ COMMITTED
                     activate infra
@@ -169,6 +170,7 @@ activate page
                                         FROM shop.m_shop s
                                         WHERE s.id = '<sequence.id>'
                                         AND s.row_status <> 'DELETED' -- the id of a DELETED shop counts as not found
+                                        FOR UPDATE
                                     end note
                                     m_shop -> infra: Return query result
                                 deactivate m_shop
@@ -191,6 +193,8 @@ activate page
                                         WHERE si.id IN ('<sequence.images.ids>')
                                         AND si.shop_id = '<sequence.id>'
                                         AND si.row_status <> 'DELETED'
+                                        ORDER BY si.id
+                                        FOR UPDATE
                                     end note
                                     m_shop_image -> infra: Return query result
                                 deactivate m_shop_image

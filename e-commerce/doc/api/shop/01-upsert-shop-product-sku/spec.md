@@ -711,6 +711,7 @@ SELECT
     ssk.sku_id
 FROM shop.t_shop_product_sku ssk
 WHERE ssk.id = '<sequence.id>'
+FOR UPDATE
 ```
 
 #### QUERY - Check duplicate shop product SKU
@@ -775,6 +776,8 @@ SELECT
 FROM shop.t_shop_product_sku_lot l
 WHERE l.id IN ('<sequence.lots.ids>')
 AND l.shop_product_sku_id = '<sequence.shopProductSkuId>'
+ORDER BY l.id
+FOR UPDATE
 ```
 
 #### QUERY - Check duplicate lot number
