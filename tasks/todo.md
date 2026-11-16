@@ -534,7 +534,7 @@ Status: Round 2 done, reported to the lead SA for gate 2 (round 1 approved by th
 - [x] Full run after the mutation work: every `check_docs.py` sub-command OK, `audit_all.py` 0 findings, `run_db_tests.sh` ALL PASSED (preflight with `--run-checks`); the ER file did not change after it was rendered and viewed.
 - [x] Report gate 2 to the lead SA (new WP7 files separate from the delivered files that were edited).
 - [x] Gate 2 result: passed with one fix (an example where the cap cuts a `FIXED_AMOUNT` discount): `sales/02` now has the Discount Example table and `Success - With Capped Discount`, `campaign-spec` checks the cap and the profits, 8/8 deliberate mistakes caught.
-- [ ] Wait for the lead SA to say that PR #12 is merged, then fetch and rebase once (no rebase before that), and wait for the owner's order to commit.
+- [x] Wait for the lead SA to say that PR #12 is merged, then fetch and rebase once (no rebase before that), and wait for the owner's order to commit. Evidence (closed by the SA Lead on the owner's order, 2026-11-16): WP7 campaign merged as pull request #15.
 
 Verification: `preflight.py --base main --run-checks`: `check_docs.py` 28/28 OK, `audit_all.py` 52 tables 0 findings, `run_db_tests.sh` ALL PASSED (tests 1 to 11 of `09-campaign.test.sql`), no blockers. No backend was run against the specs.
 
@@ -549,7 +549,7 @@ Status: Round 2 done and reported to the lead SA for gate 2 (gate 1 passed on 20
 - [x] Checkers: `shipping-spec` (needles, `deliveredAt` wording, the example is judged again with the five conditions) and `shipping-schema` (the index, test 7); mutation-tested with deliberate mistakes.
 - [x] Run every `check_docs.py` sub-command, `audit_all.py` and `run_db_tests.sh`.
 - [x] Gate 2 fix (lead SA, 2026-11-07): the scan query of the job now applies conditions 1, 2, 4 and 5 (a dead-end order no longer fills the batch and starves the others); S26, the rules, the example text and the checker `check_shipping_scan_query` (12 mutations caught) are updated.
-- [ ] Gate 2 result of the fix: the lead SA reads the short result; then merge the current `main` into the branch, commit and open the PR with `commit-and-pr` from `.workspace/tommy` (delivery is authorized), without merging.
+- [x] Gate 2 result of the fix: the lead SA reads the short result; then merge the current `main` into the branch, commit and open the PR with `commit-and-pr` from `.workspace/tommy` (delivery is authorized), without merging. Evidence (closed by the SA Lead on the owner's order, 2026-11-16): WP3b merged as pull request #26 from `feat/tommy-shipping-auto-complete`.
 
 Verification: see the gate 2 report; mutation tests on a copy of the tree: spec 30/30, schema doc and test file 3/3, migration through the checker 4/4 and through `run_db_tests.sh` 4/4. No backend was run against the specs.
 
@@ -601,7 +601,7 @@ Status: Implemented and committed locally by the author (commit 05c7d4a in her m
 - [x] Add the `PLATFORM_ADMIN` rule, the 403 example and the two permission queries to `shop/05`, `06`, `product/01`, `03`, `04`, `06`, `07`, `09` and `consent/02`, and the two queries to the `consent/02` sequence diagram.
 - [x] Add the checker `admin-write-spec`, narrow the leftover-word rule of `shop-type-spec`, and mutation-test every change (the author reports 150 of 150 caught).
 - [x] Run every checker, `audit_all.py` and `run_db_tests.sh` (the author reports 38 of 38, 0 findings, ALL PASSED).
-- [ ] Gate 2 of the lead, then push and open the pull request.
+- [x] Gate 2 of the lead, then push and open the pull request. Evidence (closed by the SA Lead on the owner's order, 2026-11-16): WP5c merged as pull request #20.
 
 Verification: the numbers above are the author's; the lead has not rerun them yet.
 
@@ -626,7 +626,7 @@ Status: In progress. Merged after the lead's review: WP3 shipping (pull request 
 - [x] Move the analysts' assignments to managed workspaces and widen the registry scope of tommy and marry (pull request 18) after the named-agent rule was merged.
 - [x] Decide the 409 of `01-register` (owner on 2026-11-07: "เลือกให้เลย", the choice is the lead's). Decision: keep the 409 with its single message that does not say whether the username or the email exists, no change to the spec. Why: there is no email verification, so a neutral answer would leave a real user without a way to know why registration failed; the login answer is already the same for every failure and the lock limits guessing. Cost if wrong: add email verification and answer every registration the same way, which is a new work package. The registration rate limit belongs to the gateway and is not specified.
 - [x] First platform administrator (owner on 2026-11-07, answered the lead's recommendation that the system operator runs `grant-platform-admin.sql` after confirming the user id: "แค่เก็บ data ไว้ เดี๋ยว dba มา export ให้การเงิน"). The lead reads this as: the database administrator is the system operator who runs the command, and the data is only stored, with no API for finance because the DBA exports it directly. This reading is not confirmed by the owner. Nothing in the specs changes.
-- [ ] Review gate 2 of WP3b.
+- [x] Review gate 2 of WP3b. Evidence (closed by the SA Lead on the owner's order, 2026-11-16): WP3b passed review and merged as pull request #26.
 - [ ] Backlog for the owner's order: merge the two `er_name_rows` helpers of `check_docs.py` (check first that the API review did not already do it), extend `audit_all.py` to a column without an alias in the `WHERE` of an `UPDATE`, retrofit the plain `UNIQUE` and `CASCADE` of the older master tables, rewrite the team protocol in `docs/handoff/` to match the named-agent rule. Decided elsewhere: JWT claims are the authorization source (owner with Peter, 2026-11-07).
 
 Verification: each gate was checked by running every `check_docs.py` sub-command, `audit_all.py` and `run_db_tests.sh` in the analyst's tree and by reading the changed specs. The analysts' own mutation tests were not rerun by the lead.
@@ -1280,7 +1280,7 @@ Authority: owner Q2/Q4/Q7/Q10/Q13/Q15 and direct instruction to proceed. API20 p
 - [x] Revise scope spec/SQL with verified JWT administration/current credentials, caller-first and target locking, nullable duplicate exclusion, all non-DELETED reference checks and guarded audited writes. Preserve existing scope-code editability, status lifecycle and exact messages/response shape.
 - [x] Finish paired sequence with actual SQL branches/results, complete validation/credential/permission/conflict/write/rollback/commit and delete/archive/insert-ARCHIVED outcomes.
 - [x] Add exact SQL/phase/response/render checking, mutation-test it and execute actual PostgreSQL lifecycle/usage/rollback/unique and credential/reference-writer lock races; inspect SVG/PNG.
-- [ ] Integrate newest main, preserve all unrelated API/checker work, run all required checks/preflight and publish one API PR; continue from main without waiting for merge.
+- [x] Integrate newest main, preserve all unrelated API/checker work, run all required checks/preflight and publish one API PR; continue from main without waiting for merge. Evidence (closed by the SA Lead on the owner's order, 2026-11-16): scope upsert merged as pull request #83.
 
 Lock protocol: caller user -> target scope -> reference reads/write. Active definition writers already lock their permission parents, then ACTIVE referenced scope masters; verify these shared statements when testing the scope deletion race. Q23 removal may skip a closed master and can only reduce usage. A definition with non-DELETED status blocks master delete/archive even if its permission parent is closed/deleted; no JOIN may hide usage. INACTIVE/LOCKED and ordinary code/name/description updates keep links unchanged. No reserved-scope rule or code immutability is introduced.
 
@@ -1300,7 +1300,7 @@ Authority: Q24 owner answer “ต้องถอน links ให้ครบก
 - [x] Reproduce the old batch gap and make the Q24-aware focused checker reject the old pair before artifact edits.
 - [x] Update spec/sequence together: final current-permission count, indexed 409, whole-batch rollback, complete withdrawal examples and unchanged SQL.
 - [x] Execute exact SQL fixtures for final-state cases, earlier-item/audit rollback, request-order behavior and parent-lock races; mutation-test and render/count visible SQL.
-- [ ] Integrate latest main, preserve unrelated functions/APIs, run full verification/preflight and open one batch-API PR without merging.
+- [x] Integrate latest main, preserve unrelated functions/APIs, run full verification/preflight and open one batch-API PR without merging. Evidence (closed by the SA Lead on the owner's order, 2026-11-16): batch permission delete guard merged as pull request #86.
 
 Batch Q24 evidence: the Q24-aware checker rejected the old pair before editing. Exact-SQL reference execution reproduced the old retained-definition deletion and indexed 404 on later cleanup. The new rule rejects omitted/empty/partial withdrawal, a newly added surviving link and every non-DELETED definition/closed-master state. Later-item failure returns no result and restores earlier inserted/updated parents, child links and all audit columns. Complete same-request withdrawal, zero definitions and DELETED-only history return ordered 200 DELETE actions; archive retention and Q22/Q23 remain valid. Actual parent-lock races pass in both orders; existing mixed/all-delete/100-item, credential wait, owner/immutable/reference, unique and SQL-failure fixtures remain green.
 
@@ -1313,7 +1313,7 @@ Authority: owner answered Q24 “ต้องถอน links ให้ครบ�
 - [x] Reproduce rejection of the old contract with a Q24-aware checker before changing the endpoint pair; record the legacy allowed delete/retained-link behavior.
 - [x] Update spec/sequence together: after all child writes reuse the final definition count; reject a DELETED parent with a positive count, roll back everything and preserve same-request complete withdrawal. Retain all existing SQL definitions unchanged.
 - [x] Verify concrete zero/one/many and closed/legacy definition cases, partial/full withdrawal, archive, grant/reference guards, audit rollback and deletion-vs-writer ordering; mutation-test the final guard and inspect the rendered diagram.
-- [ ] Integrate current main preserving every unrelated API/checker, run all required checks/preflight and publish one single-API PR; proceed immediately to the batch Q24 PR under Q15.
+- [x] Integrate current main preserving every unrelated API/checker, run all required checks/preflight and publish one single-API PR; proceed immediately to the batch Q24 PR under Q15. Evidence (closed by the SA Lead on the owner's order, 2026-11-16): single permission delete guard merged as pull request #85.
 
 Single Q24 evidence: approved-policy checker rejected the old pair before artifact edits. The unchanged SQL with legacy reference orchestration reproduced a deleted parent retaining a live definition and a later 404 cleanup attempt. New reference execution rejects every non-DELETED definition state, closed master, omitted/empty/partial withdrawal and newly inserted link on delete; all failures restore parent, children and audit. Complete same-request withdrawal and DELETED-only history permit 204; archive retention stays valid. Actual parent-lock races serialize definition creation versus deletion in both orders. Existing Q22/Q23/ref/unique/current-credential fixtures remain green.
 
@@ -1327,7 +1327,7 @@ Authority: owner requested `permission-scope.md`, API allowlists with spec links
 - [x] Inventory all 83 endpoint specs, existing ALL/SHOP/OWN scope codes and seven seeded permissions; identify the 40 queued endpoints and special authorization branches.
 - [x] Write permission-scope.md with Allow Scope, reverse API allowlists and direct spec links; distinguish existing gates, seed definitions, proposed pairings and rollout status.
 - [x] Persist Q18/Q19 and the requested per-API Allow Scope section format, preserving owner/shop/public/webhook exceptions.
-- [ ] Verify complete endpoint coverage, links, exact route names, permission-specific pairs, seed parity, special cases and unchanged API pairs; integrate latest main and publish the documentation PR.
+- [x] Verify complete endpoint coverage, links, exact route names, permission-specific pairs, seed parity, special cases and unchanged API pairs; integrate latest main and publish the documentation PR. Evidence (closed by the SA Lead on the owner's order, 2026-11-16): `e-commerce/doc/permission-scope.md` merged as pull request #88.
 
 Matrix verification: all 83 route headings and forward matrix entries are unique and agree with the real API methods/paths; every local spec/source link resolves. The 40 queued endpoints and all special operation/field exceptions match the reviewed inventory. Seed is unchanged at 3 scope codes, 7 permissions and 12 definitions. The proposal groups 11 permissions (4 new) and flags missing definitions; it does not claim grants or effect storage already exist. Eight in-memory document faults are rejected; eight reference deny-overlap cases pass, including cross-permission isolation and nonmatching SHOP denies. Metadata-bearing and legacy specs both parse. All 5 authored Markdown frontmatters parse via Ruby YAML. All 60 documentation commands, audit 53/0, database ALL PASSED and 12 skeleton tests pass. Every API spec/sequence, checker function, SQL and seed remains unchanged. No backend/HTTP/JWT effect enforcement is implemented or certified.
 
@@ -1352,7 +1352,7 @@ Status: Written in the managed workspace of Marry on branch `ci/marry-github-act
 - [x] Steps: every sub-command of `check_docs.py` (the list is read from the script, not written in the workflow; the step fails when the list is empty), `audit_all.py`, `run_db_tests.sh`, `test_sequence_skeleton.py` and `test_agent_workspace.py`; each step after the first runs even when an earlier one failed, so one run shows every failure, and the job fails when any step fails.
 - [x] The same commands run locally on the tree with `main` merged: 60 sub-commands, 0 failed; audit 0 findings; database tests ALL PASSED; skeleton test OK; workspace test 15 tests OK.
 - [x] Real runs on pull request #91: passing https://github.com/ittikornsopawan/system-analysis-and-design/actions/runs/43008956970 (10 steps, 40 seconds); one temporary commit removes the heading `### Cart Rules` from `cart/01` so `cart-spec` fails: https://github.com/ittikornsopawan/system-analysis-and-design/actions/runs/43009141504 failed (only `check_docs.py` red, the other four steps still ran and passed; "60 sub-commands, 1 failed"); the revert commit on the same branch (no force push): https://github.com/ittikornsopawan/system-analysis-and-design/actions/runs/43009341327 passed. The net diff of the pull request is the workflow and `tasks/todo.md`.
-- [ ] Tell the lead; the owner sets the branch protection of `main` (required status check `checks`, require branches to be up to date); hold the lock until the merge, then release and park.
+- [x] Tell the lead; the owner sets the branch protection of `main` (required status check `checks`, require branches to be up to date); hold the lock until the merge, then release and park. Evidence (closed by the SA Lead on the owner's order, 2026-11-16): the workflow merged as pull request #91 and `checks` runs on every pull request; the branch protection setting is an owner action tracked in `tasks/task.md`.
 
 ## repository-wide: A named agent starts the next task after opening a pull request (M5)
 
@@ -1460,7 +1460,7 @@ Authority: owner Q2/Q4/Q7/Q10/Q13/Q15, assignment `authorized_by: josh`, deliver
 - [x] Revise spec.md and sequence.wsd together: verified JWT roles claim, credential gate in a REPEATABLE READ READ ONLY snapshot, one 403 before count/page, count and page with identical joins and bound nullable filters (id/userId/roleId/rowStatus), six-field items, role name/user display name/id order, one COMMIT; remove the two live-admin queries.
 - [x] Generalize the slim inquiry check into `author_inquiry_flow` (now also compares FROM/JOIN) and add `user-role-inquiry-flow`; update the `author-spec` needles and counted filter lines for API11.
 - [x] Mutation-test, render, run every documentation command, audit and database tests on the branch merged with origin/main.
-- [ ] Open question for the SA Lead: two JWT wording defects in the delivered author/09 (spec lines "verify JWT/scopes (401)" and "verified token scopes") need a separate scoped fix; see the lesson of 2026-11-12.
+- [x] Open question for the SA Lead: two JWT wording defects in the delivered author/09 (spec lines "verify JWT/scopes (401)" and "verified token scopes") need a separate scoped fix; see the lesson of 2026-11-12. Evidence (closed by the SA Lead on the owner's order, 2026-11-16): fixed by pull request #105; `grep` for both phrases on main c190f70 finds nothing.
 
 User-role-inquiry verification: 16/16 deliberate faults rejected (including synchronized spec+sequence faults and the damaged JWT wording); PlantUML render shows 40/40 SQL lines. No schema, seed or backend change.
 ### Author API09 wording fix — JWT statements said scopes instead of roles
@@ -1509,7 +1509,7 @@ Authority: owner decision of 2026-11-13 relayed by Josh (SA Lead): "ใช้ร
 - [x] author/12-me: roles claim is unique non-empty strings; `data.roles` is an array of role names (roleId removed because the token no longer carries it; pending confirmation).
 - [x] permission-scope.md: rules converted to permission claims (`module.resource:action`) and scope claims (`all:*`, `shop:*`, `own:*`); deny and deny-wins removed; 83 links and 40 queue markers kept.
 - [x] Update the login payload check, the me checks and the refresh/login needles; mutation 15/15; render 116/116, 131/131 and 13/13 SQL lines.
-- [ ] Outstanding by design: every other spec, sequence and checker that still says roles are `{roleId, name}` objects (author 01–11, consent, payment, sales, product, shop) — each analyst corrects their group during the template work.
+- [x] Outstanding by design: every other spec, sequence and checker that still says roles are `{roleId, name}` objects (author 01–11, consent, payment, sales, product, shop) — each analyst corrects their group during the template work. Evidence (closed by the SA Lead on the owner's order, 2026-11-16): the roles claim sweep (#129) and the JWT round replaced them; `grep` for `{roleId, name}` role objects in `e-commerce/doc/api` on main c190f70 finds nothing.
 ## e-commerce: spec template, payment
 
 Status: Complete in the branch, waiting for review. Assignment: agent `tommy`, delivery `open-pr`, authorized by `josh`, workspace `.workspace/tommy`, branch `docs/tommy-spec-template-payment`, scopes `e-commerce/doc/api/payment`, `e-commerce/db/tests/check_docs.py`, `tasks`.
