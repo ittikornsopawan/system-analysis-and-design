@@ -302,6 +302,14 @@ def audit_specs(tables):
                     for col in re.findall(r"^\s*(\w+)\s*=", m.group(3), re.MULTILINE):
                         if col not in cols_of[full]:
                             finding("spec", f"{rel}: UPDATE {full} SET {col} - not a column")
+            # UPDATE schema.table SET ... WHERE col = ...: a column without an alias in the WHERE must be a column of the updated table
+            for m in re.finditer(r"UPDATE\s+\"?(\w+)\"?\.(\w+)\b[^;]*?\bWHERE\b(.*?)(?:;|\bRETURNING\b|$)", sql, re.DOTALL):
+                full, where = f"{m.group(1)}.{m.group(2)}", re.sub(r"'[^']*'", "''", m.group(3))
+                if full not in tables or re.search(r"\b(?:SELECT|FROM)\b", m.group(0).split("WHERE", 1)[0] + where):
+                    continue  # shortcut: a subquery or UPDATE ... FROM brings other tables in, so its bare columns are not checked
+                for col in re.findall(r"(?<![.\w])([a-z_][a-z0-9_]*)\s*(?:=|<>|!=|<=|>=|<|>|\bIS\b|\bIN\b|\bLIKE\b|\bBETWEEN\b)", where):
+                    if col not in cols_of[full]:
+                        finding("spec", f"{rel}: UPDATE {full} WHERE {col} - not a column")
         for target in re.findall(r"\]\((\.\./[^)#]+)", md):
             if not (path.parent / target).exists():
                 finding("spec", f"{rel}: broken link {target}")
