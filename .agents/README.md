@@ -31,6 +31,7 @@ This directory is the source of truth for repository-specific agent resources. R
 | `rules/markdown.md` | ready | Creating or modifying an authored Markdown file |
 | `rules/component-repositories.md` | ready | Reading, creating, cloning, verifying, or changing a Project's `REPOS.md` or `repository/` content |
 | `rules/named-agent-workspaces.md` | ready | Naming or delegating to an agent, changing delivery authority, or reading or changing `.workspace/` content |
+| `rules/task-management.md` | ready | Creating, tracking, closing, archiving or migrating a task record under `tasks/` |
 
 ## Workflows
 

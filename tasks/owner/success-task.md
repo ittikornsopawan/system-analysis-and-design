@@ -44,6 +44,23 @@ Blocker (history):
 Verification: 25 checklist items were closed with existing merged-PR or checker evidence; `rg -c '^\s*[-*] \[ \]' tasks/todo.md` reports 15 unresolved items. `git diff --check -- tasks/todo.md` passes. Migration remains blocked, and no active agent workspace was changed.
 - Unblocked at: 2026-11-17T09:14:29+07:00 — every legacy item resolved; the owner chose `tasks/owner` as the destination of all legacy records.
 
+## repository-wide: Update the agent resource registry and diagram role
+
+Owner: owner
+Status: Complete
+Created at: 2026-11-14T12:16:51+07:00
+Started at: 2026-11-17T09:20:03+07:00
+Completed at: 2026-11-17T09:20:03+07:00
+
+Blocker:
+- Blocked at: 2026-11-14T12:21:34+07:00
+- Reason: Jinny's active assignment includes `.agents/README.md` and `.agents/agents/diagram-designer.md`.
+- Waiting on: Jinny to finish the assignment and release those paths.
+- Next action: Recheck the assignment and current main after the paths are released, then register the new rule and update the diagram role.
+
+Verification: done by the SA Lead on the owner's order of 2026-11-17: `rules/task-management.md` registered in `.agents/README.md`; `agents/diagram-designer.md` step 3 records plans in `tasks/<workspace_key>/todo.md`; `check-registry` and every `check_docs.py` sub-command pass.
+- Unblocked at: 2026-11-17T09:14:29+07:00 — Jinny's assignment #70 is parked and her workspace holds no scope; the SA Lead does the update in a follow-up pull request.
+
 <!-- The records below were migrated verbatim from the legacy `tasks/todo.md` at 2026-11-17T09:14:29+07:00 by owner order (all legacy records go to tasks/owner). Their original owners are named inside each record. -->
 
 ## repository-wide: Create the API test-case creator skill

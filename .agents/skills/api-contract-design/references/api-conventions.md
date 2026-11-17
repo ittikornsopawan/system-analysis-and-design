@@ -56,7 +56,7 @@ validate the request (400) → existence (404) → permission (403) → conflict
 ## Permission patterns
 
 - Customer APIs: the user of the token owns the data; another user's row is "not found" (404), not 403.
-- Shop APIs: the caller must be an ACTIVE member of the shop (`shop.t_shop_user`, role `ADMIN` or `STAFF`) or a platform administrator (a user with the role `PLATFORM_ADMIN` in `author.t_user_role`), else 403 `E10009`. Reuse the same three SQL queries by their names ("Check shop member", "Get the platform administrator role", "Check platform administrator") so they stay identical everywhere.
+- Shop APIs: the caller must be an ACTIVE member of the shop (`shop.t_shop_user`, role `OWNER`, `ADMIN` or `STAFF`, with the fixed permissions of `docs/superpowers/specs/2026-11-14-shop-roles-design.md`) or have the exact role `PLATFORM_ADMIN` in the verified JWT `roles` claim, else 403 `E10009`. The shop role is read from the database, never from the token; the author tables are never queried for the platform administrator. Reuse the query "Check shop member" by its name so it stays identical everywhere.
 - A field the caller may not see (the platform's margin) stays in the response as `null`, so the shape does not change; say who sees it in a rule and make the example match.
 - Public (storefront) APIs have no `authorization` header and no 401/403, never return cost, margins or private people data, and treat a shop that is not ACTIVE as not found.
 - Sentences that record approval: "approved by the product owner" once the owner answered, "decided by the lead SA, pending product owner confirmation" before.
