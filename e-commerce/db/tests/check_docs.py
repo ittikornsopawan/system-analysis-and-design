@@ -9050,6 +9050,8 @@ def spec_example_statuses(md: str) -> set:
         status = json.loads(block).get("status") if block.strip() else None
         if isinstance(status, dict) and "code" in status:
             codes.add(status["code"])
+    if re.search(r"answers 429 \(E90002\)", md):  # the rate limit is stated in the rules of the spec, not drawn as an example
+        codes.add(429)
     return codes
 
 
@@ -9082,14 +9084,20 @@ def check_api_contract() -> int:
             elif key in specs:
                 errors.append(f"{rel}: {key[0]} {key[1]} is also defined by {specs[key][0]}")
             else:
-                specs[key] = (rel, spec_example_statuses(md))
-    for key, (rel, codes) in sorted(specs.items()):
+                specs[key] = (rel, spec_example_statuses(md), re.search(r"^\| \d+ +\| authorization +\|", md, re.MULTILINE) is not None)
+    if contract.get("security") != [{"bearerAuth": []}]:
+        errors.append(f"{API_CONTRACT}: the global security must be bearerAuth, so that an operation that forgets its security is protected")
+    for key, (rel, codes, protected) in sorted(specs.items()):
         op = published.get(key)
         if op is None:
             errors.append(f"{rel}: {key[0]} {key[1]} is missing from the contract")
             continue
         if op.get("x-spec") != rel:
             errors.append(f"{key[0]} {key[1]}: x-spec must be {rel}, found {op.get('x-spec')}")
+        if "security" not in op:
+            errors.append(f"{key[0]} {key[1]}: no `security`; a public operation says `security: []`")
+        elif bool(op["security"]) != protected:
+            errors.append(f"{key[0]} {key[1]}: security {op['security']} disagrees with the authorization header of {rel}")
         found = {int(code) for code in op.get("responses", {})}
         if found != codes:
             errors.append(f"{key[0]} {key[1]}: responses {sorted(found)} differ from the spec examples {sorted(codes)}")
