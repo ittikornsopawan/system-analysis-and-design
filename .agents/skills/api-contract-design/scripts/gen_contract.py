@@ -127,17 +127,25 @@ class Spec:
         return table(own_text(self.md, s[2], s[3])) if s else []
 
     def object_from(self, rows, scope, where):
-        props, required = {}, []
+        """A dotted name (data.object.id) is a field of nested objects: a table of an external payload (the Stripe
+        webhook) that lists only the fields the system reads, so those objects accept other fields
+        (additionalProperties: true, lead decision of 2026-11-17); a parent is required when a child is MANDATORY."""
+        schema = {"type": "object", "properties": {}}
         for r in rows:
             name, mo = r["Parameter Name"], r["M/O"]
-            props[name] = self.field(name, r["Data Type"], r.get("Description", ""), r.get("Example", ""), scope, f"{where}.{name}")
-            if mo == "MANDATORY":
-                required.append(name)
-            elif mo != "OPTIONAL":
+            if mo not in ("MANDATORY", "OPTIONAL"):
                 self.errors.append(f"{where}.{name}: M/O {mo!r}")
-        schema = {"type": "object", "properties": props}
-        if required:
-            schema["required"] = required
+            *parents, leaf = name.split(".")
+            node = schema
+            if parents:
+                schema["additionalProperties"] = True
+            for part in parents:
+                if mo == "MANDATORY" and part not in node.setdefault("required", []):
+                    node["required"].append(part)
+                node = node["properties"].setdefault(part, {"type": "object", "additionalProperties": True, "properties": {}})
+            node["properties"][leaf] = self.field(leaf, r["Data Type"], r.get("Description", ""), r.get("Example", ""), scope, f"{where}.{name}")
+            if mo == "MANDATORY":
+                node.setdefault("required", []).append(leaf)
         return schema
 
     def field(self, name, dtype, desc, example, scope, where):
@@ -328,7 +336,7 @@ def fit(contract, value, schema, where, problems, mark_null):
         for name, item in value.items():
             if name in props:
                 fit(contract, item, props[name], f"{where}.{name}", problems, mark_null)
-            elif props and schema.get("type") == "object":
+            elif props and schema.get("type") == "object" and schema.get("additionalProperties") is not True:
                 problems.append(f"{where}: {name} is not in the schema")
     if isinstance(value, list) and "items" in schema:
         for i, item in enumerate(value):
