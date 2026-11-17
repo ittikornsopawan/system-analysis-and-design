@@ -10,9 +10,9 @@ Checked on 2026-11-16 against `main` (c190f70) and the pull requests on GitHub. 
 | Group                                           | Tasks  |
 | ----------------------------------------------- | ------ |
 | 1. Owner decisions and actions                  | 1      |
-| 2. Shop roles rollout (unblocked 2026-11-16)    | 12     |
+| 2. Shop roles rollout (done 2026-11-16)         | 0      |
 | 3. Deferred work and backlog                    | 3      |
-| **Real work still open**                        | **16** |
+| **Real work still open**                        | **4**  |
 | 4. Records closed on 2026-11-16                 | 27     |
 
 ## 1. Owner decisions and actions
@@ -25,22 +25,22 @@ Checked on 2026-11-16 against `main` (c190f70) and the pull requests on GitHub. 
 - [x] Run `run_db_tests.sh` before the API work; CI no longer runs it (owner order of 2026-11-15). Owner decision of 2026-11-16: the SA Lead runs it on main and reports. Done 2026-11-16 by the SA Lead on main c453316 (PostgreSQL 17.11): `ALL PASSED`, 82 PASS lines: migrations up, down and up again with every SQL test.
 - [x] Have Barry (Head of Technology) review the final report of the JWT round; his session is not running. Owner decision of 2026-11-16: no Barry review for this round; the owner approves directly.
 
-## 2. Shop roles rollout (Peter; unblocked, the design was approved on 2026-11-16)
+## 2. Shop roles rollout (done 2026-11-16: #179, #181, #185, #188, #190 by Peter; #180, #183, #186, #187 by Tommy; final check passed on main c5c601e)
 
 Source: `tasks/peter/todo.md`, design `docs/superpowers/specs/2026-11-14-shop-roles-design.md`. Today 30 spec and sequence files still use the old role set `role IN ('ADMIN', 'STAFF')`.
 
-- [ ] PR 1: schema and test, `t_shop_user.role` accepts `OWNER`.
-- [ ] PR 2: `shop/11-upsert-shop-user`, fixed permission table, at least one ACTIVE OWNER.
-- [ ] PR 3: `shop/12-upsert-shop-user-batch`, the same rules for the batch.
-- [ ] PR 4: `shop/08-upsert-shop`, the creator becomes OWNER; delete and archive need an OWNER or a platform administrator.
-- [ ] PR 5: `shop/09-upsert-shop-batch`, the same for the batch.
-- [ ] PR 6: member checks of `shop/01`, `shop/02`, `shop/10`, `shop/13` include `OWNER`.
-- [ ] PR 7: `sales/04`, `sales/05` (Tommy).
-- [ ] PR 8: `payment/04`, and `payment/05` if the refund row stays (Tommy).
-- [ ] PR 9: `shipping/01–04` (Tommy).
-- [ ] PR 10: `campaign/02` (Tommy).
-- [ ] PR 11: `e-commerce/doc/permission-scope.md`, the shop role rows.
-- [ ] Final check: no old role set left in the specs; every check, the audit and the database tests pass on main.
+- [x] PR 1: schema and test, `t_shop_user.role` accepts `OWNER`.
+- [x] PR 2: `shop/11-upsert-shop-user`, fixed permission table, at least one ACTIVE OWNER.
+- [x] PR 3: `shop/12-upsert-shop-user-batch`, the same rules for the batch.
+- [x] PR 4: `shop/08-upsert-shop`, the creator becomes OWNER; delete and archive need an OWNER or a platform administrator.
+- [x] PR 5: `shop/09-upsert-shop-batch`, the same for the batch.
+- [x] PR 6: member checks of `shop/01`, `shop/02`, `shop/10`, `shop/13` include `OWNER`.
+- [x] PR 7: `sales/04`, `sales/05` (Tommy).
+- [x] PR 8: `payment/04`, and `payment/05` if the refund row stays (Tommy).
+- [x] PR 9: `shipping/01–04` (Tommy).
+- [x] PR 10: `campaign/02` (Tommy).
+- [x] PR 11: `e-commerce/doc/permission-scope.md`, the shop role rows.
+- [x] Final check: no old role set left in the specs; every check, the audit and the database tests pass on main.
 
 ## 3. Deferred work and backlog
 
