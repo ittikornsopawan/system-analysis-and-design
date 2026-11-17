@@ -3,26 +3,3430 @@
   "info": {
     "title": "E-commerce API",
     "version": "1.0.0",
-    "description": "OpenAPI template. No API endpoints are defined yet."
+    "description": "Machine-readable contract of the approved e-commerce API specs. The human-readable specs under e-commerce/doc/api are the source of behaviour; every operation names its spec in x-spec."
   },
   "servers": [
     {
-      "url": "https://dev.example.com",
-      "description": "Development"
+      "url": "https://www.domain.com/api-dev",
+      "description": "DEV"
     },
     {
-      "url": "https://qa.example.com",
+      "url": "https://www.domain.com/api-qa",
       "description": "QA"
     },
     {
-      "url": "https://uat.example.com",
+      "url": "https://www.domain.com/api-uat",
       "description": "UAT"
     },
     {
-      "url": "https://prod.example.com",
-      "description": "Production"
+      "url": "https://www.domain.com/api-pre-prod",
+      "description": "PRE-PRODUCTION"
+    },
+    {
+      "url": "https://www.domain.com/api",
+      "description": "PRODUCTION"
     }
   ],
-  "paths": {},
-  "components": {}
+  "tags": [
+    {
+      "name": "authen-and-author",
+      "description": "Approved specs under e-commerce/doc/api/authen-and-author"
+    }
+  ],
+  "paths": {
+    "/v1/auth/create-new-password": {
+      "post": {
+        "tags": [
+          "authen-and-author"
+        ],
+        "operationId": "createNewPassword",
+        "summary": null,
+        "description": "None\n\nSource spec: `e-commerce/doc/api/authen-and-author/04-create-new-password/spec.md`",
+        "x-spec": "e-commerce/doc/api/authen-and-author/04-create-new-password/spec.md",
+        "parameters": [
+          {
+            "$ref": "#/components/parameters/Timestamp"
+          },
+          {
+            "$ref": "#/components/parameters/RequestId"
+          }
+        ],
+        "requestBody": {
+          "required": true,
+          "content": {
+            "application/json": {
+              "schema": {
+                "type": "object",
+                "properties": {
+                  "resetToken": {
+                    "description": "Reset token from the link of the reset email",
+                    "type": "string"
+                  },
+                  "newPassword": {
+                    "description": "New password, Plain text over TLS (8 to 128 characters, an upper-case letter, a lower-case letter and a digit), Must differ from the current password",
+                    "type": "string",
+                    "minLength": 8,
+                    "maxLength": 128,
+                    "examples": [
+                      "NewSecret1x"
+                    ]
+                  }
+                },
+                "required": [
+                  "resetToken",
+                  "newPassword"
+                ]
+              },
+              "examples": {
+                "example": {
+                  "summary": "Example",
+                  "value": {
+                    "resetToken": "k9Vf2Tq8Lm5Zx1Rc7Ya3Pw6Jd0Hs4Gn2Bv8Cx5Mq1Ae...",
+                    "newPassword": "NewSecret1x"
+                  }
+                }
+              }
+            }
+          }
+        },
+        "responses": {
+          "200": {
+            "description": "Ok",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "type": "object",
+                  "required": [
+                    "status"
+                  ],
+                  "properties": {
+                    "status": {
+                      "$ref": "#/components/schemas/Status"
+                    }
+                  }
+                },
+                "examples": {
+                  "success": {
+                    "summary": "Success",
+                    "value": {
+                      "status": {
+                        "code": 200,
+                        "message": "Ok",
+                        "bizCode": "S10000",
+                        "bizMessage": "Create New Password Success",
+                        "requestId": "req-9b1deb4d-3b7d-4bad-9bdd-2b0d7b3dcb6d",
+                        "timestamp": "2026-11-06T09:00:00.123Z",
+                        "status": "SUCCESS"
+                      }
+                    }
+                  }
+                }
+              }
+            }
+          },
+          "400": {
+            "description": "Bad Request",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/Error400"
+                },
+                "examples": {
+                  "fail---bad-request": {
+                    "summary": "Fail - Bad Request",
+                    "value": {
+                      "status": {
+                        "code": 400,
+                        "message": "Bad Request",
+                        "bizCode": "E10001",
+                        "bizMessage": "Reset Token and New Password are required fields.",
+                        "requestId": "req-400a1b2c-3d4e-5f6a-7b8c-9d0e1f2a3b4c",
+                        "timestamp": "2026-11-06T09:40:40.123Z",
+                        "status": "ERROR"
+                      }
+                    }
+                  },
+                  "fail---bad-request-password-policy": {
+                    "summary": "Fail - Bad Request Password Policy",
+                    "value": {
+                      "status": {
+                        "code": 400,
+                        "message": "Bad Request",
+                        "bizCode": "E10001",
+                        "bizMessage": "Password must be 8 to 128 characters and contain an upper-case letter, a lower-case letter and a digit.",
+                        "requestId": "req-410a1b2c-3d4e-5f6a-7b8c-9d0e1f2a3b4c",
+                        "timestamp": "2026-11-06T09:41:47.123Z",
+                        "status": "ERROR"
+                      }
+                    }
+                  },
+                  "fail---bad-request-reset-token": {
+                    "summary": "Fail - Bad Request Reset Token",
+                    "value": {
+                      "status": {
+                        "code": 400,
+                        "message": "Bad Request",
+                        "bizCode": "E10001",
+                        "bizMessage": "Reset token is invalid or expired.",
+                        "requestId": "req-420a1b2c-3d4e-5f6a-7b8c-9d0e1f2a3b4c",
+                        "timestamp": "2026-11-06T09:42:54.123Z",
+                        "status": "ERROR"
+                      }
+                    }
+                  },
+                  "fail---bad-request-same-password": {
+                    "summary": "Fail - Bad Request Same Password",
+                    "value": {
+                      "status": {
+                        "code": 400,
+                        "message": "Bad Request",
+                        "bizCode": "E10001",
+                        "bizMessage": "New password must be different from the current password.",
+                        "requestId": "req-430a1b2c-3d4e-5f6a-7b8c-9d0e1f2a3b4c",
+                        "timestamp": "2026-11-06T09:43:01.123Z",
+                        "status": "ERROR"
+                      }
+                    }
+                  }
+                }
+              }
+            }
+          },
+          "408": {
+            "description": "Request Timeout",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/Error408"
+                },
+                "examples": {
+                  "fail---request-timeout": {
+                    "summary": "Fail - Request Timeout",
+                    "value": {
+                      "status": {
+                        "code": 408,
+                        "message": "Request Timeout",
+                        "bizCode": "E90001",
+                        "bizMessage": "The server timed out waiting for the request.",
+                        "requestId": "req-80a1b2c-3d4e-5f6a-7b8c-9d0e1f2a3b4c",
+                        "timestamp": "2026-11-06T09:08:56.123Z",
+                        "status": "ERROR"
+                      }
+                    }
+                  }
+                }
+              }
+            }
+          },
+          "500": {
+            "description": "Internal Server Error",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/Error500"
+                },
+                "examples": {
+                  "fail---internal-server-error": {
+                    "summary": "Fail - Internal Server Error",
+                    "value": {
+                      "status": {
+                        "code": 500,
+                        "message": "Internal Server Error",
+                        "bizMessage": "An unexpected error occurred.",
+                        "requestId": "req-reset-review",
+                        "timestamp": "2026-11-07T12:00:00.123Z",
+                        "status": "ERROR"
+                      }
+                    }
+                  }
+                }
+              }
+            }
+          }
+        }
+      }
+    },
+    "/v1/auth/login": {
+      "post": {
+        "tags": [
+          "authen-and-author"
+        ],
+        "operationId": "login",
+        "summary": null,
+        "description": "None\n\nSource spec: `e-commerce/doc/api/authen-and-author/02-login/spec.md`",
+        "x-spec": "e-commerce/doc/api/authen-and-author/02-login/spec.md",
+        "parameters": [
+          {
+            "$ref": "#/components/parameters/Timestamp"
+          },
+          {
+            "$ref": "#/components/parameters/RequestId"
+          }
+        ],
+        "requestBody": {
+          "required": true,
+          "content": {
+            "application/json": {
+              "schema": {
+                "type": "object",
+                "properties": {
+                  "username": {
+                    "description": "Username or email address, Plain text over TLS, The system encrypts it before it is compared",
+                    "type": "string",
+                    "examples": [
+                      "john.doe"
+                    ]
+                  },
+                  "password": {
+                    "description": "Password, Plain text over TLS",
+                    "type": "string",
+                    "examples": [
+                      "Passw0rd-Example"
+                    ]
+                  }
+                },
+                "required": [
+                  "username",
+                  "password"
+                ]
+              },
+              "examples": {
+                "example": {
+                  "summary": "Example",
+                  "value": {
+                    "username": "john.doe",
+                    "password": "Passw0rd-Example"
+                  }
+                }
+              }
+            }
+          }
+        },
+        "responses": {
+          "200": {
+            "description": "Ok",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "type": "object",
+                  "required": [
+                    "status"
+                  ],
+                  "properties": {
+                    "status": {
+                      "$ref": "#/components/schemas/Status"
+                    },
+                    "data": {
+                      "type": "object",
+                      "properties": {
+                        "tokenType": {
+                          "description": "Access Token Type",
+                          "type": "string",
+                          "examples": [
+                            "Bearer"
+                          ]
+                        },
+                        "accessToken": {
+                          "description": "Access Token",
+                          "type": "string"
+                        },
+                        "refreshAccessToken": {
+                          "description": "Refresh Token, Expiring 14 days after it is issued, Can be used once (see the refresh token API)",
+                          "type": "string"
+                        },
+                        "expiresIn": {
+                          "description": "Access Token Expiring in Second",
+                          "type": "number",
+                          "examples": [
+                            900
+                          ]
+                        }
+                      },
+                      "required": [
+                        "tokenType",
+                        "accessToken",
+                        "refreshAccessToken",
+                        "expiresIn"
+                      ]
+                    }
+                  }
+                },
+                "examples": {
+                  "success": {
+                    "summary": "Success",
+                    "value": {
+                      "status": {
+                        "code": 200,
+                        "message": "Ok",
+                        "bizCode": "S10000",
+                        "bizMessage": "Logged-in Success",
+                        "requestId": "req-9b1deb4d-3b7d-4bad-9bdd-2b0d7b3dcb6d",
+                        "timestamp": "2026-11-05T12:42:00.123Z",
+                        "status": "SUCCESS"
+                      },
+                      "data": {
+                        "tokenType": "Bearer",
+                        "accessToken": "eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9...",
+                        "refreshAccessToken": "rF3g7Hk9LpQ1m8vNxZpQ2w5rT8yU0i1oP3qR5sT7uV9wXyZ...",
+                        "expiresIn": 900
+                      }
+                    }
+                  }
+                }
+              }
+            }
+          },
+          "400": {
+            "description": "Bad Request",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/Error400"
+                },
+                "examples": {
+                  "fail---bad-request": {
+                    "summary": "Fail - Bad Request",
+                    "value": {
+                      "status": {
+                        "code": 400,
+                        "message": "Bad Request",
+                        "bizCode": "E10001",
+                        "bizMessage": "Username and Password are required fields.",
+                        "requestId": "req-400a1b2c-3d4e-5f6a-7b8c-9d0e1f2a3b4c",
+                        "timestamp": "2026-11-05T12:43:45.123Z",
+                        "status": "ERROR"
+                      }
+                    }
+                  }
+                }
+              }
+            }
+          },
+          "401": {
+            "description": "Unauthorized",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/Error401"
+                },
+                "examples": {
+                  "fail---unauthorized": {
+                    "summary": "Fail - Unauthorized",
+                    "value": {
+                      "status": {
+                        "code": 401,
+                        "message": "Unauthorized",
+                        "bizCode": "E10002",
+                        "bizMessage": "Invalid username or password.",
+                        "requestId": "req-7a2cba3e-1b2d-4caf-8cce-3b1d7b3dcb6d",
+                        "timestamp": "2026-11-05T12:43:10.456Z",
+                        "status": "ERROR"
+                      }
+                    }
+                  }
+                }
+              }
+            }
+          },
+          "408": {
+            "description": "Request Timeout",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/Error408"
+                },
+                "examples": {
+                  "fail---request-timeout": {
+                    "summary": "Fail - Request Timeout",
+                    "value": {
+                      "status": {
+                        "code": 408,
+                        "message": "Request Timeout",
+                        "bizCode": "E90001",
+                        "bizMessage": "The server timed out waiting for the request.",
+                        "requestId": "req-408a1b2c-3d4e-5f6a-7b8c-9d0e1f2a3b4c",
+                        "timestamp": "2026-11-05T12:45:30.123Z",
+                        "status": "ERROR"
+                      }
+                    }
+                  }
+                }
+              }
+            }
+          },
+          "500": {
+            "description": "Internal Server Error",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/Error500"
+                },
+                "examples": {
+                  "fail---internal-server-error": {
+                    "summary": "Fail - Internal Server Error",
+                    "value": {
+                      "status": {
+                        "code": 500,
+                        "message": "Internal Server Error",
+                        "bizMessage": "An unexpected error occurred.",
+                        "requestId": "req-500a1b2c-3d4e-5f6a-7b8c-9d0e1f2a3b4c",
+                        "timestamp": "2026-11-05T12:45:30.123Z",
+                        "status": "ERROR"
+                      }
+                    }
+                  }
+                }
+              }
+            }
+          }
+        }
+      }
+    },
+    "/v1/auth/logout": {
+      "post": {
+        "tags": [
+          "authen-and-author"
+        ],
+        "operationId": "logout",
+        "summary": null,
+        "description": "None\n\nSource spec: `e-commerce/doc/api/authen-and-author/06-logout/spec.md`",
+        "x-spec": "e-commerce/doc/api/authen-and-author/06-logout/spec.md",
+        "parameters": [
+          {
+            "$ref": "#/components/parameters/Timestamp"
+          },
+          {
+            "$ref": "#/components/parameters/RequestId"
+          }
+        ],
+        "security": [
+          {
+            "bearerAuth": []
+          }
+        ],
+        "requestBody": {
+          "required": true,
+          "content": {
+            "application/json": {
+              "schema": {
+                "type": "object",
+                "properties": {}
+              }
+            }
+          }
+        },
+        "responses": {
+          "200": {
+            "description": "Ok",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "type": "object",
+                  "required": [
+                    "status"
+                  ],
+                  "properties": {
+                    "status": {
+                      "$ref": "#/components/schemas/Status"
+                    }
+                  }
+                },
+                "examples": {
+                  "success": {
+                    "summary": "Success",
+                    "value": {
+                      "status": {
+                        "code": 200,
+                        "message": "Ok",
+                        "bizCode": "S10000",
+                        "bizMessage": "Logout Success",
+                        "requestId": "req-9b1deb4d-3b7d-4bad-9bdd-2b0d7b3dcb6d",
+                        "timestamp": "2026-11-06T09:00:00.123Z",
+                        "status": "SUCCESS"
+                      }
+                    }
+                  }
+                }
+              }
+            }
+          },
+          "400": {
+            "description": "Bad Request",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/Error400"
+                },
+                "examples": {
+                  "fail---bad-request": {
+                    "summary": "Fail - Bad Request",
+                    "value": {
+                      "status": {
+                        "code": 400,
+                        "message": "Bad Request",
+                        "bizCode": "E10001",
+                        "bizMessage": "Timestamp must be a valid UTC timestamp and the request body must be empty.",
+                        "requestId": "req-logout-review",
+                        "timestamp": "2026-11-07T12:00:00.123Z",
+                        "status": "ERROR"
+                      }
+                    }
+                  }
+                }
+              }
+            }
+          },
+          "401": {
+            "description": "Unauthorized",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/Error401"
+                },
+                "examples": {
+                  "fail---unauthorized": {
+                    "summary": "Fail - Unauthorized",
+                    "value": {
+                      "status": {
+                        "code": 401,
+                        "message": "Unauthorized",
+                        "bizCode": "E10002",
+                        "bizMessage": "Invalid or expired access token.",
+                        "requestId": "req-70a1b2c-3d4e-5f6a-7b8c-9d0e1f2a3b4c",
+                        "timestamp": "2026-11-06T09:07:49.123Z",
+                        "status": "ERROR"
+                      }
+                    }
+                  }
+                }
+              }
+            }
+          },
+          "408": {
+            "description": "Request Timeout",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/Error408"
+                },
+                "examples": {
+                  "fail---request-timeout": {
+                    "summary": "Fail - Request Timeout",
+                    "value": {
+                      "status": {
+                        "code": 408,
+                        "message": "Request Timeout",
+                        "bizCode": "E90001",
+                        "bizMessage": "The server timed out waiting for the request.",
+                        "requestId": "req-80a1b2c-3d4e-5f6a-7b8c-9d0e1f2a3b4c",
+                        "timestamp": "2026-11-06T09:08:56.123Z",
+                        "status": "ERROR"
+                      }
+                    }
+                  }
+                }
+              }
+            }
+          },
+          "500": {
+            "description": "Internal Server Error",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/Error500"
+                },
+                "examples": {
+                  "fail---internal-server-error": {
+                    "summary": "Fail - Internal Server Error",
+                    "value": {
+                      "status": {
+                        "code": 500,
+                        "message": "Internal Server Error",
+                        "bizMessage": "An unexpected error occurred.",
+                        "requestId": "req-logout-review",
+                        "timestamp": "2026-11-07T12:00:00.123Z",
+                        "status": "ERROR"
+                      }
+                    }
+                  }
+                }
+              }
+            }
+          }
+        }
+      }
+    },
+    "/v1/auth/refresh-token": {
+      "post": {
+        "tags": [
+          "authen-and-author"
+        ],
+        "operationId": "refreshToken",
+        "summary": null,
+        "description": "None\n\nSource spec: `e-commerce/doc/api/authen-and-author/05-refresh-token/spec.md`",
+        "x-spec": "e-commerce/doc/api/authen-and-author/05-refresh-token/spec.md",
+        "parameters": [
+          {
+            "$ref": "#/components/parameters/Timestamp"
+          },
+          {
+            "$ref": "#/components/parameters/RequestId"
+          }
+        ],
+        "requestBody": {
+          "required": true,
+          "content": {
+            "application/json": {
+              "schema": {
+                "type": "object",
+                "properties": {
+                  "refreshAccessToken": {
+                    "description": "Refresh token from login or from the last refresh",
+                    "type": "string"
+                  }
+                },
+                "required": [
+                  "refreshAccessToken"
+                ]
+              },
+              "examples": {
+                "example": {
+                  "summary": "Example",
+                  "value": {
+                    "refreshAccessToken": "rF3g7Hk9LpQ1m8vNxZpQ2w5rT8yU0i1oP3qR5sT7uV9wXyZ..."
+                  }
+                }
+              }
+            }
+          }
+        },
+        "responses": {
+          "200": {
+            "description": "Ok",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "type": "object",
+                  "required": [
+                    "status"
+                  ],
+                  "properties": {
+                    "status": {
+                      "$ref": "#/components/schemas/Status"
+                    },
+                    "data": {
+                      "type": "object",
+                      "properties": {
+                        "tokenType": {
+                          "description": "Access Token Type",
+                          "type": "string",
+                          "examples": [
+                            "Bearer"
+                          ]
+                        },
+                        "accessToken": {
+                          "description": "Access Token (JWT), Valid for expiresIn seconds",
+                          "type": "string"
+                        },
+                        "refreshAccessToken": {
+                          "description": "Refresh Token, Expiring 14 days after it is issued, Can be used once",
+                          "type": "string"
+                        },
+                        "expiresIn": {
+                          "description": "Access Token Expiring in Second",
+                          "type": "number",
+                          "examples": [
+                            900
+                          ]
+                        }
+                      },
+                      "required": [
+                        "tokenType",
+                        "accessToken",
+                        "refreshAccessToken",
+                        "expiresIn"
+                      ]
+                    }
+                  }
+                },
+                "examples": {
+                  "success": {
+                    "summary": "Success",
+                    "value": {
+                      "status": {
+                        "code": 200,
+                        "message": "Ok",
+                        "bizCode": "S10000",
+                        "bizMessage": "Refresh Token Success",
+                        "requestId": "req-9b1deb4d-3b7d-4bad-9bdd-2b0d7b3dcb6d",
+                        "timestamp": "2026-11-06T09:00:00.123Z",
+                        "status": "SUCCESS"
+                      },
+                      "data": {
+                        "tokenType": "Bearer",
+                        "accessToken": "eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9...",
+                        "refreshAccessToken": "rF3g7Hk9LpQ1m8vNxZpQ2w5rT8yU0i1oP3qR5sT7uV9wXyZ...",
+                        "expiresIn": 900
+                      }
+                    }
+                  }
+                }
+              }
+            }
+          },
+          "400": {
+            "description": "Bad Request",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/Error400"
+                },
+                "examples": {
+                  "fail---bad-request": {
+                    "summary": "Fail - Bad Request",
+                    "value": {
+                      "status": {
+                        "code": 400,
+                        "message": "Bad Request",
+                        "bizCode": "E10001",
+                        "bizMessage": "Refresh Access Token is a required field.",
+                        "requestId": "req-400a1b2c-3d4e-5f6a-7b8c-9d0e1f2a3b4c",
+                        "timestamp": "2026-11-06T09:40:40.123Z",
+                        "status": "ERROR"
+                      }
+                    }
+                  }
+                }
+              }
+            }
+          },
+          "401": {
+            "description": "Unauthorized",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/Error401"
+                },
+                "examples": {
+                  "fail---unauthorized": {
+                    "summary": "Fail - Unauthorized",
+                    "value": {
+                      "status": {
+                        "code": 401,
+                        "message": "Unauthorized",
+                        "bizCode": "E10002",
+                        "bizMessage": "Invalid or expired refresh token.",
+                        "requestId": "req-70a1b2c-3d4e-5f6a-7b8c-9d0e1f2a3b4c",
+                        "timestamp": "2026-11-06T09:07:49.123Z",
+                        "status": "ERROR"
+                      }
+                    }
+                  }
+                }
+              }
+            }
+          },
+          "408": {
+            "description": "Request Timeout",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/Error408"
+                },
+                "examples": {
+                  "fail---request-timeout": {
+                    "summary": "Fail - Request Timeout",
+                    "value": {
+                      "status": {
+                        "code": 408,
+                        "message": "Request Timeout",
+                        "bizCode": "E90001",
+                        "bizMessage": "The server timed out waiting for the request.",
+                        "requestId": "req-80a1b2c-3d4e-5f6a-7b8c-9d0e1f2a3b4c",
+                        "timestamp": "2026-11-06T09:08:56.123Z",
+                        "status": "ERROR"
+                      }
+                    }
+                  }
+                }
+              }
+            }
+          },
+          "500": {
+            "description": "Internal Server Error",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/Error500"
+                },
+                "examples": {
+                  "fail---internal-server-error": {
+                    "summary": "Fail - Internal Server Error",
+                    "value": {
+                      "status": {
+                        "code": 500,
+                        "message": "Internal Server Error",
+                        "bizMessage": "An unexpected error occurred.",
+                        "requestId": "req-500a1b2c-3d4e-5f6a-7b8c-9d0e1f2a3b4c",
+                        "timestamp": "2026-11-06T09:00:00.123Z",
+                        "status": "ERROR"
+                      }
+                    }
+                  }
+                }
+              }
+            }
+          }
+        }
+      }
+    },
+    "/v1/auth/register": {
+      "post": {
+        "tags": [
+          "authen-and-author"
+        ],
+        "operationId": "register",
+        "summary": null,
+        "description": "None\n\nSource spec: `e-commerce/doc/api/authen-and-author/01-register/spec.md`",
+        "x-spec": "e-commerce/doc/api/authen-and-author/01-register/spec.md",
+        "parameters": [
+          {
+            "$ref": "#/components/parameters/Timestamp"
+          },
+          {
+            "$ref": "#/components/parameters/RequestId"
+          }
+        ],
+        "requestBody": {
+          "required": true,
+          "content": {
+            "application/json": {
+              "schema": {
+                "type": "object",
+                "properties": {
+                  "username": {
+                    "description": "Username (max 128 characters), Plain text over TLS, The system encrypts it before it is stored, It can be the email address",
+                    "type": "string",
+                    "maxLength": 128,
+                    "examples": [
+                      "john.doe"
+                    ]
+                  },
+                  "emailAddress": {
+                    "description": "Email address (max 254 characters), Plain text over TLS, The system encrypts it before it is stored",
+                    "type": "string",
+                    "maxLength": 254,
+                    "examples": [
+                      "john.doe@example.com"
+                    ]
+                  },
+                  "password": {
+                    "description": "Password, Plain text over TLS, 8 to 128 characters with an upper-case letter, a lower-case letter and a digit, Stored as a salted PBKDF2-HMAC-SHA256 hash",
+                    "type": "string",
+                    "minLength": 8,
+                    "maxLength": 128,
+                    "examples": [
+                      "Passw0rd-Example"
+                    ]
+                  },
+                  "firstName": {
+                    "description": "First name (max 100 characters), Plain text over TLS, The system encrypts it before it is stored",
+                    "type": "string",
+                    "maxLength": 100,
+                    "examples": [
+                      "John"
+                    ]
+                  },
+                  "lastName": {
+                    "description": "Last name (max 100 characters), Plain text over TLS, The system encrypts it before it is stored",
+                    "type": "string",
+                    "maxLength": 100,
+                    "examples": [
+                      "Doe"
+                    ]
+                  },
+                  "displayName": {
+                    "description": "Display name (max 128 characters)",
+                    "type": "string",
+                    "maxLength": 128,
+                    "examples": [
+                      "John Doe"
+                    ]
+                  },
+                  "profilePicturePath": {
+                    "description": "Profile picture path",
+                    "type": "string",
+                    "examples": [
+                      "/profiles/john-doe.png"
+                    ]
+                  },
+                  "phoneNumber": {
+                    "description": "Phone number",
+                    "type": "string",
+                    "examples": [
+                      "0812345678"
+                    ]
+                  },
+                  "address": {
+                    "description": "Address",
+                    "type": "string",
+                    "examples": [
+                      "123 Sukhumvit Road"
+                    ]
+                  },
+                  "dateOfBirth": {
+                    "description": "Date of birth (YYYY-MM-DD)",
+                    "type": "string",
+                    "format": "date",
+                    "examples": [
+                      "1990-01-31"
+                    ]
+                  },
+                  "gender": {
+                    "description": "Gender (MALE, FEMALE, OTHER)",
+                    "type": "string",
+                    "enum": [
+                      "MALE",
+                      "FEMALE",
+                      "OTHER"
+                    ],
+                    "examples": [
+                      "MALE"
+                    ]
+                  },
+                  "referrerId": {
+                    "description": "User Id of the referrer",
+                    "type": "string",
+                    "format": "uuid",
+                    "examples": [
+                      "8d7c6b5a-4f3e-2d1c-0b9a-876543210fed"
+                    ]
+                  },
+                  "addresses": {
+                    "description": "User address",
+                    "type": "object",
+                    "properties": {
+                      "title": {
+                        "description": "Address title (max 128 characters)",
+                        "type": "string",
+                        "maxLength": 128,
+                        "examples": [
+                          "Home"
+                        ]
+                      },
+                      "isDefault": {
+                        "description": "Default address, The first address of a user is always the default address",
+                        "type": "boolean",
+                        "examples": [
+                          true
+                        ]
+                      },
+                      "address": {
+                        "description": "Address",
+                        "type": "string",
+                        "examples": [
+                          "123 Sukhumvit Road"
+                        ]
+                      },
+                      "city": {
+                        "description": "City",
+                        "type": "string",
+                        "examples": [
+                          "Watthana"
+                        ]
+                      },
+                      "state": {
+                        "description": "State",
+                        "type": "string",
+                        "examples": [
+                          "Bangkok"
+                        ]
+                      },
+                      "postalCode": {
+                        "description": "Postal code",
+                        "type": "string",
+                        "examples": [
+                          "10110"
+                        ]
+                      },
+                      "country": {
+                        "description": "Country",
+                        "type": "string",
+                        "examples": [
+                          "Thailand"
+                        ]
+                      }
+                    },
+                    "required": [
+                      "title",
+                      "address",
+                      "city",
+                      "state",
+                      "postalCode",
+                      "country"
+                    ]
+                  },
+                  "consents": {
+                    "description": "Displayed consents; required current consents must all be included and accepted",
+                    "type": "array",
+                    "items": {
+                      "type": "object",
+                      "properties": {
+                        "consentId": {
+                          "description": "Consent Id",
+                          "type": "string",
+                          "format": "uuid",
+                          "examples": [
+                            "c1a2b3d4-e5f6-4a7b-8c9d-0e1f2a3b4c5d"
+                          ]
+                        },
+                        "consentVersion": {
+                          "description": "The displayed version (max 8 characters); must match the current version; never defaulted",
+                          "type": "string",
+                          "maxLength": 8,
+                          "examples": [
+                            "1.0.0"
+                          ]
+                        },
+                        "result": {
+                          "description": "Explicit answer; omission records reading only, stored as false for this new row. Required consent needs explicit true",
+                          "type": "boolean",
+                          "examples": [
+                            true
+                          ]
+                        }
+                      },
+                      "required": [
+                        "consentId",
+                        "consentVersion"
+                      ]
+                    }
+                  }
+                },
+                "required": [
+                  "username",
+                  "emailAddress",
+                  "password"
+                ]
+              },
+              "examples": {
+                "example": {
+                  "summary": "Example",
+                  "value": {
+                    "username": "john.doe",
+                    "emailAddress": "john.doe@example.com",
+                    "password": "Passw0rd-Example",
+                    "firstName": "John",
+                    "lastName": "Doe",
+                    "displayName": "John Doe",
+                    "profilePicturePath": "/profiles/john-doe.png",
+                    "phoneNumber": "0812345678",
+                    "address": "123 Sukhumvit Road",
+                    "dateOfBirth": "1990-01-31",
+                    "gender": "MALE",
+                    "referrerId": "8d7c6b5a-4f3e-2d1c-0b9a-876543210fed",
+                    "addresses": {
+                      "title": "Home",
+                      "isDefault": true,
+                      "address": "123 Sukhumvit Road",
+                      "city": "Watthana",
+                      "state": "Bangkok",
+                      "postalCode": "10110",
+                      "country": "Thailand"
+                    },
+                    "consents": [
+                      {
+                        "consentId": "c1a2b3d4-e5f6-4a7b-8c9d-0e1f2a3b4c5d",
+                        "consentVersion": "1.0.0",
+                        "result": true
+                      }
+                    ]
+                  }
+                }
+              }
+            }
+          }
+        },
+        "responses": {
+          "201": {
+            "description": "Created",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "type": "object",
+                  "required": [
+                    "status"
+                  ],
+                  "properties": {
+                    "status": {
+                      "$ref": "#/components/schemas/Status"
+                    },
+                    "data": {
+                      "type": "object",
+                      "properties": {
+                        "userId": {
+                          "description": "Registered User Id",
+                          "type": "string",
+                          "format": "uuid",
+                          "examples": [
+                            "3f2b8c1e-5d4a-4e7b-9c6d-1a2b3c4d5e6f"
+                          ]
+                        }
+                      },
+                      "required": [
+                        "userId"
+                      ]
+                    }
+                  }
+                },
+                "examples": {
+                  "success": {
+                    "summary": "Success",
+                    "value": {
+                      "status": {
+                        "code": 201,
+                        "message": "Created",
+                        "bizCode": "S10000",
+                        "bizMessage": "Register Success",
+                        "requestId": "req-9b1deb4d-3b7d-4bad-9bdd-2b0d7b3dcb6d",
+                        "timestamp": "2026-11-05T12:42:00.123Z",
+                        "status": "SUCCESS"
+                      },
+                      "data": {
+                        "userId": "3f2b8c1e-5d4a-4e7b-9c6d-1a2b3c4d5e6f"
+                      }
+                    }
+                  }
+                }
+              }
+            }
+          },
+          "400": {
+            "description": "Bad Request",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/Error400"
+                },
+                "examples": {
+                  "fail---bad-request": {
+                    "summary": "Fail - Bad Request",
+                    "value": {
+                      "status": {
+                        "code": 400,
+                        "message": "Bad Request",
+                        "bizCode": "E10001",
+                        "bizMessage": "Username, Email Address and Password are required fields.",
+                        "requestId": "req-400a1b2c-3d4e-5f6a-7b8c-9d0e1f2a3b4c",
+                        "timestamp": "2026-11-05T12:43:45.123Z",
+                        "status": "ERROR"
+                      }
+                    }
+                  },
+                  "fail---bad-request-password": {
+                    "summary": "Fail - Bad Request Password",
+                    "value": {
+                      "status": {
+                        "code": 400,
+                        "message": "Bad Request",
+                        "bizCode": "E10001",
+                        "bizMessage": "Password must be 8 to 128 characters and contain an upper-case letter, a lower-case letter and a digit.",
+                        "requestId": "req-410a1b2c-3d4e-5f6a-7b8c-9d0e1f2a3b4c",
+                        "timestamp": "2026-11-05T12:43:50.123Z",
+                        "status": "ERROR"
+                      }
+                    }
+                  },
+                  "fail---consent-version": {
+                    "summary": "Fail - Consent Version",
+                    "value": {
+                      "status": {
+                        "code": 400,
+                        "message": "Bad Request",
+                        "bizCode": "E10001",
+                        "bizMessage": "Consent version is no longer current.",
+                        "requestId": "req-register-review",
+                        "timestamp": "2026-11-07T12:00:00.123Z",
+                        "status": "ERROR"
+                      }
+                    }
+                  },
+                  "fail---required-consent": {
+                    "summary": "Fail - Required Consent",
+                    "value": {
+                      "status": {
+                        "code": 400,
+                        "message": "Bad Request",
+                        "bizCode": "E10001",
+                        "bizMessage": "All current required consents must be accepted.",
+                        "requestId": "req-register-review",
+                        "timestamp": "2026-11-07T12:00:00.123Z",
+                        "status": "ERROR"
+                      }
+                    }
+                  }
+                }
+              }
+            }
+          },
+          "404": {
+            "description": "Not Found",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/Error404"
+                },
+                "examples": {
+                  "fail---not-found-reference": {
+                    "summary": "Fail - Not Found Reference",
+                    "value": {
+                      "status": {
+                        "code": 404,
+                        "message": "Not Found",
+                        "bizCode": "E10005",
+                        "bizMessage": "Consent or referrer not found.",
+                        "requestId": "req-register-review",
+                        "timestamp": "2026-11-07T12:00:00.123Z",
+                        "status": "ERROR"
+                      }
+                    }
+                  }
+                }
+              }
+            }
+          },
+          "408": {
+            "description": "Request Timeout",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/Error408"
+                },
+                "examples": {
+                  "fail---request-timeout": {
+                    "summary": "Fail - Request Timeout",
+                    "value": {
+                      "status": {
+                        "code": 408,
+                        "message": "Request Timeout",
+                        "bizCode": "E90001",
+                        "bizMessage": "The server timed out waiting for the request.",
+                        "requestId": "req-408a1b2c-3d4e-5f6a-7b8c-9d0e1f2a3b4c",
+                        "timestamp": "2026-11-05T12:45:30.123Z",
+                        "status": "ERROR"
+                      }
+                    }
+                  }
+                }
+              }
+            }
+          },
+          "409": {
+            "description": "Conflict",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/Error409"
+                },
+                "examples": {
+                  "fail---conflict": {
+                    "summary": "Fail - Conflict",
+                    "value": {
+                      "status": {
+                        "code": 409,
+                        "message": "Conflict",
+                        "bizCode": "E10003",
+                        "bizMessage": "Username or email address already exists.",
+                        "requestId": "req-409a1b2c-3d4e-5f6a-7b8c-9d0e1f2a3b4c",
+                        "timestamp": "2026-11-05T12:44:20.789Z",
+                        "status": "ERROR"
+                      }
+                    }
+                  }
+                }
+              }
+            }
+          },
+          "500": {
+            "description": "Internal Server Error",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/Error500"
+                },
+                "examples": {
+                  "fail---internal-server-error": {
+                    "summary": "Fail - Internal Server Error",
+                    "value": {
+                      "status": {
+                        "code": 500,
+                        "message": "Internal Server Error",
+                        "bizMessage": "An unexpected error occurred.",
+                        "requestId": "req-register-review",
+                        "timestamp": "2026-11-07T12:00:00.123Z",
+                        "status": "ERROR"
+                      }
+                    }
+                  }
+                }
+              }
+            }
+          }
+        }
+      }
+    },
+    "/v1/auth/reset-password": {
+      "post": {
+        "tags": [
+          "authen-and-author"
+        ],
+        "operationId": "resetPassword",
+        "summary": null,
+        "description": "None\n\nSource spec: `e-commerce/doc/api/authen-and-author/03-reset-password/spec.md`",
+        "x-spec": "e-commerce/doc/api/authen-and-author/03-reset-password/spec.md",
+        "parameters": [
+          {
+            "$ref": "#/components/parameters/Timestamp"
+          },
+          {
+            "$ref": "#/components/parameters/RequestId"
+          }
+        ],
+        "requestBody": {
+          "required": true,
+          "content": {
+            "application/json": {
+              "schema": {
+                "type": "object",
+                "properties": {
+                  "emailAddress": {
+                    "description": "Email address of the account, Plain text over TLS, The system encrypts it before it is compared (max 254 characters)",
+                    "type": "string",
+                    "maxLength": 254,
+                    "examples": [
+                      "john.doe@example.com"
+                    ]
+                  }
+                },
+                "required": [
+                  "emailAddress"
+                ]
+              },
+              "examples": {
+                "example": {
+                  "summary": "Example",
+                  "value": {
+                    "emailAddress": "john.doe@example.com"
+                  }
+                }
+              }
+            }
+          }
+        },
+        "responses": {
+          "200": {
+            "description": "Ok",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "type": "object",
+                  "required": [
+                    "status"
+                  ],
+                  "properties": {
+                    "status": {
+                      "$ref": "#/components/schemas/Status"
+                    }
+                  }
+                },
+                "examples": {
+                  "success": {
+                    "summary": "Success",
+                    "value": {
+                      "status": {
+                        "code": 200,
+                        "message": "Ok",
+                        "bizCode": "S10000",
+                        "bizMessage": "If the email address is registered, a reset link has been sent.",
+                        "requestId": "req-9b1deb4d-3b7d-4bad-9bdd-2b0d7b3dcb6d",
+                        "timestamp": "2026-11-06T09:00:00.123Z",
+                        "status": "SUCCESS"
+                      }
+                    }
+                  }
+                }
+              }
+            }
+          },
+          "400": {
+            "description": "Bad Request",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/Error400"
+                },
+                "examples": {
+                  "fail---bad-request": {
+                    "summary": "Fail - Bad Request",
+                    "value": {
+                      "status": {
+                        "code": 400,
+                        "message": "Bad Request",
+                        "bizCode": "E10001",
+                        "bizMessage": "Email Address is required and must be a valid email address.",
+                        "requestId": "req-400a1b2c-3d4e-5f6a-7b8c-9d0e1f2a3b4c",
+                        "timestamp": "2026-11-06T09:40:40.123Z",
+                        "status": "ERROR"
+                      }
+                    }
+                  }
+                }
+              }
+            }
+          },
+          "408": {
+            "description": "Request Timeout",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/Error408"
+                },
+                "examples": {
+                  "fail---request-timeout": {
+                    "summary": "Fail - Request Timeout",
+                    "value": {
+                      "status": {
+                        "code": 408,
+                        "message": "Request Timeout",
+                        "bizCode": "E90001",
+                        "bizMessage": "The server timed out waiting for the request.",
+                        "requestId": "req-80a1b2c-3d4e-5f6a-7b8c-9d0e1f2a3b4c",
+                        "timestamp": "2026-11-06T09:08:56.123Z",
+                        "status": "ERROR"
+                      }
+                    }
+                  }
+                }
+              }
+            }
+          },
+          "500": {
+            "description": "Internal Server Error",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/Error500"
+                },
+                "examples": {
+                  "fail---internal-server-error": {
+                    "summary": "Fail - Internal Server Error",
+                    "value": {
+                      "status": {
+                        "code": 500,
+                        "message": "Internal Server Error",
+                        "bizMessage": "An unexpected error occurred.",
+                        "requestId": "req-reset-request-review",
+                        "timestamp": "2026-11-08T00:00:00.123Z",
+                        "status": "ERROR"
+                      }
+                    }
+                  }
+                }
+              }
+            }
+          }
+        }
+      }
+    },
+    "/v1/user/address": {
+      "get": {
+        "tags": [
+          "authen-and-author"
+        ],
+        "operationId": "inquiryUserAddress",
+        "summary": null,
+        "description": "None\n\nSource spec: `e-commerce/doc/api/authen-and-author/10-inquiry-user-address/spec.md`",
+        "x-spec": "e-commerce/doc/api/authen-and-author/10-inquiry-user-address/spec.md",
+        "parameters": [
+          {
+            "$ref": "#/components/parameters/Timestamp"
+          },
+          {
+            "$ref": "#/components/parameters/RequestId"
+          },
+          {
+            "name": "id",
+            "in": "query",
+            "required": false,
+            "description": "Own address id filter, Combined with search/status and normal pagination, Missing or other-user id returns an empty list",
+            "schema": {
+              "type": "string",
+              "format": "uuid",
+              "examples": [
+                "d4e5f6a7-b8c9-4d0e-9f1a-2b3c4d5e6f7a"
+              ]
+            }
+          },
+          {
+            "name": "pageIndex",
+            "in": "query",
+            "required": false,
+            "description": "Page index starting from 1, Defaults to 1",
+            "schema": {
+              "type": "number",
+              "default": 1,
+              "examples": [
+                1
+              ]
+            }
+          },
+          {
+            "name": "pageSize",
+            "in": "query",
+            "required": false,
+            "description": "Number of items per page (max 100), Defaults to 10",
+            "schema": {
+              "type": "number",
+              "maximum": 100,
+              "default": 10,
+              "examples": [
+                10
+              ]
+            }
+          },
+          {
+            "name": "search",
+            "in": "query",
+            "required": false,
+            "description": "Search by address title",
+            "schema": {
+              "type": "string",
+              "examples": [
+                "home"
+              ]
+            }
+          },
+          {
+            "name": "rowStatus",
+            "in": "query",
+            "required": false,
+            "description": "Row status filter (ACTIVE, INACTIVE), All statuses except DELETED when not specified",
+            "schema": {
+              "type": "string",
+              "enum": [
+                "ACTIVE",
+                "INACTIVE"
+              ],
+              "examples": [
+                "ACTIVE"
+              ]
+            }
+          }
+        ],
+        "security": [
+          {
+            "bearerAuth": []
+          }
+        ],
+        "responses": {
+          "200": {
+            "description": "Ok",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "type": "object",
+                  "required": [
+                    "status"
+                  ],
+                  "properties": {
+                    "status": {
+                      "$ref": "#/components/schemas/Status"
+                    },
+                    "data": {
+                      "type": "object",
+                      "properties": {
+                        "items": {
+                          "description": "User addresses, Empty array when not found",
+                          "type": "array",
+                          "items": {
+                            "type": "object",
+                            "properties": {
+                              "userAddressId": {
+                                "description": "User Address Id",
+                                "type": "string",
+                                "format": "uuid",
+                                "examples": [
+                                  "d4e5f6a7-b8c9-4d0e-9f1a-2b3c4d5e6f7a"
+                                ]
+                              },
+                              "title": {
+                                "description": "Address title",
+                                "type": "string",
+                                "examples": [
+                                  "Home (condo)"
+                                ]
+                              },
+                              "isDefault": {
+                                "description": "Default address",
+                                "type": "boolean",
+                                "examples": [
+                                  true
+                                ]
+                              },
+                              "address": {
+                                "description": "Address (plain text)",
+                                "type": "string",
+                                "examples": [
+                                  "123 Sukhumvit Road"
+                                ]
+                              },
+                              "city": {
+                                "description": "City (plain text)",
+                                "type": "string",
+                                "examples": [
+                                  "Watthana"
+                                ]
+                              },
+                              "state": {
+                                "description": "State (plain text)",
+                                "type": "string",
+                                "examples": [
+                                  "Bangkok"
+                                ]
+                              },
+                              "postalCode": {
+                                "description": "Postal code (plain text)",
+                                "type": "string",
+                                "examples": [
+                                  "10110"
+                                ]
+                              },
+                              "country": {
+                                "description": "Country (plain text)",
+                                "type": "string",
+                                "examples": [
+                                  "Thailand"
+                                ]
+                              },
+                              "rowStatus": {
+                                "description": "Stored non-DELETED row status",
+                                "type": "string",
+                                "examples": [
+                                  "ACTIVE"
+                                ]
+                              }
+                            },
+                            "required": [
+                              "userAddressId",
+                              "title",
+                              "isDefault",
+                              "address",
+                              "city",
+                              "state",
+                              "postalCode",
+                              "country",
+                              "rowStatus"
+                            ]
+                          }
+                        },
+                        "pageIndex": {
+                          "description": "Current page index",
+                          "type": "number",
+                          "examples": [
+                            1
+                          ]
+                        },
+                        "pageSize": {
+                          "description": "Number of items per page",
+                          "type": "number",
+                          "examples": [
+                            10
+                          ]
+                        },
+                        "totalItems": {
+                          "description": "Total number of items",
+                          "type": "number",
+                          "examples": [
+                            2
+                          ]
+                        },
+                        "totalPages": {
+                          "description": "Total number of pages",
+                          "type": "number",
+                          "examples": [
+                            1
+                          ]
+                        }
+                      },
+                      "required": [
+                        "items",
+                        "pageIndex",
+                        "pageSize",
+                        "totalItems",
+                        "totalPages"
+                      ]
+                    }
+                  }
+                },
+                "examples": {
+                  "success": {
+                    "summary": "Success",
+                    "value": {
+                      "status": {
+                        "code": 200,
+                        "message": "Ok",
+                        "bizCode": "S10000",
+                        "bizMessage": "Inquiry User Address Success",
+                        "requestId": "req-9b1deb4d-3b7d-4bad-9bdd-2b0d7b3dcb6d",
+                        "timestamp": "2026-11-06T09:00:00.123Z",
+                        "status": "SUCCESS"
+                      },
+                      "data": {
+                        "items": [
+                          {
+                            "userAddressId": "d4e5f6a7-b8c9-4d0e-9f1a-2b3c4d5e6f7a",
+                            "title": "Home (condo)",
+                            "isDefault": true,
+                            "address": "123 Sukhumvit Road",
+                            "city": "Watthana",
+                            "state": "Bangkok",
+                            "postalCode": "10110",
+                            "country": "Thailand",
+                            "rowStatus": "ACTIVE"
+                          },
+                          {
+                            "userAddressId": "e5f6a7b8-c9d0-4e1f-8a2b-3c4d5e6f7a8b",
+                            "title": "Office",
+                            "isDefault": false,
+                            "address": "88 Rama IV Road",
+                            "city": "Khlong Toei",
+                            "state": "Bangkok",
+                            "postalCode": "10110",
+                            "country": "Thailand",
+                            "rowStatus": "ACTIVE"
+                          }
+                        ],
+                        "pageIndex": 1,
+                        "pageSize": 10,
+                        "totalItems": 2,
+                        "totalPages": 1
+                      }
+                    }
+                  },
+                  "success---by-id": {
+                    "summary": "Success - By Id",
+                    "value": {
+                      "status": {
+                        "code": 200,
+                        "message": "Ok",
+                        "bizCode": "S10000",
+                        "bizMessage": "Inquiry User Address Success",
+                        "requestId": "req-8f6a2b4c-5d7e-4f9a-b1c3-4d5e6f7a8b9c",
+                        "timestamp": "2026-11-06T09:10:00.123Z",
+                        "status": "SUCCESS"
+                      },
+                      "data": {
+                        "items": [
+                          {
+                            "userAddressId": "d4e5f6a7-b8c9-4d0e-9f1a-2b3c4d5e6f7a",
+                            "title": "Home (condo)",
+                            "isDefault": true,
+                            "address": "123 Sukhumvit Road",
+                            "city": "Watthana",
+                            "state": "Bangkok",
+                            "postalCode": "10110",
+                            "country": "Thailand",
+                            "rowStatus": "ACTIVE"
+                          }
+                        ],
+                        "pageIndex": 1,
+                        "pageSize": 10,
+                        "totalItems": 1,
+                        "totalPages": 1
+                      }
+                    }
+                  },
+                  "success---not-found": {
+                    "summary": "Success - Not Found",
+                    "value": {
+                      "status": {
+                        "code": 200,
+                        "message": "Ok",
+                        "bizCode": "S10000",
+                        "bizMessage": "Inquiry User Address Success",
+                        "requestId": "req-9a7b3c5d-6e8f-4a0b-c2d4-5e6f7a8b9c0d",
+                        "timestamp": "2026-11-06T09:20:00.123Z",
+                        "status": "SUCCESS"
+                      },
+                      "data": {
+                        "items": [],
+                        "pageIndex": 1,
+                        "pageSize": 10,
+                        "totalItems": 0,
+                        "totalPages": 0
+                      }
+                    }
+                  },
+                  "success---page-beyond-range": {
+                    "summary": "Success - Page Beyond Range",
+                    "value": {
+                      "status": {
+                        "code": 200,
+                        "message": "Ok",
+                        "bizCode": "S10000",
+                        "bizMessage": "Inquiry User Address Success",
+                        "requestId": "req-8f6a2b4c-5d7e-4f9a-b1c3-4d5e6f7a8b9c",
+                        "timestamp": "2026-11-06T09:10:00.123Z",
+                        "status": "SUCCESS"
+                      },
+                      "data": {
+                        "items": [],
+                        "pageIndex": 2,
+                        "pageSize": 10,
+                        "totalItems": 1,
+                        "totalPages": 1
+                      }
+                    }
+                  }
+                }
+              }
+            }
+          },
+          "400": {
+            "description": "Bad Request",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/Error400"
+                },
+                "examples": {
+                  "fail---bad-request": {
+                    "summary": "Fail - Bad Request",
+                    "value": {
+                      "status": {
+                        "code": 400,
+                        "message": "Bad Request",
+                        "bizCode": "E10001",
+                        "bizMessage": "Page Index and Page Size must be greater than 0, Page Size must not be greater than 100.",
+                        "requestId": "req-400a1b2c-3d4e-5f6a-7b8c-9d0e1f2a3b4c",
+                        "timestamp": "2026-11-06T09:40:40.123Z",
+                        "status": "ERROR"
+                      }
+                    }
+                  },
+                  "fail---bad-request-row-status": {
+                    "summary": "Fail - Bad Request Row Status",
+                    "value": {
+                      "status": {
+                        "code": 400,
+                        "message": "Bad Request",
+                        "bizCode": "E10001",
+                        "bizMessage": "Row status must be one of ACTIVE, INACTIVE.",
+                        "requestId": "req-410a1b2c-3d4e-5f6a-7b8c-9d0e1f2a3b4c",
+                        "timestamp": "2026-11-06T09:41:47.123Z",
+                        "status": "ERROR"
+                      }
+                    }
+                  }
+                }
+              }
+            }
+          },
+          "401": {
+            "description": "Unauthorized",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/Error401"
+                },
+                "examples": {
+                  "fail---unauthorized": {
+                    "summary": "Fail - Unauthorized",
+                    "value": {
+                      "status": {
+                        "code": 401,
+                        "message": "Unauthorized",
+                        "bizCode": "E10002",
+                        "bizMessage": "Invalid or expired access token.",
+                        "requestId": "req-70a1b2c-3d4e-5f6a-7b8c-9d0e1f2a3b4c",
+                        "timestamp": "2026-11-06T09:07:49.123Z",
+                        "status": "ERROR"
+                      }
+                    }
+                  }
+                }
+              }
+            }
+          },
+          "408": {
+            "description": "Request Timeout",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/Error408"
+                },
+                "examples": {
+                  "fail---request-timeout": {
+                    "summary": "Fail - Request Timeout",
+                    "value": {
+                      "status": {
+                        "code": 408,
+                        "message": "Request Timeout",
+                        "bizCode": "E90001",
+                        "bizMessage": "The server timed out waiting for the request.",
+                        "requestId": "req-80a1b2c-3d4e-5f6a-7b8c-9d0e1f2a3b4c",
+                        "timestamp": "2026-11-06T09:08:56.123Z",
+                        "status": "ERROR"
+                      }
+                    }
+                  }
+                }
+              }
+            }
+          },
+          "500": {
+            "description": "Internal Server Error",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/Error500"
+                },
+                "examples": {
+                  "fail---internal-server-error": {
+                    "summary": "Fail - Internal Server Error",
+                    "value": {
+                      "status": {
+                        "code": 500,
+                        "message": "Internal Server Error",
+                        "bizMessage": "An unexpected error occurred.",
+                        "requestId": "req-address-inquiry-review",
+                        "timestamp": "2026-11-08T00:00:00.123Z",
+                        "status": "ERROR"
+                      }
+                    }
+                  }
+                }
+              }
+            }
+          }
+        }
+      }
+    },
+    "/v1/user/address/upsert": {
+      "post": {
+        "tags": [
+          "authen-and-author"
+        ],
+        "operationId": "upsertUserAddress",
+        "summary": null,
+        "description": "None\n\nSource spec: `e-commerce/doc/api/authen-and-author/09-upsert-user-address/spec.md`",
+        "x-spec": "e-commerce/doc/api/authen-and-author/09-upsert-user-address/spec.md",
+        "parameters": [
+          {
+            "$ref": "#/components/parameters/Timestamp"
+          },
+          {
+            "$ref": "#/components/parameters/RequestId"
+          }
+        ],
+        "security": [
+          {
+            "bearerAuth": []
+          }
+        ],
+        "requestBody": {
+          "required": true,
+          "content": {
+            "application/json": {
+              "schema": {
+                "type": "object",
+                "properties": {
+                  "id": {
+                    "description": "User Address Id, Insert when not specified, Update or Delete when specified, The id of a DELETED address or of another user counts as not found",
+                    "type": "string",
+                    "format": "uuid",
+                    "examples": [
+                      "d4e5f6a7-b8c9-4d0e-9f1a-2b3c4d5e6f7a"
+                    ]
+                  },
+                  "title": {
+                    "description": "Address title (max 128 characters)",
+                    "type": "string",
+                    "maxLength": 128,
+                    "examples": [
+                      "Home"
+                    ]
+                  },
+                  "isDefault": {
+                    "description": "Default address, TRUE makes this the default and the earlier default stops being one, FALSE or omitted preserves an ACTIVE address flag; INACTIVE/DELETED always store FALSE (the first ACTIVE address of a user is the default)",
+                    "type": "boolean",
+                    "examples": [
+                      true
+                    ]
+                  },
+                  "address": {
+                    "description": "Address, Plain text over TLS, The system encrypts it",
+                    "type": "string",
+                    "examples": [
+                      "123 Sukhumvit Road"
+                    ]
+                  },
+                  "city": {
+                    "description": "City, Plain text over TLS",
+                    "type": "string",
+                    "examples": [
+                      "Watthana"
+                    ]
+                  },
+                  "state": {
+                    "description": "State, Plain text over TLS",
+                    "type": "string",
+                    "examples": [
+                      "Bangkok"
+                    ]
+                  },
+                  "postalCode": {
+                    "description": "Postal code, Plain text over TLS",
+                    "type": "string",
+                    "examples": [
+                      "10110"
+                    ]
+                  },
+                  "country": {
+                    "description": "Country, Plain text over TLS",
+                    "type": "string",
+                    "examples": [
+                      "Thailand"
+                    ]
+                  },
+                  "rowStatus": {
+                    "description": "Row status (ACTIVE, INACTIVE, DELETED), Defaults to ACTIVE, Delete when DELETED, DELETED is not allowed when inserting, There is no archive",
+                    "type": "string",
+                    "enum": [
+                      "ACTIVE",
+                      "INACTIVE",
+                      "DELETED"
+                    ],
+                    "default": "ACTIVE",
+                    "examples": [
+                      "ACTIVE"
+                    ]
+                  }
+                },
+                "required": [
+                  "title",
+                  "address",
+                  "city",
+                  "state",
+                  "postalCode",
+                  "country"
+                ]
+              },
+              "examples": {
+                "insert": {
+                  "summary": "Insert",
+                  "value": {
+                    "title": "Home",
+                    "isDefault": true,
+                    "address": "123 Sukhumvit Road",
+                    "city": "Watthana",
+                    "state": "Bangkok",
+                    "postalCode": "10110",
+                    "country": "Thailand",
+                    "rowStatus": "ACTIVE"
+                  }
+                },
+                "update": {
+                  "summary": "Update",
+                  "value": {
+                    "id": "d4e5f6a7-b8c9-4d0e-9f1a-2b3c4d5e6f7a",
+                    "title": "Home (condo)",
+                    "isDefault": true,
+                    "address": "123 Sukhumvit Road",
+                    "city": "Watthana",
+                    "state": "Bangkok",
+                    "postalCode": "10110",
+                    "country": "Thailand",
+                    "rowStatus": "ACTIVE"
+                  }
+                },
+                "delete": {
+                  "summary": "Delete",
+                  "value": {
+                    "id": "d4e5f6a7-b8c9-4d0e-9f1a-2b3c4d5e6f7a",
+                    "title": "Home (condo)",
+                    "isDefault": false,
+                    "address": "123 Sukhumvit Road",
+                    "city": "Watthana",
+                    "state": "Bangkok",
+                    "postalCode": "10110",
+                    "country": "Thailand",
+                    "rowStatus": "DELETED"
+                  }
+                }
+              }
+            }
+          }
+        },
+        "responses": {
+          "200": {
+            "description": "Ok",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "type": "object",
+                  "required": [
+                    "status"
+                  ],
+                  "properties": {
+                    "status": {
+                      "$ref": "#/components/schemas/Status"
+                    },
+                    "data": {
+                      "type": "object",
+                      "properties": {
+                        "userAddressId": {
+                          "description": "Inserted or Updated Address Id, Not returned when deleted (HTTP 204)",
+                          "type": "string",
+                          "format": "uuid",
+                          "examples": [
+                            "d4e5f6a7-b8c9-4d0e-9f1a-2b3c4d5e6f7a"
+                          ]
+                        }
+                      },
+                      "required": [
+                        "userAddressId"
+                      ]
+                    }
+                  }
+                },
+                "examples": {
+                  "success---update": {
+                    "summary": "Success - Update",
+                    "value": {
+                      "status": {
+                        "code": 200,
+                        "message": "Ok",
+                        "bizCode": "S10000",
+                        "bizMessage": "Update User Address Success",
+                        "requestId": "req-5c3d9e1f-2a4b-4c6d-8e0f-1a2b3c4d5e6f",
+                        "timestamp": "2026-11-06T09:10:00.123Z",
+                        "status": "SUCCESS"
+                      },
+                      "data": {
+                        "userAddressId": "d4e5f6a7-b8c9-4d0e-9f1a-2b3c4d5e6f7a"
+                      }
+                    }
+                  }
+                }
+              }
+            }
+          },
+          "201": {
+            "description": "Created",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "type": "object",
+                  "required": [
+                    "status"
+                  ],
+                  "properties": {
+                    "status": {
+                      "$ref": "#/components/schemas/Status"
+                    },
+                    "data": {
+                      "type": "object",
+                      "properties": {
+                        "userAddressId": {
+                          "description": "Inserted or Updated Address Id, Not returned when deleted (HTTP 204)",
+                          "type": "string",
+                          "format": "uuid",
+                          "examples": [
+                            "d4e5f6a7-b8c9-4d0e-9f1a-2b3c4d5e6f7a"
+                          ]
+                        }
+                      },
+                      "required": [
+                        "userAddressId"
+                      ]
+                    }
+                  }
+                },
+                "examples": {
+                  "success---insert": {
+                    "summary": "Success - Insert",
+                    "value": {
+                      "status": {
+                        "code": 201,
+                        "message": "Created",
+                        "bizCode": "S10000",
+                        "bizMessage": "Insert User Address Success",
+                        "requestId": "req-9b1deb4d-3b7d-4bad-9bdd-2b0d7b3dcb6d",
+                        "timestamp": "2026-11-06T09:00:00.123Z",
+                        "status": "SUCCESS"
+                      },
+                      "data": {
+                        "userAddressId": "d4e5f6a7-b8c9-4d0e-9f1a-2b3c4d5e6f7a"
+                      }
+                    }
+                  }
+                }
+              }
+            }
+          },
+          "204": {
+            "description": "No Content"
+          },
+          "400": {
+            "description": "Bad Request",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/Error400"
+                },
+                "examples": {
+                  "fail---bad-request": {
+                    "summary": "Fail - Bad Request",
+                    "value": {
+                      "status": {
+                        "code": 400,
+                        "message": "Bad Request",
+                        "bizCode": "E10001",
+                        "bizMessage": "Title, Address, City, State, Postal Code and Country are required fields.",
+                        "requestId": "req-400a1b2c-3d4e-5f6a-7b8c-9d0e1f2a3b4c",
+                        "timestamp": "2026-11-06T09:40:40.123Z",
+                        "status": "ERROR"
+                      }
+                    }
+                  },
+                  "fail---bad-request-row-status": {
+                    "summary": "Fail - Bad Request Row Status",
+                    "value": {
+                      "status": {
+                        "code": 400,
+                        "message": "Bad Request",
+                        "bizCode": "E10001",
+                        "bizMessage": "Row status must not be DELETED when inserting a user address.",
+                        "requestId": "req-410a1b2c-3d4e-5f6a-7b8c-9d0e1f2a3b4c",
+                        "timestamp": "2026-11-06T09:41:47.123Z",
+                        "status": "ERROR"
+                      }
+                    }
+                  },
+                  "fail---bad-request-limit": {
+                    "summary": "Fail - Bad Request Limit",
+                    "value": {
+                      "status": {
+                        "code": 400,
+                        "message": "Bad Request",
+                        "bizCode": "E10001",
+                        "bizMessage": "A user can have at most 10 addresses.",
+                        "requestId": "req-420a1b2c-3d4e-5f6a-7b8c-9d0e1f2a3b4c",
+                        "timestamp": "2026-11-06T09:42:54.123Z",
+                        "status": "ERROR"
+                      }
+                    }
+                  },
+                  "fail---bad-request-default": {
+                    "summary": "Fail - Bad Request Default",
+                    "value": {
+                      "status": {
+                        "code": 400,
+                        "message": "Bad Request",
+                        "bizCode": "E10001",
+                        "bizMessage": "A default address must be ACTIVE.",
+                        "requestId": "req-430a1b2c-3d4e-5f6a-7b8c-9d0e1f2a3b4c",
+                        "timestamp": "2026-11-06T09:43:01.123Z",
+                        "status": "ERROR"
+                      }
+                    }
+                  }
+                }
+              }
+            }
+          },
+          "401": {
+            "description": "Unauthorized",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/Error401"
+                },
+                "examples": {
+                  "fail---unauthorized": {
+                    "summary": "Fail - Unauthorized",
+                    "value": {
+                      "status": {
+                        "code": 401,
+                        "message": "Unauthorized",
+                        "bizCode": "E10002",
+                        "bizMessage": "Invalid or expired access token.",
+                        "requestId": "req-70a1b2c-3d4e-5f6a-7b8c-9d0e1f2a3b4c",
+                        "timestamp": "2026-11-06T09:07:49.123Z",
+                        "status": "ERROR"
+                      }
+                    }
+                  }
+                }
+              }
+            }
+          },
+          "404": {
+            "description": "Not Found",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/Error404"
+                },
+                "examples": {
+                  "fail---not-found": {
+                    "summary": "Fail - Not Found",
+                    "value": {
+                      "status": {
+                        "code": 404,
+                        "message": "Not Found",
+                        "bizCode": "E10004",
+                        "bizMessage": "User address not found.",
+                        "requestId": "req-440a1b2c-3d4e-5f6a-7b8c-9d0e1f2a3b4c",
+                        "timestamp": "2026-11-06T09:44:08.123Z",
+                        "status": "ERROR"
+                      }
+                    }
+                  }
+                }
+              }
+            }
+          },
+          "408": {
+            "description": "Request Timeout",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/Error408"
+                },
+                "examples": {
+                  "fail---request-timeout": {
+                    "summary": "Fail - Request Timeout",
+                    "value": {
+                      "status": {
+                        "code": 408,
+                        "message": "Request Timeout",
+                        "bizCode": "E90001",
+                        "bizMessage": "The server timed out waiting for the request.",
+                        "requestId": "req-80a1b2c-3d4e-5f6a-7b8c-9d0e1f2a3b4c",
+                        "timestamp": "2026-11-06T09:08:56.123Z",
+                        "status": "ERROR"
+                      }
+                    }
+                  }
+                }
+              }
+            }
+          },
+          "500": {
+            "description": "Internal Server Error",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/Error500"
+                },
+                "examples": {
+                  "fail---internal-server-error": {
+                    "summary": "Fail - Internal Server Error",
+                    "value": {
+                      "status": {
+                        "code": 500,
+                        "message": "Internal Server Error",
+                        "bizMessage": "An unexpected error occurred.",
+                        "requestId": "req-address-review",
+                        "timestamp": "2026-11-08T00:00:00.123Z",
+                        "status": "ERROR"
+                      }
+                    }
+                  }
+                }
+              }
+            }
+          }
+        }
+      }
+    },
+    "/v1/user/profile": {
+      "get": {
+        "tags": [
+          "authen-and-author"
+        ],
+        "operationId": "inquiryUserProfile",
+        "summary": null,
+        "description": "None\n\nSource spec: `e-commerce/doc/api/authen-and-author/08-inquiry-user-profile/spec.md`",
+        "x-spec": "e-commerce/doc/api/authen-and-author/08-inquiry-user-profile/spec.md",
+        "parameters": [
+          {
+            "$ref": "#/components/parameters/Timestamp"
+          },
+          {
+            "$ref": "#/components/parameters/RequestId"
+          }
+        ],
+        "security": [
+          {
+            "bearerAuth": []
+          }
+        ],
+        "responses": {
+          "200": {
+            "description": "Ok",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "type": "object",
+                  "required": [
+                    "status"
+                  ],
+                  "properties": {
+                    "status": {
+                      "$ref": "#/components/schemas/Status"
+                    },
+                    "data": {
+                      "type": "object",
+                      "properties": {
+                        "userId": {
+                          "description": "User Id (the caller)",
+                          "type": "string",
+                          "format": "uuid",
+                          "examples": [
+                            "b1c2d3e4-f5a6-4b7c-8d9e-0f1a2b3c4d5e"
+                          ]
+                        },
+                        "emailAddress": {
+                          "description": "Email address (read only)",
+                          "type": "string",
+                          "examples": [
+                            "john.doe@example.com"
+                          ]
+                        },
+                        "firstName": {
+                          "description": "First name, null when not set",
+                          "type": [
+                            "string",
+                            "null"
+                          ],
+                          "examples": [
+                            "John"
+                          ]
+                        },
+                        "lastName": {
+                          "description": "Last name, null when not set",
+                          "type": [
+                            "string",
+                            "null"
+                          ],
+                          "examples": [
+                            "Doe"
+                          ]
+                        },
+                        "displayName": {
+                          "description": "Display name, null when not set",
+                          "type": [
+                            "string",
+                            "null"
+                          ],
+                          "examples": [
+                            "John Doe"
+                          ]
+                        },
+                        "profilePicturePath": {
+                          "description": "Profile picture path, null when not set",
+                          "type": [
+                            "string",
+                            "null"
+                          ],
+                          "examples": [
+                            "/profiles/john-doe.png"
+                          ]
+                        },
+                        "phoneNumber": {
+                          "description": "Phone number, null when not set",
+                          "type": [
+                            "string",
+                            "null"
+                          ],
+                          "examples": [
+                            "0812345678"
+                          ]
+                        },
+                        "address": {
+                          "description": "Address in the profile, null when not set",
+                          "type": [
+                            "string",
+                            "null"
+                          ],
+                          "examples": [
+                            "123 Sukhumvit Road"
+                          ]
+                        },
+                        "dateOfBirth": {
+                          "description": "Date of birth (YYYY-MM-DD), null when not set",
+                          "type": [
+                            "string",
+                            "null"
+                          ],
+                          "format": "date",
+                          "examples": [
+                            "1990-01-31"
+                          ]
+                        },
+                        "gender": {
+                          "description": "Gender (MALE, FEMALE, OTHER), null when not set",
+                          "type": [
+                            "string",
+                            "null"
+                          ],
+                          "enum": [
+                            "MALE",
+                            "FEMALE",
+                            "OTHER",
+                            null
+                          ],
+                          "examples": [
+                            "MALE"
+                          ]
+                        }
+                      },
+                      "required": [
+                        "userId",
+                        "emailAddress",
+                        "firstName",
+                        "lastName",
+                        "displayName",
+                        "profilePicturePath",
+                        "phoneNumber",
+                        "address",
+                        "dateOfBirth",
+                        "gender"
+                      ]
+                    }
+                  }
+                },
+                "examples": {
+                  "success": {
+                    "summary": "Success",
+                    "value": {
+                      "status": {
+                        "code": 200,
+                        "message": "Ok",
+                        "bizCode": "S10000",
+                        "bizMessage": "Inquiry User Profile Success",
+                        "requestId": "req-9b1deb4d-3b7d-4bad-9bdd-2b0d7b3dcb6d",
+                        "timestamp": "2026-11-06T09:00:00.123Z",
+                        "status": "SUCCESS"
+                      },
+                      "data": {
+                        "userId": "b1c2d3e4-f5a6-4b7c-8d9e-0f1a2b3c4d5e",
+                        "emailAddress": "john.doe@example.com",
+                        "firstName": "John",
+                        "lastName": "Doe",
+                        "displayName": "John Doe",
+                        "profilePicturePath": "/profiles/john-doe.png",
+                        "phoneNumber": "0812345678",
+                        "address": "123 Sukhumvit Road",
+                        "dateOfBirth": "1990-01-31",
+                        "gender": "MALE"
+                      }
+                    }
+                  },
+                  "success---no-information": {
+                    "summary": "Success - No Information",
+                    "value": {
+                      "status": {
+                        "code": 200,
+                        "message": "Ok",
+                        "bizCode": "S10000",
+                        "bizMessage": "Inquiry User Profile Success",
+                        "requestId": "req-9b1deb4d-3b7d-4bad-9bdd-2b0d7b3dcb6d",
+                        "timestamp": "2026-11-06T09:00:00.123Z",
+                        "status": "SUCCESS"
+                      },
+                      "data": {
+                        "userId": "b1c2d3e4-f5a6-4b7c-8d9e-0f1a2b3c4d5e",
+                        "emailAddress": "john.doe@example.com",
+                        "firstName": "John",
+                        "lastName": "Doe",
+                        "displayName": "John Doe",
+                        "profilePicturePath": "/profiles/john-doe.png",
+                        "phoneNumber": null,
+                        "address": null,
+                        "dateOfBirth": null,
+                        "gender": null
+                      }
+                    }
+                  },
+                  "success---unset-gender": {
+                    "summary": "Success - Unset Gender",
+                    "value": {
+                      "status": {
+                        "code": 200,
+                        "message": "Ok",
+                        "bizCode": "S10000",
+                        "bizMessage": "Inquiry User Profile Success",
+                        "requestId": "req-9b1deb4d-3b7d-4bad-9bdd-2b0d7b3dcb6d",
+                        "timestamp": "2026-11-06T09:00:00.123Z",
+                        "status": "SUCCESS"
+                      },
+                      "data": {
+                        "userId": "b1c2d3e4-f5a6-4b7c-8d9e-0f1a2b3c4d5e",
+                        "emailAddress": "john.doe@example.com",
+                        "firstName": "John",
+                        "lastName": "Doe",
+                        "displayName": "John Doe",
+                        "profilePicturePath": "/profiles/john-doe.png",
+                        "phoneNumber": "0812345678",
+                        "address": "123 Sukhumvit Road",
+                        "dateOfBirth": "1990-01-31",
+                        "gender": null
+                      }
+                    }
+                  }
+                }
+              }
+            }
+          },
+          "400": {
+            "description": "Bad Request",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/Error400"
+                },
+                "examples": {
+                  "fail---bad-request": {
+                    "summary": "Fail - Bad Request",
+                    "value": {
+                      "status": {
+                        "code": 400,
+                        "message": "Bad Request",
+                        "bizCode": "E10001",
+                        "bizMessage": "Timestamp must be valid UTC and this endpoint accepts no query parameters or body.",
+                        "requestId": "req-profile-inquiry-review",
+                        "timestamp": "2026-11-08T00:00:00.123Z",
+                        "status": "ERROR"
+                      }
+                    }
+                  }
+                }
+              }
+            }
+          },
+          "401": {
+            "description": "Unauthorized",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/Error401"
+                },
+                "examples": {
+                  "fail---unauthorized": {
+                    "summary": "Fail - Unauthorized",
+                    "value": {
+                      "status": {
+                        "code": 401,
+                        "message": "Unauthorized",
+                        "bizCode": "E10002",
+                        "bizMessage": "Invalid or expired access token.",
+                        "requestId": "req-70a1b2c-3d4e-5f6a-7b8c-9d0e1f2a3b4c",
+                        "timestamp": "2026-11-06T09:07:49.123Z",
+                        "status": "ERROR"
+                      }
+                    }
+                  }
+                }
+              }
+            }
+          },
+          "408": {
+            "description": "Request Timeout",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/Error408"
+                },
+                "examples": {
+                  "fail---request-timeout": {
+                    "summary": "Fail - Request Timeout",
+                    "value": {
+                      "status": {
+                        "code": 408,
+                        "message": "Request Timeout",
+                        "bizCode": "E90001",
+                        "bizMessage": "The server timed out waiting for the request.",
+                        "requestId": "req-80a1b2c-3d4e-5f6a-7b8c-9d0e1f2a3b4c",
+                        "timestamp": "2026-11-06T09:08:56.123Z",
+                        "status": "ERROR"
+                      }
+                    }
+                  }
+                }
+              }
+            }
+          },
+          "500": {
+            "description": "Internal Server Error",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/Error500"
+                },
+                "examples": {
+                  "fail---internal-server-error": {
+                    "summary": "Fail - Internal Server Error",
+                    "value": {
+                      "status": {
+                        "code": 500,
+                        "message": "Internal Server Error",
+                        "bizMessage": "An unexpected error occurred.",
+                        "requestId": "req-profile-inquiry-review",
+                        "timestamp": "2026-11-08T00:00:00.123Z",
+                        "status": "ERROR"
+                      }
+                    }
+                  }
+                }
+              }
+            }
+          }
+        }
+      }
+    },
+    "/v1/user/profile/upsert": {
+      "post": {
+        "tags": [
+          "authen-and-author"
+        ],
+        "operationId": "upsertUserProfile",
+        "summary": null,
+        "description": "None\n\nSource spec: `e-commerce/doc/api/authen-and-author/07-upsert-user-profile/spec.md`",
+        "x-spec": "e-commerce/doc/api/authen-and-author/07-upsert-user-profile/spec.md",
+        "parameters": [
+          {
+            "$ref": "#/components/parameters/Timestamp"
+          },
+          {
+            "$ref": "#/components/parameters/RequestId"
+          }
+        ],
+        "security": [
+          {
+            "bearerAuth": []
+          }
+        ],
+        "requestBody": {
+          "required": true,
+          "content": {
+            "application/json": {
+              "schema": {
+                "type": "object",
+                "properties": {
+                  "firstName": {
+                    "description": "First name (max 100 characters), Plain text over TLS, Not specified keeps the current value, null clears it",
+                    "type": [
+                      "string",
+                      "null"
+                    ],
+                    "maxLength": 100,
+                    "examples": [
+                      "John"
+                    ]
+                  },
+                  "lastName": {
+                    "description": "Last name (max 100 characters), Plain text over TLS, Not specified keeps the current value, null clears it",
+                    "type": [
+                      "string",
+                      "null"
+                    ],
+                    "maxLength": 100,
+                    "examples": [
+                      "Doe"
+                    ]
+                  },
+                  "displayName": {
+                    "description": "Display name (max 128 characters), Plain text, Shown on shop members and product reviews, Not specified keeps the current value, null clears it",
+                    "type": [
+                      "string",
+                      "null"
+                    ],
+                    "maxLength": 128,
+                    "examples": [
+                      "John Doe"
+                    ]
+                  },
+                  "profilePicturePath": {
+                    "description": "Profile picture path, Not specified keeps the current value, null clears it",
+                    "type": [
+                      "string",
+                      "null"
+                    ],
+                    "examples": [
+                      "/profiles/john-doe.png"
+                    ]
+                  },
+                  "phoneNumber": {
+                    "description": "Phone number (8 to 15 digits, an optional leading +), Plain text over TLS, Not specified keeps the current value, null clears it",
+                    "type": [
+                      "string",
+                      "null"
+                    ],
+                    "examples": [
+                      "0812345678"
+                    ]
+                  },
+                  "address": {
+                    "description": "Address in the profile, Plain text over TLS, Not specified keeps the current value, null clears it",
+                    "type": [
+                      "string",
+                      "null"
+                    ],
+                    "examples": [
+                      "123 Sukhumvit Road"
+                    ]
+                  },
+                  "dateOfBirth": {
+                    "description": "Date of birth (YYYY-MM-DD, not in the future), Not specified keeps the current value, null clears it",
+                    "type": [
+                      "string",
+                      "null"
+                    ],
+                    "format": "date",
+                    "examples": [
+                      "1990-01-31"
+                    ]
+                  },
+                  "gender": {
+                    "description": "Gender (MALE, FEMALE, OTHER), Not specified keeps the current value, null clears it",
+                    "type": [
+                      "string",
+                      "null"
+                    ],
+                    "enum": [
+                      "MALE",
+                      "FEMALE",
+                      "OTHER",
+                      null
+                    ],
+                    "examples": [
+                      "MALE"
+                    ]
+                  }
+                }
+              },
+              "examples": {
+                "example": {
+                  "summary": "Example",
+                  "value": {
+                    "firstName": "John",
+                    "lastName": "Doe",
+                    "displayName": "John Doe",
+                    "profilePicturePath": "/profiles/john-doe.png",
+                    "phoneNumber": "0812345678",
+                    "address": "123 Sukhumvit Road",
+                    "dateOfBirth": "1990-01-31",
+                    "gender": "MALE"
+                  }
+                }
+              }
+            }
+          }
+        },
+        "responses": {
+          "200": {
+            "description": "Ok",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "type": "object",
+                  "required": [
+                    "status"
+                  ],
+                  "properties": {
+                    "status": {
+                      "$ref": "#/components/schemas/Status"
+                    },
+                    "data": {
+                      "type": "object",
+                      "properties": {
+                        "userId": {
+                          "description": "Id of the user whose profile was saved (the caller)",
+                          "type": "string",
+                          "format": "uuid",
+                          "examples": [
+                            "b1c2d3e4-f5a6-4b7c-8d9e-0f1a2b3c4d5e"
+                          ]
+                        }
+                      },
+                      "required": [
+                        "userId"
+                      ]
+                    }
+                  }
+                },
+                "examples": {
+                  "success": {
+                    "summary": "Success",
+                    "value": {
+                      "status": {
+                        "code": 200,
+                        "message": "Ok",
+                        "bizCode": "S10000",
+                        "bizMessage": "Upsert User Profile Success",
+                        "requestId": "req-9b1deb4d-3b7d-4bad-9bdd-2b0d7b3dcb6d",
+                        "timestamp": "2026-11-06T09:00:00.123Z",
+                        "status": "SUCCESS"
+                      },
+                      "data": {
+                        "userId": "b1c2d3e4-f5a6-4b7c-8d9e-0f1a2b3c4d5e"
+                      }
+                    }
+                  }
+                }
+              }
+            }
+          },
+          "400": {
+            "description": "Bad Request",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/Error400"
+                },
+                "examples": {
+                  "fail---bad-request": {
+                    "summary": "Fail - Bad Request",
+                    "value": {
+                      "status": {
+                        "code": 400,
+                        "message": "Bad Request",
+                        "bizCode": "E10001",
+                        "bizMessage": "Date of birth must be a real date on or before today's UTC date (YYYY-MM-DD).",
+                        "requestId": "req-400a1b2c-3d4e-5f6a-7b8c-9d0e1f2a3b4c",
+                        "timestamp": "2026-11-06T09:40:40.123Z",
+                        "status": "ERROR"
+                      }
+                    }
+                  },
+                  "fail---bad-request-fixed-field": {
+                    "summary": "Fail - Bad Request Fixed Field",
+                    "value": {
+                      "status": {
+                        "code": 400,
+                        "message": "Bad Request",
+                        "bizCode": "E10001",
+                        "bizMessage": "Username, Email Address and Password cannot be changed here.",
+                        "requestId": "req-410a1b2c-3d4e-5f6a-7b8c-9d0e1f2a3b4c",
+                        "timestamp": "2026-11-06T09:41:47.123Z",
+                        "status": "ERROR"
+                      }
+                    }
+                  }
+                }
+              }
+            }
+          },
+          "401": {
+            "description": "Unauthorized",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/Error401"
+                },
+                "examples": {
+                  "fail---unauthorized": {
+                    "summary": "Fail - Unauthorized",
+                    "value": {
+                      "status": {
+                        "code": 401,
+                        "message": "Unauthorized",
+                        "bizCode": "E10002",
+                        "bizMessage": "Invalid or expired access token.",
+                        "requestId": "req-70a1b2c-3d4e-5f6a-7b8c-9d0e1f2a3b4c",
+                        "timestamp": "2026-11-06T09:07:49.123Z",
+                        "status": "ERROR"
+                      }
+                    }
+                  }
+                }
+              }
+            }
+          },
+          "408": {
+            "description": "Request Timeout",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/Error408"
+                },
+                "examples": {
+                  "fail---request-timeout": {
+                    "summary": "Fail - Request Timeout",
+                    "value": {
+                      "status": {
+                        "code": 408,
+                        "message": "Request Timeout",
+                        "bizCode": "E90001",
+                        "bizMessage": "The server timed out waiting for the request.",
+                        "requestId": "req-80a1b2c-3d4e-5f6a-7b8c-9d0e1f2a3b4c",
+                        "timestamp": "2026-11-06T09:08:56.123Z",
+                        "status": "ERROR"
+                      }
+                    }
+                  }
+                }
+              }
+            }
+          },
+          "500": {
+            "description": "Internal Server Error",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/Error500"
+                },
+                "examples": {
+                  "fail---internal-server-error": {
+                    "summary": "Fail - Internal Server Error",
+                    "value": {
+                      "status": {
+                        "code": 500,
+                        "message": "Internal Server Error",
+                        "bizMessage": "An unexpected error occurred.",
+                        "requestId": "req-profile-review",
+                        "timestamp": "2026-11-08T00:00:00.123Z",
+                        "status": "ERROR"
+                      }
+                    }
+                  }
+                }
+              }
+            }
+          }
+        }
+      }
+    }
+  },
+  "components": {
+    "securitySchemes": {
+      "bearerAuth": {
+        "type": "http",
+        "scheme": "bearer",
+        "bearerFormat": "JWT",
+        "description": "Access token from POST /v1/auth/login or POST /v1/auth/refresh-token, sent as `authorization: Bearer <token>`."
+      }
+    },
+    "parameters": {
+      "Timestamp": {
+        "name": "timestamp",
+        "in": "header",
+        "required": true,
+        "description": "Request timestamp",
+        "schema": {
+          "type": "string",
+          "format": "date-time"
+        },
+        "example": "2026-11-05T12:42:00.123Z"
+      },
+      "RequestId": {
+        "name": "requestId",
+        "in": "header",
+        "required": false,
+        "description": "API Request Id",
+        "schema": {
+          "type": "string"
+        },
+        "example": "req-9b1deb4d-3b7d-4bad-9bdd-2b0d7b3dcb6d"
+      }
+    },
+    "schemas": {
+      "Status": {
+        "type": "object",
+        "properties": {
+          "code": {
+            "description": "HTTP Status Code",
+            "type": "number",
+            "examples": [
+              201
+            ]
+          },
+          "message": {
+            "description": "HTTP Status Message",
+            "type": "string",
+            "examples": [
+              "Created"
+            ]
+          },
+          "bizCode": {
+            "description": "Business Code Success or Fail",
+            "type": "string",
+            "examples": [
+              "S10000"
+            ]
+          },
+          "bizMessage": {
+            "description": "Business Message Success or Fail",
+            "type": "string",
+            "examples": [
+              "Success"
+            ]
+          },
+          "requestId": {
+            "description": "API Request Id",
+            "type": "string",
+            "examples": [
+              "req-9b1deb4d-3b7d-4bad-9bdd-2b0d7b3dcb6d"
+            ]
+          },
+          "timestamp": {
+            "description": "API Request Timestamp (Without time zone UTC)",
+            "type": "string",
+            "format": "date-time",
+            "examples": [
+              "2026-11-05T12:42:00.123Z"
+            ]
+          },
+          "status": {
+            "description": "API Request Status (SUCCESS, ERROR)",
+            "type": "string",
+            "enum": [
+              "SUCCESS",
+              "ERROR"
+            ],
+            "examples": [
+              "SUCCESS"
+            ]
+          }
+        },
+        "required": [
+          "code",
+          "message",
+          "requestId",
+          "timestamp",
+          "status"
+        ]
+      },
+      "Error400": {
+        "type": "object",
+        "required": [
+          "status"
+        ],
+        "description": "Error response of HTTP 400 (bizCode E10001).",
+        "properties": {
+          "status": {
+            "allOf": [
+              {
+                "$ref": "#/components/schemas/Status"
+              },
+              {
+                "properties": {
+                  "code": {
+                    "const": 400
+                  },
+                  "status": {
+                    "const": "ERROR"
+                  },
+                  "bizCode": {
+                    "enum": [
+                      "E10001"
+                    ]
+                  }
+                }
+              }
+            ]
+          }
+        }
+      },
+      "Error401": {
+        "type": "object",
+        "required": [
+          "status"
+        ],
+        "description": "Error response of HTTP 401 (bizCode E10002).",
+        "properties": {
+          "status": {
+            "allOf": [
+              {
+                "$ref": "#/components/schemas/Status"
+              },
+              {
+                "properties": {
+                  "code": {
+                    "const": 401
+                  },
+                  "status": {
+                    "const": "ERROR"
+                  },
+                  "bizCode": {
+                    "enum": [
+                      "E10002"
+                    ]
+                  }
+                }
+              }
+            ]
+          }
+        }
+      },
+      "Error403": {
+        "type": "object",
+        "required": [
+          "status"
+        ],
+        "description": "Error response of HTTP 403 (bizCode E10009).",
+        "properties": {
+          "status": {
+            "allOf": [
+              {
+                "$ref": "#/components/schemas/Status"
+              },
+              {
+                "properties": {
+                  "code": {
+                    "const": 403
+                  },
+                  "status": {
+                    "const": "ERROR"
+                  },
+                  "bizCode": {
+                    "enum": [
+                      "E10009"
+                    ]
+                  }
+                }
+              }
+            ]
+          }
+        }
+      },
+      "Error404": {
+        "type": "object",
+        "required": [
+          "status"
+        ],
+        "description": "Error response of HTTP 404 (bizCode E10004, E10005).",
+        "properties": {
+          "status": {
+            "allOf": [
+              {
+                "$ref": "#/components/schemas/Status"
+              },
+              {
+                "properties": {
+                  "code": {
+                    "const": 404
+                  },
+                  "status": {
+                    "const": "ERROR"
+                  },
+                  "bizCode": {
+                    "enum": [
+                      "E10004",
+                      "E10005"
+                    ]
+                  }
+                }
+              }
+            ]
+          }
+        }
+      },
+      "Error408": {
+        "type": "object",
+        "required": [
+          "status"
+        ],
+        "description": "Error response of HTTP 408 (bizCode E90001).",
+        "properties": {
+          "status": {
+            "allOf": [
+              {
+                "$ref": "#/components/schemas/Status"
+              },
+              {
+                "properties": {
+                  "code": {
+                    "const": 408
+                  },
+                  "status": {
+                    "const": "ERROR"
+                  },
+                  "bizCode": {
+                    "enum": [
+                      "E90001"
+                    ]
+                  }
+                }
+              }
+            ]
+          }
+        }
+      },
+      "Error409": {
+        "type": "object",
+        "required": [
+          "status"
+        ],
+        "description": "Error response of HTTP 409 (bizCode E10003, E10006, E10007, E10008).",
+        "properties": {
+          "status": {
+            "allOf": [
+              {
+                "$ref": "#/components/schemas/Status"
+              },
+              {
+                "properties": {
+                  "code": {
+                    "const": 409
+                  },
+                  "status": {
+                    "const": "ERROR"
+                  },
+                  "bizCode": {
+                    "enum": [
+                      "E10003",
+                      "E10006",
+                      "E10007",
+                      "E10008"
+                    ]
+                  }
+                }
+              }
+            ]
+          }
+        }
+      },
+      "Error500": {
+        "type": "object",
+        "required": [
+          "status"
+        ],
+        "description": "Error response of HTTP 500 (no bizCode).",
+        "properties": {
+          "status": {
+            "allOf": [
+              {
+                "$ref": "#/components/schemas/Status"
+              },
+              {
+                "properties": {
+                  "code": {
+                    "const": 500
+                  },
+                  "status": {
+                    "const": "ERROR"
+                  }
+                }
+              }
+            ]
+          }
+        }
+      }
+    }
+  }
 }
