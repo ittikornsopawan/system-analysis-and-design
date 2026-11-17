@@ -28,6 +28,7 @@ approved_at: 2026-11-16T09:24:57+07:00
 
 - The endpoint is public (no `authorization` header and no user) and is protected by `stripe-signature`, verified against the **raw body**; a missing or wrong signature, a body that is not JSON or a timestamp more than 5 minutes away answers 400 (E10001) and nothing is changed. The system acts as the caller `system`.
 - Any other valid event answers 200 with `action` = `IGNORED`, a 408 (E90001) or any other failure makes Stripe send the event again. Every event is applied by the state of the payment, so the same event twice gives the same result (idempotent) and a final payment never moves back.
+- Before any change the amount and the currency of the event are compared with the payment: the amount of the event must equal `amount` x 100 of the payment (rounded to the nearest unit) and the currency must equal `currency` in lower case. On a mismatch the system does not confirm or change the payment or the order (no status, no refund, no stock) and answers 200 with `action` = `IGNORED`, so Stripe stops sending the event; the mismatch is written to the application log (`eventId`, `paymentId`, the stored and the event amount and currency) for a person to handle. Risk: the charge at Stripe may be captured, and it stays unrefunded until a person acts, because the database keeps no trace of a mismatch (a trace would need a new table and the approval of the product owner; decided by the SA lead, 2026-11-17).
 - `payment_intent.succeeded` completes the payment and confirms the order; `payment_intent.payment_failed` fails the payment (the order stays `WAIT_PAYMENT`); `payment_intent.canceled` cancels it; `charge.refunded` refunds it and gives the stock and the campaign budget back. A late payment (the order is not waiting for payment any more) is refunded at Stripe (`LATE_PAYMENT_REFUNDED`).
 - Every row the webhook writes has `system` in `created_by` or `updated_by` (approved by the product owner on 2026-11-08).
 - The state table, the late payment, the refund and the budget details are in the sequence diagram.
@@ -55,6 +56,8 @@ approved_at: 2026-11-16T09:24:57+07:00
 | 6   | data.object.latest_charge              | String    | OPTIONAL  | Id of the charge, on payment_intent.succeeded                                                                                                            | ch_3QxHk2EXAMPLE0001     |
 | 7   | data.object.last_payment_error.code    | String    | OPTIONAL  | Failure code, on payment_intent.payment_failed                                                                                                           | card_declined            |
 | 8   | data.object.last_payment_error.message | String    | OPTIONAL  | Failure message, on payment_intent.payment_failed                                                                                                        | Your card was declined.  |
+| 9   | data.object.amount                     | Numeric   | MANDATORY | Amount in the smallest unit of the currency (satang for thb), on every handled event; compared with the stored payment                                   | 65700                    |
+| 10  | data.object.currency                   | String    | MANDATORY | Currency in lower case, on every handled event; compared with the stored payment                                                                         | thb                      |
 
 #### Example Body Parameters
 
@@ -289,7 +292,8 @@ SELECT
     p.order_id,
     p.status,
     p.payment_method,
-    p.amount
+    p.amount,
+    p.currency
 FROM payment.t_payment p
 WHERE p.provider_payment_id = '<sequence.providerPaymentId>' -- the PaymentIntent id of the event, no row means the event is IGNORED
 AND p.row_status = 'ACTIVE'
