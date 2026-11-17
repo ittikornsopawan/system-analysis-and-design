@@ -5197,14 +5197,15 @@ AUTHOR_DIR = "e-commerce/doc/api/author"
 AUTHOR_SPECS = {
     "01": "01-upsert-role", "02": "02-upsert-role-batch", "03": "03-inquiry-role", "04": "04-upsert-permission", "05": "05-upsert-permission-batch",
     "06": "06-inquiry-permission", "07": "07-upsert-scope", "08": "08-upsert-scope-batch", "09": "09-inquiry-scope", "10": "10-upsert-user-role",
-    "11": "11-inquiry-user-role", "12": "12-me", "13": "13-upsert-role-permission", "14": "14-inquiry-role-permission", "17": "17-check-permission",
+    "11": "11-inquiry-user-role", "12": "12-me", "13": "13-upsert-role-permission", "14": "14-inquiry-role-permission",
+    "15": "15-upsert-user-permission", "16": "16-inquiry-user-permission", "17": "17-check-permission",
 }
 AUTHOR_MASTERS = {  # key: (upsert, batch, inquiry, path, Title, lower, camel, alias, unique column, id field, regex of a valid code, in-use message)
     "role": ("01", "02", "03", "role", "Role", "role", "role", "r", "name", "roleId", r"^[A-Z][A-Z0-9_]{0,63}$", "Role is assigned to users or has permissions."),
     "permission": ("04", "05", "06", "permission", "Permission", "permission", "permission", "p", "name", "permissionId", r"^[a-z][a-z0-9_]*(\.[a-z0-9_]+)+$", "Permission is used by roles or users."),
     "scope": ("07", "08", "09", "scope", "Scope", "scope", "scope", "s", "scope", "scopeId", r"^[A-Z][A-Z0-9_]{0,63}$", "Scope is used by permissions."),
 }
-SINGLE_UPSERT_SPECS.extend(f"{AUTHOR_DIR}/{AUTHOR_SPECS[k]}/spec.md" for k in ("01", "04", "07", "10", "13"))
+SINGLE_UPSERT_SPECS.extend(f"{AUTHOR_DIR}/{AUTHOR_SPECS[k]}/spec.md" for k in ("01", "04", "07", "10", "13", "15"))
 BATCH_UPSERT_SPECS.extend(f"{AUTHOR_DIR}/{AUTHOR_SPECS[k]}/spec.md" for k in ("02", "05", "08"))
 AUTHOR_ADMIN = ["#### QUERY - Get the platform administrator role", "#### QUERY - Check platform administrator", "WHERE r.name = 'PLATFORM_ADMIN'", "AND r.row_status = 'ACTIVE'",
                 "AND ur.role_id = '<sequence.roleId>'", "AND ur.row_status = 'ACTIVE'", "(../../../schema/author/m_role.md)", "(../../../schema/author/t_user_role.md)", "Approved by the product owner"]
@@ -5299,6 +5300,11 @@ def author_counted(key: str):
                 ("AND ('<sequence.filterRoleId>' IS NULL OR rp.role_id = '<sequence.filterRoleId>') -- only when roleId is specified", 2),
                 ("AND ('<sequence.filterPermissionId>' IS NULL OR rp.permission_id = '<sequence.filterPermissionId>') -- only when permissionId is specified", 2),
                 ("AND ('<sequence.rowStatus>' IS NULL OR rp.row_status = '<sequence.rowStatus>') -- only when rowStatus is specified", 2)]
+    if key == "16":
+        return [("AND ('<sequence.id>' IS NULL OR up.id = '<sequence.id>') -- only when id is specified", 2),
+                ("AND ('<sequence.filterUserId>' IS NULL OR up.user_id = '<sequence.filterUserId>') -- only when userId is specified", 2),
+                ("AND ('<sequence.filterPermissionId>' IS NULL OR up.permission_id = '<sequence.filterPermissionId>') -- only when permissionId is specified", 2),
+                ("AND ('<sequence.rowStatus>' IS NULL OR up.row_status = '<sequence.rowStatus>') -- only when rowStatus is specified", 2)]
     if key == "11":
         return [("AND ('<sequence.id>' IS NULL OR ur.id = '<sequence.id>') -- only when id is specified", 2), ("AND ('<sequence.filterUserId>' IS NULL OR ur.user_id = '<sequence.filterUserId>') -- only when userId is specified", 2),
                 ("AND ('<sequence.filterRoleId>' IS NULL OR ur.role_id = '<sequence.filterRoleId>') -- only when roleId is specified", 2), ("AND ('<sequence.rowStatus>' IS NULL OR ur.row_status = '<sequence.rowStatus>') -- only when rowStatus is specified", 2)]
@@ -5328,6 +5334,18 @@ AUTHOR_OTHER_NEEDLES = {
            "You do not have permission to read role permissions.", "Inquiry Role Permission Success", "The four nullable filters id/roleId/permissionId/rowStatus", "ORDER BY r.name, p.name, rp.id",
            "Request: `GET v1/author/role/permission?id=8b9c0d1e-2f3a-4b4c-9d5e-6f7a8b9c0d1e`", "#### Scope Object", "#### QUERY - Get the scopes of the role permissions",
            "AND rps.row_status <> 'DELETED'", "use exact PLATFORM_ADMIN in verified JWT role claims", "Each item keeps only its own links (Q12"],
+    "15": ["# [POST]: v1/author/user/permission/upsert", "**The user, the permission and the scope must be ACTIVE only when the request gives the permission**",
+           "**One grant is one permission in one scope.**", "#### QUERY - Lock the users", "ORDER BY u.id\nFOR UPDATE", "#### QUERY - Lock the permission", "#### QUERY - Lock existing user permission",
+           "AND up.row_status <> 'DELETED' -- the id of a DELETED row counts as not found", "#### QUERY - Get the scopes of the permission", "#### QUERY - Check duplicate user permission",
+           "AND up.permission_scope_id IS NOT DISTINCT FROM '<sequence.permissionScopeId>'", "AND ('<sequence.id>' IS NULL OR up.id <> '<sequence.id>')",
+           "The user already has this permission in this scope.", "User Id, Permission Id and Scope Id cannot be changed.", "User, permission or scope not found or not ACTIVE.", "User not found.",
+           "Scope is not a scope of the permission.", "Scope Id is required for a permission that has scopes.", "You do not have permission to assign permissions.", "Delete 204 No Content",
+           "Archive when rowStatus is ARCHIVED", "Lock order is users (ascending id) -> the permission (`FOR UPDATE`)", "uq_t_user_permission_user_id_permission_id", "uq_t_user_permission_user_id_permission_scope",
+           "Only a platform administrator from the verified JWT roles claim", "a platform administrator holds only", "a missing target user is 404 (E10005) `User not found.`, also when the request takes the permission away"],
+    "16": ["# [GET]: v1/author/user/permission", "Only a platform administrator can read the permissions of users (403, E10009)", "#### Fail - Forbidden", "E10009",
+           "You do not have permission to read user permissions.", "Inquiry User Permission Success", "The four nullable filters id/userId/permissionId/rowStatus", "ORDER BY p.name, u.display_name, s.scope, up.id",
+           "Request: `GET v1/author/user/permission?id=6a7b8c9d-0e1f-4a2b-9c3d-4e5f6a7b8c9d`", "LEFT JOIN author.t_permission_scope ps", "LEFT JOIN author.m_scope s", "use exact PLATFORM_ADMIN in verified JWT role claims",
+           "Permissions a user gets through roles are not listed here."],
     "17": ["# [GET]: v1/author/check", "**Claim source:**", "**Permission and scope are checked separately.**", "`PLATFORM_ADMIN` gives no implicit permission",
            "Always HTTP 200 with `allowed` true or false", "Check Permission Success", "Permission is required and must be a permission claim such as catalog:manage.",
            "Scope must be a scope claim such as shop:*.", "#### QUERY - Check active credential and user", "owner answers of 2026-11-17 (Q1–Q6, relayed by Josh)",
@@ -5476,6 +5494,9 @@ AUTHOR_SEQUENCE_NEEDLES = {
     "13": ['Lock order is caller user -> the role (`FOR UPDATE`) -> the permission (`FOR UPDATE`)', 'uq_t_role_permission_scope_role_permission_scope', 'uq_t_role_permission_role_id_permission_id',
            'Only a platform administrator from the verified JWT roles claim', 'The PLATFORM_ADMIN role can receive permissions like any other role.', '(Q12: a scope of one permission never belongs to another)'],
     "14": ['use exact PLATFORM_ADMIN in verified JWT role claims', 'Each item keeps only its own links (Q12'],
+    "15": ['Lock order is users (ascending id) -> the permission (`FOR UPDATE`)', 'uq_t_user_permission_user_id_permission_id', 'uq_t_user_permission_user_id_permission_scope',
+           'Only a platform administrator from the verified JWT roles claim', 'a missing target user is 404 (E10005) `User not found.`, also when the request takes the permission away'],
+    "16": ['use exact PLATFORM_ADMIN in verified JWT role claims', 'Permissions a user gets through roles are not listed here.'],
     "17": ['Do not query author.t_role_permission, author.t_role_permission_scope, author.t_user_permission, author.t_user_role',
            '`allowed` does not prove that this scope was granted with this permission', 'Q3: no implicit permission for PLATFORM_ADMIN'],
     "12": ['Any caller with a valid access token can call this API',
@@ -5573,6 +5594,42 @@ def author_example_errors(key: str, md: str) -> list[str]:
                 if [sc["scope"] for sc in item["scopes"]] != sorted(sc["scope"] for sc in item["scopes"]):
                     errors.append(f"'{t}' must sort scopes by scope code")
             if t == "Success - By Id" and [i["rolePermissionId"] for i in data["items"]] != [by_id]:
+                errors.append("the By Id example must list only its id")
+        for t, code, biz in (("Fail - Bad Request", 400, "E10001"), ("Fail - Unauthorized", 401, "E10002"), ("Fail - Forbidden", 403, "E10009"), ("Fail - Request Timeout", 408, "E90001")):
+            errors += author_status(md, t, code, biz)
+    elif key == "15":
+        bodies = {t: json.loads(re.search(rf"##### {t}\n\n```JSON\n(.*?)```", md, re.DOTALL).group(1)) for t in ("Insert", "Update", "Delete")}
+        rid = bodies["Update"]["id"]
+        if "id" in bodies["Insert"] or bodies["Delete"]["id"] != rid:
+            errors.append("Insert has no id, Update and Delete use the same user permission id")
+        if len({(b["userId"], b["permissionId"], b.get("scopeId")) for b in bodies.values()}) != 1:
+            errors.append("the three examples must use the same user, permission and scope (shop.manage is scoped, so scopeId is in all three)")
+        if bodies["Delete"]["rowStatus"] != "DELETED" or bodies["Insert"]["rowStatus"] == "DELETED":
+            errors.append("Delete must be DELETED and Insert must not be")
+        for t in ("Success - Insert", "Success - Update", "Success - Archive"):
+            if author_json(md, t)["data"] != {"userPermissionId": rid}:
+                errors.append(f"'{t}' must answer only the id of the Update example")
+        if success_codes(md) != {"Success - Insert": 201, "Success - Update": 200, "Success - Delete": 204, "Success - Archive": 200}:
+            errors.append(f"wrong success codes {success_codes(md)}")
+        for t, code, biz in (("Fail - Bad Request", 400, "E10001"), ("Fail - Bad Request User Permission Changed", 400, "E10001"), ("Fail - Bad Request Scope Of Permission", 400, "E10001"),
+                             ("Fail - Bad Request Scope Required", 400, "E10001"), ("Fail - Unauthorized", 401, "E10002"), ("Fail - Forbidden", 403, "E10009"), ("Fail - Not Found", 404, "E10004"),
+                             ("Fail - Not Found Target User", 404, "E10005"), ("Fail - Not Found User Permission Or Scope", 404, "E10005"), ("Fail - Conflict", 409, "E10003"), ("Fail - Request Timeout", 408, "E90001")):
+            errors += author_status(md, t, code, biz)
+    elif key == "16":
+        by_id = re.search(r"Request: `GET v1/author/user/permission\?id=([0-9a-f-]{36})`", md).group(1)
+        for t in ("Success", "Success - By Id", "Success - Not Found"):
+            data = author_json(md, t)["data"]
+            if data["totalItems"] != len(data["items"]) or data["totalPages"] != (0 if not data["items"] else 1):
+                errors.append(f"'{t}' has wrong totals")
+            keys = [(i["permissionName"], i["userDisplayName"] or "", i["scope"] or "\uffff", i["userPermissionId"]) for i in data["items"]]
+            if keys != sorted(keys):
+                errors.append(f"'{t}' must be sorted by permission name, user display name, scope (no scope last) and id")
+            for item in data["items"]:
+                if item["rowStatus"] == "DELETED":
+                    errors.append(f"'{t}' lists a DELETED row")
+                if len({item["permissionScopeId"] is None, item["scopeId"] is None, item["scope"] is None}) != 1:
+                    errors.append(f"'{t}': the three scope fields are null together or not at all")
+            if t == "Success - By Id" and [i["userPermissionId"] for i in data["items"]] != [by_id]:
                 errors.append("the By Id example must list only its id")
         for t, code, biz in (("Fail - Bad Request", 400, "E10001"), ("Fail - Unauthorized", 401, "E10002"), ("Fail - Forbidden", 403, "E10009"), ("Fail - Request Timeout", 408, "E90001")):
             errors += author_status(md, t, code, biz)
