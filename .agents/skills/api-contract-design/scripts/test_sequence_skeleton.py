@@ -106,7 +106,7 @@ def header_of(text: str) -> list[str]:
 
 class SkeletonOfEverySpec(unittest.TestCase):
     def test_specs_were_found(self):
-        self.assertEqual(len(SPECS), 87, "the repository has 87 API specs")
+        self.assertEqual(len(SPECS), 88, "the repository has 88 API specs")
 
     def test_every_skeleton_matches_its_spec(self):
         login_header = header_of((LOGIN / "sequence.wsd").read_text(encoding="utf-8"))

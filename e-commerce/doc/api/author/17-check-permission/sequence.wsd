@@ -1,0 +1,145 @@
+@startuml CheckPermission Sequence
+
+title Check Permission API Sequence
+
+' Leading SQL apostrophes use &#39; so PlantUML preserves literals; parity compares decoded SQL.
+
+' Visual style
+skinparam defaultFontName "Sarabun"
+skinparam defaultFontSize 14
+skinparam backgroundColor #FFFFFF
+skinparam shadowing false
+skinparam roundcorner 10
+skinparam sequence {
+    ArrowColor #475569
+    ArrowFontColor #334155
+    LifeLineBorderColor #CBD5E1
+    LifeLineBackgroundColor #F8FAFC
+    ParticipantBorderColor #94A3B8
+    ParticipantBackgroundColor #F1F5F9
+    ParticipantFontColor #0F172A
+    GroupBorderColor #94A3B8
+    GroupBackgroundColor #F8FAFC
+    GroupFontColor #334155
+}
+
+' Do not show participant footers at the bottom of the diagram
+hide footbox
+actor "User" as user
+box "Frontend" #F8FAFC
+    participant "Check Permission Page" as page
+end box
+box "Web API" #F8FAFC
+    participant "API" as api
+    participant "Application" as app
+    participant "Domain" as domain
+    participant "Infrastructure" as infra
+end box
+box "Database" #F8FAFC
+    database "t_user_access_token" as t_user_access_token
+end box
+user -> page: Ask whether my token holds a permission (and a scope)
+activate page
+page -> api: GET v1/author/check?permission=&scope= (Bearer JWT, timestamp, requestId)
+activate api
+api -> app: [**CheckPermissionQueryHandler**] Process request
+activate app
+app -> app: Generate requestId if omitted; validate mandatory UTC timestamp and the query keys permission (mandatory) and scope (optional)
+note over app, infra
+    Validate mandatory timestamp as a UTC timestamp before SQL. Accept only the single query keys permission and
+    scope, no body. permission is mandatory, at most 64 characters, lower-case letters, digits, `_` and `.` with
+    exactly one `:` before the action part (`^[a-z][a-z0-9_]*(\.[a-z0-9_]+)*:[a-z0-9_]+$`), the claim form of a
+    permission name whose last `.` becomes `:`. scope is optional, at most 64 characters, `<lower-case scope
+    code>:*` (`^[a-z][a-z0-9_]*:\*$`). Missing/repeated/unknown keys, an empty value or a wrong format return
+    400 E10001 before SQL. Generate requestId if omitted.
+    Missing/malformed Bearer credentials or a failed JWT signature/issuer/audience/expiry/UUID sub validation
+    return the same 401 E10002 `Invalid or expired access token.` before SQL. Validate the claims of the payload
+    defined by [login](../../authen-and-author/02-login/spec.md#claim-resolution-and-payload) (owner-confirmed
+    2026-11-13): `roles`, `permissions` and `scopes` must each be an array of unique non-empty strings, including
+    explicit []. A missing or malformed claim makes the credential invalid (401); never replace it with an empty
+    list or recover privileges from the database.
+end note
+alt Missing or malformed timestamp or query
+    app -> api: HTTP 400 E10001
+    api -> page: Validation error
+else Valid headers and query
+    app -> app: Verify JWT signature/issuer/audience/exp/UUID sub and the roles, permissions and scopes claims as arrays of unique non-empty strings
+    alt Missing/invalid JWT or malformed claims
+        app -> api: HTTP 401 E10002 Invalid or expired access token.
+        api -> page: Authentication error
+    else Verified JWT and claims
+        app -> app: userId = verified sub; accessTokenHash = SHA-256 exact JWT
+        alt Read-only processing completes
+            app -> app: Capture fresh server UTC now before credential query; recheck JWT exp
+            app -> infra: QUERY - Check active credential and user
+            infra -> t_user_access_token: QUERY - Check active credential and user
+            activate t_user_access_token
+                note right of t_user_access_token
+                    SELECT
+                        at.user_id
+                    FROM authen.t_user_access_token at
+                    WHERE at.token = '<sequence.accessTokenHash>'
+                    AND at.user_id = '<sequence.userId>'
+                    AND at.row_status = 'ACTIVE'
+                    AND at.expired_at > '<sequence.now>'
+                    AND EXISTS (
+                        SELECT 1
+                        FROM authen.m_user u
+                        WHERE u.id = at.user_id
+                        AND u.row_status = 'ACTIVE'
+                    )
+                end note
+                t_user_access_token -> infra: Return ACTIVE matching token/user or no row
+            deactivate t_user_access_token
+            infra -> app: Return ACTIVE matching token/user or no row
+            alt Credential/user ACTIVE and stored/JWT expiry valid at now
+                app -> app: permissionHeld = permission is in verifiedJwt.permissions (exact, case-sensitive)
+                alt scope is specified
+                    app -> app: scopeHeld = scope is in verifiedJwt.scopes (exact, case-sensitive); allowed = permissionHeld AND scopeHeld
+                else scope is omitted
+                    app -> app: allowed = permissionHeld; data.scope = null
+                end
+                app -> app: data.permission and data.scope echo the validated query; no live grant lookup; PLATFORM_ADMIN in roles changes nothing
+                note over app, infra
+                    Governing decisions: WP5 author design A12 (5b restarted by the owner on 2026-11-17), owner answers of
+                    2026-11-17 (Q1–Q6, relayed by Josh) and the owner-confirmed API review Q2/Q4/Q12/Q13. This specification
+                    is in-review; no backend implementation is included.
+                    Any caller with a valid access token can call this API, and checks only the caller's own token.
+                    Q1: the answer comes only from the verified `permissions` and `scopes` claims. Do not query
+                    author.t_role_permission, author.t_role_permission_scope, author.t_user_permission, author.t_user_role or
+                    any other grant table to reload, add or remove a claim. Grant changes after issuance do not change this
+                    token's answer until the token expires or is replaced at refresh (Q2/Q4), which is exactly what a
+                    permission-enforcing API decides from the same token.
+                    Q2: permission and scope are checked separately. `allowed` is true when the permission claim is in
+                    `permissions` and, when `scope` is specified, the scope claim is in `scopes`. The payload is flat (the
+                    association of a scope with its permission, Q12, is resolved at login but not carried in the token), so
+                    `allowed` does not prove that this scope was granted with this permission.
+                    Q3: no implicit permission for PLATFORM_ADMIN; superseding A2, a platform administrator is allowed only what
+                    the token holds. The roles claim is validated but never used for the answer.
+                    Compare exact, case-sensitive strings; no wildcard, alias, parent namespace or `crud` expansion is inferred.
+                    The current token/user check still allows logout/password reset to revoke credentials immediately (Q13).
+                    Always HTTP 200 S10000 Check Permission Success with data.permission, data.scope (null when omitted) and
+                    data.allowed; a permission the token does not hold is allowed=false, never 403. Never return the claims
+                    arrays, stored token hashes or internal credential ids. Timeout returns 408 E90001; unexpected failure
+                    returns generic 500 with no bizCode. No outcome writes data.
+                end note
+                app -> api: HTTP 200 S10000 Check Permission Success; data.permission, data.scope, data.allowed
+                api -> page: Return the answer for this token
+                page -> user: Display whether the token holds the permission
+            else Credential/user inactive, revoked, mismatched or expired
+                app -> api: HTTP 401 E10002 Invalid or expired access token.
+                api -> page: Authentication error
+            end
+        else Timeout during read-only processing
+            app -> api: HTTP 408 E90001
+            api -> page: Check timed out; no writes
+        else Unexpected read-only failure
+            app -> api: HTTP 500 Internal Server Error; omit bizCode
+            api -> page: Generic check failure; no writes
+        end
+    end
+end
+deactivate app
+deactivate api
+deactivate page
+@enduml
