@@ -9089,9 +9089,21 @@ def check_api_contract() -> int:
     drift = subprocess.run([sys.executable, str(generator), "--check"], capture_output=True, text=True)
     if drift.returncode != 0:
         errors.append("gen_contract.py --check: " + " | ".join((drift.stdout + drift.stderr).strip().splitlines()))
+    # Real OpenAPI 3.1 validation runs only when openapi-spec-validator is importable (CI installs it, pinned).
+    try:
+        from openapi_spec_validator import validate
+    except ImportError:
+        note = "validator not installed (pip install openapi-spec-validator); the OpenAPI 3.1 check ran only in CI"
+    else:
+        try:
+            validate(contract)
+            note = "validated by openapi-spec-validator"
+        except Exception as error:  # the library raises several error types; report the first line of each
+            errors.append("openapi-spec-validator: " + str(error).strip().splitlines()[0])
+            note = ""
     if errors:
         return fail("; ".join(errors))
-    print(f"OK: api-contract ({len(specs)} operations of {len(API_CONTRACT_DOMAINS)} domains)")
+    print(f"OK: api-contract ({len(specs)} operations of {len(API_CONTRACT_DOMAINS)} domains; {note})")
     return 0
 
 
