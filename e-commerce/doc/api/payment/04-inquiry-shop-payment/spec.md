@@ -4,12 +4,6 @@ description: Defines the verified-JWT authorization, the current credential chec
 status: approved
 approved_by: Ittikorn
 approved_at: 2026-11-16T09:24:57+07:00
-- A member of the shop (an ACTIVE `shop.t_shop_user` row with the role OWNER, ADMIN or STAFF) or the role `PLATFORM_ADMIN` in the verified `roles` claim can read, otherwise 403 (E10009); a shop that does not exist or is DELETED is 404 (E10005). A member reads the payments of the shop, a platform administrator reads every shop.
-- The platform administrator is the exact case-sensitive role `PLATFORM_ADMIN` in the verified `roles` claim; do not query `author.m_role` or `author.t_user_role`. Membership of a shop is not a token claim and is still read from `shop.t_shop_user`.
-- Only the payments of the orders of the shop are returned, DELETED payments never, ordered by creation time (newest first) then `id`.
-- `transactionCode` (the Stripe charge id) is returned to the members of the shop; `providerPaymentId` and `providerRefundId` are returned only to a platform administrator and are `null` (the key stays) for the members.
-- The JWT and credential checks, the order of the checks and the inquiry without a transaction are in the sequence diagram.
-
 ---
 
 # [GET]: v1/shop/payment
@@ -31,6 +25,12 @@ approved_at: 2026-11-16T09:24:57+07:00
 | UAT            | https://www.domain.com/api-uat      |
 | PRE-PRODUCTION | https://www.domain.com/api-pre-prod |
 | PRODUCTION     | https://www.domain.com/api          |
+
+- A member of the shop (an ACTIVE `shop.t_shop_user` row with the role OWNER, ADMIN or STAFF) or the role `PLATFORM_ADMIN` in the verified `roles` claim can read, otherwise 403 (E10009); a shop that does not exist or is DELETED is 404 (E10005). A member reads the payments of the shop, a platform administrator reads every shop.
+- The platform administrator is the exact case-sensitive role `PLATFORM_ADMIN` in the verified `roles` claim; do not query `author.m_role` or `author.t_user_role`. Membership of a shop is not a token claim and is still read from `shop.t_shop_user`.
+- Only the payments of the orders of the shop are returned, DELETED payments never, ordered by creation time (newest first) then `id`.
+- `transactionCode` (the Stripe charge id) is returned to the members of the shop; `providerPaymentId` and `providerRefundId` are returned only to a platform administrator and are `null` (the key stays) for the members.
+- The JWT and credential checks, the order of the checks and the inquiry without a transaction are in the sequence diagram.
 
 ---
 

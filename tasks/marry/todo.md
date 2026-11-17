@@ -7,15 +7,15 @@ description: Active plans and task records of the System Analyst Marry, resolved
 
 Completed records are in `success-task.md`.
 
-## e-commerce: OpenAPI contract, security text, 429 and array limits
+## e-commerce: specs, Domain rules out of the frontmatter
 
 Owner: marry
 Status: In progress
-Created at: 2026-11-17T20:33:44+07:00
-Started at: 2026-11-17T20:33:44+07:00
+Created at: 2026-11-17T20:42:29+07:00
+Started at: 2026-11-17T20:42:29+07:00
 
-Assignment: agent `marry`, delivery `open-pr`, authorized by `ittikorn`, workspace `.workspace/marry`, branch `docs/marry-api-contract-security-text`, scopes `e-commerce/api/api-contract.json`, `e-commerce/db/tests/check_docs.py`, `tasks/marry/todo.md`, `tasks/marry/success-task.md`, `.agents/skills/api-contract-design/scripts/gen_contract.py`, `.agents/skills/api-contract-design/SKILL.md`. Step 12 of the contract rollout, the last one; all 10 domains are in the contract.
+Assignment: agent `marry`, delivery `open-pr`, authorized by `ittikorn`, workspace `.workspace/marry`, branch `docs/marry-move-domain-rules-out-of-frontmatter`, scopes `e-commerce/doc/api/payment/04-inquiry-shop-payment`, `e-commerce/doc/api/payment/05-refund-payment`, `e-commerce/doc/api/sales/04-inquiry-shop-order`, `e-commerce/doc/api/sales/05-cancel-order`, `e-commerce/api/api-contract.json`, `tasks/marry/todo.md`, `tasks/marry/success-task.md`. The last task of the contract rollout, ordered by Josh on 2026-11-17: the rule lines of these four approved specs stand in the frontmatter, so `gen_contract.py` printed a WARNING for each; they move word for word into `## Domain`, like every other spec. The approval fields are not touched.
 
-- [x] Add the contract-side findings of #209 (F3 scheme text, F4 who may call, F5 webhook text with `security: []`, F6 global security, F8 `created` integer) and the two additions of Josh: shared `Error429` with `Retry-After` on the 9 public operations, and `minItems 1` / `maxItems 100` on the batch arrays and `cartIds`; the generator and `api-contract` check each of them.
+- [x] Move the `## Domain` rule lines of payment/04, payment/05, sales/04 and sales/05 out of the frontmatter into `## Domain`, word for word (Josh, 2026-11-17); the contract does not change, the generator warnings disappear.
 - [ ] Verification: every `check_docs.py` sub-command, `audit_all.py`, `test_sequence_skeleton.py`, `test_agent_workspace.py`, `preflight.py`.
-- [ ] Open the PR, tell Josh when `checks` is green, suspend, wait for the merge before the next domain.
+- [ ] Open the PR, tell Josh when `checks` is green, suspend, wait for the merge.

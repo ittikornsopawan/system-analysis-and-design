@@ -4,16 +4,6 @@ description: Defines the verified-JWT authorization, the caller lock and current
 status: approved
 approved_by: Ittikorn
 approved_at: 2026-11-16T09:24:57+07:00
-- The caller needs a verified JWT, then must be the owner of the order (the user of the access token), an ACTIVE member of the shop of the order (OWNER, ADMIN or STAFF in `shop.t_shop_user`) or have the role `PLATFORM_ADMIN` in the verified `roles` claim. For any other user the order counts as not found (404, E10004), the same answer as an order that does not exist or is DELETED.
-- The platform administrator is the exact case-sensitive role `PLATFORM_ADMIN` in the verified `roles` claim; do not query `author.m_role` or `author.t_user_role`, and a change of the assignment after the token was issued does not change this token (it may stay usable until its expiry). Membership of a shop is not a token claim and is still read from `shop.t_shop_user`.
-- Only an order with the status `WAIT_PAYMENT` can be cancelled, otherwise 409 (E10006) with the current status in the message. An order that has been paid is refunded through the payment API, it is not cancelled here.
-- The order becomes `CANCELLED` and the quantity of every item is added back to its lot (`lot_id` of the item) even when that lot is no longer on sale. A lot that was DELETED or ARCHIVED still gets its quantity back because the lot is the stock history. The order and its items stay in the tables as history.
-- The payment of the order is handled in the same request. A payment with the status `PENDING` becomes `CANCELLED` and its PaymentIntent is cancelled at the payment provider (Stripe). A payment with the status `PROCESSING` means money may be on its way, so the order cannot be cancelled and the answer is 409 (E10006) with the message `A payment of the order is in progress.` The scheduled job that cancels expired orders skips an order whose payment is `PROCESSING` and tries it again later. A payment that is `FAILED` or `CANCELLED` needs no change. If money arrives after the order was cancelled, the payment API refunds it automatically (see the payment webhook).
-- The system applies the same rule when `expires_at` has passed and the order is still `WAIT_PAYMENT` (the system acts as the caller `system`, this is a scheduled job, not an API).
-- The cancel is idempotent in outcome: cancelling an order that is already `CANCELLED` answers 409 (E10006), no quantity is added twice.
-- The budget that the order took from a campaign goes back in the same transaction as the stock, when the order is cancelled, also when the system cancels it because `expires_at` has passed (C7 and C9, approved by the product owner on 2026-11-06): every budget that has a ledger row `RESERVE` of the order and no `RELEASE` yet gets its `usage` back (`remaining` grows by that amount) and a ledger row `RELEASE` with the same `usage` is written. An order that took no budget changes nothing. The order of the locks is the order row, the lots by `id`, then the budgets by `id`.
-- The JWT and credential checks, the lock order, the Idempotency-Key, the failed `COMMIT` and the order of the checks are in the sequence diagram.
-
 ---
 
 # [POST]: v1/order/cancel
@@ -35,6 +25,16 @@ approved_at: 2026-11-16T09:24:57+07:00
 | UAT            | https://www.domain.com/api-uat      |
 | PRE-PRODUCTION | https://www.domain.com/api-pre-prod |
 | PRODUCTION     | https://www.domain.com/api          |
+
+- The caller needs a verified JWT, then must be the owner of the order (the user of the access token), an ACTIVE member of the shop of the order (OWNER, ADMIN or STAFF in `shop.t_shop_user`) or have the role `PLATFORM_ADMIN` in the verified `roles` claim. For any other user the order counts as not found (404, E10004), the same answer as an order that does not exist or is DELETED.
+- The platform administrator is the exact case-sensitive role `PLATFORM_ADMIN` in the verified `roles` claim; do not query `author.m_role` or `author.t_user_role`, and a change of the assignment after the token was issued does not change this token (it may stay usable until its expiry). Membership of a shop is not a token claim and is still read from `shop.t_shop_user`.
+- Only an order with the status `WAIT_PAYMENT` can be cancelled, otherwise 409 (E10006) with the current status in the message. An order that has been paid is refunded through the payment API, it is not cancelled here.
+- The order becomes `CANCELLED` and the quantity of every item is added back to its lot (`lot_id` of the item) even when that lot is no longer on sale. A lot that was DELETED or ARCHIVED still gets its quantity back because the lot is the stock history. The order and its items stay in the tables as history.
+- The payment of the order is handled in the same request. A payment with the status `PENDING` becomes `CANCELLED` and its PaymentIntent is cancelled at the payment provider (Stripe). A payment with the status `PROCESSING` means money may be on its way, so the order cannot be cancelled and the answer is 409 (E10006) with the message `A payment of the order is in progress.` The scheduled job that cancels expired orders skips an order whose payment is `PROCESSING` and tries it again later. A payment that is `FAILED` or `CANCELLED` needs no change. If money arrives after the order was cancelled, the payment API refunds it automatically (see the payment webhook).
+- The system applies the same rule when `expires_at` has passed and the order is still `WAIT_PAYMENT` (the system acts as the caller `system`, this is a scheduled job, not an API).
+- The cancel is idempotent in outcome: cancelling an order that is already `CANCELLED` answers 409 (E10006), no quantity is added twice.
+- The budget that the order took from a campaign goes back in the same transaction as the stock, when the order is cancelled, also when the system cancels it because `expires_at` has passed (C7 and C9, approved by the product owner on 2026-11-06): every budget that has a ledger row `RESERVE` of the order and no `RELEASE` yet gets its `usage` back (`remaining` grows by that amount) and a ledger row `RELEASE` with the same `usage` is written. An order that took no budget changes nothing. The order of the locks is the order row, the lots by `id`, then the budgets by `id`.
+- The JWT and credential checks, the lock order, the Idempotency-Key, the failed `COMMIT` and the order of the checks are in the sequence diagram.
 
 ---
 

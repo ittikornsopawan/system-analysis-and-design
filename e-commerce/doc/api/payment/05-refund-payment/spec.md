@@ -4,13 +4,6 @@ description: Defines the verified-JWT authorization, the caller lock and current
 status: approved
 approved_by: Ittikorn
 approved_at: 2026-11-16T09:24:57+07:00
-- An OWNER or ADMIN of the shop of the order (an ACTIVE `shop.t_shop_user` row with the role OWNER or ADMIN) or the role `PLATFORM_ADMIN` in the verified `roles` claim can refund, otherwise 403 (E10009); a STAFF member of the shop and the customer cannot refund. A payment that does not exist or is DELETED is 404 (E10004).
-- The platform administrator is the exact case-sensitive role `PLATFORM_ADMIN` in the verified `roles` claim; do not query `author.m_role` or `author.t_user_role`. Membership of a shop is not a token claim and is still read from `shop.t_shop_user`.
-- Only a `COMPLETED` payment of a `PAYMENT_CONFIRMED` order can be refunded, otherwise 409 (E10006); after the first shipment the order is `PROCESSING` and cannot be refunded here until the shipping API gives it back to `PAYMENT_CONFIRMED`.
-- The refund is always the whole `amount` of the payment, shipping fee included, asked from Stripe with an Idempotency-Key. When Stripe does not answer or refuses, nothing is written and the answer is 408 (E90001).
-- The payment and the order become `REFUNDED`, the quantity of every item goes back to its lot, and the budget the order took from a campaign goes back in the same transaction (`RELEASE` ledger rows).
-- The JWT and credential checks, the lock order, the Idempotency-Key, the failed `COMMIT` and the order of the checks are in the sequence diagram.
-
 ---
 
 # [POST]: v1/shop/payment/refund
@@ -32,6 +25,13 @@ approved_at: 2026-11-16T09:24:57+07:00
 | UAT            | https://www.domain.com/api-uat      |
 | PRE-PRODUCTION | https://www.domain.com/api-pre-prod |
 | PRODUCTION     | https://www.domain.com/api          |
+
+- An OWNER or ADMIN of the shop of the order (an ACTIVE `shop.t_shop_user` row with the role OWNER or ADMIN) or the role `PLATFORM_ADMIN` in the verified `roles` claim can refund, otherwise 403 (E10009); a STAFF member of the shop and the customer cannot refund. A payment that does not exist or is DELETED is 404 (E10004).
+- The platform administrator is the exact case-sensitive role `PLATFORM_ADMIN` in the verified `roles` claim; do not query `author.m_role` or `author.t_user_role`. Membership of a shop is not a token claim and is still read from `shop.t_shop_user`.
+- Only a `COMPLETED` payment of a `PAYMENT_CONFIRMED` order can be refunded, otherwise 409 (E10006); after the first shipment the order is `PROCESSING` and cannot be refunded here until the shipping API gives it back to `PAYMENT_CONFIRMED`.
+- The refund is always the whole `amount` of the payment, shipping fee included, asked from Stripe with an Idempotency-Key. When Stripe does not answer or refuses, nothing is written and the answer is 408 (E90001).
+- The payment and the order become `REFUNDED`, the quantity of every item goes back to its lot, and the budget the order took from a campaign goes back in the same transaction (`RELEASE` ledger rows).
+- The JWT and credential checks, the lock order, the Idempotency-Key, the failed `COMMIT` and the order of the checks are in the sequence diagram.
 
 ---
 
