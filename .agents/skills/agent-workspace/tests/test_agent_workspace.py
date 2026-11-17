@@ -540,6 +540,28 @@ class WorkspaceIntegrationTests(unittest.TestCase):
             str(prepared["lock_token"]),
         )
 
+    def test_scope_check_ignores_files_merged_into_origin_main_while_local_main_is_stale(self) -> None:
+        workspace, prepared = self.prepare_tommy()
+        # someone else's pull request lands on origin/main; the workspace's local main is never fast-forwarded
+        integrator = self.root / "integrator-stale-main"
+        self.git(self.root, "clone", "--branch", "main", self.remote_url, str(integrator))
+        (integrator / "merged-elsewhere.md").write_text("another agent's merged work\n", encoding="utf-8")
+        self.git(integrator, "add", "merged-elsewhere.md")
+        self.git(integrator, "commit", "-m", "docs: another agent's merged work")
+        self.git(integrator, "push", "origin", "main")
+        self.git(workspace, "fetch", "origin")
+        self.git(workspace, "merge", "--no-edit", "origin/main")
+        (workspace / "e-commerce" / "in-scope.md").parent.mkdir(parents=True, exist_ok=True)
+        (workspace / "e-commerce" / "in-scope.md").write_text("in scope\n", encoding="utf-8")
+        result = command(
+            [sys.executable, "-B", ".agents/skills/commit-and-pr/scripts/preflight.py", "--base", "main"],
+            cwd=workspace,
+            env=self.env,
+        )
+        self.assertNotIn("merged-elsewhere.md", result.stdout, msg=result.stdout + result.stderr)
+        self.assertIn("managed assignment delivery authorized for tommy", result.stdout, msg=result.stdout + result.stderr)
+        self.cli("release", "--agent", "tommy", "--token", str(prepared["lock_token"]))
+
     def test_clearing_agent_marker_cannot_bypass_managed_preflight(self) -> None:
         workspace, prepared = self.prepare_tommy()
         (workspace / "outside.md").write_text("outside scope\n", encoding="utf-8")
