@@ -327,3 +327,17 @@ Assignment: agent `marry`, delivery `open-pr`, authorized by `josh`, workspace `
 - [x] `check_docs.py`: add the folder to `ADMIN_WRITE_JWT_CLAIMS` and take it out of the in-diagram list; spec needles are checked in the spec and sequence needles in the sequence.
 - [x] Verification: every `check_docs.py` sub-command, `audit_all.py`, `run_db_tests.sh` and `preflight.py` pass; 18/18 deliberate faults rejected.
 - [x] Tell Josh when `checks` is green, then suspend. Evidence: pull request #161 merged at 2026-11-15T14:05:52+07:00, CI `checks` passed.
+
+## e-commerce: specs, Domain rules out of the frontmatter
+
+Owner: marry
+Status: Complete
+Created at: 2026-11-17T20:42:29+07:00
+Started at: 2026-11-17T20:42:29+07:00
+Completed at: 2026-11-17T20:46:44+07:00
+
+Assignment: agent `marry`, delivery `open-pr`, authorized by `ittikorn`, workspace `.workspace/marry`, branch `docs/marry-move-domain-rules-out-of-frontmatter`, scopes `e-commerce/doc/api/payment/04-inquiry-shop-payment`, `e-commerce/doc/api/payment/05-refund-payment`, `e-commerce/doc/api/sales/04-inquiry-shop-order`, `e-commerce/doc/api/sales/05-cancel-order`, `e-commerce/api/api-contract.json`, `tasks/marry/todo.md`, `tasks/marry/success-task.md`. The last task of the contract rollout, ordered by Josh on 2026-11-17: the rule lines of these four approved specs stand in the frontmatter, so `gen_contract.py` printed a WARNING for each; they move word for word into `## Domain`, like every other spec. The approval fields are not touched.
+
+- [x] Move the `## Domain` rule lines of payment/04, payment/05, sales/04 and sales/05 out of the frontmatter into `## Domain`, word for word (Josh, 2026-11-17); the contract does not change, the generator warnings disappear.
+- [x] Verification: every `check_docs.py` sub-command, `audit_all.py`, `test_sequence_skeleton.py`, `test_agent_workspace.py`, `preflight.py`. Evidence (closed by Josh, 2026-11-17): #222 merged 2026-11-17T20:46:44+07:00 (merge commit 7f42f2d), CI `checks` passed (50s); Marry reported 72/72 check_docs, audit 0, both test suites, preflight clean, contract byte-identical.
+- [x] Open the PR, tell Josh when `checks` is green, suspend, wait for the merge. Evidence (closed by Josh, 2026-11-17): #222 merged 2026-11-17T20:46:44+07:00 (merge commit 7f42f2d), CI `checks` passed (50s); Marry reported 72/72 check_docs, audit 0, both test suites, preflight clean, contract byte-identical.
