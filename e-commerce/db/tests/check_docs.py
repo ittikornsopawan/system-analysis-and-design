@@ -9033,7 +9033,7 @@ COMMANDS["md-frontmatter"] = check_md_frontmatter
 API_CONTRACT = "e-commerce/api/api-contract.json"
 # Domains published in the contract so far (owner order of 2026-11-17: one PR per domain); add each domain as it lands,
 # then regenerate with .agents/skills/api-contract-design/scripts/gen_contract.py. Only approved specs are published.
-API_CONTRACT_DOMAINS = ["authen-and-author", "author", "consent", "product", "shop", "cart", "sales", "payment", "shipping"]
+API_CONTRACT_DOMAINS = ["authen-and-author", "author", "consent", "product", "shop", "cart", "sales", "payment", "shipping", "campaign"]
 
 
 def spec_operation(md: str) -> tuple:

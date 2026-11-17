@@ -5,6 +5,20 @@ description: Verified completed task records of Marry, moved from todo.md.
 
 # Marry Completed Tasks
 
+## e-commerce: OpenAPI contract, shipping domain
+
+Owner: marry
+Status: Complete
+Created at: 2026-11-17T13:35:00+07:00
+Started at: 2026-11-17T13:35:00+07:00
+Completed at: 2026-11-17T20:20:39+07:00
+
+Assignment: agent `marry`, delivery `open-pr`, authorized by `ittikorn`, workspace `.workspace/marry`, branch `docs/marry-api-contract-shipping`, scopes `e-commerce/api/api-contract.json`, `e-commerce/db/tests/check_docs.py`, `tasks/marry/todo.md`, `tasks/marry/success-task.md`, `.agents/skills/api-contract-design/scripts/gen_contract.py`, `.agents/skills/api-contract-design/SKILL.md`. Step 10 of the contract rollout.
+
+- [x] Publish the 6 approved operations of `shipping`, and name components by the rule of Josh (2026-11-17): a spec qualifier (`ActiveConsent`, `StorefrontShop`) instead of a repeated word (`ConsentConsent`, `ShopShop`), a domain prefix only when two domains clash; every rename listed in the PR; 511 schemas of the 74 earlier operations compared, identical.
+- [x] Verification: 71 `check_docs.py` sub-commands 0 failed, `gen_contract.py --check` up to date, `audit_all.py` 0 findings, both test suites OK, `preflight.py` no blockers; no OpenAPI 3.1 validator installed (not run).
+- [x] Open the PR, tell Josh when `checks` is green, suspend, wait for the merge. Evidence: pull request #214, CI `checks` passed (49s on the re-run), merged at 2026-11-17T20:20:39+07:00 (26a3fa2).
+
 ## e-commerce: OpenAPI contract, shared schemas refactor
 
 Owner: marry
