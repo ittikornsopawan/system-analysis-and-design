@@ -24,9 +24,15 @@ API = ROOT / "e-commerce/doc/api"
 CONTRACT = ROOT / "e-commerce/api/api-contract.json"
 JSON_BLOCK = re.compile(r"```JSON[ \t]*\n(.*?)```", re.DOTALL)
 HEAD = re.compile(r"^(#{2,5}) (.+)$", re.M)
-COUNT_FIELDS = {"pageIndex", "pageSize", "totalItems", "totalPages", "expiresIn"}
+COUNT_FIELDS = {"pageIndex", "pageSize", "totalItems", "totalPages", "expiresIn", "created"}
 ERROR_BIZ = {400: ["E10001"], 401: ["E10002"], 403: ["E10009"], 404: ["E10004", "E10005"], 408: ["E90001"],
-             409: ["E10003", "E10006", "E10007", "E10008"], 500: None}
+             409: ["E10003", "E10006", "E10007", "E10008"], 429: ["E90002"], 500: None}
+# The rules of a spec that say who may call it (the lines of ## Domain that name a permission, a role, a member or an
+# owner, a public API or the signature), copied word for word into the description of the operation.
+ACCESS = re.compile(r"(?i)\bpermission\b|platform administrator|PLATFORM_ADMIN|ACTIVE member|member of the shop|owner of the (order|payment|cart)|"
+                    r"can call|may call|API is public|public API|endpoint is public|no access token|no `?authorization|belongs? to the caller|only the (owner|caller)|"
+                    r"\bthe caller\b|\b403\b|E10009|signature")
+NOT_ACCESS = re.compile(r"^(Rate limit|Governing decisions|The transaction locks the caller user)")  # said once in the contract: 429, the scheme
 COMMON_HEADERS = {"timestamp": ("Timestamp", "MANDATORY"), "requestId": ("RequestId", "OPTIONAL")}
 SCALARS = {
     "String": {"type": "string"},
@@ -122,6 +128,12 @@ class Spec:
         meta = {r.get("Title"): r.get("Description") for r in table(self.md[m.end():self.secs[0][2]])}
         self.name, self.desc = meta.get("Name"), meta.get("Description")
         self.errors = [] if self.name and self.desc else ["no Name or Description in the table under the title"]
+        domain = re.search(r"^## Domain\n(.*?)^---", self.md, re.M | re.S)
+        front = re.match(r"---\n(.*?)\n---\n", self.md, re.S)
+        self.front_rules = re.findall(r"^- (.*)$", front.group(1), re.M) if front else []  # a defect: the rules belong under ## Domain
+        rules = re.findall(r"^- (.*(?:\n  .*)*)", domain.group(1), re.M) if domain else []
+        self.access = [" ".join(r.split()) for r in rules + self.front_rules if ACCESS.search(r) and not NOT_ACCESS.match(r)]
+        self.rate_limit = re.search(r"answers 429 \(E90002\)", self.md) is not None
 
     def find(self, title, within=None):
         lo, hi = (within[2], within[3]) if within else (0, len(self.md))
@@ -180,6 +192,11 @@ class Spec:
             schema = constrain(schema, desc)
             if example and schema.get("type") in ("string", "number", "integer", "boolean") and "..." not in example:
                 schema["examples"] = [coerce(example, schema)]
+        if schema.get("type") == "array":
+            if m := re.search(r"min (\d+), max (\d+) items", desc):
+                schema["minItems"], schema["maxItems"] = int(m.group(1)), int(m.group(2))
+            elif m := re.search(r"\(max (\d+)\b", desc):
+                schema["maxItems"] = int(m.group(1))
         if desc:
             schema = {"description": desc, **schema}
         if re.search(r"\bnull\b", desc):
@@ -221,7 +238,13 @@ def components(spec):
     comps = {
         "securitySchemes": {"bearerAuth": {
             "type": "http", "scheme": "bearer", "bearerFormat": "JWT",
-            "description": "Access token from POST /v1/auth/login or POST /v1/auth/refresh-token, sent as `authorization: Bearer <token>`."}},
+            "description": "Access token from POST /v1/auth/login or POST /v1/auth/refresh-token, sent as `authorization: Bearer <token>`. "
+                           "A valid signature and expiry are not enough. After them the API also checks that the hash of the exact token matches an ACTIVE stored "
+                           "credential and that the user is ACTIVE; a token that was logged out, replaced by a refresh or closed by a password reset is refused with "
+                           "401 (E10002). Roles come only from the `roles` claim of the verified token (a platform administrator has the exact, case-sensitive role "
+                           "`PLATFORM_ADMIN`), never from the database."}},
+        "headers": {"RetryAfter": {"description": "Seconds to wait before the next request (a 429 answer).", "required": True,
+                                   "schema": {"type": "integer", "minimum": 0}}},
         "parameters": {
             "Timestamp": {"name": "timestamp", "in": "header", "required": True, "description": "Request timestamp",
                           "schema": {"type": "string", "format": "date-time"}, "example": "2026-11-05T12:42:00.123Z"},
@@ -250,7 +273,8 @@ def operation(spec, domain):
     words = spec.folder.split("-")[1:]
     op_name = pascal(" ".join(words))
     op = {"tags": [domain], "operationId": words[0] + "".join(w.capitalize() for w in words[1:]), "summary": spec.name,
-          "description": f"{spec.desc}\n\nSource spec: `{spec.rel}`", "x-spec": spec.rel, "parameters": []}
+          "description": spec.desc + ("\n\nWho may call, as the spec says:\n" + "\n".join("- " + a for a in spec.access) if spec.access else "")
+                         + f"\n\nSource spec: `{spec.rel}`", "x-spec": spec.rel, "security": [], "parameters": []}  # security [] = public, said out loud
     for r in spec.rows("Header Parameters"):
         name, mo = r["Parameter Name"], r["M/O"]
         if name == "content-type":
@@ -302,6 +326,10 @@ def operation(spec, domain):
                 media["schema"] = {"$ref": f"#/components/schemas/Error{code}"}
             media["examples"] = {}
         media["examples"][slug(title)] = {"summary": title, "value": body_json}
+    if "429" not in responses and spec.rate_limit:  # the spec states the limit in its rules, so the contract answers it
+        responses["429"] = {"description": "Too Many Requests", "content": {"application/json": {"schema": {"$ref": "#/components/schemas/Error429"}}}}
+    if "429" in responses:
+        responses["429"]["headers"] = {"Retry-After": {"$ref": "#/components/headers/RetryAfter"}}
     op["responses"] = dict(sorted(responses.items()))
     return op
 
@@ -546,6 +574,8 @@ def fit(contract, value, schema, where, problems, mark_null, strict=True):
             elif strict and props and any(p.get("type") == "object" for p in parts) \
                     and not any(p.get("additionalProperties") is True for p in parts):
                 problems.append(f"{where}: {name} is not in the schema")
+    if isinstance(value, list) and not schema.get("minItems", 0) <= len(value) <= schema.get("maxItems", len(value)):
+        problems.append(f"{where}: {len(value)} items are outside {schema.get('minItems')}..{schema.get('maxItems')}")
     if isinstance(value, list) and "items" in schema:
         for i, item in enumerate(value):
             fit(contract, item, schema["items"], f"{where}[{i}]", problems, mark_null)
@@ -589,10 +619,11 @@ def main():
                     {"url": "https://www.domain.com/api-pre-prod", "description": "PRE-PRODUCTION"},
                     {"url": "https://www.domain.com/api", "description": "PRODUCTION"}],
         "tags": [{"name": d, "description": f"Approved specs under e-commerce/doc/api/{d}"} for d in sorted(domains)],
+        "security": [{"bearerAuth": []}],  # an operation that forgets its security is protected; a public one says `security: []`
         "paths": {},
         "components": components(first),
     }
-    errors, skipped, order = list(first.errors), [], []
+    errors, skipped, order, warnings = list(first.errors), [], [], []
     for domain in domains:
         for path in sorted(API.glob(f"{domain}/*/spec.md")):
             spec = Spec(path)
@@ -603,6 +634,8 @@ def main():
                 spec.errors.append("the Status Object differs from the shared one")
             contract["paths"].setdefault(spec.path, {})[spec.method] = operation(spec, domain)
             order.append((spec.path, spec.method))
+            if spec.front_rules:
+                warnings.append(f"{spec.rel}: {len(spec.front_rules)} rules of ## Domain stand in the frontmatter; the spec should move them under ## Domain")
             errors += [f"{spec.rel}: {e}" for e in spec.errors]
     contract["paths"] = {k: dict(sorted(v.items())) for k, v in sorted(contract["paths"].items())}
     check_examples(contract, mark_null=True)
@@ -612,6 +645,7 @@ def main():
     shared.apply(contract)
     errors += check_examples(contract, mark_null=False)
     errors += reuse_report(contract)
+    errors += [f"{m.upper()} {p} has no `security` (write `security: []` for a public operation)" for p, item in contract["paths"].items() for m, op in item.items() if "security" not in op]
     # one-line JSON: the indented file passes the 1 MB preflight limit (lead decision 2026-11-17)
     text = json.dumps(contract, separators=(",", ":"), ensure_ascii=False) + "\n"
     count = sum(len(v) for v in contract["paths"].values())
@@ -625,6 +659,8 @@ def main():
         print(f"{CONTRACT.relative_to(ROOT)}: {count} operations of {len(domains)} domains")
     for rel in skipped:
         print(f"skipped (not approved): {rel}")
+    for warning in warnings:
+        print(f"WARNING: {warning}")
     for base, used in sorted(shared.names.items()):
         if len(used) > 1:  # the same name in the specs, different shapes: for the lead's review
             print(f"collision {base}: " + "; ".join(f"{name} <- {', '.join(sorted({x.split('/api/')[1].rsplit('/', 1)[0] for x in specs}))}" for name, specs in sorted(used.items())))
