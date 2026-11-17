@@ -326,6 +326,7 @@ def key(node):
 
 
 NOISE = {"inquiry", "upsert", "batch", "create", "submit", "check", "confirm", "cancel"}  # the action of a spec, never a qualifier
+DONE = {"create": "Created", "submit": "Submitted", "confirm": "Confirmed", "cancel": "Cancelled"}  # names the result of an action
 
 
 def words(text):
@@ -408,6 +409,7 @@ class Components:
         q = pascal(" ".join(w for w in (spec_words[:hit] if about else spec_words) if w not in base_words))
         fq = pascal(" ".join(w for w in whole if w not in base_words))
         domain = pascal(use["x-domain"].split("-")[0])
+        done = next((DONE[w] + base for w in whole if w in DONE), "")  # CreatedOrder, rather than OrderResponse
         if role == "Request":  # a request body object never takes the plain name of the read model
             first = [q + base + role] if q else []
             return [c for c in first + ([base + role] if about else []) + [fq + base + role, domain + base + role, base + role] if c]
@@ -415,14 +417,15 @@ class Components:
             first = ([base] if across else []) + [domain + base]
         else:
             first = ([q + base] if q else []) + ([base] if about else [])
-        return [c for c in first + ([base + role] if about else []) + [q and q + base + role, fq + base, fq + base + role, domain + base, domain + base + role, base + role, base] if c]
+        return [c for c in first + [done] + ([base + role] if about else []) + [q and q + base + role, fq + base, fq + base + role, domain + base, domain + base + role, base + role, base] if c]
 
     def finalize(self):
-        """Give every shape its name (the shapes of an operation first, then the shapes the spec is about, then the
-        shapes used by most specs) and return the schemas by name."""
+        """Give every shape its name (the shapes of an operation first, then the shapes the spec is about, the object of
+        an inquiry before the result of an action, then the shapes used by most specs) and return the schemas by name."""
         names, taken = {}, set(self.fixed)
         used = lambda i: len({u["x-from"] for u in self.info[i]["usages"]})
-        order = sorted(self.info, key=lambda i: (not self.info[i]["op"], not self.about(self.info[i]["usages"][0]), -used(i), i))
+        read = lambda i: "inquiry" in self.info[i]["usages"][0]["x-from"].split("/")[-2].split("-")  # the read model takes the plain name
+        order = sorted(self.info, key=lambda i: (not self.info[i]["op"], not self.about(self.info[i]["usages"][0]), not read(i), -used(i), i))
         for sid in order:
             entry = self.info[sid]
             first = entry["usages"][0]
