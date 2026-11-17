@@ -1,9 +1,9 @@
 ---
 name: Check Permission API Specification
 description: Defines how a caller checks one permission, and optionally one scope, of their own from the verified access-token claims, the current credential/user validation, and the outcomes of GET v1/author/check; read when reviewing or implementing the permission check.
-status: in-review
-approved_by: null
-approved_at: null
+status: approved
+approved_by: Josh (SA Lead, delegated by Ittikorn 2026-11-17)
+approved_at: 2026-11-17T20:23:48+07:00
 ---
 
 # [GET]: v1/author/check
