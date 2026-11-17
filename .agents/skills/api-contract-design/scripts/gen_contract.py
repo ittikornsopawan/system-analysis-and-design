@@ -40,6 +40,10 @@ SCALARS = {
 }
 
 
+def pascal(text):
+    return "".join(w[:1].upper() + w[1:] for w in re.split(r"[^A-Za-z0-9]+", text) if w)
+
+
 def slug(text):
     return re.sub(r"[^a-z0-9 -]", "", text.lower()).strip().replace(" ", "-")
 
@@ -108,6 +112,7 @@ class Spec:
     def __init__(self, path):
         self.rel = str(path.relative_to(ROOT))
         self.folder = path.parent.name
+        self.domain = path.parent.parent.name
         self.md = path.read_text(encoding="utf-8")
         self.secs = sections(self.md)
         self.whole = (0, "", 0, len(self.md))
@@ -148,6 +153,11 @@ class Spec:
                 node.setdefault("required", []).append(leaf)
         return schema
 
+    def tag(self, schema, name, role):
+        """Mark an object for componentize(): its component name, role and origin (removed there)."""
+        schema.update({"x-name": name, "x-role": role, "x-domain": self.domain, "x-from": self.rel})
+        return schema
+
     def field(self, name, dtype, desc, example, scope, where):
         if m := re.fullmatch(r"\[(Object|Array) of ([^\]]+)\]\(#([^)]+)\)", dtype):
             kind, _, anchor = m.groups()
@@ -157,6 +167,7 @@ class Spec:
                 inner = {"type": "object"}
             else:
                 inner = self.object_from(table(own_text(self.md, target[2], target[3])), scope, where)
+                self.tag(inner, pascal(re.sub(r" Object$", "", target[1])), "Request" if where.startswith("body") else "Response")
             schema = inner if kind == "Object" else {"type": "array", "items": inner}
         elif m := re.fullmatch(r"Array of (.+)", dtype):
             schema = {"type": "array", "items": dict(SCALARS.get(m.group(1), {}))}
@@ -217,7 +228,11 @@ def components(spec):
             "RequestId": {"name": "requestId", "in": "header", "required": False, "description": "API Request Id",
                           "schema": {"type": "string"}, "example": "req-9b1deb4d-3b7d-4bad-9bdd-2b0d7b3dcb6d"},
         },
-        "schemas": {"Status": status},
+        "schemas": {
+            "Status": status,
+            "ResponseEnvelope": {"type": "object", "required": ["status"], "description": "Every success response: the status object, and the data of the operation in `data`.",
+                                 "properties": {"status": {"$ref": "#/components/schemas/Status"}}},
+        },
     }
     for code, biz in ERROR_BIZ.items():
         fixed = {"code": {"const": code}, "status": {"const": "ERROR"}}
@@ -233,6 +248,7 @@ def components(spec):
 
 def operation(spec, domain):
     words = spec.folder.split("-")[1:]
+    op_name = pascal(" ".join(words))
     op = {"tags": [domain], "operationId": words[0] + "".join(w.capitalize() for w in words[1:]), "summary": spec.name,
           "description": f"{spec.desc}\n\nSource spec: `{spec.rel}`", "x-spec": spec.rel, "parameters": []}
     for r in spec.rows("Header Parameters"):
@@ -257,7 +273,7 @@ def operation(spec, domain):
         del op["parameters"]
     body = spec.find("Body Parameters")
     if body:
-        content = {"schema": spec.object_from(spec.rows("Body Parameters"), body, "body")}
+        content = {"schema": spec.tag(spec.object_from(spec.rows("Body Parameters"), body, "body"), f"{op_name}Request", "Request")}
         examples = spec.examples("Example Body Parameters") or spec.examples("Example Body Parameters - Display only")
         if examples:
             content["examples"] = {slug(k): {"summary": k, "value": v} for k, v in examples.items()}
@@ -273,10 +289,12 @@ def operation(spec, domain):
         media = resp["content"]["application/json"]
         if "schema" not in media:
             if code < 300:
-                props = {"status": {"$ref": "#/components/schemas/Status"}}
+                envelope = {"$ref": "#/components/schemas/ResponseEnvelope"}
                 if data_rows:
-                    props["data"] = spec.object_from(data_rows, data, "data")
-                media["schema"] = {"type": "object", "required": ["status"], "properties": props}
+                    payload = spec.tag(spec.object_from(data_rows, data, "data"), f"{op_name}Data", "Response")
+                    media["schema"] = {"allOf": [envelope, {"type": "object", "properties": {"data": payload}}]}
+                else:
+                    media["schema"] = envelope
             else:
                 if code not in ERROR_BIZ:
                     spec.errors.append(f"HTTP {code} has no shared error schema")
@@ -285,6 +303,114 @@ def operation(spec, domain):
         media["examples"][slug(title)] = {"summary": title, "value": body_json}
     op["responses"] = dict(sorted(responses.items()))
     return op
+
+
+# ---------------------------------------------------------------- shared components
+PAGE_KEYS = ["pageIndex", "pageSize", "totalItems", "totalPages"]
+META = ("x-name", "x-role", "x-domain", "x-from")
+OPAQUE = {"examples", "example", "x-spec"}
+
+
+def shape(node):
+    """The structure of a schema for comparing: everything but the sample values."""
+    if isinstance(node, dict):
+        return {k: shape(v) for k, v in node.items() if k != "examples"}
+    if isinstance(node, list):
+        return [shape(v) for v in node]
+    return node
+
+
+def key(node):
+    return json.dumps(shape(node), sort_keys=True, separators=(",", ":"))
+
+
+class Components:
+    """Turns every object table of a spec (`#### <Name> Object`, the request body and the data of a response) into a
+    component of components/schemas; an identical shape is one component whatever the spec."""
+
+    def __init__(self, comps):
+        self.schemas = comps["schemas"]
+        self.by_shape = {key(v): n for n, v in self.schemas.items()}
+        self.names = {}  # the name in the spec -> {component: [specs]}
+        self.page_shapes = 0
+
+    def page_info(self, props, required):
+        if not (set(PAGE_KEYS) <= set(props) and set(PAGE_KEYS) <= set(required) and all(props[k].get("type") == "integer" for k in PAGE_KEYS)):
+            return None
+        if "PageInfo" not in self.schemas:
+            self.schemas["PageInfo"] = {"type": "object", "required": PAGE_KEYS, "description": "Paging of an inquiry (pageIndex, pageSize, totalItems, totalPages).",
+                                        "properties": {k: shape(props[k]) for k in PAGE_KEYS}}
+            self.by_shape[key(self.schemas["PageInfo"])] = "PageInfo"
+        self.page_shapes += 1
+        return {"$ref": "#/components/schemas/PageInfo"}
+
+    def register(self, node):
+        meta = {k: node.pop(k) for k in META}
+        desc = node.pop("description", None)
+        types = node.get("type")
+        null = isinstance(types, list) and "null" in types
+        if null:
+            node["type"] = "object"
+        page = self.page_info(node.get("properties", {}), node.get("required", []))
+        if page:
+            # a paging field that the spec words differently ("Total number of orders") keeps its own wording
+            own = {k: v for k, v in node["properties"].items() if k in PAGE_KEYS and key(v) != key(self.schemas["PageInfo"]["properties"][k])}
+            rest = {**{k: v for k, v in node["properties"].items() if k not in PAGE_KEYS}, **own}
+            need = [k for k in node.get("required", []) if k not in PAGE_KEYS]
+            fragment = {"type": "object", "properties": rest, **({"required": need} if need else {})}
+            node = {"allOf": [page, fragment]}
+        found = self.by_shape.get(key(node))
+        if found is None:
+            base, role = meta["x-name"], meta["x-role"]
+            domain = pascal(meta["x-domain"])
+            for name in (base, base + role, domain + base, domain + base + role, base + "From" + pascal(meta["x-from"].split("/")[-2])):
+                if name not in self.schemas:
+                    break
+            self.schemas[name] = node
+            self.by_shape[key(node)] = found = name
+        self.names.setdefault(meta["x-name"], {}).setdefault(found, []).append(meta["x-from"])
+        ref = {"$ref": f"#/components/schemas/{found}"}
+        out = {"anyOf": [ref, {"type": "null"}]} if null else ref
+        return {**({"description": desc} if desc else {}), **out}
+
+    def walk(self, node):
+        if isinstance(node, list):
+            return [self.walk(v) for v in node]
+        if not isinstance(node, dict):
+            return node
+        out = {k: (v if k in OPAQUE else self.walk(v)) for k, v in node.items()}
+        return self.register(out) if "x-name" in out else out
+
+
+def objects(node, skip=None):
+    """Every inline object with properties (not a $ref) under a schema node, never the examples."""
+    if isinstance(node, dict):
+        if node.get("type") == "object" and node.get("properties") and node is not skip:
+            yield node
+        for k, v in node.items():
+            if k not in OPAQUE:
+                yield from objects(v, skip)
+    elif isinstance(node, list):
+        for v in node:
+            yield from objects(v, skip)
+
+
+def reuse_report(contract):
+    """Components with the same shape under two names, and inline objects that repeat a component."""
+    problems, seen = [], {}
+    for name, schema in contract["components"]["schemas"].items():
+        if name.startswith("Error") or name in ("Status", "ResponseEnvelope"):
+            continue
+        k = key(schema)
+        if k in seen:
+            problems.append(f"components {seen[k]} and {name} have the same shape")
+        seen[k] = name
+    shapes = {key(v): n for n, v in contract["components"]["schemas"].items()}
+    for where, node in [("paths", contract["paths"])] + [(f"component {n}", v) for n, v in contract["components"]["schemas"].items()]:
+        for obj in objects(node, skip=contract["components"]["schemas"].get(where.split(" ")[-1])):
+            if key(obj) in shapes:
+                problems.append(f"an inline object in {where} repeats component {shapes[key(obj)]}")
+    return problems
 
 
 # ---------------------------------------------------------------- examples against their schemas
@@ -307,14 +433,25 @@ def kind(value):
     return {float: "number", str: "string", list: "array", dict: "object"}[type(value)]
 
 
-def fit(contract, value, schema, where, problems, mark_null):
-    """Check a subset of JSON Schema; with mark_null, a null value makes its (inline) schema nullable first."""
+def fit(contract, value, schema, where, problems, mark_null, strict=True):
+    """Check a subset of JSON Schema; with mark_null, a null value makes its (inline) schema nullable first.
+    An allOf part is checked without the undeclared-field rule, which applies to the merged properties instead."""
     if value is None and mark_null and "$ref" not in schema:
         nullable(schema)
     schema = resolve(contract, schema)
+    if "anyOf" in schema:
+        tries = []
+        for branch in schema["anyOf"]:
+            tries.append([])
+            fit(contract, value, branch, where, tries[-1], False, strict)
+            if not tries[-1]:
+                break
+        else:
+            problems.extend(tries[0])
+        return
     parts = [schema] + [resolve(contract, p) for p in schema.get("allOf", [])]
     for part in parts[1:]:
-        fit(contract, value, part, where, problems, False)
+        fit(contract, value, part, where, problems, False, strict=False)
     types = schema.get("type")
     allowed = (types if isinstance(types, list) else [types]) if types else None
     if allowed and kind(value) not in allowed and not (kind(value) == "integer" and "number" in allowed):
@@ -336,7 +473,8 @@ def fit(contract, value, schema, where, problems, mark_null):
         for name, item in value.items():
             if name in props:
                 fit(contract, item, props[name], f"{where}.{name}", problems, mark_null)
-            elif props and schema.get("type") == "object" and schema.get("additionalProperties") is not True:
+            elif strict and props and any(p.get("type") == "object" for p in parts) \
+                    and not any(p.get("additionalProperties") is True for p in parts):
                 problems.append(f"{where}: {name} is not in the schema")
     if isinstance(value, list) and "items" in schema:
         for i, item in enumerate(value):
@@ -397,7 +535,11 @@ def main():
             errors += [f"{spec.rel}: {e}" for e in spec.errors]
     contract["paths"] = {k: dict(sorted(v.items())) for k, v in sorted(contract["paths"].items())}
     check_examples(contract, mark_null=True)
+    shared = Components(contract["components"])
+    contract["paths"] = shared.walk(contract["paths"])
+    contract["components"]["schemas"] = dict(sorted(shared.schemas.items()))
     errors += check_examples(contract, mark_null=False)
+    errors += reuse_report(contract)
     # one-line JSON: the indented file passes the 1 MB preflight limit (lead decision 2026-11-17)
     text = json.dumps(contract, separators=(",", ":"), ensure_ascii=False) + "\n"
     count = sum(len(v) for v in contract["paths"].values())
@@ -411,6 +553,9 @@ def main():
         print(f"{CONTRACT.relative_to(ROOT)}: {count} operations of {len(domains)} domains")
     for rel in skipped:
         print(f"skipped (not approved): {rel}")
+    for base, used in sorted(shared.names.items()):
+        if len(used) > 1:  # the same name in the specs, different shapes: for the lead's review
+            print(f"collision {base}: " + "; ".join(f"{name} <- {', '.join(sorted({x.split('/api/')[1].rsplit('/', 1)[0] for x in specs}))}" for name, specs in sorted(used.items())))
     for error in errors:
         print(f"ERROR: {error}")
     return 1 if errors else 0
