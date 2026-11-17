@@ -9131,7 +9131,7 @@ def check_api_limits() -> int:
     errors = []
     conventions = read(".agents/skills/api-contract-design/references/api-conventions.md")
     errors += [f"api-conventions.md missing: {n!r}" for n in missing_needles(conventions, [
-        "| 429 | E90002 |", "## Limits and rate limiting", "at most 64 KB (65536 bytes)", "default 60 requests per minute", "`Retry-After`", "1 to 100 items"])]
+        "| 429 | E90002 |", "## Limits and rate limiting", "at most 64 KB (65536 bytes)", "at 10 requests per minute", "at 60 requests per minute", "`Retry-After`", "1 to 100 items"])]
     for path in sorted((ROOT / "e-commerce/doc/api").glob("*/*batch*/spec.md")):
         md = path.read_text(encoding="utf-8")
         if "(min 1, max 100 items)" not in md or not re.search(r"must contain 1 to 100 items\.", md):
@@ -9139,6 +9139,9 @@ def check_api_limits() -> int:
     for folder in LIMITED_PUBLIC_SPECS:
         md = read(f"e-commerce/doc/api/{folder}/spec.md")
         domain = md.split("## Domain", 1)[1].split("\n---\n", 1)[0]
+        limit = "10" if folder.startswith("authen-and-author/0") and not folder.endswith("refresh-token") else "60"
+        if f"more than {limit} requests per minute" not in domain:
+            errors.append(f"{folder}/spec.md: the rate limit must be {limit} requests per minute (owner answer of 2026-11-17)")
         if "429 (E90002)" not in domain or "`Retry-After`" not in domain:
             errors.append(f"{folder}/spec.md: the Domain rules need the rate limit line with 429 (E90002) and Retry-After")
     webhook = "e-commerce/doc/api/payment/02-stripe-webhook/"

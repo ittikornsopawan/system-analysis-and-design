@@ -33,7 +33,7 @@ approved_at: 2026-11-16T09:24:57+07:00
 - `consents` may be omitted/empty only when there are no applicable required consents.
 - Use one REPEATABLE READ transaction for validation reads and every write.
 - The order of the checks, the locks and every outcome is in the sequence diagram.
-- Rate limit: this API, which needs no access token, answers 429 (E90002) with a `Retry-After` header when a client IP sends more than 60 requests per minute (configurable); the limiter answers before the handler runs, so the 429 is not drawn in the sequence diagram. The rule is in the section Limits and rate limiting of `api-conventions.md`.
+- Rate limit: this API, which needs no access token, answers 429 (E90002) with a `Retry-After` header when a client IP sends more than 10 requests per minute (configurable); the limiter answers before the handler runs, so the 429 is not drawn in the sequence diagram. The rule is in the section Limits and rate limiting of `api-conventions.md`.
 
 ---
 
