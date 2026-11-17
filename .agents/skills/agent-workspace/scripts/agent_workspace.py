@@ -1270,13 +1270,16 @@ def nul_paths(result: subprocess.CompletedProcess[str]) -> set[str]:
 
 
 def changed_paths(workspace: Path) -> set[str]:
+    # Diff against the fetched origin/main: a stale local main would count other agents' merged files as this task's.
+    remote_base = f"origin/{DEFAULT_BRANCH}"
+    has_remote = git(workspace, "rev-parse", "--verify", "--quiet", remote_base, check=False).returncode == 0
     paths = nul_paths(
         git(
             workspace,
             "diff",
             "--name-only",
             "-z",
-            f"{DEFAULT_BRANCH}...HEAD",
+            f"{remote_base if has_remote else DEFAULT_BRANCH}...HEAD",
             check=False,
         )
     )

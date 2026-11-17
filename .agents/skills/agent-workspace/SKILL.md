@@ -75,7 +75,7 @@ python3 .agents/skills/agent-workspace/scripts/agent_workspace.py park \
 
 ## Blocked States
 
-Stop and report the exact evidence when the helper blocks. Preserve dirty files, divergent branches, closed-but-unmerged pull requests, stale locks, mismatched remotes, and legacy worktrees. Destructive recovery is a separate user-authorized task.
+The delivery scope check compares the task branch with the fetched `origin/main` (local `main` only when no `origin/main` ref exists), so fetch before preflight; a stale local `main` no longer makes other agents' merged files look out of scope. Stop and report the exact evidence when the helper blocks. Preserve dirty files, divergent branches, closed-but-unmerged pull requests, stale locks, mismatched remotes, and legacy worktrees. Destructive recovery is a separate user-authorized task.
 
 ## Done When
 
