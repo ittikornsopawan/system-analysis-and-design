@@ -5,6 +5,20 @@ description: Verified completed task records of Marry, moved from todo.md.
 
 # Marry Completed Tasks
 
+## e-commerce: OpenAPI contract, shared schemas refactor
+
+Owner: marry
+Status: Complete
+Created at: 2026-11-17T13:20:00+07:00
+Started at: 2026-11-17T13:20:00+07:00
+Completed at: 2026-11-17T13:22:23+07:00
+
+Assignment: agent `marry`, delivery `open-pr`, authorized by `ittikorn`, workspace `.workspace/marry`, branch `refactor/marry-api-contract-shared-schemas`, scopes `e-commerce/api/api-contract.json`, `e-commerce/db/tests/check_docs.py`, `tasks/marry/todo.md`, `tasks/marry/success-task.md`, `.agents/skills/api-contract-design/scripts/gen_contract.py`, `.agents/skills/api-contract-design/SKILL.md`. Step 9 of the contract rollout (refactor, before shipping and campaign).
+
+- [x] Refactor the contract to reuse `components/schemas` (owner request of 2026-11-17): `ResponseEnvelope`, `PageInfo` and one component per object table, regenerate the 8 published domains; the generator fails on two components with one shape or an inline object that repeats a component; 511 request and response schemas compared before and after: identical.
+- [x] Verification: 71 `check_docs.py` sub-commands 0 failed, `gen_contract.py --check` up to date, `audit_all.py` 0 findings, both test suites OK, `preflight.py` no blockers; no OpenAPI 3.1 validator installed (not run).
+- [x] Open the PR, tell Josh when `checks` is green, suspend, wait for the merge. Evidence: pull request #211, CI `checks` passed (28s), merged by the owner at 2026-11-17T13:22:23+07:00 (1cde7e2).
+
 ## e-commerce: OpenAPI contract, payment domain
 
 Owner: marry
