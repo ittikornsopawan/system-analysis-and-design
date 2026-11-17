@@ -153,9 +153,9 @@ class Spec:
                 node.setdefault("required", []).append(leaf)
         return schema
 
-    def tag(self, schema, name, role):
-        """Mark an object for componentize(): its component name, role and origin (removed there)."""
-        schema.update({"x-name": name, "x-role": role, "x-domain": self.domain, "x-from": self.rel})
+    def tag(self, schema, name, role, op=False):
+        """Mark an object for Components.register(): its name in the spec, role, origin, and whether the name is already the operation's (removed there)."""
+        schema.update({"x-name": name, "x-role": role, "x-domain": self.domain, "x-from": self.rel, "x-op": op})
         return schema
 
     def field(self, name, dtype, desc, example, scope, where):
@@ -273,14 +273,14 @@ def operation(spec, domain):
         del op["parameters"]
     body = spec.find("Body Parameters")
     if body:
-        content = {"schema": spec.tag(spec.object_from(spec.rows("Body Parameters"), body, "body"), f"{op_name}Request", "Request")}
+        content = {"schema": spec.tag(spec.object_from(spec.rows("Body Parameters"), body, "body"), f"{op_name}Request", "Request", op=True)}
         examples = spec.examples("Example Body Parameters") or spec.examples("Example Body Parameters - Display only")
         if examples:
             content["examples"] = {slug(k): {"summary": k, "value": v} for k, v in examples.items()}
         op["requestBody"] = {"required": True, "content": {"application/json": content}}
     data = spec.find("Data Object")
     data_rows = table(own_text(spec.md, data[2], data[3])) if data else []
-    responses = {}
+    responses, payload = {}, None
     for title, code, body_json in spec.responses():
         if code == 204:
             responses["204"] = {"description": "No Content"}
@@ -291,7 +291,8 @@ def operation(spec, domain):
             if code < 300:
                 envelope = {"$ref": "#/components/schemas/ResponseEnvelope"}
                 if data_rows:
-                    payload = spec.tag(spec.object_from(data_rows, data, "data"), f"{op_name}Data", "Response")
+                    # one payload for every success code, so that a null seen in one example makes the field nullable in all
+                    payload = payload or spec.tag(spec.object_from(data_rows, data, "data"), f"{op_name}Data", "Response", op=True)
                     media["schema"] = {"allOf": [envelope, {"type": "object", "properties": {"data": payload}}]}
                 else:
                     media["schema"] = envelope
@@ -307,7 +308,7 @@ def operation(spec, domain):
 
 # ---------------------------------------------------------------- shared components
 PAGE_KEYS = ["pageIndex", "pageSize", "totalItems", "totalPages"]
-META = ("x-name", "x-role", "x-domain", "x-from")
+META = ("x-name", "x-role", "x-domain", "x-from", "x-op")
 OPAQUE = {"examples", "example", "x-spec"}
 
 
@@ -324,15 +325,30 @@ def key(node):
     return json.dumps(shape(node), sort_keys=True, separators=(",", ":"))
 
 
+NOISE = {"inquiry", "upsert", "batch", "create", "submit", "check", "confirm", "cancel"}  # the action of a spec, never a qualifier
+
+
+def words(text):
+    return [w.lower() for w in re.findall(r"[A-Z]+(?![a-z])|[A-Z]?[a-z]+|\d+", text)]
+
+
+def repeats(name):
+    """A name that says a word twice in a row (ShopShop, ConsentConsent) reads badly in C#."""
+    ws = words(name)
+    return any(a == b for a, b in zip(ws, ws[1:]))
+
+
 class Components:
     """Turns every object table of a spec (`#### <Name> Object`, the request body and the data of a response) into a
-    component of components/schemas; an identical shape is one component whatever the spec."""
+    component of components/schemas; an identical shape is one component whatever the spec. The names are given in
+    finalize(), after every spec has been seen, so that a shape used by several specs gets the plain name."""
 
     def __init__(self, comps):
         self.schemas = comps["schemas"]
-        self.by_shape = {key(v): n for n, v in self.schemas.items()}
-        self.names = {}  # the name in the spec -> {component: [specs]}
-        self.page_shapes = 0
+        self.fixed = set(self.schemas)
+        self.by_shape = {}   # shape -> id
+        self.info = {}       # id -> {"node", "op", "usages": [meta]}
+        self.names = {}      # the name in the spec -> {component: [specs]}, filled by finalize()
 
     def page_info(self, props, required):
         if not (set(PAGE_KEYS) <= set(props) and set(PAGE_KEYS) <= set(required) and all(props[k].get("type") == "integer" for k in PAGE_KEYS)):
@@ -340,8 +356,7 @@ class Components:
         if "PageInfo" not in self.schemas:
             self.schemas["PageInfo"] = {"type": "object", "required": PAGE_KEYS, "description": "Paging of an inquiry (pageIndex, pageSize, totalItems, totalPages).",
                                         "properties": {k: shape(props[k]) for k in PAGE_KEYS}}
-            self.by_shape[key(self.schemas["PageInfo"])] = "PageInfo"
-        self.page_shapes += 1
+            self.fixed.add("PageInfo")
         return {"$ref": "#/components/schemas/PageInfo"}
 
     def register(self, node):
@@ -359,17 +374,10 @@ class Components:
             need = [k for k in node.get("required", []) if k not in PAGE_KEYS]
             fragment = {"type": "object", "properties": rest, **({"required": need} if need else {})}
             node = {"allOf": [page, fragment]}
-        found = self.by_shape.get(key(node))
-        if found is None:
-            base, role = meta["x-name"], meta["x-role"]
-            domain = pascal(meta["x-domain"])
-            for name in (base, base + role, domain + base, domain + base + role, base + "From" + pascal(meta["x-from"].split("/")[-2])):
-                if name not in self.schemas:
-                    break
-            self.schemas[name] = node
-            self.by_shape[key(node)] = found = name
-        self.names.setdefault(meta["x-name"], {}).setdefault(found, []).append(meta["x-from"])
-        ref = {"$ref": f"#/components/schemas/{found}"}
+        sid = self.by_shape.setdefault(key(node), len(self.by_shape))
+        entry = self.info.setdefault(sid, {"node": node, "op": meta["x-op"], "usages": []})
+        entry["usages"].append(meta)
+        ref = {"$ref": f"#/components/schemas/@{sid}@"}
         out = {"anyOf": [ref, {"type": "null"}]} if null else ref
         return {**({"description": desc} if desc else {}), **out}
 
@@ -380,6 +388,63 @@ class Components:
             return node
         out = {k: (v if k in OPAQUE else self.walk(v)) for k, v in node.items()}
         return self.register(out) if "x-name" in out else out
+
+    @staticmethod
+    def about(use):
+        """True when the spec is about the object itself (`inquiry-shop` for a Shop), so the plain name suits it."""
+        base_words = words(use["x-name"])
+        return any(w in base_words for w in use["x-from"].split("/")[-2].split("-")[1:] if w not in NOISE)
+
+    @staticmethod
+    def candidates(use, shared, across):
+        """The names a shape may take, best first. The words of the spec qualify a name (`ActiveConsent` for the object
+        of `inquiry-active-consent`, `PermissionBatchScopeRequest` for the batch of `upsert-permission-batch`); a
+        domain prefix comes last, for two domains that clash. A shape shared by several domains takes the plain name."""
+        base, role = use["x-name"], use["x-role"]
+        whole = use["x-from"].split("/")[-2].split("-")[1:]
+        spec_words, base_words = [w for w in whole if w not in NOISE], words(base)
+        hit = next((i for i, w in enumerate(spec_words) if w in base_words), None)
+        about = hit is not None
+        q = pascal(" ".join(w for w in (spec_words[:hit] if about else spec_words) if w not in base_words))
+        fq = pascal(" ".join(w for w in whole if w not in base_words))
+        domain = pascal(use["x-domain"].split("-")[0])
+        if role == "Request":  # a request body object never takes the plain name of the read model
+            first = [q + base + role] if q else []
+            return [c for c in first + ([base + role] if about else []) + [fq + base + role, domain + base + role, base + role] if c]
+        if shared:
+            first = ([base] if across else []) + [domain + base]
+        else:
+            first = ([q + base] if q else []) + ([base] if about else [])
+        return [c for c in first + ([base + role] if about else []) + [q and q + base + role, fq + base, fq + base + role, domain + base, domain + base + role, base + role, base] if c]
+
+    def finalize(self):
+        """Give every shape its name (the shapes of an operation first, then the shapes the spec is about, then the
+        shapes used by most specs) and return the schemas by name."""
+        names, taken = {}, set(self.fixed)
+        used = lambda i: len({u["x-from"] for u in self.info[i]["usages"]})
+        order = sorted(self.info, key=lambda i: (not self.info[i]["op"], not self.about(self.info[i]["usages"][0]), -used(i), i))
+        for sid in order:
+            entry = self.info[sid]
+            first = entry["usages"][0]
+            across = len({u["x-domain"] for u in entry["usages"]}) > 1
+            cands = [first["x-name"]] if entry["op"] else self.candidates(first, used(sid) > 1, across)
+            name = next((c for c in cands if c not in taken and not repeats(c)), None)
+            if name is None:
+                name = next(f"{cands[-1]}{n}" for n in range(2, 99) if f"{cands[-1]}{n}" not in taken)
+            names[sid] = name
+            taken.add(name)
+        for sid, entry in self.info.items():
+            for use in entry["usages"]:
+                self.names.setdefault(use["x-name"], {}).setdefault(names[sid], []).append(use["x-from"])
+        return {names[sid]: entry["node"] for sid, entry in self.info.items()}, names
+
+    def apply(self, contract):
+        """Replace the numbered placeholders by the names, in the paths and in the new components."""
+        schemas, names = self.finalize()
+        text = json.dumps({"paths": contract["paths"], "schemas": schemas})
+        done = json.loads(re.sub(r"#/components/schemas/@(\d+)@", lambda m: "#/components/schemas/" + names[int(m.group(1))], text))
+        contract["paths"] = done["paths"]
+        contract["components"]["schemas"] = dict(sorted({**self.schemas, **done["schemas"]}.items()))
 
 
 def objects(node, skip=None):
@@ -399,6 +464,8 @@ def reuse_report(contract):
     """Components with the same shape under two names, and inline objects that repeat a component."""
     problems, seen = [], {}
     for name, schema in contract["components"]["schemas"].items():
+        if repeats(name):
+            problems.append(f"component {name} says a word twice in a row")
         if name.startswith("Error") or name in ("Status", "ResponseEnvelope"):
             continue
         k = key(schema)
@@ -522,7 +589,7 @@ def main():
         "paths": {},
         "components": components(first),
     }
-    errors, skipped = list(first.errors), []
+    errors, skipped, order = list(first.errors), [], []
     for domain in domains:
         for path in sorted(API.glob(f"{domain}/*/spec.md")):
             spec = Spec(path)
@@ -532,12 +599,14 @@ def main():
             if [{k: v for k, v in r.items() if k != "Example"} for r in spec.rows("Status Object")] != status_rows:
                 spec.errors.append("the Status Object differs from the shared one")
             contract["paths"].setdefault(spec.path, {})[spec.method] = operation(spec, domain)
+            order.append((spec.path, spec.method))
             errors += [f"{spec.rel}: {e}" for e in spec.errors]
     contract["paths"] = {k: dict(sorted(v.items())) for k, v in sorted(contract["paths"].items())}
     check_examples(contract, mark_null=True)
     shared = Components(contract["components"])
-    contract["paths"] = shared.walk(contract["paths"])
-    contract["components"]["schemas"] = dict(sorted(shared.schemas.items()))
+    for path, method in order:  # in spec order, so that a new spec does not rename the components of an older one
+        contract["paths"][path][method] = shared.walk(contract["paths"][path][method])
+    shared.apply(contract)
     errors += check_examples(contract, mark_null=False)
     errors += reuse_report(contract)
     # one-line JSON: the indented file passes the 1 MB preflight limit (lead decision 2026-11-17)
