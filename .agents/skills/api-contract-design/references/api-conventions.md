@@ -46,8 +46,15 @@ Query parameters: `id` (a list with one item), `pageIndex` (from 1, default 1), 
 | 409 | E10007 | stock is not enough, or the item is not on sale |
 | 409 | E10008 | the cart is full |
 | 408 | E90001 | timeout |
+| 429 | E90002 | too many requests: a public API was called more than its rate limit allows |
 
 A bizCode has **one** HTTP status in the whole project (`check_docs.py biz-codes` enforces it). Before you invent a code, read the table in the checker's data: `grep -rhn '"bizCode"' e-commerce/doc/api | sort | uniq -c`. Success is `S10000`.
+
+## Limits and rate limiting
+
+- **Batch:** 1 to 100 items; outside it is 400 E10001 `<Items> must contain 1 to 100 items.` Every batch spec states it in its body table and has the 400 example. `cartIds` of the checkout and the order has at most 100 ids (400, E10001).
+- **Stripe webhook body:** at most 64 KB (65536 bytes). The size is checked on the raw body before the signature and before any parsing, and the gateway and the server also cap the request body at this size. Over the limit answers 400 E10001 with nothing changed: no new bizCode is added for one endpoint, E10001 already answers a malformed webhook (signature, not JSON, timestamp), and Stripe treats every non-2xx as a failed delivery and retries.
+- **Rate limit of the public APIs:** register, login, refresh-token, reset-password, create-new-password, consent/active and the three storefront APIs are limited per client IP, default 60 requests per minute (configurable). Over the limit answers 429, bizCode E90002, message `Too many requests. Try again later.` and a `Retry-After` header in seconds. The limiter runs before the handler (before body parsing and any database work), so the 429 is not drawn in the sequence diagram; each of these specs has one rule line for it. The Stripe webhook is not rate limited by IP (Stripe retries from a few addresses; the signature and the 64 KB cap protect it). The business limits of login (5 failures in 15 minutes) and reset-password (3 per user per hour) stay as they are and keep their uniform answers.
 
 ## Order of checks
 

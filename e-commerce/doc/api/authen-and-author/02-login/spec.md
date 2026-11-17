@@ -33,6 +33,7 @@ approved_at: 2026-11-16T09:24:57+07:00
 - **One answer for every failure:** an unknown or ambiguous username, a wrong password, a missing ACTIVE PASSWORD row, a user that is not ACTIVE and a username that is temporarily refused all get 401 (E10002) `Invalid username or password.` ...
 - **Brute force limit:** every syntactically valid login attempt is written to `authen.l_user_login_attempt` with the SHA-256 of the exact supplied username and a `result`: `SUCCESS`, `FAILED` or `REFUSED`.
 - The order of the checks, the locks and every outcome is in the sequence diagram.
+- Rate limit: this API, which needs no access token, answers 429 (E90002) with a `Retry-After` header when a client IP sends more than 60 requests per minute (configurable); the limiter answers before the handler runs, so the 429 is not drawn in the sequence diagram. The rule is in the section Limits and rate limiting of `api-conventions.md`.
 
 ---
 

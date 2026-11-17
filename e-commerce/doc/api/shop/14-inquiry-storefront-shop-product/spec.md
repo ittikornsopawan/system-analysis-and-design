@@ -37,6 +37,7 @@ approved_at: 2026-11-16T09:24:57+07:00
 - The shop block has the name, the description, the shop type name and the images of the shop that are ACTIVE, in the order type, seq, creation time and id (the shop type name is returned also when the shop type is not ACTIVE). It has no margin and no member.
 - The status of a shop product is not changed by any API (the shop product is created by the shop product SKU API). A shop stops showing a product by closing all the SKUs of the product with that API.
 - The list is a picture of the stock at the time it is read, it does not reserve anything.
+- Rate limit: this API, which needs no access token, answers 429 (E90002) with a `Retry-After` header when a client IP sends more than 60 requests per minute (configurable); the limiter answers before the handler runs, so the 429 is not drawn in the sequence diagram. The rule is in the section Limits and rate limiting of `api-conventions.md`.
 
 ---
 

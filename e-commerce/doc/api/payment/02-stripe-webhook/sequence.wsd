@@ -50,11 +50,11 @@ activate stripe
         api -> app: [**StripeWebhookCommandHandler**] Process request
         activate app
             app -> app: Create request context; generate requestId when omitted
-            app -> domain: Verify stripe-signature against the raw body with the signing secret; the timestamp is within 5 minutes and the body is JSON
+            app -> domain: Verify stripe-signature against the raw body with the signing secret; the raw body is at most 64 KB (65536 bytes, checked before the signature), the timestamp is within 5 minutes and the body is JSON
             activate domain
             domain -> app: Valid or invalid
             deactivate domain
-            alt Signature missing or wrong, body is not JSON, or timestamp is too old
+            alt Signature missing or wrong, body is larger than 64 KB, body is not JSON, or timestamp is too old
                 app -> api: HTTP 400 E10001
                 api -> stripe: Bad request; nothing is changed
             else Valid event
