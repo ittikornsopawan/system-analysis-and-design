@@ -161,3 +161,7 @@ Suggested order: F1 first (it blocks the backend of shop SKU), then F3 to F5 tog
 - The 74 operations were compared by their authentication header and by the spec text on permissions. The SQL and the sequence diagrams were read only for the webhook, refund, cancel-order and shop product SKU.
 - Shipping and campaign (not published). The author specs 13–17 were not reviewed beyond their auth rows.
 - No tool was run against a live system: this is a document review.
+
+## 6. Owner answers (2026-11-17, relayed by Josh)
+
+F1: only an ACTIVE OWNER, ADMIN or STAFF of the shop, or `PLATFORM_ADMIN`, may call `GET /v1/shop/product-sku`, otherwise 403 E10009 (follow-up PR by Peter). F2: keep as is (no change). F7 and F9: set the limits now: batch at most 100 items, webhook body at most 64 KB, 429 with code E90002 on public endpoints (follow-up PR by Peter). F8: add the amount and currency check to the webhook.
