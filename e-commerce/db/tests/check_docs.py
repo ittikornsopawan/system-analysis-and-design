@@ -5197,7 +5197,7 @@ AUTHOR_DIR = "e-commerce/doc/api/author"
 AUTHOR_SPECS = {
     "01": "01-upsert-role", "02": "02-upsert-role-batch", "03": "03-inquiry-role", "04": "04-upsert-permission", "05": "05-upsert-permission-batch",
     "06": "06-inquiry-permission", "07": "07-upsert-scope", "08": "08-upsert-scope-batch", "09": "09-inquiry-scope", "10": "10-upsert-user-role",
-    "11": "11-inquiry-user-role", "12": "12-me", "13": "13-upsert-role-permission", "14": "14-inquiry-role-permission",
+    "11": "11-inquiry-user-role", "12": "12-me", "13": "13-upsert-role-permission", "14": "14-inquiry-role-permission", "17": "17-check-permission",
 }
 AUTHOR_MASTERS = {  # key: (upsert, batch, inquiry, path, Title, lower, camel, alias, unique column, id field, regex of a valid code, in-use message)
     "role": ("01", "02", "03", "role", "Role", "role", "role", "r", "name", "roleId", r"^[A-Z][A-Z0-9_]{0,63}$", "Role is assigned to users or has permissions."),
@@ -5328,6 +5328,11 @@ AUTHOR_OTHER_NEEDLES = {
            "You do not have permission to read role permissions.", "Inquiry Role Permission Success", "The four nullable filters id/roleId/permissionId/rowStatus", "ORDER BY r.name, p.name, rp.id",
            "Request: `GET v1/author/role/permission?id=8b9c0d1e-2f3a-4b4c-9d5e-6f7a8b9c0d1e`", "#### Scope Object", "#### QUERY - Get the scopes of the role permissions",
            "AND rps.row_status <> 'DELETED'", "use exact PLATFORM_ADMIN in verified JWT role claims", "Each item keeps only its own links (Q12"],
+    "17": ["# [GET]: v1/author/check", "**Claim source:**", "**Permission and scope are checked separately.**", "`PLATFORM_ADMIN` gives no implicit permission",
+           "Always HTTP 200 with `allowed` true or false", "Check Permission Success", "Permission is required and must be a permission claim such as catalog:manage.",
+           "Scope must be a scope claim such as shop:*.", "#### QUERY - Check active credential and user", "owner answers of 2026-11-17 (Q1–Q6, relayed by Josh)",
+           "Do not query author.t_role_permission, author.t_role_permission_scope, author.t_user_permission, author.t_user_role",
+           "`allowed` does not prove that this scope was granted with this permission", "Q3: no implicit permission for PLATFORM_ADMIN"],
     "12": ["# [GET]: v1/author/me", "### Me Rules", "calling token's role snapshot", "Any caller with a valid access token can call this API", "Do not query author.t_user_role or author.m_role", "Success - Platform Administrator", "Success - No Role"],
 }
 
@@ -5471,6 +5476,8 @@ AUTHOR_SEQUENCE_NEEDLES = {
     "13": ['Lock order is caller user -> the role (`FOR UPDATE`) -> the permission (`FOR UPDATE`)', 'uq_t_role_permission_scope_role_permission_scope', 'uq_t_role_permission_role_id_permission_id',
            'Only a platform administrator from the verified JWT roles claim', 'The PLATFORM_ADMIN role can receive permissions like any other role.', '(Q12: a scope of one permission never belongs to another)'],
     "14": ['use exact PLATFORM_ADMIN in verified JWT role claims', 'Each item keeps only its own links (Q12'],
+    "17": ['Do not query author.t_role_permission, author.t_role_permission_scope, author.t_user_permission, author.t_user_role',
+           '`allowed` does not prove that this scope was granted with this permission', 'Q3: no implicit permission for PLATFORM_ADMIN'],
     "12": ['Any caller with a valid access token can call this API',
            'Do not query author.t_user_role or author.m_role'],
 }
@@ -5569,6 +5576,22 @@ def author_example_errors(key: str, md: str) -> list[str]:
                 errors.append("the By Id example must list only its id")
         for t, code, biz in (("Fail - Bad Request", 400, "E10001"), ("Fail - Unauthorized", 401, "E10002"), ("Fail - Forbidden", 403, "E10009"), ("Fail - Request Timeout", 408, "E90001")):
             errors += author_status(md, t, code, biz)
+    elif key == "17":
+        claim, scope = re.compile(r"^[a-z][a-z0-9_]*(\.[a-z0-9_]+)*:[a-z0-9_]+$"), re.compile(r"^[a-z][a-z0-9_]*:\*$")
+        for t, allowed in (("Success - Allowed", True), ("Success - Not Allowed", False), ("Success - Without Scope", True)):
+            data = author_json(md, t)["data"]
+            if set(data) != {"permission", "scope", "allowed"} or data["allowed"] is not allowed:
+                errors.append(f"'{t}' must have exactly permission/scope/allowed with allowed={allowed}")
+            if not claim.match(data["permission"]) or (data["scope"] is not None and not scope.match(data["scope"])):
+                errors.append(f"'{t}' has a value that is not in claim form")
+            if (t == "Success - Without Scope") != (data["scope"] is None):
+                errors.append(f"'{t}': scope is null exactly when it was not specified")
+        if success_codes(md) != {"Success - Allowed": 200, "Success - Not Allowed": 200, "Success - Without Scope": 200}:
+            errors.append(f"every success of check answers 200, got {success_codes(md)}")
+        for t, code, biz in (("Fail - Bad Request", 400, "E10001"), ("Fail - Bad Request Scope", 400, "E10001"), ("Fail - Unauthorized", 401, "E10002"), ("Fail - Request Timeout", 408, "E90001")):
+            errors += author_status(md, t, code, biz)
+        if "Fail - Forbidden" in md or "E10009" in md:
+            errors.append("the check API has no 403")
     elif key == "12":
         for t in ("Success", "Success - Platform Administrator", "Success - No Role"):
             data = author_json(md, t)["data"]
