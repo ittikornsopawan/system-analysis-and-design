@@ -15,7 +15,7 @@ Reference data that the system needs to run (the role `PLATFORM_ADMIN`, the scop
 | Table | Type | Columns | FKs |
 | ----- | ---- | ------: | --: |
 | [t_key](public/t_key.md) | Transaction | 10 | 0 |
-| [t_parameter](public/t_parameter.md) | Transaction | 14 | 1 |
+| [m_parameter](public/m_parameter.md) | Master | 14 | 1 |
 
 ## consent
 

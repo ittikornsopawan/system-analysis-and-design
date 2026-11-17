@@ -24,7 +24,7 @@ CREATE TABLE
     );
 
 CREATE TABLE
-    IF NOT EXISTS public.t_parameter (
+    IF NOT EXISTS public.m_parameter (
         id UUID NOT NULL DEFAULT GEN_RANDOM_UUID () PRIMARY KEY,
         created_by VARCHAR(64) NOT NULL,
         created_at TIMESTAMP WITHOUT TIME ZONE NOT NULL DEFAULT NOW (),
@@ -36,19 +36,22 @@ CREATE TABLE
                 'INACTIVE',
                 'DELETED',
                 'LOCKED',
-                'ARCHIVED',
-                'EXPIRED'
+                'ARCHIVED'
             )
         ),
         effective_at TIMESTAMP WITHOUT TIME ZONE NOT NULL DEFAULT NOW (),
         expired_at TIMESTAMP WITHOUT TIME ZONE,
-        parent_id UUID REFERENCES public.t_parameter (id) ON DELETE RESTRICT,
-        key VARCHAR(128) NOT NULL UNIQUE,
+        parent_id UUID REFERENCES public.m_parameter (id) ON DELETE RESTRICT,
+        key VARCHAR(128) NOT NULL,
         value JSONB NOT NULL,
         title JSONB,
         display JSONB,
         metadata JSONB
     );
+
+CREATE UNIQUE INDEX IF NOT EXISTS uq_m_parameter_key ON public.m_parameter (key)
+WHERE
+    row_status <> 'DELETED';
 
 CREATE SCHEMA IF NOT EXISTS consent;
 
