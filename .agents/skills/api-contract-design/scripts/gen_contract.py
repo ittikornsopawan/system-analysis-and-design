@@ -390,7 +390,8 @@ def main():
     contract["paths"] = {k: dict(sorted(v.items())) for k, v in sorted(contract["paths"].items())}
     check_examples(contract, mark_null=True)
     errors += check_examples(contract, mark_null=False)
-    text = json.dumps(contract, indent=2, ensure_ascii=False) + "\n"
+    # one-line JSON: the indented file passes the 1 MB preflight limit (lead decision 2026-11-17)
+    text = json.dumps(contract, separators=(",", ":"), ensure_ascii=False) + "\n"
     count = sum(len(v) for v in contract["paths"].values())
     if "--check" in sys.argv[1:]:
         if text != CONTRACT.read_text(encoding="utf-8"):
