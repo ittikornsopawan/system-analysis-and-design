@@ -26,7 +26,7 @@ approved_at: null
 | PRE-PRODUCTION | https://www.domain.com/api-pre-prod |
 | PRODUCTION     | https://www.domain.com/api          |
 
-- Governing decisions: WP5 author design A8, A12, A14, A17 (5b restarted by the owner on 2026-11-17) and owner-confirmed API review Q2/Q4/Q12/Q13/Q22.
+- Governing decisions: WP5 author design A8, A12, A14, A17 (5b restarted by the owner on 2026-11-17), owner answers of 2026-11-17 (Q1–Q6, relayed by Josh) and owner-confirmed API review Q2/Q4/Q12/Q13/Q22. The owner answers supersede the implicit permissions of A2: `PLATFORM_ADMIN` holds only the permissions granted to it.
 - The caller is the user of the verified access token; only a platform administrator can call this API (403, E10009).
 - **The role and the permission must be ACTIVE only when the request gives the permission**, that is an insert, or an update that sets `rowStatus` ACTIVE on a row that is not ACTIVE, otherwise 404 (E10005).
 - A role can have a permission once among the rows that are not DELETED (409, E10003).

@@ -26,7 +26,7 @@ approved_at: null
 | PRE-PRODUCTION | https://www.domain.com/api-pre-prod |
 | PRODUCTION     | https://www.domain.com/api          |
 
-- Governing decisions: WP5 author design A8, A12 (5b restarted by the owner on 2026-11-17) and owner-confirmed API review Q2/Q4/Q12/Q13.
+- Governing decisions: WP5 author design A8, A12 (5b restarted by the owner on 2026-11-17), owner answers of 2026-11-17 (Q1–Q6, relayed by Josh; Q6 approved this shape) and owner-confirmed API review Q2/Q4/Q12/Q13.
 - Only a platform administrator can read the permissions of roles (403, E10009), because they describe who holds which authority.
 - Validate timestamp as mandatory UTC and accept only single id/roleId/permissionId/pageIndex/pageSize/rowStatus query keys, with no body.
 - The four nullable filters id/roleId/permissionId/rowStatus disable only themselves and combine by AND; every supplied value is bound and never interpolated into SQL.

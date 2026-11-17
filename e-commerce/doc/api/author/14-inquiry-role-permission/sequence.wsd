@@ -234,7 +234,8 @@ activate page
                 infra -> app: Return committed consistent read-only role permission page
                 note over app, infra
                     Approved by the product owner (WP5 author design A12, answered through the lead SA on 2026-11-06; 5b
-                    restarted by the owner on 2026-11-17); use exact PLATFORM_ADMIN in verified JWT role claims under the
+                    restarted by the owner on 2026-11-17; shape approved in the owner answers of 2026-11-17, Q6, relayed by Josh);
+                    use exact PLATFORM_ADMIN in verified JWT role claims under the
                     owner-confirmed API review Q2/Q4/Q12/Q13. This specification is in-review; no backend/schema implementation.
                     The four nullable filters id/roleId/permissionId/rowStatus disable only themselves and combine by AND; every
                     supplied value is bound and never interpolated into SQL. roleId returns the permissions of that role,

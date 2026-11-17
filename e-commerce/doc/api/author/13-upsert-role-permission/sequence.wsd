@@ -543,9 +543,11 @@ activate page
                 infra -> app: Return committed grant
                 alt Insert
                     note over app, infra
-                        Governing decisions: WP5 author design A8, A12, A14, A17 (5b restarted by the owner on 2026-11-17) and the
-                        owner-confirmed API review Q2/Q4/Q12/Q13/Q22. This specification is in-review; no schema/backend
-                        implementation.
+                        Governing decisions: WP5 author design A8, A12, A14, A17 (5b restarted by the owner on 2026-11-17), owner
+                        answers of 2026-11-17 (Q1–Q6, relayed by Josh) and the owner-confirmed API review Q2/Q4/Q12/Q13/Q22.
+                        The owner answers supersede the implicit permissions of A2 (Q3/Q4): a platform administrator holds only
+                        granted permissions, and Q5 approved the scoped-grant rule below. This specification is in-review; no
+                        schema/backend implementation.
                         Only a platform administrator from the verified JWT roles claim can give or take away a permission of a role;
                         require exact case-sensitive role name PLATFORM_ADMIN. A valid non-admin claim returns 403 E10009 after the
                         existence and scope checks and before the duplicate checks. No live caller-assignment or request-flag fallback.
