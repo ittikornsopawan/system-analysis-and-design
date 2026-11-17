@@ -5,6 +5,27 @@ description: Verified completed task records of the System Analyst Peter, moved 
 
 # Peter Completed Tasks
 
+## e-commerce: WP5b author permission assignment (specs 13–17)
+
+Owner: peter
+Status: Complete
+Created at: 2026-11-06T00:00:00+07:00
+Started at: 2026-11-17T09:27:31+07:00
+Completed at: 2026-11-17T12:38:07+07:00
+
+- Moved from `tasks/owner/todo.md` at 2026-11-17T09:27:31+07:00 (owner order of 2026-11-17: "Start WP5b now"). Earlier blocker (2026-11-06, small scope) is lifted by that order.
+- Governing: `docs/superpowers/specs/2026-11-06-author-design.md` (5b, A2, A8, A10, A12, A13, A17), `docs/superpowers/specs/2026-11-07-api-review-design.md` (JWT claims, Q12, Q22–Q24), `e-commerce/doc/api/template.md`, shape of author 01–12. Schema of the WP5a migration used as is.
+- New specs start `status: in-review`, `approved_by: null`; the owner approves.
+
+- [x] Send the open business questions (check source/input/output, PLATFORM_ADMIN exemption, grants to PLATFORM_ADMIN, scoped role grant without scope, request shape) to Josh as one batch — sent 2026-11-17; the owner chose every recommendation (Q1–Q6, relayed by Josh on 2026-11-17).
+- [x] PR 1: `13-upsert-role-permission` and `14-inquiry-role-permission` (spec, `sequence.wsd`, SQL parity, `check_docs.py` needles, deliberate-fault test of the needles) — #200 merged 2026-11-17T05:26:45Z (b5389e0), CI `checks` passed, Josh review passed; parked.
+- [x] PR 2: `15-upsert-user-permission` and `16-inquiry-user-permission` (same set) — #202 merged 2026-11-17T05:34:23Z (377433b), CI `checks` passed; parked.
+- [x] PR 3: `17-check-permission` (same set) — #203 merged 2026-11-17T05:37:31Z (b071f96), CI `checks` passed, Josh review passed; parked.
+- [x] Each PR: every `check_docs.py` sub-command, `audit_all.py` 0 findings, `test_sequence_skeleton.py`, `test_agent_workspace.py`, preflight; `run_db_tests.sh` only if SQL tests or a migration change; link sent to Josh for #200, #202 and #203.
+- [x] Lesson on the assignment scope recorded in `tasks/lessons.md` and this record closed (this pull request, lead order of 2026-11-17).
+
+Verification: each pull request passed CI `checks` and the lead's review, and was merged by the owner (#200, #202, #203); each was verified locally on the tree merged with `origin/main` before publication: `check_docs.py` 71/71 sub-commands (including `api-contract`), `audit_all.py` 0 findings, `test_sequence_skeleton.py` OK (85, 87, 88 specs), `test_agent_workspace.py` OK, preflight with no blockers, `delivery-check` authorized, every diagram rendered with all SQL lines visible, and every deliberate fault caught by the new checks. `agent_workspace.py park` succeeded for #200, #202 and #203. Not verified: `run_db_tests.sh` was not run (no migration or SQL test changed) and no SQL was executed against a database (no backend exists). The five specs stay `in-review` until the owner approves them.
+
 ## e-commerce: migrate 12 consent and shop specs to the verified JWT claims (one API per pull request)
 
 Owner: peter
