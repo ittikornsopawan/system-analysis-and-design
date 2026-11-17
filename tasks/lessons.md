@@ -567,3 +567,11 @@ description: Repository-wide and project-specific lessons captured from user cor
 - **Preventive skill change**: none; the lead decided on 2026-11-17 that the rule stays procedural (re-prepare) with no new helper command. This entry records the scope checklist for new specs.
 - **Verification**: PR #202 and #203 were prepared with the skeleton test in scope from the start and needed no scope change; `delivery-check` answered `delivery-authorized` for both.
 
+
+### 2026-11-17 — A new table needs its schema doc, README row and ER boxes before delivery
+
+- **Correction**: The owner asked me to push a local commit that added `public.t_parameter` to `00-common.schema.up.sql`. `audit_all.py` crashed on the inline `-- {en: ...}` comments in the `CREATE TABLE` body, and after those were moved to the schema doc it reported the missing schema doc, README row and ER boxes. While adding them I ran `realign_tables.py` on `doc/schema/README.md`, which padded its rows and made the audit report all 54 tables as unlisted.
+- **Root cause**: The audit parser splits a `CREATE TABLE` body by commas and reads a `--` comment as a column name; the README checks match the compact row text exactly. Neither rule was written in the data-modeling skill.
+- **Corrected behavior**: Keep comments out of `CREATE TABLE` bodies, document column meaning in the schema doc, and edit README rows in the compact form without realigning. A new table also needs its rollback `DROP`, a `*.test.sql`, both ER pages (schema page and "7 All Tables") and the overview list, and the `NN tables` count in `check_docs.py schema`.
+- **Preventive skill change**: `.agents/skills/data-modeling/SKILL.md` step 5 now says not to realign the schema README and to keep comments out of `CREATE TABLE`.
+- **Verification**: `audit_all.py` reports 0 findings, `check_docs.py` 72/72 OK and `run_db_tests.sh` ALL PASSED, including `00-parameter.test.sql`.

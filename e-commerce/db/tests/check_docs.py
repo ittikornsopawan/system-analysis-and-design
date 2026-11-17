@@ -142,7 +142,7 @@ def check_schema() -> int:
             errors.append(f"{path} SQL block has statements not in the migration")
     readme = read("e-commerce/doc/schema/README.md")
     needles = [
-        "53 tables in 11 schemas",
+        "54 tables in 11 schemas",
         "| [m_product_option](product/m_product_option.md) | Master | 9 | 1 |",
         "| [m_product_option_value](product/m_product_option_value.md) | Master | 9 | 1 |",
         "| [m_product_sku_option_value](product/m_product_sku_option_value.md) | Master | 8 | 2 |",
