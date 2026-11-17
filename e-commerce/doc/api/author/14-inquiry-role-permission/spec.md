@@ -1,9 +1,9 @@
 ---
 name: Role Permission Inquiry API Specification
 description: Defines verified JWT administration, current credential gating, bound nullable filters and consistent read-only pagination of the permissions of roles with their scopes; read when reviewing or implementing role permission inquiry.
-status: in-review
-approved_by: null
-approved_at: null
+status: approved
+approved_by: Josh (SA Lead, delegated by Ittikorn 2026-11-17)
+approved_at: 2026-11-17T20:23:48+07:00
 ---
 
 # [GET]: v1/author/role/permission

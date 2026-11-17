@@ -1,9 +1,9 @@
 ---
 name: User Permission Upsert API Specification
 description: Defines verified JWT administration, current credentials, the users/permission/grant lock order, the scope rule of a direct grant and the atomic lifecycle of a permission given directly to a user; read when reviewing or implementing user permission upsert.
-status: in-review
-approved_by: null
-approved_at: null
+status: approved
+approved_by: Josh (SA Lead, delegated by Ittikorn 2026-11-17)
+approved_at: 2026-11-17T20:23:48+07:00
 ---
 
 # [POST]: v1/author/user/permission/upsert
