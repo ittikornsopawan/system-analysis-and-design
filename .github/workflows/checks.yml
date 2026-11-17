@@ -38,6 +38,26 @@ jobs:
           python3 --version
           git --version
 
+      # Pinned so a new release cannot turn CI red without a change here. check_docs.py api-contract also uses it when installed.
+      - name: Install the OpenAPI validator
+        run: python3 -m pip install openapi-spec-validator==0.9.0
+
+      - name: Validate the OpenAPI 3.1 contract
+        run: python3 -m openapi_spec_validator e-commerce/api/api-contract.json
+
+      - name: Prove the validator fails on an invalid contract
+        run: |
+          # Deliberate fault: break a copy (never the real file); the validator must reject it.
+          bad="$(mktemp -d)/bad.json"
+          python3 - "$bad" <<'PY'
+          import json, sys
+          doc = json.load(open("e-commerce/api/api-contract.json"))
+          del doc["info"]  # info is required by OpenAPI 3.1
+          json.dump(doc, open(sys.argv[1], "w"))
+          PY
+          if python3 -m openapi_spec_validator "$bad"; then echo "validator accepted an invalid contract"; exit 1; fi
+          echo "validator rejected the invalid copy, as expected"
+
       - name: check_docs.py (every sub-command)
         run: |
           # The list comes from check_docs.py itself, so a new sub-command is run without a change here.
