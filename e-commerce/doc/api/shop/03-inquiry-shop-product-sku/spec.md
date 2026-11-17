@@ -8,13 +8,13 @@ approved_at: 2026-11-16T09:24:57+07:00
 
 # [GET]: v1/shop/product-sku
 
-| Title       | Description                                                                                                                                                                             |
-| ----------- | --------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------- |
-| Name        | Inquiry Shop Product SKU API                                                                                                                                                            |
-| Method      | GET                                                                                                                                                                                     |
-| Endpoint    | v{version}/shop/product-sku                                                                                                                                                             |
-| Version     | 1                                                                                                                                                                                       |
-| Description | Inquiry the list of shop product SKUs with their lots for the shop side, with paging and search, Inquiry by id returns a list with one item, Deleted SKUs and deleted lots are excluded |
+| Title       | Description                                                                                                                                                                                                                                        |
+| ----------- | -------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------- |
+| Name        | Inquiry Shop Product SKU API                                                                                                                                                                                                                       |
+| Method      | GET                                                                                                                                                                                                                                                |
+| Endpoint    | v{version}/shop/product-sku                                                                                                                                                                                                                        |
+| Version     | 1                                                                                                                                                                                                                                                  |
+| Description | Inquiry the list of shop product SKUs with their lots for the shop side, only for a member of the shop or a platform administrator, with paging and search, Inquiry by id returns a list with one item, Deleted SKUs and deleted lots are excluded |
 
 ## Domain
 
@@ -25,6 +25,12 @@ approved_at: 2026-11-16T09:24:57+07:00
 | UAT            | https://www.domain.com/api-uat      |
 | PRE-PRODUCTION | https://www.domain.com/api-pre-prod |
 | PRODUCTION     | https://www.domain.com/api          |
+
+- The rules of this section, including the permission model (the fixed shop roles OWNER, ADMIN and STAFF or a platform administrator, 403 E10009), were ordered by the product owner on 2026-11-17 (security review F1): the lots carry the cost price, the margins and the remaining quantity, so only the shop side can read them.
+- Governing decisions: owner-confirmed API review Q2, Q4, Q10 and Q13 (JWT payload of 2026-11-13).
+- `shopId` is mandatory (400, E10001): the call lists the SKUs of one shop. The caller must be an ACTIVE member of that shop (an OWNER, an ADMIN or a STAFF in `shop.t_shop_user`, see the definition of a member in the upsert (shop/11)) or have the exact case-sensitive role `PLATFORM_ADMIN` in the verified `roles` claim (an array of role names, an empty array is valid), otherwise 403 (E10009), also when the shop does not exist, so the answer does not tell whether a shop exists. A platform administrator who asks for a shop that does not exist gets an empty list.
+- The platform administrator is read only from the verified `roles` claim: do not query `author.m_role` or `author.t_user_role`, a change of the role assignments does not change a token that was already issued. Membership of a shop is not a token claim and is still read from `shop.t_shop_user`. The JWT is verified and the current credential and user are checked in a read-only transaction (401, E10002), no lock is taken: a read-only transaction cannot lock the caller user.
+- The order of the checks is in the sequence diagram.
 
 ---
 
@@ -40,14 +46,14 @@ approved_at: 2026-11-16T09:24:57+07:00
 
 ### Query Parameters
 
-|     | Parameter Name | Data Type    | M/O      | Description                                           | Example                              |
-| --- | -------------- | ------------ | -------- | ----------------------------------------------------- | ------------------------------------ |
-| 1   | id             | String: UUID | OPTIONAL | Shop Product SKU Id, Response is a list with one item | 9c0d1e2f-3a4b-4c5d-8e6f-7a8b9c0d1e2f |
-| 2   | shopId         | String: UUID | OPTIONAL | Shop Id, Filter by shop                               | 5a1b2c3d-4e5f-4a6b-8c7d-9e0f1a2b3c4d |
-| 3   | productId      | String: UUID | OPTIONAL | Product Id, Filter by product                         | e1a2b3c4-d5e6-4f7a-8b9c-0d1e2f3a4b5c |
-| 4   | pageIndex      | Numeric      | OPTIONAL | Page index starting from 1, Defaults to 1             | 1                                    |
-| 5   | pageSize       | Numeric      | OPTIONAL | Number of items per page (max 100), Defaults to 10    | 10                                   |
-| 6   | search         | String       | OPTIONAL | Search by shop SKU code or shop SKU name              | mouse                                |
+|     | Parameter Name | Data Type    | M/O       | Description                                           | Example                              |
+| --- | -------------- | ------------ | --------- | ----------------------------------------------------- | ------------------------------------ |
+| 1   | id             | String: UUID | OPTIONAL  | Shop Product SKU Id, Response is a list with one item | 9c0d1e2f-3a4b-4c5d-8e6f-7a8b9c0d1e2f |
+| 2   | shopId         | String: UUID | MANDATORY | Shop Id, The shop whose SKUs are listed               | 5a1b2c3d-4e5f-4a6b-8c7d-9e0f1a2b3c4d |
+| 3   | productId      | String: UUID | OPTIONAL  | Product Id, Filter by product                         | e1a2b3c4-d5e6-4f7a-8b9c-0d1e2f3a4b5c |
+| 4   | pageIndex      | Numeric      | OPTIONAL  | Page index starting from 1, Defaults to 1             | 1                                    |
+| 5   | pageSize       | Numeric      | OPTIONAL  | Number of items per page (max 100), Defaults to 10    | 10                                   |
+| 6   | search         | String       | OPTIONAL  | Search by shop SKU code or shop SKU name              | mouse                                |
 
 ## Example Request
 
@@ -223,7 +229,7 @@ curl --location --request GET 'https://www.domain.com/api-dev/v1/shop/product-sk
         "code": 400,
         "message": "Bad Request",
         "bizCode": "E10001",
-        "bizMessage": "Page Index and Page Size must be greater than 0, Page Size must not be greater than 100.",
+        "bizMessage": "Shop Id is a required field, Page Index and Page Size must be greater than 0, Page Size must not be greater than 100.",
         "requestId": "req-400a1b2c-3d4e-5f6a-7b8c-9d0e1f2a3b4c",
         "timestamp": "2026-11-06T09:40:40.123Z",
         "status": "ERROR"
@@ -247,6 +253,22 @@ curl --location --request GET 'https://www.domain.com/api-dev/v1/shop/product-sk
 }
 ```
 
+#### Fail - Forbidden
+
+```JSON
+{
+    "status": {
+        "code": 403,
+        "message": "Forbidden",
+        "bizCode": "E10009",
+        "bizMessage": "You do not have permission to view the product SKUs of this shop.",
+        "requestId": "req-403a1b2c-3d4e-5f6a-7b8c-9d0e1f2a3b4c",
+        "timestamp": "2026-11-06T09:43:40.123Z",
+        "status": "ERROR"
+    }
+}
+```
+
 #### Fail - Request Timeout
 
 ```JSON
@@ -263,9 +285,56 @@ curl --location --request GET 'https://www.domain.com/api-dev/v1/shop/product-sk
 }
 ```
 
+#### Fail - Internal Server Error
+
+```JSON
+{
+    "status": {
+        "code": 500,
+        "message": "Internal Server Error",
+        "bizMessage": "An unexpected error occurred.",
+        "requestId": "req-500a1b2c-3d4e-5f6a-7b8c-9d0e1f2a3b4c",
+        "timestamp": "2026-11-06T09:46:10.123Z",
+        "status": "ERROR"
+    }
+}
+```
+
 ---
 
 ## Database Relations
+
+One REPEATABLE READ READ ONLY transaction. The caller identity (`callerUserId`, the `sub` of the verified JWT) is used to check the current credential and the membership of the caller; the fresh UTC time is bound.
+
+### Table: [authen.t_user_access_token](../../../schema/authen/t_user_access_token.md)
+
+#### QUERY - Check current credential and user
+
+```SQL
+SELECT
+    at.id as access_token_id
+FROM authen.t_user_access_token at
+JOIN authen.m_user u ON u.id = at.user_id
+WHERE at.token = '<sequence.accessTokenHash>'
+AND at.user_id = '<sequence.callerUserId>'
+AND at.row_status = 'ACTIVE'
+AND at.expired_at > '<sequence.now>'
+AND u.row_status = 'ACTIVE'
+```
+
+### Table: [shop.t_shop_user](../../../schema/shop/t_shop_user.md)
+
+#### QUERY - Check shop member
+
+```SQL
+SELECT
+    su.id as shop_user_id
+FROM shop.t_shop_user su
+WHERE su.shop_id = '<sequence.shopId>'
+AND su.user_id = '<sequence.callerUserId>'
+AND su.role IN ('OWNER', 'ADMIN', 'STAFF')
+AND su.row_status = 'ACTIVE'
+```
 
 ### Table: [shop.t_shop_product_sku](../../../schema/shop/t_shop_product_sku.md)
 
@@ -286,7 +355,7 @@ INNER JOIN shop.t_shop_product sp
     ON sp.id = ssk.shop_product_id
 WHERE ssk.row_status <> 'DELETED'
 AND ssk.id = '<sequence.id>' -- only when id is specified
-AND sp.shop_id = '<sequence.shopId>' -- only when shopId is specified
+AND sp.shop_id = '<sequence.shopId>'
 AND sp.product_id = '<sequence.productId>' -- only when productId is specified
 AND (ssk.code ILIKE '%<sequence.search>%' OR ssk.name ILIKE '%<sequence.search>%') -- only when search is specified
 ORDER BY ssk.created_at DESC
@@ -303,7 +372,7 @@ INNER JOIN shop.t_shop_product sp
     ON sp.id = ssk.shop_product_id
 WHERE ssk.row_status <> 'DELETED'
 AND ssk.id = '<sequence.id>' -- only when id is specified
-AND sp.shop_id = '<sequence.shopId>' -- only when shopId is specified
+AND sp.shop_id = '<sequence.shopId>'
 AND sp.product_id = '<sequence.productId>' -- only when productId is specified
 AND (ssk.code ILIKE '%<sequence.search>%' OR ssk.name ILIKE '%<sequence.search>%') -- only when search is specified
 ```

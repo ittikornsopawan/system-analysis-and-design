@@ -18,4 +18,16 @@ Started at: 2026-11-17T13:00:00+07:00
 - [x] Write `docs/handoff/2026-11-17-openapi-security-review.md`
 - [ ] Run the checks and preflight, open the PR, send the link to Josh
 
+## e-commerce: follow-ups of the OpenAPI security review (owner answers 2026-11-17)
+
+Owner: peter
+Status: In progress
+Created at: 2026-11-17T14:00:00+07:00
+Started at: 2026-11-17T14:00:00+07:00
+
+- Assignment: Josh (message of 2026-11-17). Both specs stay `status: approved` (owner-ordered change). Contract regenerated with `gen_contract.py`, never hand-edited.
+
+- [ ] PR 1 (F1): `shop/03-inquiry-shop-product-sku` member permission (spec, sequence, checker needles, contract, answers line in the review doc)
+- [ ] PR 2 (F7, F9, F8): batch at most 100 items, webhook body at most 64 KB, 429 E90002 on public endpoints, webhook amount and currency check (`api-conventions.md`, concerned specs, contract)
+
 Completed records are in `success-task.md`.

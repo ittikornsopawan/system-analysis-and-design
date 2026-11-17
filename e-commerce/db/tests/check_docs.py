@@ -1040,6 +1040,14 @@ def check_shop_spec() -> int:
         if key in mds:
             wsd_path = SHOP_SPECS[key].replace("spec.md", "sequence.wsd")
             errors.extend(shop_jwt_errors(SHOP_SPECS[key], mds[key], read(wsd_path), member, no_member))
+    for key, (first, second) in SHOP_INQUIRY_JWT.items():
+        if key in SHOP_SPECS:
+            wsd_text = read(SHOP_SPECS[key].replace("spec.md", "sequence.wsd"))
+            errors.extend(shop_inquiry_jwt_errors(SHOP_SPECS[key], mds[key], wsd_text, first, second))
+            # owner order of 2026-11-17 (security review F1): the cost price, margins and quantity are for the shop side only
+            errors.extend(f"{SHOP_SPECS[key]} missing: {n!r}" for n in missing_needles(mds[key] + "\n" + re.sub(r"\n\s+", " ", wsd_text), [
+                "`shopId` is mandatory (400, E10001)", "otherwise 403 (E10009), also when the shop does not exist", "#### Fail - Forbidden",
+                "HTTP 403 E10009 You do not have permission to view the product SKUs of this shop.", "alt The caller is not an ACTIVE OWNER, ADMIN or STAFF member of the shop"]))
     store = mds["04"]
     for forbidden in ["costPrice", "cost_price", "grossMargin", "gross_margin", "authorization"]:
         # the storefront is public and never returns cost or margins
@@ -1532,7 +1540,8 @@ def shop_inquiry_jwt_errors(path: str, md: str, wsd: str, first: str, second: st
 
 
 # spec key -> the two reads in the order of the diagram
-SHOP_INQUIRY_JWT = {"10": ("QUERY - Get shops", "QUERY - Check shop members"), "13": ("QUERY - Check shop member", "QUERY - Get shop users")}
+SHOP_INQUIRY_JWT = {"03": ("QUERY - Check shop member", "QUERY - Get shop product SKUs"), "10": ("QUERY - Get shops", "QUERY - Check shop members"),
+                     "13": ("QUERY - Check shop member", "QUERY - Get shop users")}
 
 # Shop profile specs moved to the verified JWT roles claim: spec key -> (heading of the membership query, the member decision of the diagram).
 SHOP_PROFILE_JWT = {"08": ("QUERY - Check shop administrator", "alt update, delete or archive by a caller who is not an OWNER or an ADMIN of the shop"),
