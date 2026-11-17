@@ -5,6 +5,20 @@ description: Verified completed task records of Marry, moved from todo.md.
 
 # Marry Completed Tasks
 
+## e-commerce: OpenAPI contract, cart domain
+
+Owner: marry
+Status: Complete
+Created at: 2026-11-17T12:42:00+07:00
+Started at: 2026-11-17T12:42:00+07:00
+Completed at: 2026-11-17T12:43:43+07:00
+
+Assignment: agent `marry`, delivery `open-pr`, authorized by `ittikorn`, workspace `.workspace/marry`, branch `docs/marry-api-contract-cart`, scopes `e-commerce/api/api-contract.json`, `e-commerce/db/tests/check_docs.py`, `tasks/marry/todo.md`, `tasks/marry/success-task.md`, `.agents/skills/api-contract-design/scripts/gen_contract.py`, `.agents/skills/api-contract-design/SKILL.md`. Step 6 of the contract rollout.
+
+- [x] Publish the 3 approved operations of `cart`; fields shown as null in the examples are nullable (owner rule).
+- [x] Verification: 71 `check_docs.py` sub-commands 0 failed, `gen_contract.py --check` up to date, `audit_all.py` 0 findings, both test suites OK, `preflight.py` no blockers; no OpenAPI 3.1 validator installed (not run).
+- [x] Open the PR, tell Josh when `checks` is green, suspend, wait for the merge. Evidence: pull request #206, CI `checks` passed (29s), merged at 2026-11-17T12:43:43+07:00 (6784db0).
+
 ## e-commerce: OpenAPI contract, shop domain
 
 Owner: marry
