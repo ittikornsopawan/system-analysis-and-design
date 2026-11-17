@@ -5,6 +5,20 @@ description: Verified completed task records of Marry, moved from todo.md.
 
 # Marry Completed Tasks
 
+## e-commerce: OpenAPI contract, security text, 429 and array limits
+
+Owner: marry
+Status: Complete
+Created at: 2026-11-17T20:33:44+07:00
+Started at: 2026-11-17T20:33:44+07:00
+Completed at: 2026-11-17T20:39:27+07:00
+
+Assignment: agent `marry`, delivery `open-pr`, authorized by `ittikorn`, workspace `.workspace/marry`, branch `docs/marry-api-contract-security-text`, scopes `e-commerce/api/api-contract.json`, `e-commerce/db/tests/check_docs.py`, `tasks/marry/todo.md`, `tasks/marry/success-task.md`, `.agents/skills/api-contract-design/scripts/gen_contract.py`, `.agents/skills/api-contract-design/SKILL.md`. Step 12 of the contract rollout, the last one; all 10 domains are in the contract.
+
+- [x] Add the contract-side findings of #209 (F3 scheme text, F4 who may call, F5 webhook text with `security: []`, F6 global security, F8 `created` integer) and the two additions of Josh: shared `Error429` with `Retry-After` on the 9 public operations, and `minItems 1` / `maxItems 100` on the batch arrays and `cartIds`; the generator and `api-contract` check each of them.
+- [x] Verification: 71 `check_docs.py` sub-commands 0 failed, `gen_contract.py --check` up to date, `audit_all.py` 0 findings, both test suites OK, `preflight.py` no blockers; no OpenAPI 3.1 validator installed (not run).
+- [x] Open the PR, tell Josh when `checks` is green, suspend, wait for the merge. Evidence: pull request #220, CI `checks` passed (40s), Josh review passed, merged at 2026-11-17T20:39:27+07:00 (f6d57e4); the branch was rebased by GitHub before the merge, so `park` is blocked and waits for the lead's approval to clear the record.
+
 ## e-commerce: OpenAPI contract, campaign domain
 
 Owner: marry
