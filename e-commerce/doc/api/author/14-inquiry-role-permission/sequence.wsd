@@ -1,0 +1,294 @@
+@startuml InquiryRolePermission
+
+title Inquiry Role Permission API Sequence
+
+' Leading SQL apostrophes use &#39; so PlantUML preserves literals; parity compares decoded SQL.
+
+' Visual style
+skinparam defaultFontName "Sarabun"
+skinparam defaultFontSize 14
+skinparam backgroundColor #FFFFFF
+skinparam shadowing false
+skinparam roundcorner 10
+skinparam sequence {
+    ArrowColor #475569
+    ArrowFontColor #334155
+    LifeLineBorderColor #CBD5E1
+    LifeLineBackgroundColor #F8FAFC
+    ParticipantBorderColor #94A3B8
+    ParticipantBackgroundColor #F1F5F9
+    ParticipantFontColor #0F172A
+    GroupBorderColor #94A3B8
+    GroupBackgroundColor #F8FAFC
+    GroupFontColor #334155
+}
+
+' Do not show participant footers at the bottom of the diagram
+hide footbox
+
+actor "User" as user
+box "Frontend" #F8FAFC
+    participant "Inquiry Role Permission Page" as page
+end box
+box "Web API" #F8FAFC
+    participant "API" as api
+    participant "Application" as app
+    participant "Domain" as domain
+    participant "Infrastructure" as infra
+end box
+box "Database" #F8FAFC
+    database "t_user_access_token" as t_user_access_token
+    database "t_role_permission" as t_role_permission
+    database "t_role_permission_scope" as t_role_permission_scope
+end box
+
+user -> page: Read the permissions of roles with optional filters and pagination
+activate page
+    page -> api: GET v1/author/role/permission (Bearer JWT, UTC timestamp; query only)
+    activate api
+        api -> app: [**InquiryRolePermissionQueryHandler**] Process request
+        activate app
+            note over app, infra
+                Execution order: validate query/header/body and checked pagination (400) -> verify JWT/roles (401) -> begin
+                read-only repeatable-read transaction -> fresh now/expiry -> joined current credential/user (401) -> claims
+                permission (403) -> count -> optional page -> complete mapping -> COMMIT -> 200. Every post-BEGIN rejection
+                rolls back.
+            end note
+            app -> app: Generate requestId; validate UTC timestamp, known single query keys/no body, UUID id/roleId/permissionId, positive signed Int64 pages/default 1/10/pageSize <=100 and ACTIVE/INACTIVE/LOCKED/ARCHIVED filter
+            note over app, infra
+                Reject unknown/repeated keys and malformed header/query with 400 E10001 before SQL. Generate requestId if
+                omitted. Supplied id/roleId/permissionId is a non-empty UUID, never null; omitted ones are typed SQL NULL
+                (filterRoleId, filterPermissionId). pageIndex/pageSize are positive signed 64-bit integers, default 1/10 only when
+                omitted, pageSize at most 100. Compute checked offset = (pageIndex - 1) * pageSize and reject parse/offset
+                overflow beyond nonnegative BIGINT with 400. Explicit empty/null-like values do not become defaults. Row
+                status must be one of ACTIVE, INACTIVE, LOCKED, ARCHIVED.
+            end note
+            app -> app: Compute checked offset = (pageIndex - 1) * pageSize; reject numeric/offset overflow beyond nonnegative BIGINT
+            alt Invalid input or pagination overflow
+                break Reject this inquiry
+                    app -> api: HTTP 400 E10001
+                    api -> page: Show failure without a partial role permission page
+                    page -> user: Display failure; no role permission data
+                end break
+            else Check passed
+            end
+            app -> app: Verify JWT signature/issuer/audience/expiry/UUID sub and the roles claim as unique non-empty strings
+            alt Missing/invalid JWT or malformed roles
+                break Reject this inquiry
+                    app -> api: HTTP 401 E10002 Invalid or expired access token.
+                    api -> page: Show failure without a partial role permission page
+                    page -> user: Display failure; no role permission data
+                end break
+            else Check passed
+            end
+            app -> app: callerUserId = verified sub; accessTokenHash = SHA-256 exact JWT
+            app -> app: Bind omitted id/filterRoleId/filterPermissionId/rowStatus as typed SQL NULL; supplied filters are bound values
+            app -> infra: BEGIN REPEATABLE READ READ ONLY
+            note over app, infra
+                Verify Bearer JWT signature/issuer/audience/expiry/UUID sub and the roles claim before BEGIN. roles must be an array of unique non-empty role names (JWT payload of 2026-11-13), including [].
+                Missing/malformed roles is generic 401 E10002, never an empty-list or live-grant fallback. Derive
+                callerUserId only from verified sub and accessTokenHash as SHA-256 of the exact JWT; do not accept caller
+                ids or isPlatformAdmin flags from requests.
+                Require matching token hash/caller id, ACTIVE token/user and strict expired_at > now;
+                missing/inactive/revoked/expired/mismatched credentials is generic 401 E10002 with rollback before role-permission
+                reads. No role/permission/token locks or writes. This current credential gate preserves immediate logout/reset
+                revocation (Q13).
+            end note
+            activate infra
+            alt Read and mapping work completes
+                note over app, infra
+                    No locks or writes. Credentials, role permission count and page use one repeatable-read snapshot.
+                    Timeout or unexpected SQL/result/mapping failure may interrupt any step; no partial response.
+                end note
+                app -> app: Capture fresh server UTC now immediately before joined credential read; recheck JWT exp
+                alt JWT expired before fresh credential read
+                    break Reject this inquiry
+                        app -> infra: ROLLBACK
+                        app -> api: HTTP 401 E10002 Invalid or expired access token.
+                        api -> page: Show failure without a partial role permission page
+                        page -> user: Display failure; no role permission data
+                    end break
+                else Check passed
+                end
+                app -> infra: QUERY - Check current credential and user
+                infra -> t_user_access_token: QUERY - Check current credential and user
+                activate t_user_access_token
+                    note right of t_user_access_token
+                        SELECT
+                            at.id as access_token_id
+                        FROM authen.t_user_access_token at
+                        JOIN authen.m_user u ON u.id = at.user_id
+                        WHERE at.token = '<sequence.accessTokenHash>'
+                        AND at.user_id = '<sequence.callerUserId>'
+                        AND at.row_status = 'ACTIVE'
+                        AND at.expired_at > '<sequence.now>'
+                        AND u.row_status = 'ACTIVE'
+                    end note
+                    t_user_access_token -> infra: Return ACTIVE matching unexpired token/user or no row
+                deactivate t_user_access_token
+                infra -> app: Return ACTIVE matching unexpired token/user or no row
+                alt Current token/user missing/inactive/revoked/expired/mismatched
+                    break Reject this inquiry
+                        app -> infra: ROLLBACK
+                        app -> api: HTTP 401 E10002 Invalid or expired access token.
+                        api -> page: Show failure without a partial role permission page
+                        page -> user: Display failure; no role permission data
+                    end break
+                else Check passed
+                end
+                app -> app: Authorize once using exact case-sensitive PLATFORM_ADMIN in verified JWT roles; never reload current grants
+                alt No exact PLATFORM_ADMIN role claim
+                    break Reject this inquiry
+                        app -> infra: ROLLBACK
+                        app -> api: HTTP 403 E10009 You do not have permission to read role permissions.
+                        api -> page: Show failure without a partial role permission page
+                        page -> user: Display failure; no role permission data
+                    end break
+                else Check passed
+                end
+                app -> infra: QUERY - Get total items
+                infra -> t_role_permission: QUERY - Get total items
+                activate t_role_permission
+                    note right of t_role_permission
+                        SELECT
+                            COUNT(rp.id) as total_items
+                        FROM author.t_role_permission rp
+                        INNER JOIN author.m_role r
+                            ON r.id = rp.role_id
+                        INNER JOIN author.m_permission p
+                            ON p.id = rp.permission_id
+                        WHERE rp.row_status <> 'DELETED'
+                        AND ('<sequence.id>' IS NULL OR rp.id = '<sequence.id>') -- only when id is specified
+                        AND ('<sequence.filterRoleId>' IS NULL OR rp.role_id = '<sequence.filterRoleId>') -- only when roleId is specified
+                        AND ('<sequence.filterPermissionId>' IS NULL OR rp.permission_id = '<sequence.filterPermissionId>') -- only when permissionId is specified
+                        AND ('<sequence.rowStatus>' IS NULL OR rp.row_status = '<sequence.rowStatus>') -- only when rowStatus is specified
+                    end note
+                    t_role_permission -> infra: Return totalItems for non-DELETED role permissions and all nullable filters
+                deactivate t_role_permission
+                infra -> app: Return totalItems for non-DELETED role permissions and all nullable filters
+                app -> app: totalPages = 0 when totalItems=0, otherwise integer quotient plus nonzero remainder; no floating point or overflowing count+pageSize-1
+                alt totalItems = 0
+                    app -> app: items = []; skip page query; totalPages = 0
+                else totalItems > 0
+                    app -> infra: QUERY - Get role permissions
+                    infra -> t_role_permission: QUERY - Get role permissions
+                    activate t_role_permission
+                        note right of t_role_permission
+                            SELECT
+                                rp.id as role_permission_id,
+                                rp.role_id,
+                                r.name as role_name,
+                                rp.permission_id,
+                                p.name as permission_name,
+                                rp.row_status
+                            FROM author.t_role_permission rp
+                            INNER JOIN author.m_role r
+                                ON r.id = rp.role_id
+                            INNER JOIN author.m_permission p
+                                ON p.id = rp.permission_id
+                            WHERE rp.row_status <> 'DELETED'
+                            AND ('<sequence.id>' IS NULL OR rp.id = '<sequence.id>') -- only when id is specified
+                            AND ('<sequence.filterRoleId>' IS NULL OR rp.role_id = '<sequence.filterRoleId>') -- only when roleId is specified
+                            AND ('<sequence.filterPermissionId>' IS NULL OR rp.permission_id = '<sequence.filterPermissionId>') -- only when permissionId is specified
+                            AND ('<sequence.rowStatus>' IS NULL OR rp.row_status = '<sequence.rowStatus>') -- only when rowStatus is specified
+                            ORDER BY r.name, p.name, rp.id
+                            LIMIT '<sequence.pageSize>' OFFSET '<sequence.offset>'
+                        end note
+                        t_role_permission -> infra: Return six-field role permission rows in role name/permission name/id order from identical filters/snapshot
+                    deactivate t_role_permission
+                    infra -> app: Return six-field role permission rows in role name/permission name/id order from identical filters/snapshot
+                    app -> app: Require page row count = min(pageSize, max(0, totalItems-offset)); mismatch is internal failure
+                    alt Page contains rows
+                        app -> app: rolePermissionIds = the role permission ids of the page (typed UUID[])
+                        app -> infra: QUERY - Get the scopes of the role permissions
+                        infra -> t_role_permission_scope: QUERY - Get the scopes of the role permissions
+                        activate t_role_permission_scope
+                            note right of t_role_permission_scope
+                                    SELECT
+                                        rps.id as role_permission_scope_id,
+                                        rps.role_permission_id,
+                                        rps.permission_scope_id,
+                                        ps.scope_id,
+                                        s.scope,
+                                        rps.row_status
+                                    FROM author.t_role_permission_scope rps
+                                    INNER JOIN author.t_permission_scope ps
+                                        ON ps.id = rps.permission_scope_id
+                                    INNER JOIN author.m_scope s
+                                        ON s.id = ps.scope_id
+                                    WHERE rps.role_permission_id = ANY ('<sequence.rolePermissionIds>'::UUID[]) -- the ids of the page
+                                    AND rps.row_status <> 'DELETED'
+                                    ORDER BY rps.role_permission_id, s.scope, rps.id
+                            end note
+                            t_role_permission_scope -> infra: Return the non-DELETED scope links of the page rows with their scope code
+                        deactivate t_role_permission_scope
+                        infra -> app: Return the non-DELETED scope links of the page rows with their scope code
+                        app -> app: Group the links by role permission id; a link whose role permission is not on the page is internal failure; scopes = [] when a row has no link
+                        app -> app: Map exactly rolePermissionId/roleId/roleName/permissionId/permissionName/scopes/rowStatus per row and rolePermissionScopeId/permissionScopeId/scopeId/scope/rowStatus per scope; required values non-null; exclude caller/token/hash/audit
+                    else Page beyond range contains no rows
+                        app -> app: items = []; retain positive totalItems/totalPages; no 404
+                    end
+                end
+                app -> app: data = exactly items/pageIndex/pageSize/totalItems/totalPages; echo validated page values; explicit empty arrays; finish full mapping
+                app -> infra: COMMIT
+                infra -> app: Return committed consistent read-only role permission page
+                note over app, infra
+                    Approved by the product owner (WP5 author design A12, answered through the lead SA on 2026-11-06; 5b
+                    restarted by the owner on 2026-11-17; shape approved in the owner answers of 2026-11-17, Q6, relayed by Josh);
+                    use exact PLATFORM_ADMIN in verified JWT role claims under the
+                    owner-confirmed API review Q2/Q4/Q12/Q13. This specification is in-review; no backend/schema implementation.
+                    The four nullable filters id/roleId/permissionId/rowStatus disable only themselves and combine by AND; every
+                    supplied value is bound and never interpolated into SQL. roleId returns the permissions of that role,
+                    permissionId the roles that have that permission; the id filter is still filtered/paginated, not an unpaged
+                    alternate path. The inner joins to the role and the permission never remove a row because both references
+                    are mandatory foreign keys; the role and the permission status are not filtered.
+                    Scopes of each row come from the third query in the same snapshot: the non-DELETED
+                    `author.t_role_permission_scope` links of the page rows, joined to their permission scope definition and
+                    scope master (mandatory foreign keys, statuses not filtered). Each item keeps only its own links (Q12: a
+                    scope of one permission never belongs to another). The query is skipped when the page has no rows.
+                    After current credentials pass, authorize once using exact case-sensitive PLATFORM_ADMIN in verified JWT
+                    roles. Valid roles=[] or any other role name is 403 E10009 `You do not have permission to read role permissions.`
+                    after rollback and before count/page SQL. Never query current caller role assignments to grant, remove or
+                    replace authorization. Grant withdrawal after token issuance leaves the old privilege usable until access
+                    expiry (Q4); refresh reloads current grants (Q7). Role-permission data returned below comes from the database
+                    snapshot, distinct from author/me's calling-token snapshot.
+                    Count first and optionally fetch the page and its scopes in the same read-only repeatable-read snapshot as credentials.
+                    Both role-permission queries use identical joins and non-DELETED/id/roleId/permissionId/rowStatus WHERE predicates;
+                    every supplied value is bound, including pageSize and checked offset. If totalItems=0 skip the page SQL and
+                    return items=[], totalPages=0. With positive count, query the requested page; an offset beyond the range
+                    returns items=[] with positive totals/pages and no 404. A missing/DELETED id is the same empty-list 200 for
+                    an authorized caller; permission is checked before revealing whether any role permission exists.
+                    Rows with rowStatus DELETED are never returned. Omitted rowStatus preserves every non-DELETED status;
+                    supplied status accepts only ACTIVE/INACTIVE/LOCKED/ARCHIVED. Sort by role name, then permission name,
+                    then id ascending; scopes by scope code, then link id, preserving database collation. This is deterministic within one snapshot; later requests
+                    may see newly committed changes and are not a frozen paging cursor.
+                    Map each row to exactly rolePermissionId/roleId/roleName/permissionId/permissionName/scopes/rowStatus and
+                    each scope to rolePermissionScopeId/permissionScopeId/scopeId/scope/rowStatus. No caller id, assignment, token/hash, audit or extra table fields are
+                    returned. Return exactly five data keys: items/pageIndex/pageSize/totalItems/totalPages, with explicit empty
+                    arrays. Echo validated pages and compute totalPages by integer quotient/remainder (zero when count=0),
+                    avoiding floating point or overflowing count+pageSize-1. Require page row count = min(pageSize, max(0,
+                    totalItems-offset)); mismatch or malformed/null/missing required data is internal failure.
+                    Map the full response before COMMIT, then HTTP 200 S10000 Inquiry Role Permission Success. An unexpected
+                    SQL/result/mapping error rolls back and returns generic 500 without bizCode; timeout before COMMIT rolls
+                    back and returns 408 E90001. Never return partially mapped rows, mutate
+                    assignments/users/roles/tokens/audit, or answer 404/409 for this inquiry.
+                end note
+                app -> api: HTTP 200 S10000 Inquiry Role Permission Success; all five pagination keys
+                api -> page: Show authorized role permission page and totals
+                page -> user: Display role permissions or empty page
+            else Timeout before COMMIT
+                app -> infra: ROLLBACK
+                app -> api: HTTP 408 E90001
+                api -> page: Show failure without a partial role permission page
+                page -> user: Display failure; no role permission data
+            else Unexpected SQL/result/mapping failure before COMMIT
+                app -> infra: ROLLBACK
+                app -> api: HTTP 500 Internal Server Error; omit bizCode
+                api -> page: Show failure without a partial role permission page
+                page -> user: Display failure; no role permission data
+            end
+            deactivate infra
+        deactivate app
+    deactivate api
+deactivate page
+@enduml
