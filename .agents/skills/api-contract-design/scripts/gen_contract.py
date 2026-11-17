@@ -1,7 +1,10 @@
 #!/usr/bin/env python3
 """Regenerate e-commerce/api/api-contract.json (OpenAPI 3.1) from the approved API specs.
 
-usage: python3 .agents/skills/api-contract-design/scripts/gen_contract.py
+usage: python3 .agents/skills/api-contract-design/scripts/gen_contract.py [--check]
+
+--check writes nothing and exits 1 when the committed contract differs from a fresh generation (a hand edit, or a spec
+change that was not regenerated); `check_docs.py api-contract` runs it in CI.
 
 The domains come from API_CONTRACT_DOMAINS in e-commerce/db/tests/check_docs.py; only specs with `status: approved`
 are published. Everything is read from the spec: method and path from the title, fields from the parameter tables,
@@ -86,9 +89,10 @@ def constrain(schema, desc):
     if t in ("number", "integer") and (m := re.search(r"\(max (\d+)\)", desc)):
         schema["maximum"] = int(m.group(1))
     if m := re.search(r"Defaults to ([^,]+?)(?:,|$)", desc):
-        value = m.group(1).strip()
-        if t != "string" or re.fullmatch(r"[A-Z][A-Z0-9_]*", value):
-            schema["default"] = coerce(value, schema)
+        value = coerce(m.group(1).strip(), schema)
+        # a conditional default ("FALSE on insert") stays in the description only
+        if (t == "string" and re.fullmatch(r"[A-Z][A-Z0-9_]*", value)) or (t != "string" and not isinstance(value, str)):
+            schema["default"] = value
     return schema
 
 
@@ -110,9 +114,9 @@ class Spec:
         self.approved = re.search(r"^status: approved$", self.md, re.M) is not None
         m = re.search(r"^# \[(\w+)\]: (\S+)", self.md, re.M)
         self.method, self.path = m.group(1).lower(), "/" + m.group(2)
-        meta = {r.get("Title"): r.get("Description") for r in table(own_text(self.md, *self.secs[0][2:4]))}
+        meta = {r.get("Title"): r.get("Description") for r in table(self.md[m.end():self.secs[0][2]])}
         self.name, self.desc = meta.get("Name"), meta.get("Description")
-        self.errors = []
+        self.errors = [] if self.name and self.desc else ["no Name or Description in the table under the title"]
 
     def find(self, title, within=None):
         lo, hi = (within[2], within[3]) if within else (0, len(self.md))
@@ -386,9 +390,16 @@ def main():
     contract["paths"] = {k: dict(sorted(v.items())) for k, v in sorted(contract["paths"].items())}
     check_examples(contract, mark_null=True)
     errors += check_examples(contract, mark_null=False)
-    CONTRACT.write_text(json.dumps(contract, indent=2, ensure_ascii=False) + "\n", encoding="utf-8")
+    text = json.dumps(contract, indent=2, ensure_ascii=False) + "\n"
     count = sum(len(v) for v in contract["paths"].values())
-    print(f"{CONTRACT.relative_to(ROOT)}: {count} operations of {len(domains)} domains")
+    if "--check" in sys.argv[1:]:
+        if text != CONTRACT.read_text(encoding="utf-8"):
+            errors.append(f"{CONTRACT.relative_to(ROOT)} differs from a fresh generation; run gen_contract.py and commit the result")
+        else:
+            print(f"{CONTRACT.relative_to(ROOT)}: up to date ({count} operations of {len(domains)} domains)")
+    else:
+        CONTRACT.write_text(text, encoding="utf-8")
+        print(f"{CONTRACT.relative_to(ROOT)}: {count} operations of {len(domains)} domains")
     for rel in skipped:
         print(f"skipped (not approved): {rel}")
     for error in errors:

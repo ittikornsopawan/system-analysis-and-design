@@ -7,19 +7,19 @@ description: Active plans and task records of the System Analyst Marry, resolved
 
 Completed records are in `success-task.md`.
 
-## e-commerce: OpenAPI contract, author domain and owner conventions
+## e-commerce: OpenAPI contract, consent domain and drift check
 
 Owner: marry
 Status: In progress
-Created at: 2026-11-17T09:33:00+07:00
-Started at: 2026-11-17T09:33:00+07:00
+Created at: 2026-11-17T09:40:00+07:00
+Started at: 2026-11-17T09:40:00+07:00
 
-Assignment: agent `marry`, delivery `open-pr`, authorized by `ittikorn`, workspace `.workspace/marry`, branch `docs/marry-api-contract-author`, scopes `e-commerce/api/api-contract.json`, `e-commerce/db/tests/check_docs.py`, `tasks/marry/todo.md`, `tasks/marry/success-task.md`, `.agents/skills/api-contract-design/scripts/gen_contract.py`, `.agents/skills/api-contract-design/SKILL.md`. Step 2 of the contract rollout. Owner answers of 2026-11-17 relayed by Josh: count fields (`pageIndex`, `pageSize`, `totalItems`, `totalPages`, `expiresIn`, `status.code`) are integer; commit the generator under `api-contract-design/scripts` with a regenerate note in its SKILL.md; a null in a spec example makes the field nullable. Lead decision: publish author 01-12 now, Peter's 13-17 after the owner approves them.
+Assignment: agent `marry`, delivery `open-pr`, authorized by `ittikorn`, workspace `.workspace/marry`, branch `docs/marry-api-contract-consent`, scopes `e-commerce/api/api-contract.json`, `e-commerce/db/tests/check_docs.py`, `tasks/marry/todo.md`, `tasks/marry/success-task.md`, `.agents/skills/api-contract-design/scripts/gen_contract.py`, `.agents/skills/api-contract-design/SKILL.md`. Step 3 of the contract rollout; Josh asked on 2026-11-17 for a `--check` drift mode called from `api-contract`.
 
-- [x] `gen_contract.py`: regenerates the contract from the approved specs of `API_CONTRACT_DOMAINS`, applies the owner conventions, checks every example against its schema and exits 1 on any mismatch; 4/4 deliberate faults rejected.
-- [x] Regenerate `authen-and-author`: 9 count fields `number` -> `integer`, nothing else changes.
-- [x] Publish the 12 approved operations of `author`.
-- [x] `check_docs.py api-contract`: `author` in `API_CONTRACT_DOMAINS`, only `status: approved` specs count, so in-review specs (Peter's 13-17) do not break CI; deliberate fault (an approved spec turned in-review) rejected.
-- [x] `SKILL.md`: how to regenerate the contract.
+- [x] `gen_contract.py --check`: exits 1 when the committed contract differs from a fresh generation; `check_docs.py api-contract` runs it; hand edit and unregenerated spec change rejected.
+- [x] Fix: every operation had `summary: null` and a description starting `None` (#197, #198) because the Name/Description table above the first `##` was never read; the generator now reads it and reports a spec without it; deliberate fault rejected.
+- [x] Fix: a conditional default ("FALSE on insert") is no longer published as a string `default` of a boolean.
+- [x] Publish the 8 approved operations of `consent`.
+- [x] `SKILL.md`: the regenerate note names the drift check.
 - [ ] Verification: every `check_docs.py` sub-command, `audit_all.py`, `test_sequence_skeleton.py`, `test_agent_workspace.py`, `preflight.py`.
 - [ ] Open the PR, tell Josh when `checks` is green, suspend, wait for the merge before the next domain.

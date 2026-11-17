@@ -8882,7 +8882,7 @@ COMMANDS["md-frontmatter"] = check_md_frontmatter
 API_CONTRACT = "e-commerce/api/api-contract.json"
 # Domains published in the contract so far (owner order of 2026-11-17: one PR per domain); add each domain as it lands,
 # then regenerate with .agents/skills/api-contract-design/scripts/gen_contract.py. Only approved specs are published.
-API_CONTRACT_DOMAINS = ["authen-and-author", "author"]
+API_CONTRACT_DOMAINS = ["authen-and-author", "author", "consent"]
 
 
 def spec_operation(md: str) -> tuple:
@@ -8944,6 +8944,10 @@ def check_api_contract() -> int:
             errors.append(f"{key[0]} {key[1]}: responses {sorted(found)} differ from the spec examples {sorted(codes)}")
     for key in sorted(set(published) - set(specs)):
         errors.append(f"{key[0]} {key[1]} is in the contract but no spec of {', '.join(API_CONTRACT_DOMAINS)} defines it")
+    generator = ROOT / ".agents/skills/api-contract-design/scripts/gen_contract.py"
+    drift = subprocess.run([sys.executable, str(generator), "--check"], capture_output=True, text=True)
+    if drift.returncode != 0:
+        errors.append("gen_contract.py --check: " + " | ".join((drift.stdout + drift.stderr).strip().splitlines()))
     if errors:
         return fail("; ".join(errors))
     print(f"OK: api-contract ({len(specs)} operations of {len(API_CONTRACT_DOMAINS)} domains)")
