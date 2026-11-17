@@ -5,6 +5,24 @@ description: Verified completed task records of Marry, moved from todo.md.
 
 # Marry Completed Tasks
 
+## e-commerce: OpenAPI contract, author domain and owner conventions
+
+Owner: marry
+Status: Complete
+Created at: 2026-11-17T09:33:00+07:00
+Started at: 2026-11-17T09:33:00+07:00
+Completed at: 2026-11-17T09:38:29+07:00
+
+Assignment: agent `marry`, delivery `open-pr`, authorized by `ittikorn`, workspace `.workspace/marry`, branch `docs/marry-api-contract-author`, scopes `e-commerce/api/api-contract.json`, `e-commerce/db/tests/check_docs.py`, `tasks/marry/todo.md`, `tasks/marry/success-task.md`, `.agents/skills/api-contract-design/scripts/gen_contract.py`, `.agents/skills/api-contract-design/SKILL.md`. Step 2 of the contract rollout. Owner answers of 2026-11-17 relayed by Josh: count fields (`pageIndex`, `pageSize`, `totalItems`, `totalPages`, `expiresIn`, `status.code`) are integer; commit the generator under `api-contract-design/scripts` with a regenerate note in its SKILL.md; a null in a spec example makes the field nullable. Lead decision: publish author 01-12 now, Peter's 13-17 after the owner approves them.
+
+- [x] `gen_contract.py`: regenerates the contract from the approved specs of `API_CONTRACT_DOMAINS`, applies the owner conventions, checks every example against its schema and exits 1 on any mismatch; 4/4 deliberate faults rejected.
+- [x] Regenerate `authen-and-author`: 9 count fields `number` -> `integer`, nothing else changes.
+- [x] Publish the 12 approved operations of `author`.
+- [x] `check_docs.py api-contract`: `author` in `API_CONTRACT_DOMAINS`, only `status: approved` specs count, so in-review specs (Peter's 13-17) do not break CI; deliberate fault (an approved spec turned in-review) rejected.
+- [x] `SKILL.md`: how to regenerate the contract.
+- [x] Verification: 71 `check_docs.py` sub-commands 0 failed, `audit_all.py` 0 findings, `test_sequence_skeleton.py` 12 OK, `test_agent_workspace.py` 27 OK, `preflight.py` no blockers; 6/6 deliberate faults rejected; no OpenAPI 3.1 validator installed (not run).
+- [x] Open the PR, tell Josh when `checks` is green, suspend, wait for the merge. Evidence: pull request #198, CI `checks` passed (29s), Josh review passed, merged at 2026-11-17T09:38:29+07:00 (570fc32).
+
 ## e-commerce: OpenAPI contract, shared components and authen-and-author
 
 Owner: marry

@@ -1,0 +1,613 @@
+@startuml UpsertRolePermission Sequence
+
+title Upsert Role Permission API Sequence
+
+' Leading SQL apostrophes use &#39; so PlantUML preserves literals; parity compares decoded SQL.
+
+' Visual style
+skinparam defaultFontName "Sarabun"
+skinparam defaultFontSize 14
+skinparam backgroundColor #FFFFFF
+skinparam shadowing false
+skinparam roundcorner 10
+skinparam sequence {
+    ArrowColor #475569
+    ArrowFontColor #334155
+    LifeLineBorderColor #CBD5E1
+    LifeLineBackgroundColor #F8FAFC
+    ParticipantBorderColor #94A3B8
+    ParticipantBackgroundColor #F1F5F9
+    ParticipantFontColor #0F172A
+    GroupBorderColor #94A3B8
+    GroupBackgroundColor #F8FAFC
+    GroupFontColor #334155
+}
+
+' Do not show participant footers at the bottom of the diagram
+hide footbox
+
+actor "User" as user
+box "Frontend" #F8FAFC
+    participant "Upsert Role Permission Page" as page
+end box
+box "Web API" #F8FAFC
+    participant "API" as api
+    participant "Application" as app
+    participant "Domain" as domain
+    participant "Infrastructure" as infra
+end box
+box "Database" #F8FAFC
+    database "m_user" as m_user
+    database "t_user_access_token" as t_user_access_token
+    database "m_role" as m_role
+    database "m_permission" as m_permission
+    database "t_role_permission" as t_role_permission
+    database "t_permission_scope" as t_permission_scope
+    database "t_role_permission_scope" as t_role_permission_scope
+end box
+
+user -> page: Submit the role, the permission, its scopes and the grant status
+activate page
+    page -> api: POST v1/author/role/permission/upsert (JSON, Bearer JWT, UTC timestamp)
+    activate api
+        api -> app: [**UpsertRolePermissionCommandHandler**] Process request
+        activate app
+            note over app, infra
+                Execution order: validate the request (400) -> verify JWT (401) -> begin transaction (READ COMMITTED) ->
+                lock the caller user -> fresh current credentials (401) -> lock the role -> lock the permission -> locked
+                grant existence (404, E10004, only when id supplied) and unchanged role/permission (400) -> role and
+                permission ACTIVE when the request gives the permission (404, E10005) -> scopes of the permission ->
+                locked scope links of the grant (404, E10004 per item) and unchanged scopeId (400) -> each scopeId is a
+                scope of the permission (400) -> given scopes ACTIVE (404, E10005) -> permission (403, E10009) ->
+                duplicate grant and duplicate scope (409, E10003) -> guarded writes -> scoped-grant rule on the result
+                (400, E10001) -> complete mapping -> COMMIT -> response. Every post-BEGIN rejection rolls back.
+                Lock order is caller user -> the role (`FOR UPDATE`) -> the permission (`FOR UPDATE`) -> the grant row of
+                `id` (`FOR UPDATE`) -> its scope links (`FOR UPDATE`, ascending id) -> duplicate/count reads and the
+                writes. The permission lock serializes this request with permission upsert, which locks the permission
+                before it changes its scope definitions, so the scopes read below cannot change before COMMIT.
+            end note
+            app -> app: Generate requestId; validate JSON object/known unique keys/no query, UTC timestamp, optional non-null UUID id, required non-null UUID roleId and permissionId, optional scopes array
+            note over app, infra
+                HTTP status of the single upsert: Insert 201 Created, Update 200 Ok, Delete 204 No Content (no response
+                body), Archive 200 Ok.
+                Validate one JSON object allowing only id/roleId/permissionId/scopes/rowStatus, no repeated/unknown
+                body/query keys, JSON content type and mandatory UTC timestamp before SQL. id is optional only by omission
+                and is a non-null UUID when supplied. roleId and permissionId are required non-null UUIDs in every request,
+                including delete and archive. rowStatus defaults to ACTIVE only when omitted and otherwise is
+                ACTIVE/INACTIVE/DELETED/LOCKED/ARCHIVED; insert-DELETED is 400 E10001. scopes is optional; each item is an
+                object with only id/scopeId/rowStatus: optional non-null UUID id, required UUID scopeId, rowStatus ACTIVE
+                (default when omitted) or DELETED; an item without id cannot be DELETED; item ids are unique and no scopeId
+                repeats among non-DELETED items (400 E10001 with the position scopes[i]). Generate requestId when omitted.
+                Insert is 201 S10000 Insert Role Permission Success, existing delete is 204 with no body/status/data,
+                existing archive is 200 S10000 Archive Role Permission Success, and other existing updates are 200 S10000
+                Update Role Permission Success. SQLSTATE 23505 from uq_t_role_permission_role_id_permission_id or
+                uq_t_role_permission_scope_role_permission_scope is the final concurrent duplicate guard and maps to 409
+                E10003 after full rollback. Other SQL/result/mapping errors roll back and return generic 500 without
+                bizCode. Timeout before COMMIT rolls back and returns 408 E90001. No retry is promised for an unknown
+                commit result.
+            end note
+            alt Invalid input/header
+                break Reject this request
+                        app -> api: HTTP 400 E10001
+                        api -> page: Show failure; no successful role permission action
+                        page -> user: Display failure; keep unsaved input
+                    end break
+            else Check passed
+            end
+            app -> app: Verify JWT signature/issuer/audience/expiry/UUID sub and the roles claim as unique non-empty strings
+            alt Missing/invalid JWT or malformed roles
+                break Reject this request
+                        app -> api: HTTP 401 E10002 Invalid or expired access token.
+                        api -> page: Show failure; no successful role permission action
+                        page -> user: Display failure; keep unsaved input
+                    end break
+            else Check passed
+            end
+            app -> app: callerUserId = verified sub; accessTokenHash = SHA-256 exact JWT; createdBy/updatedBy = caller UUID string; omitted id = typed SQL NULL
+            app -> infra: BEGIN READ COMMITTED
+            note over app, infra
+                Verify JWT signature/issuer/audience/expiry/UUID sub and the roles claim before BEGIN. roles must be an
+                array of unique non-empty role names (JWT payload of 2026-11-13), including []. Malformed/missing roles is
+                generic 401 E10002, never [] or live-grant fallback. createdBy/updatedBy are the caller UUID string and now
+                is fresh server UTC, never request audit values or timestamp.
+                Begin READ COMMITTED and lock the caller user. Missing caller is 401 with rollback. Capture fresh server UTC
+                now after the lock and recheck JWT exp; require matching hash/caller, ACTIVE token/user and strict
+                expired_at > now. Revoked/inactive/expired/mismatched credentials are generic 401 before any author read.
+                Logout/reset share the user-first lock.
+            end note
+            activate infra
+            alt Work completes before commit
+                note over app, infra
+                    Any SQL/result/mapping step may fail, including after a provisional write.
+                    Roll back the whole transaction on failure; no success before a successful COMMIT.
+                end note
+                app -> infra: QUERY - Lock the caller user
+                infra -> m_user: QUERY - Lock the caller user
+                activate m_user
+                    note right of m_user
+                        SELECT
+                            u.id as user_id
+                        FROM authen.m_user u
+                        WHERE u.id = '<sequence.callerUserId>'
+                        FOR UPDATE
+                    end note
+                    m_user -> infra: Return the locked caller user or no row
+                deactivate m_user
+                infra -> app: Return the locked caller user or no row
+                alt Caller user missing
+                    break Reject this request
+                            app -> infra: ROLLBACK
+                            app -> api: HTTP 401 E10002 Invalid or expired access token.
+                            api -> page: Show failure; no successful role permission action
+                            page -> user: Display failure; keep unsaved input
+                        end break
+                else Check passed
+                end
+                app -> app: Capture fresh server UTC now after the user lock; recheck JWT exp
+                alt JWT expired while waiting for the user lock
+                    break Reject this request
+                            app -> infra: ROLLBACK
+                            app -> api: HTTP 401 E10002 Invalid or expired access token.
+                            api -> page: Show failure; no successful role permission action
+                            page -> user: Display failure; keep unsaved input
+                        end break
+                else Check passed
+                end
+                app -> infra: QUERY - Check current credential and user
+                infra -> t_user_access_token: QUERY - Check current credential and user
+                activate t_user_access_token
+                    note right of t_user_access_token
+                        SELECT
+                            at.id as access_token_id
+                        FROM authen.t_user_access_token at
+                        JOIN authen.m_user u ON u.id = at.user_id
+                        WHERE at.token = '<sequence.accessTokenHash>'
+                        AND at.user_id = '<sequence.callerUserId>'
+                        AND at.row_status = 'ACTIVE'
+                        AND at.expired_at > '<sequence.now>'
+                        AND u.row_status = 'ACTIVE'
+                    end note
+                    t_user_access_token -> infra: Return ACTIVE matching unexpired token/user or no row
+                deactivate t_user_access_token
+                infra -> app: Return ACTIVE matching unexpired token/user or no row
+                alt Current token/user missing/inactive/revoked/expired/mismatched
+                    break Reject this request
+                            app -> infra: ROLLBACK
+                            app -> api: HTTP 401 E10002 Invalid or expired access token.
+                            api -> page: Show failure; no successful role permission action
+                            page -> user: Display failure; keep unsaved input
+                        end break
+                else Check passed
+                end
+                app -> infra: QUERY - Lock the role
+                infra -> m_role: QUERY - Lock the role
+                activate m_role
+                    note right of m_role
+                        SELECT
+                            r.id as role_id,
+                            r.row_status
+                        FROM author.m_role r
+                        WHERE r.id = '<sequence.roleId>'
+                        FOR UPDATE
+                    end note
+                    m_role -> infra: Return locked role_id/row_status or no row
+                deactivate m_role
+                infra -> app: Return locked role_id/row_status or no row
+                app -> infra: QUERY - Lock the permission
+                infra -> m_permission: QUERY - Lock the permission
+                activate m_permission
+                    note right of m_permission
+                        SELECT
+                            p.id as permission_id,
+                            p.row_status
+                        FROM author.m_permission p
+                        WHERE p.id = '<sequence.permissionId>'
+                        FOR UPDATE
+                    end note
+                    m_permission -> infra: Return locked permission_id/row_status or no row
+                deactivate m_permission
+                infra -> app: Return locked permission_id/row_status or no row
+                alt id is specified (update, delete or archive)
+                    app -> infra: QUERY - Lock existing role permission
+                    infra -> t_role_permission: QUERY - Lock existing role permission
+                    activate t_role_permission
+                        note right of t_role_permission
+                            SELECT
+                                rp.id as role_permission_id,
+                                rp.role_id,
+                                rp.permission_id,
+                                rp.row_status
+                            FROM author.t_role_permission rp
+                            WHERE rp.id = '<sequence.id>'
+                            AND rp.row_status <> 'DELETED' -- the id of a DELETED row counts as not found
+                            FOR UPDATE
+                        end note
+                        t_role_permission -> infra: Return locked role_permission_id/role_id/permission_id/row_status or no row
+                    deactivate t_role_permission
+                    infra -> app: Return locked role_permission_id/role_id/permission_id/row_status or no row
+                    alt Role permission not found or DELETED
+                        break Reject this request
+                                app -> infra: ROLLBACK
+                                app -> api: HTTP 404 E10004 Role permission not found.
+                                api -> page: Show failure; no successful role permission action
+                                page -> user: Display failure; keep unsaved input
+                            end break
+                    else Check passed
+                    end
+                    alt roleId or permissionId differs from the locked row of id
+                        break Reject this request
+                                app -> infra: ROLLBACK
+                                app -> api: HTTP 400 E10001 Role Id and Permission Id cannot be changed.
+                                api -> page: Show failure; no successful role permission action
+                                page -> user: Display failure; keep unsaved input
+                            end break
+                    else Check passed
+                    end
+                else id omitted (insert)
+                    app -> app: No grant row to lock; the role and the permission are already locked
+                end
+                app -> app: Decide whether the request gives the permission: an insert, or an update that sets ACTIVE on a locked row that is not ACTIVE
+                alt The request gives the permission
+                    app -> app: Require the locked role and the locked permission present and ACTIVE
+                    alt The role or the permission is not found or not ACTIVE
+                        break Reject this request
+                                app -> infra: ROLLBACK
+                                app -> api: HTTP 404 E10005 Role or permission not found or not ACTIVE.
+                                api -> page: Show failure; no successful role permission action
+                                page -> user: Display failure; keep unsaved input
+                            end break
+                    else Check passed
+                    end
+                else The request takes the permission away or only keeps it
+                    app -> app: Role and permission status are not required (both rows exist through the foreign keys of the locked grant)
+                end
+                app -> infra: QUERY - Get the scopes of the permission
+                infra -> t_permission_scope: QUERY - Get the scopes of the permission
+                activate t_permission_scope
+                    note right of t_permission_scope
+                        SELECT
+                            ps.id as permission_scope_id,
+                            ps.scope_id,
+                            ps.row_status,
+                            s.row_status as scope_row_status
+                        FROM author.t_permission_scope ps
+                        INNER JOIN author.m_scope s
+                            ON s.id = ps.scope_id
+                        WHERE ps.permission_id = '<sequence.permissionId>'
+                        AND ps.row_status <> 'DELETED' -- every scope definition of the permission, regardless of the master status
+                    end note
+                    t_permission_scope -> infra: Return every non-DELETED scope definition of the permission with its master status
+                deactivate t_permission_scope
+                infra -> app: Return every non-DELETED scope definition of the permission with its master status
+                app -> app: scoped = at least one non-DELETED scope definition (any status) was returned
+                alt id is specified
+                    app -> infra: QUERY - Lock the scopes of the role permission
+                    infra -> t_role_permission_scope: QUERY - Lock the scopes of the role permission
+                    activate t_role_permission_scope
+                        note right of t_role_permission_scope
+                            SELECT
+                                rps.id as role_permission_scope_id,
+                                rps.permission_scope_id,
+                                rps.row_status
+                            FROM author.t_role_permission_scope rps
+                            WHERE rps.role_permission_id = '<sequence.id>' -- only when id is specified
+                            AND rps.row_status <> 'DELETED'
+                            ORDER BY rps.id
+                            FOR UPDATE
+                        end note
+                        t_role_permission_scope -> infra: Return the locked non-DELETED scope links of the grant
+                    deactivate t_role_permission_scope
+                    infra -> app: Return the locked non-DELETED scope links of the grant
+                    alt A scopes item id is not a non-DELETED scope link of this grant
+                        break Reject this request
+                                app -> infra: ROLLBACK
+                                app -> api: HTTP 404 E10004 scopes[i]: Role permission scope not found.
+                                api -> page: Show failure; no successful role permission action
+                                page -> user: Display failure; keep unsaved input
+                            end break
+                    else Check passed
+                    end
+                    alt A scopes item with id names another scopeId than the definition of its link
+                        break Reject this request
+                                app -> infra: ROLLBACK
+                                app -> api: HTTP 400 E10001 scopes[i]: Scope Id cannot be changed.
+                                api -> page: Show failure; no successful role permission action
+                                page -> user: Display failure; keep unsaved input
+                            end break
+                    else Check passed
+                    end
+                else id omitted (insert)
+                    app -> app: No scope link exists yet; an item with an id is 404 E10004 scopes[i]: Role permission scope not found.
+                end
+                app -> app: Map each item scopeId to the definition (permission_scope_id) of the permission with that scope_id
+                alt A scopeId is not a scope of the permission
+                    break Reject this request
+                            app -> infra: ROLLBACK
+                            app -> api: HTTP 400 E10001 scopes[i]: Scope is not a scope of the permission.
+                            api -> page: Show failure; no successful role permission action
+                            page -> user: Display failure; keep unsaved input
+                        end break
+                else Check passed
+                end
+                app -> app: An item gives a scope when it inserts an ACTIVE link (an item ACTIVE on an existing ACTIVE link only keeps it)
+                alt A given scope has a definition or a scope master that is not ACTIVE
+                    break Reject this request
+                            app -> infra: ROLLBACK
+                            app -> api: HTTP 404 E10005 scopes[i]: Scope not found or not ACTIVE.
+                            api -> page: Show failure; no successful role permission action
+                            page -> user: Display failure; keep unsaved input
+                        end break
+                else Check passed
+                end
+                app -> app: Authorize once using only exact case-sensitive PLATFORM_ADMIN in verified JWT roles; never reload live grants
+                alt No exact PLATFORM_ADMIN role claim
+                    break Reject this request
+                            app -> infra: ROLLBACK
+                            app -> api: HTTP 403 E10009 You do not have permission to assign permissions.
+                            api -> page: Show failure; no successful role permission action
+                            page -> user: Display failure; keep unsaved input
+                        end break
+                else Check passed
+                end
+                app -> infra: QUERY - Check duplicate role permission
+                infra -> t_role_permission: QUERY - Check duplicate role permission
+                activate t_role_permission
+                    note right of t_role_permission
+                        SELECT
+                            rp.id as role_permission_id
+                        FROM author.t_role_permission rp
+                        WHERE rp.role_id = '<sequence.roleId>'
+                        AND rp.permission_id = '<sequence.permissionId>'
+                        AND rp.row_status <> 'DELETED'
+                        AND ('<sequence.id>' IS NULL OR rp.id <> '<sequence.id>') -- omitted insert id is typed SQL NULL
+                    end note
+                    t_role_permission -> infra: Return the non-DELETED grant of the role and the permission excluding the optional current id, or no row
+                deactivate t_role_permission
+                infra -> app: Return the non-DELETED grant of the role and the permission excluding the optional current id, or no row
+                alt The role already has the permission in a row that is not DELETED
+                    break Reject this request
+                            app -> infra: ROLLBACK
+                            app -> api: HTTP 409 E10003 The role already has this permission.
+                            api -> page: Show failure; no successful role permission action
+                            page -> user: Display failure; keep unsaved input
+                        end break
+                else Check passed
+                end
+                app -> app: A new scope item (no id) whose definition already has a locked non-DELETED link that this request does not delete is a duplicate
+                alt The role already has this scope for the permission
+                    break Reject this request
+                            app -> infra: ROLLBACK
+                            app -> api: HTTP 409 E10003 scopes[i]: The role already has this scope for the permission.
+                            api -> page: Show failure; no successful role permission action
+                            page -> user: Display failure; keep unsaved input
+                        end break
+                else Check passed
+                end
+                alt id is omitted (INSERT)
+                    app -> infra: INSERT - Create role permission
+                    infra -> t_role_permission: INSERT - Create role permission
+                    activate t_role_permission
+                        note right of t_role_permission
+                            INSERT INTO author.t_role_permission (
+                                created_by,
+                                created_at,
+                                row_status,
+                                role_id,
+                                permission_id
+                            )
+                            VALUES (
+                                &#39;<sequence.createdBy>',
+                                &#39;<sequence.now>',
+                                &#39;<sequence.rowStatus>',
+                                &#39;<sequence.roleId>',
+                                &#39;<sequence.permissionId>'
+                            )
+                            RETURNING id as role_permission_id
+                        end note
+                        t_role_permission -> infra: Return inserted role_permission_id
+                    deactivate t_role_permission
+                    infra -> app: Return inserted role_permission_id
+                    app -> app: Require exactly one inserted role_permission_id; missing/malformed result is internal failure; action = INSERT
+                else id is specified (UPDATE, DELETE or ARCHIVE)
+                    app -> infra: UPDATE - Update, archive or delete role permission
+                    infra -> t_role_permission: UPDATE - Update, archive or delete role permission
+                    activate t_role_permission
+                        note right of t_role_permission
+                            UPDATE author.t_role_permission
+                            SET
+                                updated_by = '<sequence.updatedBy>',
+                                updated_at = '<sequence.now>',
+                                row_status = '<sequence.rowStatus>'
+                            WHERE id = '<sequence.id>'
+                            AND row_status <> 'DELETED'
+                            RETURNING id as role_permission_id
+                        end note
+                        t_role_permission -> infra: Return guarded returned role_permission_id or no row
+                    deactivate t_role_permission
+                    infra -> app: Return guarded returned role_permission_id or no row
+                    alt Guarded UPDATE returned zero rows
+                        break Reject this request
+                                app -> infra: ROLLBACK
+                                app -> api: HTTP 404 E10004 Role permission not found.
+                                api -> page: Show failure; no successful role permission action
+                                page -> user: Display failure; keep unsaved input
+                            end break
+                    else Check passed
+                    end
+                    app -> app: Require exactly one returned role_permission_id equal to this input id; mismatch is internal failure
+                    app -> app: action = DELETE for DELETED, ARCHIVE for ARCHIVED, otherwise UPDATE
+                end
+                app -> app: rolePermissionId = the RETURNING id; process scopes items in request order
+                loop Each scopes item
+                    alt Item has no id (INSERT)
+                        app -> infra: INSERT - Create role permission scope
+                        infra -> t_role_permission_scope: INSERT - Create role permission scope
+                        activate t_role_permission_scope
+                            note right of t_role_permission_scope
+                                INSERT INTO author.t_role_permission_scope (
+                                    created_by,
+                                    created_at,
+                                    row_status,
+                                    role_permission_id,
+                                    permission_scope_id
+                                )
+                                VALUES (
+                                    &#39;<sequence.createdBy>',
+                                    &#39;<sequence.now>',
+                                    &#39;<sequence.scopes.rowStatus>',
+                                    &#39;<sequence.rolePermissionId>',
+                                    &#39;<sequence.scopes.permissionScopeId>'
+                                )
+                                RETURNING id as role_permission_scope_id
+                            end note
+                            t_role_permission_scope -> infra: Return inserted role_permission_scope_id
+                        deactivate t_role_permission_scope
+                        infra -> app: Return inserted role_permission_scope_id
+                        app -> app: Require exactly one inserted role_permission_scope_id; missing/malformed result is internal failure
+                    else Item has an id (UPDATE or DELETE)
+                        app -> infra: UPDATE - Update or delete role permission scope
+                        infra -> t_role_permission_scope: UPDATE - Update or delete role permission scope
+                        activate t_role_permission_scope
+                            note right of t_role_permission_scope
+                                UPDATE author.t_role_permission_scope
+                                SET
+                                    updated_by = '<sequence.updatedBy>',
+                                    updated_at = '<sequence.now>',
+                                    row_status = '<sequence.scopes.rowStatus>'
+                                WHERE id = '<sequence.scopes.id>'
+                                AND role_permission_id = '<sequence.rolePermissionId>'
+                                AND row_status <> 'DELETED'
+                                RETURNING id as role_permission_scope_id
+                            end note
+                            t_role_permission_scope -> infra: Return guarded returned role_permission_scope_id or no row
+                        deactivate t_role_permission_scope
+                        infra -> app: Return guarded returned role_permission_scope_id or no row
+                        alt Guarded scope UPDATE returned zero rows
+                            break Reject this request
+                                    app -> infra: ROLLBACK
+                                    app -> api: HTTP 404 E10004 scopes[i]: Role permission scope not found.
+                                    api -> page: Show failure; no successful role permission action
+                                    page -> user: Display failure; keep unsaved input
+                                end break
+                        else Check passed
+                        end
+                    end
+                end
+                alt rowStatus = DELETED (the grant is deleted)
+                    app -> infra: UPDATE - Delete the scopes of a deleted role permission
+                    infra -> t_role_permission_scope: UPDATE - Delete the scopes of a deleted role permission
+                    activate t_role_permission_scope
+                        note right of t_role_permission_scope
+                            UPDATE author.t_role_permission_scope
+                            SET
+                                updated_by = '<sequence.updatedBy>',
+                                updated_at = '<sequence.now>',
+                                row_status = 'DELETED'
+                            WHERE role_permission_id = '<sequence.rolePermissionId>' -- only when the grant is deleted
+                            AND row_status <> 'DELETED'
+                        end note
+                        t_role_permission_scope -> infra: Return the number of scope links set DELETED
+                    deactivate t_role_permission_scope
+                    infra -> app: Return the number of scope links set DELETED
+                    app -> app: The scoped-grant rule does not apply to a deleted grant
+                else The grant is kept
+                    alt The grant is ACTIVE after the write and the permission is scoped
+                        app -> infra: QUERY - Count active scopes after the write
+                        infra -> t_role_permission_scope: QUERY - Count active scopes after the write
+                        activate t_role_permission_scope
+                            note right of t_role_permission_scope
+                                SELECT
+                                    COUNT(rps.id) as active_scopes
+                                FROM author.t_role_permission_scope rps
+                                WHERE rps.role_permission_id = '<sequence.rolePermissionId>'
+                                AND rps.row_status = 'ACTIVE' -- 400 when 0 for an ACTIVE grant of a permission that has scopes
+                            end note
+                            t_role_permission_scope -> infra: Return the number of ACTIVE scope links of the grant
+                        deactivate t_role_permission_scope
+                        infra -> app: Return the number of ACTIVE scope links of the grant
+                        alt No ACTIVE scope is left for an ACTIVE grant of a scoped permission
+                            break Reject this request
+                                    app -> infra: ROLLBACK
+                                    app -> api: HTTP 400 E10001 An ACTIVE grant of a scoped permission needs at least one ACTIVE scope.
+                                    api -> page: Show failure; no successful role permission action
+                                    page -> user: Display failure; keep unsaved input
+                                end break
+                        else Check passed
+                        end
+                    else The grant is not ACTIVE or the permission has no scope
+                        app -> app: No scope count is needed
+                    end
+                end
+                app -> app: Map data.rolePermissionId from RETURNING before COMMIT; delete maps no body
+                app -> infra: COMMIT
+                infra -> app: Return committed grant
+                alt Insert
+                    note over app, infra
+                        Governing decisions: WP5 author design A8, A12, A14, A17 (5b restarted by the owner on 2026-11-17), owner
+                        answers of 2026-11-17 (Q1–Q6, relayed by Josh) and the owner-confirmed API review Q2/Q4/Q12/Q13/Q22.
+                        The owner answers supersede the implicit permissions of A2 (Q3/Q4): a platform administrator holds only
+                        granted permissions, and Q5 approved the scoped-grant rule below. This specification is in-review; no
+                        schema/backend implementation.
+                        Only a platform administrator from the verified JWT roles claim can give or take away a permission of a role;
+                        require exact case-sensitive role name PLATFORM_ADMIN. A valid non-admin claim returns 403 E10009 after the
+                        existence and scope checks and before the duplicate checks. No live caller-assignment or request-flag fallback.
+                        The PLATFORM_ADMIN role can receive permissions like any other role.
+                        Taking the permission away (`rowStatus` DELETED, ARCHIVED, INACTIVE or LOCKED) works whatever the status of the
+                        role and of the permission is. `roleId` and `permissionId` are required in every request and cannot be changed by
+                        an update: a different value from the row of `id` is 400 (E10001).
+                        A row that is INACTIVE, LOCKED or ARCHIVED still holds the place and gives no right, an update with `rowStatus`
+                        ACTIVE opens it again. DELETED is final: a DELETED row never reopens and its `id` counts as not found (404,
+                        E10004); deleting the grant sets every non-DELETED scope link of it to DELETED in the same transaction. After a
+                        delete the permission can be given again, which creates a new row.
+                        Scopes: each `scopeId` must be the scope of a non-DELETED definition of the permission
+                        (`author.t_permission_scope`), otherwise 400 (E10001); the stored link points to that definition (Q12: a scope
+                        of one permission never belongs to another). Giving a scope needs the definition and the scope master ACTIVE
+                        (404, E10005). Deleting a link works whatever their status is. Scopes that are not listed are kept.
+                        **A scoped permission needs a scope.** A permission is scoped when it has at least one non-DELETED definition.
+                        After the whole request an ACTIVE grant of a scoped permission must have at least one ACTIVE scope link,
+                        otherwise 400 (E10001) and the whole request is rolled back. Login and refresh give an unscoped claim only for
+                        a permission without definitions, so a scoped grant without a scope would give nothing.
+                        Changes reach access tokens at the next login or refresh; an issued token keeps its claims until it expires
+                        (Q2/Q4).
+                        Bind all values. Duplicate exclusion is null-safe: omitted insert id binds typed SQL NULL. INSERT explicitly sets
+                        created_at and must return exactly one id; missing/malformed result is generic 500. UPDATE guards id and
+                        non-DELETED status; zero returned rows is 404 E10004 with rollback. Preserve created_by/created_at on UPDATE.
+                        Map exactly data.rolePermissionId from RETURNING before COMMIT.
+                    end note
+                    app -> api: HTTP 201 S10000 Insert Role Permission Success
+                    api -> page: Return the role permission
+                    page -> user: Display the outcome
+                else rowStatus = DELETED (delete)
+                    app -> api: HTTP 204 No Content; no response body
+                    api -> page: No content
+                    page -> user: Display the outcome
+                else rowStatus = ARCHIVED (archive)
+                    app -> api: HTTP 200 S10000 Archive Role Permission Success
+                    api -> page: Return the role permission
+                    page -> user: Display the outcome
+                else Update
+                    app -> api: HTTP 200 S10000 Update Role Permission Success
+                    api -> page: Return the role permission
+                    page -> user: Display the outcome
+                end
+            else SQLSTATE 23505 from uq_t_role_permission_role_id_permission_id or uq_t_role_permission_scope_role_permission_scope (concurrent duplicate)
+                app -> infra: ROLLBACK
+                app -> api: HTTP 409 E10003 The role already has this permission or scope.
+                api -> page: Conflict
+                page -> user: Display the outcome
+            else Timeout before COMMIT
+                app -> infra: ROLLBACK
+                app -> api: HTTP 408 E90001
+                api -> page: Request timeout
+                page -> user: Display the outcome
+            else Unexpected SQL/result/mapping failure before COMMIT
+                app -> infra: ROLLBACK
+                app -> api: HTTP 500 Internal Server Error; omit bizCode
+                api -> page: Internal server error
+                page -> user: Display the outcome
+            end
+            deactivate infra
+        deactivate app
+    deactivate api
+deactivate page
+@enduml
