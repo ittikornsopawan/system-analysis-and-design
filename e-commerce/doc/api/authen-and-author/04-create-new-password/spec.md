@@ -33,7 +33,7 @@ approved_at: 2026-11-16T09:24:57+07:00
 - The lookup is only a routing hint.
 - The new password must differ from the current one (400, E10001).
 - The order of the checks, the locks and every outcome is in the sequence diagram.
-- Rate limit: this API, which needs no access token, answers 429 (E90002) with a `Retry-After` header when a client IP sends more than 60 requests per minute (configurable); the limiter answers before the handler runs, so the 429 is not drawn in the sequence diagram. The rule is in the section Limits and rate limiting of `api-conventions.md`.
+- Rate limit: this API, which needs no access token, answers 429 (E90002) with a `Retry-After` header when a client IP sends more than 10 requests per minute (configurable); the limiter answers before the handler runs, so the 429 is not drawn in the sequence diagram. The rule is in the section Limits and rate limiting of `api-conventions.md`.
 
 ---
 
