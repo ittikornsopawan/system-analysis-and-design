@@ -35,6 +35,10 @@
     {
       "name": "author",
       "description": "Approved specs under e-commerce/doc/api/author"
+    },
+    {
+      "name": "consent",
+      "description": "Approved specs under e-commerce/doc/api/consent"
     }
   ],
   "paths": {
@@ -44,8 +48,8 @@
           "authen-and-author"
         ],
         "operationId": "createNewPassword",
-        "summary": null,
-        "description": "None\n\nSource spec: `e-commerce/doc/api/authen-and-author/04-create-new-password/spec.md`",
+        "summary": "Create New Password API",
+        "description": "Set a new password with the reset token from the reset email, The reset token can be used once and expires 30 minutes after the request, All access tokens and refresh tokens of the user are closed, The user must log in again\n\nSource spec: `e-commerce/doc/api/authen-and-author/04-create-new-password/spec.md`",
         "x-spec": "e-commerce/doc/api/authen-and-author/04-create-new-password/spec.md",
         "parameters": [
           {
@@ -256,8 +260,8 @@
           "authen-and-author"
         ],
         "operationId": "login",
-        "summary": null,
-        "description": "None\n\nSource spec: `e-commerce/doc/api/authen-and-author/02-login/spec.md`",
+        "summary": "Login API",
+        "description": "Authenticate a user by username or email address and password, load active roles, permissions and scopes, record the session and issue an access token and a refresh token, A username that failed 5 times in 15 minutes is refused for a while with the same answer as a wrong password\n\nSource spec: `e-commerce/doc/api/authen-and-author/02-login/spec.md`",
         "x-spec": "e-commerce/doc/api/authen-and-author/02-login/spec.md",
         "parameters": [
           {
@@ -492,8 +496,8 @@
           "authen-and-author"
         ],
         "operationId": "logout",
-        "summary": null,
-        "description": "None\n\nSource spec: `e-commerce/doc/api/authen-and-author/06-logout/spec.md`",
+        "summary": "Logout API",
+        "description": "Log out of the current session, Every access token and refresh token of the same session is closed at once, Other sessions of the user are not changed\n\nSource spec: `e-commerce/doc/api/authen-and-author/06-logout/spec.md`",
         "x-spec": "e-commerce/doc/api/authen-and-author/06-logout/spec.md",
         "parameters": [
           {
@@ -666,8 +670,8 @@
           "authen-and-author"
         ],
         "operationId": "refreshToken",
-        "summary": null,
-        "description": "None\n\nSource spec: `e-commerce/doc/api/authen-and-author/05-refresh-token/spec.md`",
+        "summary": "Refresh Token API",
+        "description": "Exchange one refresh token for fresh access/refresh tokens and current permission-specific claims; preserve the session, reject a recent duplicate, and revoke the session on older replay\n\nSource spec: `e-commerce/doc/api/authen-and-author/05-refresh-token/spec.md`",
         "x-spec": "e-commerce/doc/api/authen-and-author/05-refresh-token/spec.md",
         "parameters": [
           {
@@ -890,8 +894,8 @@
           "authen-and-author"
         ],
         "operationId": "register",
-        "summary": null,
-        "description": "None\n\nSource spec: `e-commerce/doc/api/authen-and-author/01-register/spec.md`",
+        "summary": "Register API",
+        "description": "Register a new user with username, email address and password, together with personal information, addresses, consents and referrer\n\nSource spec: `e-commerce/doc/api/authen-and-author/01-register/spec.md`",
         "x-spec": "e-commerce/doc/api/authen-and-author/01-register/spec.md",
         "parameters": [
           {
@@ -1385,8 +1389,8 @@
           "authen-and-author"
         ],
         "operationId": "resetPassword",
-        "summary": null,
-        "description": "None\n\nSource spec: `e-commerce/doc/api/authen-and-author/03-reset-password/spec.md`",
+        "summary": "Reset Password API",
+        "description": "Request a password reset, The answer is always the same whether or not the email address is registered, A reset link with a single use token that expires in 30 minutes is sent to a registered and ACTIVE user, At most 3 requests per user per hour\n\nSource spec: `e-commerce/doc/api/authen-and-author/03-reset-password/spec.md`",
         "x-spec": "e-commerce/doc/api/authen-and-author/03-reset-password/spec.md",
         "parameters": [
           {
@@ -1548,8 +1552,8 @@
           "author"
         ],
         "operationId": "me",
-        "summary": null,
-        "description": "None\n\nSource spec: `e-commerce/doc/api/author/12-me/spec.md`",
+        "summary": "Me API",
+        "description": "Inquiry the roles of the logged-in user and whether the user is a platform administrator, The user comes from the access token\n\nSource spec: `e-commerce/doc/api/author/12-me/spec.md`",
         "x-spec": "e-commerce/doc/api/author/12-me/spec.md",
         "parameters": [
           {
@@ -1791,8 +1795,8 @@
           "author"
         ],
         "operationId": "inquiryPermission",
-        "summary": null,
-        "description": "None\n\nSource spec: `e-commerce/doc/api/author/06-inquiry-permission/spec.md`",
+        "summary": "Inquiry Permission API",
+        "description": "Inquiry the list of permissions with paging and search, Inquiry by id returns at most one item subject to filters and paging, Deleted permissions are excluded, Only a platform administrator can call it\n\nSource spec: `e-commerce/doc/api/author/06-inquiry-permission/spec.md`",
         "x-spec": "e-commerce/doc/api/author/06-inquiry-permission/spec.md",
         "parameters": [
           {
@@ -2397,8 +2401,8 @@
           "author"
         ],
         "operationId": "upsertPermission",
-        "summary": null,
-        "description": "None\n\nSource spec: `e-commerce/doc/api/author/04-upsert-permission/spec.md`",
+        "summary": "Upsert Permission API",
+        "description": "Insert, update or delete a permission, only a platform administrator can call it, Insert when id is not specified, Update when id is specified, Delete when rowStatus is DELETED (HTTP 204 No Content, no response body), Archive when rowStatus is ARCHIVED (HTTP 200)\n\nSource spec: `e-commerce/doc/api/author/04-upsert-permission/spec.md`",
         "x-spec": "e-commerce/doc/api/author/04-upsert-permission/spec.md",
         "parameters": [
           {
@@ -3022,8 +3026,8 @@
           "author"
         ],
         "operationId": "upsertPermissionBatch",
-        "summary": null,
-        "description": "None\n\nSource spec: `e-commerce/doc/api/author/05-upsert-permission-batch/spec.md`",
+        "summary": "Upsert Permission Batch API",
+        "description": "Insert, update or delete multiple permissions at the same time, only a platform administrator can call it, Each permission is inserted when id is not specified, updated when id is specified, deleted when rowStatus is DELETED, archived when rowStatus is ARCHIVED, The response is always HTTP 200 for a successful batch including when it deletes (each result is reported in the body with its action), All permissions are processed in one transaction in the request order, If any permission fails then no permission is changed\n\nSource spec: `e-commerce/doc/api/author/05-upsert-permission-batch/spec.md`",
         "x-spec": "e-commerce/doc/api/author/05-upsert-permission-batch/spec.md",
         "parameters": [
           {
@@ -3666,8 +3670,8 @@
           "author"
         ],
         "operationId": "inquiryRole",
-        "summary": null,
-        "description": "None\n\nSource spec: `e-commerce/doc/api/author/03-inquiry-role/spec.md`",
+        "summary": "Inquiry Role API",
+        "description": "Inquiry the list of roles with paging and search, Inquiry by id returns a list with one item, Deleted roles are excluded, Only a platform administrator can call it\n\nSource spec: `e-commerce/doc/api/author/03-inquiry-role/spec.md`",
         "x-spec": "e-commerce/doc/api/author/03-inquiry-role/spec.md",
         "parameters": [
           {
@@ -4119,8 +4123,8 @@
           "author"
         ],
         "operationId": "upsertRole",
-        "summary": null,
-        "description": "None\n\nSource spec: `e-commerce/doc/api/author/01-upsert-role/spec.md`",
+        "summary": "Upsert Role API",
+        "description": "Insert, update or delete a role, only a platform administrator can call it, Insert when id is not specified, Update when id is specified, Delete when rowStatus is DELETED (HTTP 204 No Content, no response body), Archive when rowStatus is ARCHIVED (HTTP 200)\n\nSource spec: `e-commerce/doc/api/author/01-upsert-role/spec.md`",
         "x-spec": "e-commerce/doc/api/author/01-upsert-role/spec.md",
         "parameters": [
           {
@@ -4591,8 +4595,8 @@
           "author"
         ],
         "operationId": "upsertRoleBatch",
-        "summary": null,
-        "description": "None\n\nSource spec: `e-commerce/doc/api/author/02-upsert-role-batch/spec.md`",
+        "summary": "Upsert Role Batch API",
+        "description": "Insert, update or delete multiple roles at the same time, only a platform administrator can call it, Each role is inserted when id is not specified, updated when id is specified, deleted when rowStatus is DELETED, archived when rowStatus is ARCHIVED, The response is always HTTP 200 for a successful batch including when it deletes (each result is reported in the body with its action), All roles are processed in one transaction in the request order, If any role fails then no role is changed\n\nSource spec: `e-commerce/doc/api/author/02-upsert-role-batch/spec.md`",
         "x-spec": "e-commerce/doc/api/author/02-upsert-role-batch/spec.md",
         "parameters": [
           {
@@ -5092,8 +5096,8 @@
           "author"
         ],
         "operationId": "inquiryScope",
-        "summary": null,
-        "description": "None\n\nSource spec: `e-commerce/doc/api/author/09-inquiry-scope/spec.md`",
+        "summary": "Inquiry Scope API",
+        "description": "Inquiry the list of scopes with paging and search, Inquiry by id returns a list with one item, Deleted scopes are excluded, Only a platform administrator can call it\n\nSource spec: `e-commerce/doc/api/author/09-inquiry-scope/spec.md`",
         "x-spec": "e-commerce/doc/api/author/09-inquiry-scope/spec.md",
         "parameters": [
           {
@@ -5556,8 +5560,8 @@
           "author"
         ],
         "operationId": "upsertScope",
-        "summary": null,
-        "description": "None\n\nSource spec: `e-commerce/doc/api/author/07-upsert-scope/spec.md`",
+        "summary": "Upsert Scope API",
+        "description": "Insert, update or delete a scope, only a platform administrator can call it, Insert when id is not specified, Update when id is specified, Delete when rowStatus is DELETED (HTTP 204 No Content, no response body), Archive when rowStatus is ARCHIVED (HTTP 200)\n\nSource spec: `e-commerce/doc/api/author/07-upsert-scope/spec.md`",
         "x-spec": "e-commerce/doc/api/author/07-upsert-scope/spec.md",
         "parameters": [
           {
@@ -6026,8 +6030,8 @@
           "author"
         ],
         "operationId": "upsertScopeBatch",
-        "summary": null,
-        "description": "None\n\nSource spec: `e-commerce/doc/api/author/08-upsert-scope-batch/spec.md`",
+        "summary": "Upsert Scope Batch API",
+        "description": "Insert, update or delete multiple scopes at the same time, only a platform administrator can call it, Each scope is inserted when id is not specified, updated when id is specified, deleted when rowStatus is DELETED, archived when rowStatus is ARCHIVED, The response is always HTTP 200 for a successful batch including when it deletes (each result is reported in the body with its action), All scopes are processed in one transaction in the request order, If any scope fails then no scope is changed\n\nSource spec: `e-commerce/doc/api/author/08-upsert-scope-batch/spec.md`",
         "x-spec": "e-commerce/doc/api/author/08-upsert-scope-batch/spec.md",
         "parameters": [
           {
@@ -6525,8 +6529,8 @@
           "author"
         ],
         "operationId": "inquiryUserRole",
-        "summary": null,
-        "description": "None\n\nSource spec: `e-commerce/doc/api/author/11-inquiry-user-role/spec.md`",
+        "summary": "Inquiry User Role API",
+        "description": "Inquiry the roles of users with paging, Inquiry by id returns a list with one item, Deleted rows are excluded, Only a platform administrator can call it\n\nSource spec: `e-commerce/doc/api/author/11-inquiry-user-role/spec.md`",
         "x-spec": "e-commerce/doc/api/author/11-inquiry-user-role/spec.md",
         "parameters": [
           {
@@ -7018,8 +7022,8 @@
           "author"
         ],
         "operationId": "upsertUserRole",
-        "summary": null,
-        "description": "None\n\nSource spec: `e-commerce/doc/api/author/10-upsert-user-role/spec.md`",
+        "summary": "Upsert User Role API",
+        "description": "Assign a role to a user, change the status of the assignment or take the role away, only a platform administrator can call it, Insert when id is not specified, Update when id is specified, Delete when rowStatus is DELETED (HTTP 204 No Content, no response body), Archive when rowStatus is ARCHIVED (HTTP 200), The platform always keeps one administrator\n\nSource spec: `e-commerce/doc/api/author/10-upsert-user-role/spec.md`",
         "x-spec": "e-commerce/doc/api/author/10-upsert-user-role/spec.md",
         "parameters": [
           {
@@ -7498,14 +7502,3437 @@
         }
       }
     },
+    "/v1/consent": {
+      "get": {
+        "tags": [
+          "consent"
+        ],
+        "operationId": "inquiryConsent",
+        "summary": "Inquiry Consent API",
+        "description": "Inquiry the list of consents with paging and search, Inquiry by id returns a list with one item, Deleted consents are excluded, Only a platform administrator can call it, Expired consents and consents of a type that is not ACTIVE are included\n\nSource spec: `e-commerce/doc/api/consent/03-inquiry-consent/spec.md`",
+        "x-spec": "e-commerce/doc/api/consent/03-inquiry-consent/spec.md",
+        "parameters": [
+          {
+            "$ref": "#/components/parameters/Timestamp"
+          },
+          {
+            "$ref": "#/components/parameters/RequestId"
+          },
+          {
+            "name": "id",
+            "in": "query",
+            "required": false,
+            "description": "Consent Id filter combined with other filters and normal pagination; missing/DELETED id returns an empty list",
+            "schema": {
+              "type": "string",
+              "format": "uuid",
+              "examples": [
+                "c1a2b3d4-e5f6-4a7b-8c9d-0e1f2a3b4c5d"
+              ]
+            }
+          },
+          {
+            "name": "pageIndex",
+            "in": "query",
+            "required": false,
+            "description": "Page index starting from 1, Defaults to 1",
+            "schema": {
+              "type": "integer",
+              "default": 1,
+              "examples": [
+                1
+              ]
+            }
+          },
+          {
+            "name": "pageSize",
+            "in": "query",
+            "required": false,
+            "description": "Number of items per page (max 100), Defaults to 10",
+            "schema": {
+              "type": "integer",
+              "maximum": 100,
+              "default": 10,
+              "examples": [
+                10
+              ]
+            }
+          },
+          {
+            "name": "search",
+            "in": "query",
+            "required": false,
+            "description": "Search by code, consent name or consent description",
+            "schema": {
+              "type": "string",
+              "examples": [
+                "terms"
+              ]
+            }
+          }
+        ],
+        "security": [
+          {
+            "bearerAuth": []
+          }
+        ],
+        "responses": {
+          "200": {
+            "description": "Ok",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "type": "object",
+                  "required": [
+                    "status"
+                  ],
+                  "properties": {
+                    "status": {
+                      "$ref": "#/components/schemas/Status"
+                    },
+                    "data": {
+                      "type": "object",
+                      "properties": {
+                        "items": {
+                          "description": "Consents, Empty array when not found",
+                          "type": "array",
+                          "items": {
+                            "type": "object",
+                            "properties": {
+                              "consentId": {
+                                "description": "Consent Id",
+                                "type": "string",
+                                "format": "uuid",
+                                "examples": [
+                                  "c1a2b3d4-e5f6-4a7b-8c9d-0e1f2a3b4c5d"
+                                ]
+                              },
+                              "code": {
+                                "description": "Consent Code",
+                                "type": "string",
+                                "examples": [
+                                  "TERMS_AND_CONDITIONS"
+                                ]
+                              },
+                              "consentTypeId": {
+                                "description": "Consent Type Id",
+                                "type": "string",
+                                "format": "uuid",
+                                "examples": [
+                                  "a7b8c9d0-1e2f-4a3b-8c4d-5e6f7a8b9c0d"
+                                ]
+                              },
+                              "consentTypeName": {
+                                "description": "Consent Type Name",
+                                "type": "string",
+                                "examples": [
+                                  "Terms and Conditions"
+                                ]
+                              },
+                              "consentVersion": {
+                                "description": "Consent Version",
+                                "type": "string",
+                                "examples": [
+                                  "1.0.0"
+                                ]
+                              },
+                              "consentName": {
+                                "description": "Consent Name",
+                                "type": "string",
+                                "examples": [
+                                  "Terms and Conditions"
+                                ]
+                              },
+                              "consentDescription": {
+                                "description": "Consent Description",
+                                "type": "string",
+                                "examples": [
+                                  "Terms and conditions of using the service"
+                                ]
+                              },
+                              "effectiveAt": {
+                                "description": "Consent Effective Timestamp (Without time zone UTC)",
+                                "type": "string",
+                                "format": "date-time",
+                                "examples": [
+                                  "2026-01-01T00:00:00.000Z"
+                                ]
+                              },
+                              "expiredAt": {
+                                "description": "Consent Expired Timestamp (Without time zone UTC)",
+                                "type": [
+                                  "string",
+                                  "null"
+                                ],
+                                "format": "date-time",
+                                "examples": [
+                                  "2027-01-01T00:00:00.000Z"
+                                ]
+                              },
+                              "isRequired": {
+                                "description": "Consent is required to be accepted",
+                                "type": "boolean",
+                                "examples": [
+                                  true
+                                ]
+                              },
+                              "rowStatus": {
+                                "description": "Row status (ACTIVE, INACTIVE, LOCKED, ARCHIVED)",
+                                "type": "string",
+                                "enum": [
+                                  "ACTIVE",
+                                  "INACTIVE",
+                                  "LOCKED",
+                                  "ARCHIVED"
+                                ],
+                                "examples": [
+                                  "ACTIVE"
+                                ]
+                              },
+                              "body": {
+                                "description": "Consent Body",
+                                "type": "object"
+                              }
+                            },
+                            "required": [
+                              "consentId",
+                              "code",
+                              "consentTypeId",
+                              "consentTypeName",
+                              "consentVersion",
+                              "consentName",
+                              "effectiveAt",
+                              "isRequired",
+                              "rowStatus",
+                              "body"
+                            ]
+                          }
+                        },
+                        "pageIndex": {
+                          "description": "Current page index",
+                          "type": "integer",
+                          "examples": [
+                            1
+                          ]
+                        },
+                        "pageSize": {
+                          "description": "Number of items per page",
+                          "type": "integer",
+                          "examples": [
+                            10
+                          ]
+                        },
+                        "totalItems": {
+                          "description": "Total number of items",
+                          "type": "integer",
+                          "examples": [
+                            2
+                          ]
+                        },
+                        "totalPages": {
+                          "description": "Total number of pages",
+                          "type": "integer",
+                          "examples": [
+                            1
+                          ]
+                        }
+                      },
+                      "required": [
+                        "items",
+                        "pageIndex",
+                        "pageSize",
+                        "totalItems",
+                        "totalPages"
+                      ]
+                    }
+                  }
+                },
+                "examples": {
+                  "success": {
+                    "summary": "Success",
+                    "value": {
+                      "status": {
+                        "code": 200,
+                        "message": "Ok",
+                        "bizCode": "S10000",
+                        "bizMessage": "Inquiry Consent Success",
+                        "requestId": "req-9b1deb4d-3b7d-4bad-9bdd-2b0d7b3dcb6d",
+                        "timestamp": "2026-11-06T09:00:00.123Z",
+                        "status": "SUCCESS"
+                      },
+                      "data": {
+                        "items": [
+                          {
+                            "consentId": "c1a2b3d4-e5f6-4a7b-8c9d-0e1f2a3b4c5d",
+                            "code": "TERMS_AND_CONDITIONS",
+                            "consentTypeId": "a7b8c9d0-1e2f-4a3b-8c4d-5e6f7a8b9c0d",
+                            "consentTypeName": "Terms and Conditions",
+                            "consentVersion": "1.0.0",
+                            "consentName": "Terms and Conditions",
+                            "consentDescription": "Terms and conditions of using the service",
+                            "effectiveAt": "2026-01-01T00:00:00.000Z",
+                            "expiredAt": null,
+                            "isRequired": true,
+                            "rowStatus": "ACTIVE",
+                            "body": {
+                              "title": "Terms and Conditions",
+                              "content": "Terms and conditions of using the service"
+                            }
+                          },
+                          {
+                            "consentId": "d2b3c4e5-f6a7-4b8c-9d0e-1f2a3b4c5d6e",
+                            "code": "MARKETING_COMMUNICATION",
+                            "consentTypeId": "b8c9d0e1-2f3a-4b4c-9d5e-6f7a8b9c0d1e",
+                            "consentTypeName": "Marketing",
+                            "consentVersion": "1.0.0",
+                            "consentName": "Marketing Communication",
+                            "consentDescription": "Receive promotions and news",
+                            "effectiveAt": "2026-01-01T00:00:00.000Z",
+                            "expiredAt": "2027-01-01T00:00:00.000Z",
+                            "isRequired": false,
+                            "rowStatus": "INACTIVE",
+                            "body": {
+                              "title": "Marketing Communication",
+                              "content": "Receive promotions and news"
+                            }
+                          }
+                        ],
+                        "pageIndex": 1,
+                        "pageSize": 10,
+                        "totalItems": 2,
+                        "totalPages": 1
+                      }
+                    }
+                  },
+                  "success---by-id": {
+                    "summary": "Success - By Id",
+                    "value": {
+                      "status": {
+                        "code": 200,
+                        "message": "Ok",
+                        "bizCode": "S10000",
+                        "bizMessage": "Inquiry Consent Success",
+                        "requestId": "req-8f6a2b4c-5d7e-4f9a-b1c3-4d5e6f7a8b9c",
+                        "timestamp": "2026-11-06T09:10:00.123Z",
+                        "status": "SUCCESS"
+                      },
+                      "data": {
+                        "items": [
+                          {
+                            "consentId": "c1a2b3d4-e5f6-4a7b-8c9d-0e1f2a3b4c5d",
+                            "code": "TERMS_AND_CONDITIONS",
+                            "consentTypeId": "a7b8c9d0-1e2f-4a3b-8c4d-5e6f7a8b9c0d",
+                            "consentTypeName": "Terms and Conditions",
+                            "consentVersion": "1.0.0",
+                            "consentName": "Terms and Conditions",
+                            "consentDescription": "Terms and conditions of using the service",
+                            "effectiveAt": "2026-01-01T00:00:00.000Z",
+                            "expiredAt": null,
+                            "isRequired": true,
+                            "rowStatus": "ACTIVE",
+                            "body": {
+                              "title": "Terms and Conditions",
+                              "content": "Terms and conditions of using the service"
+                            }
+                          }
+                        ],
+                        "pageIndex": 1,
+                        "pageSize": 10,
+                        "totalItems": 1,
+                        "totalPages": 1
+                      }
+                    }
+                  },
+                  "success---not-found": {
+                    "summary": "Success - Not Found",
+                    "value": {
+                      "status": {
+                        "code": 200,
+                        "message": "Ok",
+                        "bizCode": "S10000",
+                        "bizMessage": "Inquiry Consent Success",
+                        "requestId": "req-9a7b3c5d-6e8f-4a0b-c2d4-5e6f7a8b9c0d",
+                        "timestamp": "2026-11-06T09:20:00.123Z",
+                        "status": "SUCCESS"
+                      },
+                      "data": {
+                        "items": [],
+                        "pageIndex": 1,
+                        "pageSize": 10,
+                        "totalItems": 0,
+                        "totalPages": 0
+                      }
+                    }
+                  },
+                  "success---page-beyond-range": {
+                    "summary": "Success - Page Beyond Range",
+                    "value": {
+                      "status": {
+                        "code": 200,
+                        "message": "Ok",
+                        "bizCode": "S10000",
+                        "bizMessage": "Inquiry Consent Success",
+                        "requestId": "req-8f6a2b4c-5d7e-4f9a-b1c3-4d5e6f7a8b9c",
+                        "timestamp": "2026-11-06T09:10:00.123Z",
+                        "status": "SUCCESS"
+                      },
+                      "data": {
+                        "items": [],
+                        "pageIndex": 2,
+                        "pageSize": 10,
+                        "totalItems": 1,
+                        "totalPages": 1
+                      }
+                    }
+                  }
+                }
+              }
+            }
+          },
+          "400": {
+            "description": "Bad Request",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/Error400"
+                },
+                "examples": {
+                  "fail---bad-request": {
+                    "summary": "Fail - Bad Request",
+                    "value": {
+                      "status": {
+                        "code": 400,
+                        "message": "Bad Request",
+                        "bizCode": "E10001",
+                        "bizMessage": "Page Index and Page Size must be greater than 0, Page Size must not be greater than 100.",
+                        "requestId": "req-400a1b2c-3d4e-5f6a-7b8c-9d0e1f2a3b4c",
+                        "timestamp": "2026-11-06T09:40:40.123Z",
+                        "status": "ERROR"
+                      }
+                    }
+                  }
+                }
+              }
+            }
+          },
+          "401": {
+            "description": "Unauthorized",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/Error401"
+                },
+                "examples": {
+                  "fail---unauthorized": {
+                    "summary": "Fail - Unauthorized",
+                    "value": {
+                      "status": {
+                        "code": 401,
+                        "message": "Unauthorized",
+                        "bizCode": "E10002",
+                        "bizMessage": "Invalid or expired access token.",
+                        "requestId": "req-70a1b2c-3d4e-5f6a-7b8c-9d0e1f2a3b4c",
+                        "timestamp": "2026-11-06T09:07:49.123Z",
+                        "status": "ERROR"
+                      }
+                    }
+                  }
+                }
+              }
+            }
+          },
+          "403": {
+            "description": "Forbidden",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/Error403"
+                },
+                "examples": {
+                  "fail---forbidden": {
+                    "summary": "Fail - Forbidden",
+                    "value": {
+                      "status": {
+                        "code": 403,
+                        "message": "Forbidden",
+                        "bizCode": "E10009",
+                        "bizMessage": "You do not have permission to read consents.",
+                        "requestId": "req-460a1b2c-3d4e-5f6a-7b8c-9d0e1f2a3b4c",
+                        "timestamp": "2026-11-06T09:46:22.123Z",
+                        "status": "ERROR"
+                      }
+                    }
+                  }
+                }
+              }
+            }
+          },
+          "408": {
+            "description": "Request Timeout",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/Error408"
+                },
+                "examples": {
+                  "fail---request-timeout": {
+                    "summary": "Fail - Request Timeout",
+                    "value": {
+                      "status": {
+                        "code": 408,
+                        "message": "Request Timeout",
+                        "bizCode": "E90001",
+                        "bizMessage": "The server timed out waiting for the request.",
+                        "requestId": "req-80a1b2c-3d4e-5f6a-7b8c-9d0e1f2a3b4c",
+                        "timestamp": "2026-11-06T09:08:56.123Z",
+                        "status": "ERROR"
+                      }
+                    }
+                  }
+                }
+              }
+            }
+          },
+          "500": {
+            "description": "Internal Server Error",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/Error500"
+                },
+                "examples": {
+                  "fail---internal-server-error": {
+                    "summary": "Fail - Internal Server Error",
+                    "value": {
+                      "status": {
+                        "code": 500,
+                        "message": "Internal Server Error",
+                        "bizMessage": "An unexpected error occurred.",
+                        "requestId": "req-consent-inquiry-review",
+                        "timestamp": "2026-11-08T00:00:00.123Z",
+                        "status": "ERROR"
+                      }
+                    }
+                  }
+                }
+              }
+            }
+          }
+        }
+      }
+    },
+    "/v1/consent/active": {
+      "get": {
+        "tags": [
+          "consent"
+        ],
+        "operationId": "inquiryActiveConsent",
+        "summary": "Inquiry Active Consent API",
+        "description": "Return currently effective ACTIVE consents whose type is ACTIVE, with their current version, body and mandatory type name\n\nSource spec: `e-commerce/doc/api/consent/01-inquiry-active-consent/spec.md`",
+        "x-spec": "e-commerce/doc/api/consent/01-inquiry-active-consent/spec.md",
+        "parameters": [
+          {
+            "$ref": "#/components/parameters/Timestamp"
+          },
+          {
+            "$ref": "#/components/parameters/RequestId"
+          }
+        ],
+        "responses": {
+          "200": {
+            "description": "Ok",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "type": "object",
+                  "required": [
+                    "status"
+                  ],
+                  "properties": {
+                    "status": {
+                      "$ref": "#/components/schemas/Status"
+                    },
+                    "data": {
+                      "type": "object",
+                      "properties": {
+                        "consents": {
+                          "description": "Active consents, Empty array when there is no active consent",
+                          "type": "array",
+                          "items": {
+                            "type": "object",
+                            "properties": {
+                              "consentId": {
+                                "description": "Consent Id",
+                                "type": "string",
+                                "format": "uuid",
+                                "examples": [
+                                  "c1a2b3d4-e5f6-4a7b-8c9d-0e1f2a3b4c5d"
+                                ]
+                              },
+                              "code": {
+                                "description": "Consent Code",
+                                "type": "string",
+                                "examples": [
+                                  "TERMS_AND_CONDITIONS"
+                                ]
+                              },
+                              "consentTypeId": {
+                                "description": "Consent Type Id",
+                                "type": "string",
+                                "format": "uuid",
+                                "examples": [
+                                  "a7b8c9d0-1e2f-4a3b-8c4d-5e6f7a8b9c0d"
+                                ]
+                              },
+                              "consentTypeName": {
+                                "description": "Consent Type Name",
+                                "type": "string",
+                                "examples": [
+                                  "Terms and Conditions"
+                                ]
+                              },
+                              "consentVersion": {
+                                "description": "Consent Version",
+                                "type": "string",
+                                "examples": [
+                                  "1.0.0"
+                                ]
+                              },
+                              "consentName": {
+                                "description": "Consent Name",
+                                "type": "string",
+                                "examples": [
+                                  "Terms and Conditions"
+                                ]
+                              },
+                              "consentDescription": {
+                                "description": "Consent Description",
+                                "type": "string",
+                                "examples": [
+                                  "Terms and conditions of using the service"
+                                ]
+                              },
+                              "effectiveAt": {
+                                "description": "Consent Effective Timestamp (Without time zone UTC)",
+                                "type": "string",
+                                "format": "date-time",
+                                "examples": [
+                                  "2026-01-01T00:00:00.000Z"
+                                ]
+                              },
+                              "expiredAt": {
+                                "description": "Consent Expired Timestamp (Without time zone UTC)",
+                                "type": [
+                                  "string",
+                                  "null"
+                                ],
+                                "format": "date-time",
+                                "examples": [
+                                  "2027-01-01T00:00:00.000Z"
+                                ]
+                              },
+                              "isRequired": {
+                                "description": "Consent is required to be accepted",
+                                "type": "boolean",
+                                "examples": [
+                                  true
+                                ]
+                              },
+                              "body": {
+                                "description": "Consent Body",
+                                "type": "object"
+                              }
+                            },
+                            "required": [
+                              "consentId",
+                              "code",
+                              "consentTypeId",
+                              "consentTypeName",
+                              "consentVersion",
+                              "consentName",
+                              "effectiveAt",
+                              "isRequired",
+                              "body"
+                            ]
+                          }
+                        }
+                      },
+                      "required": [
+                        "consents"
+                      ]
+                    }
+                  }
+                },
+                "examples": {
+                  "success": {
+                    "summary": "Success",
+                    "value": {
+                      "status": {
+                        "code": 200,
+                        "message": "Ok",
+                        "bizCode": "S10000",
+                        "bizMessage": "Inquiry Active Consent Success",
+                        "requestId": "req-9b1deb4d-3b7d-4bad-9bdd-2b0d7b3dcb6d",
+                        "timestamp": "2026-11-05T12:42:00.123Z",
+                        "status": "SUCCESS"
+                      },
+                      "data": {
+                        "consents": [
+                          {
+                            "consentId": "c1a2b3d4-e5f6-4a7b-8c9d-0e1f2a3b4c5d",
+                            "code": "TERMS_AND_CONDITIONS",
+                            "consentTypeId": "a7b8c9d0-1e2f-4a3b-8c4d-5e6f7a8b9c0d",
+                            "consentTypeName": "Terms and Conditions",
+                            "consentVersion": "1.0.0",
+                            "consentName": "Terms and Conditions",
+                            "consentDescription": "Terms and conditions of using the service",
+                            "effectiveAt": "2026-01-01T00:00:00.000Z",
+                            "expiredAt": null,
+                            "isRequired": true,
+                            "body": {
+                              "title": "Terms and Conditions",
+                              "content": "By using this service, you agree to the following terms and conditions..."
+                            }
+                          },
+                          {
+                            "consentId": "d2b3c4e5-f6a7-4b8c-9d0e-1f2a3b4c5d6e",
+                            "code": "MARKETING_COMMUNICATION",
+                            "consentTypeId": "b8c9d0e1-2f3a-4b4c-9d5e-6f7a8b9c0d1e",
+                            "consentTypeName": "Marketing",
+                            "consentVersion": "1.0.0",
+                            "consentName": "Marketing Communication",
+                            "consentDescription": "Receive promotions and news",
+                            "effectiveAt": "2026-01-01T00:00:00.000Z",
+                            "expiredAt": "2027-01-01T00:00:00.000Z",
+                            "isRequired": false,
+                            "body": {
+                              "title": "Marketing Communication",
+                              "content": "I agree to receive promotions and news..."
+                            }
+                          }
+                        ]
+                      }
+                    }
+                  },
+                  "success---no-active-consent": {
+                    "summary": "Success - No Active Consent",
+                    "value": {
+                      "status": {
+                        "code": 200,
+                        "message": "Ok",
+                        "bizCode": "S10000",
+                        "bizMessage": "Inquiry Active Consent Success",
+                        "requestId": "req-9b1deb4d-3b7d-4bad-9bdd-2b0d7b3dcb6d",
+                        "timestamp": "2026-11-05T12:42:00.123Z",
+                        "status": "SUCCESS"
+                      },
+                      "data": {
+                        "consents": []
+                      }
+                    }
+                  }
+                }
+              }
+            }
+          },
+          "400": {
+            "description": "Bad Request",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/Error400"
+                },
+                "examples": {
+                  "fail---bad-request": {
+                    "summary": "Fail - Bad Request",
+                    "value": {
+                      "status": {
+                        "code": 400,
+                        "message": "Bad Request",
+                        "bizCode": "E10001",
+                        "bizMessage": "Timestamp is a required header.",
+                        "requestId": "req-400a1b2c-3d4e-5f6a-7b8c-9d0e1f2a3b4c",
+                        "timestamp": "2026-11-05T12:43:45.123Z",
+                        "status": "ERROR"
+                      }
+                    }
+                  }
+                }
+              }
+            }
+          },
+          "408": {
+            "description": "Request Timeout",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/Error408"
+                },
+                "examples": {
+                  "fail---request-timeout": {
+                    "summary": "Fail - Request Timeout",
+                    "value": {
+                      "status": {
+                        "code": 408,
+                        "message": "Request Timeout",
+                        "bizCode": "E90001",
+                        "bizMessage": "The server timed out waiting for the request.",
+                        "requestId": "req-408a1b2c-3d4e-5f6a-7b8c-9d0e1f2a3b4c",
+                        "timestamp": "2026-11-05T12:45:30.123Z",
+                        "status": "ERROR"
+                      }
+                    }
+                  }
+                }
+              }
+            }
+          },
+          "500": {
+            "description": "Internal Server Error",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/Error500"
+                },
+                "examples": {
+                  "fail---internal-server-error": {
+                    "summary": "Fail - Internal Server Error",
+                    "value": {
+                      "status": {
+                        "code": 500,
+                        "message": "Internal Server Error",
+                        "bizMessage": "An unexpected error occurred.",
+                        "requestId": "req-active-review",
+                        "timestamp": "2026-11-07T12:00:00.123Z",
+                        "status": "ERROR"
+                      }
+                    }
+                  }
+                }
+              }
+            }
+          }
+        }
+      }
+    },
+    "/v1/consent/pending": {
+      "get": {
+        "tags": [
+          "consent"
+        ],
+        "operationId": "inquiryPendingConsent",
+        "summary": "Inquiry Pending Consent API",
+        "description": "Return visible current consents pending for the authenticated user: required until read and accepted, optional until read; include latest recorded version and active type name\n\nSource spec: `e-commerce/doc/api/consent/05-inquiry-pending-consent/spec.md`",
+        "x-spec": "e-commerce/doc/api/consent/05-inquiry-pending-consent/spec.md",
+        "parameters": [
+          {
+            "$ref": "#/components/parameters/Timestamp"
+          },
+          {
+            "$ref": "#/components/parameters/RequestId"
+          }
+        ],
+        "security": [
+          {
+            "bearerAuth": []
+          }
+        ],
+        "responses": {
+          "200": {
+            "description": "Ok",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "type": "object",
+                  "required": [
+                    "status"
+                  ],
+                  "properties": {
+                    "status": {
+                      "$ref": "#/components/schemas/Status"
+                    },
+                    "data": {
+                      "type": "object",
+                      "properties": {
+                        "consents": {
+                          "description": "Pending consents, Empty array when there is no pending consent",
+                          "type": "array",
+                          "items": {
+                            "type": "object",
+                            "properties": {
+                              "consentId": {
+                                "description": "Consent Id",
+                                "type": "string",
+                                "format": "uuid",
+                                "examples": [
+                                  "c1a2b3d4-e5f6-4a7b-8c9d-0e1f2a3b4c5d"
+                                ]
+                              },
+                              "code": {
+                                "description": "Consent Code",
+                                "type": "string",
+                                "examples": [
+                                  "TERMS_AND_CONDITIONS"
+                                ]
+                              },
+                              "consentTypeId": {
+                                "description": "Consent Type Id",
+                                "type": "string",
+                                "format": "uuid",
+                                "examples": [
+                                  "a7b8c9d0-1e2f-4a3b-8c4d-5e6f7a8b9c0d"
+                                ]
+                              },
+                              "consentTypeName": {
+                                "description": "Consent Type Name",
+                                "type": "string",
+                                "examples": [
+                                  "Terms and Conditions"
+                                ]
+                              },
+                              "consentVersion": {
+                                "description": "Current Consent Version",
+                                "type": "string",
+                                "examples": [
+                                  "1.1.0"
+                                ]
+                              },
+                              "submittedVersion": {
+                                "description": "Latest ACTIVE evidence version, including read-only display; null when none; this does not prove acceptance",
+                                "type": [
+                                  "string",
+                                  "null"
+                                ],
+                                "examples": [
+                                  "1.0.0"
+                                ]
+                              },
+                              "consentName": {
+                                "description": "Consent Name",
+                                "type": "string",
+                                "examples": [
+                                  "Terms and Conditions"
+                                ]
+                              },
+                              "consentDescription": {
+                                "description": "Consent Description",
+                                "type": "string",
+                                "examples": [
+                                  "Terms and conditions of using the service"
+                                ]
+                              },
+                              "effectiveAt": {
+                                "description": "Consent Effective Timestamp (Without time zone UTC)",
+                                "type": "string",
+                                "format": "date-time",
+                                "examples": [
+                                  "2026-11-01T00:00:00.000Z"
+                                ]
+                              },
+                              "expiredAt": {
+                                "description": "Consent Expired Timestamp (Without time zone UTC)",
+                                "type": [
+                                  "string",
+                                  "null"
+                                ],
+                                "format": "date-time",
+                                "examples": [
+                                  "2027-01-01T00:00:00.000Z"
+                                ]
+                              },
+                              "isRequired": {
+                                "description": "Consent is required to be accepted",
+                                "type": "boolean",
+                                "examples": [
+                                  true
+                                ]
+                              },
+                              "body": {
+                                "description": "Consent Body",
+                                "type": "object"
+                              }
+                            },
+                            "required": [
+                              "consentId",
+                              "code",
+                              "consentTypeId",
+                              "consentTypeName",
+                              "consentVersion",
+                              "consentName",
+                              "effectiveAt",
+                              "isRequired",
+                              "body"
+                            ]
+                          }
+                        }
+                      },
+                      "required": [
+                        "consents"
+                      ]
+                    }
+                  }
+                },
+                "examples": {
+                  "success": {
+                    "summary": "Success",
+                    "value": {
+                      "status": {
+                        "code": 200,
+                        "message": "Ok",
+                        "bizCode": "S10000",
+                        "bizMessage": "Inquiry Pending Consent Success",
+                        "requestId": "req-9b1deb4d-3b7d-4bad-9bdd-2b0d7b3dcb6d",
+                        "timestamp": "2026-11-05T12:42:00.123Z",
+                        "status": "SUCCESS"
+                      },
+                      "data": {
+                        "consents": [
+                          {
+                            "consentId": "c1a2b3d4-e5f6-4a7b-8c9d-0e1f2a3b4c5d",
+                            "code": "TERMS_AND_CONDITIONS",
+                            "consentTypeId": "a7b8c9d0-1e2f-4a3b-8c4d-5e6f7a8b9c0d",
+                            "consentTypeName": "Terms and Conditions",
+                            "consentVersion": "1.1.0",
+                            "submittedVersion": "1.0.0",
+                            "consentName": "Terms and Conditions",
+                            "consentDescription": "Terms and conditions of using the service",
+                            "effectiveAt": "2026-11-01T00:00:00.000Z",
+                            "expiredAt": null,
+                            "isRequired": true,
+                            "body": {
+                              "title": "Terms and Conditions",
+                              "content": "Terms and conditions of using the service"
+                            }
+                          },
+                          {
+                            "consentId": "d2b3c4e5-f6a7-4b8c-9d0e-1f2a3b4c5d6e",
+                            "code": "MARKETING_COMMUNICATION",
+                            "consentTypeId": "b8c9d0e1-2f3a-4b4c-9d5e-6f7a8b9c0d1e",
+                            "consentTypeName": "Marketing",
+                            "consentVersion": "1.0.0",
+                            "submittedVersion": null,
+                            "consentName": "Marketing Communication",
+                            "consentDescription": "Receive promotions and news",
+                            "effectiveAt": "2026-11-01T00:00:00.000Z",
+                            "expiredAt": "2027-01-01T00:00:00.000Z",
+                            "isRequired": false,
+                            "body": {
+                              "title": "Marketing Communication",
+                              "content": "Receive promotions and news"
+                            }
+                          }
+                        ]
+                      }
+                    }
+                  },
+                  "success---no-pending-consent": {
+                    "summary": "Success - No Pending Consent",
+                    "value": {
+                      "status": {
+                        "code": 200,
+                        "message": "Ok",
+                        "bizCode": "S10000",
+                        "bizMessage": "Inquiry Pending Consent Success",
+                        "requestId": "req-9a7b3c5d-6e8f-4a0b-c2d4-5e6f7a8b9c0d",
+                        "timestamp": "2026-11-05T12:49:00.123Z",
+                        "status": "SUCCESS"
+                      },
+                      "data": {
+                        "consents": []
+                      }
+                    }
+                  }
+                }
+              }
+            }
+          },
+          "400": {
+            "description": "Bad Request",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/Error400"
+                },
+                "examples": {
+                  "fail---bad-request": {
+                    "summary": "Fail - Bad Request",
+                    "value": {
+                      "status": {
+                        "code": 400,
+                        "message": "Bad Request",
+                        "bizCode": "E10001",
+                        "bizMessage": "Timestamp is a required header.",
+                        "requestId": "req-400a1b2c-3d4e-5f6a-7b8c-9d0e1f2a3b4c",
+                        "timestamp": "2026-11-05T12:43:45.123Z",
+                        "status": "ERROR"
+                      }
+                    }
+                  }
+                }
+              }
+            }
+          },
+          "401": {
+            "description": "Unauthorized",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/Error401"
+                },
+                "examples": {
+                  "fail---unauthorized": {
+                    "summary": "Fail - Unauthorized",
+                    "value": {
+                      "status": {
+                        "code": 401,
+                        "message": "Unauthorized",
+                        "bizCode": "E10002",
+                        "bizMessage": "Invalid or expired access token.",
+                        "requestId": "req-7a2cba3e-1b2d-4caf-8cce-3b1d7b3dcb6d",
+                        "timestamp": "2026-11-05T12:43:10.456Z",
+                        "status": "ERROR"
+                      }
+                    }
+                  }
+                }
+              }
+            }
+          },
+          "408": {
+            "description": "Request Timeout",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/Error408"
+                },
+                "examples": {
+                  "fail---request-timeout": {
+                    "summary": "Fail - Request Timeout",
+                    "value": {
+                      "status": {
+                        "code": 408,
+                        "message": "Request Timeout",
+                        "bizCode": "E90001",
+                        "bizMessage": "The server timed out waiting for the request.",
+                        "requestId": "req-408a1b2c-3d4e-5f6a-7b8c-9d0e1f2a3b4c",
+                        "timestamp": "2026-11-05T12:45:30.123Z",
+                        "status": "ERROR"
+                      }
+                    }
+                  }
+                }
+              }
+            }
+          },
+          "500": {
+            "description": "Internal Server Error",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/Error500"
+                },
+                "examples": {
+                  "fail---internal-server-error": {
+                    "summary": "Fail - Internal Server Error",
+                    "value": {
+                      "status": {
+                        "code": 500,
+                        "message": "Internal Server Error",
+                        "bizMessage": "An unexpected error occurred.",
+                        "requestId": "req-pending-review",
+                        "timestamp": "2026-11-07T12:00:00.123Z",
+                        "status": "ERROR"
+                      }
+                    }
+                  }
+                }
+              }
+            }
+          }
+        }
+      }
+    },
+    "/v1/consent/submit": {
+      "post": {
+        "tags": [
+          "consent"
+        ],
+        "operationId": "submitConsent",
+        "summary": "Submit Consent API",
+        "description": "Submit multiple consents of the user at the same time, Result can be omitted to only update that the user has read the consent\n\nSource spec: `e-commerce/doc/api/consent/04-submit-consent/spec.md`",
+        "x-spec": "e-commerce/doc/api/consent/04-submit-consent/spec.md",
+        "parameters": [
+          {
+            "$ref": "#/components/parameters/Timestamp"
+          },
+          {
+            "$ref": "#/components/parameters/RequestId"
+          }
+        ],
+        "security": [
+          {
+            "bearerAuth": []
+          }
+        ],
+        "requestBody": {
+          "required": true,
+          "content": {
+            "application/json": {
+              "schema": {
+                "type": "object",
+                "properties": {
+                  "consents": {
+                    "description": "Consents to submit",
+                    "type": "array",
+                    "items": {
+                      "type": "object",
+                      "properties": {
+                        "consentId": {
+                          "description": "Consent Id",
+                          "type": "string",
+                          "format": "uuid",
+                          "examples": [
+                            "c1a2b3d4-e5f6-4a7b-8c9d-0e1f2a3b4c5d"
+                          ]
+                        },
+                        "consentVersion": {
+                          "description": "Consent Version that the user has read, Must be the current version of the consent",
+                          "type": "string",
+                          "examples": [
+                            "1.1.0"
+                          ]
+                        },
+                        "isRead": {
+                          "description": "Must be true: this call records display/read; an already-read version keeps its first readAt",
+                          "type": "boolean",
+                          "examples": [
+                            true
+                          ]
+                        },
+                        "result": {
+                          "description": "Consent result (Accept, Reject), Keep the current result when not specified, Defaults to FALSE when inserting",
+                          "type": "boolean",
+                          "examples": [
+                            true
+                          ]
+                        }
+                      },
+                      "required": [
+                        "consentId",
+                        "consentVersion",
+                        "isRead"
+                      ]
+                    }
+                  }
+                },
+                "required": [
+                  "consents"
+                ]
+              },
+              "examples": {
+                "example": {
+                  "summary": "Example",
+                  "value": {
+                    "consents": [
+                      {
+                        "consentId": "c1a2b3d4-e5f6-4a7b-8c9d-0e1f2a3b4c5d",
+                        "consentVersion": "1.1.0",
+                        "isRead": true,
+                        "result": true
+                      },
+                      {
+                        "consentId": "d2b3c4e5-f6a7-4b8c-9d0e-1f2a3b4c5d6e",
+                        "consentVersion": "1.0.0",
+                        "isRead": true
+                      }
+                    ]
+                  }
+                }
+              }
+            }
+          }
+        },
+        "responses": {
+          "200": {
+            "description": "Ok",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "type": "object",
+                  "required": [
+                    "status"
+                  ],
+                  "properties": {
+                    "status": {
+                      "$ref": "#/components/schemas/Status"
+                    },
+                    "data": {
+                      "type": "object",
+                      "properties": {
+                        "consents": {
+                          "description": "Submitted consents",
+                          "type": "array",
+                          "items": {
+                            "type": "object",
+                            "properties": {
+                              "consentId": {
+                                "description": "Consent Id",
+                                "type": "string",
+                                "format": "uuid",
+                                "examples": [
+                                  "c1a2b3d4-e5f6-4a7b-8c9d-0e1f2a3b4c5d"
+                                ]
+                              },
+                              "consentVersion": {
+                                "description": "Consent Version",
+                                "type": "string",
+                                "examples": [
+                                  "1.1.0"
+                                ]
+                              },
+                              "isRead": {
+                                "description": "User has read the consent",
+                                "type": "boolean",
+                                "examples": [
+                                  true
+                                ]
+                              },
+                              "readAt": {
+                                "description": "Timestamp when the user read the consent (Without time zone UTC)",
+                                "type": "string",
+                                "format": "date-time",
+                                "examples": [
+                                  "2026-11-05T12:42:00.123Z"
+                                ]
+                              },
+                              "result": {
+                                "description": "Consent result (Accept, Reject)",
+                                "type": "boolean",
+                                "examples": [
+                                  true
+                                ]
+                              }
+                            },
+                            "required": [
+                              "consentId",
+                              "consentVersion",
+                              "isRead",
+                              "result"
+                            ]
+                          }
+                        }
+                      },
+                      "required": [
+                        "consents"
+                      ]
+                    }
+                  }
+                },
+                "examples": {
+                  "success": {
+                    "summary": "Success",
+                    "value": {
+                      "status": {
+                        "code": 200,
+                        "message": "Ok",
+                        "bizCode": "S10000",
+                        "bizMessage": "Submit Consent Success",
+                        "requestId": "req-9b1deb4d-3b7d-4bad-9bdd-2b0d7b3dcb6d",
+                        "timestamp": "2026-11-05T12:42:00.123Z",
+                        "status": "SUCCESS"
+                      },
+                      "data": {
+                        "consents": [
+                          {
+                            "consentId": "c1a2b3d4-e5f6-4a7b-8c9d-0e1f2a3b4c5d",
+                            "consentVersion": "1.1.0",
+                            "isRead": true,
+                            "readAt": "2026-11-05T12:42:00.123Z",
+                            "result": true
+                          },
+                          {
+                            "consentId": "d2b3c4e5-f6a7-4b8c-9d0e-1f2a3b4c5d6e",
+                            "consentVersion": "1.0.0",
+                            "isRead": true,
+                            "readAt": "2026-11-05T12:42:00.123Z",
+                            "result": false
+                          }
+                        ]
+                      }
+                    }
+                  }
+                }
+              }
+            }
+          },
+          "400": {
+            "description": "Bad Request",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/Error400"
+                },
+                "examples": {
+                  "fail---bad-request": {
+                    "summary": "Fail - Bad Request",
+                    "value": {
+                      "status": {
+                        "code": 400,
+                        "message": "Bad Request",
+                        "bizCode": "E10001",
+                        "bizMessage": "Consents must be non-empty; consentId, consentVersion and isRead=true are required.",
+                        "requestId": "req-400a1b2c-3d4e-5f6a-7b8c-9d0e1f2a3b4c",
+                        "timestamp": "2026-11-05T12:43:45.123Z",
+                        "status": "ERROR"
+                      }
+                    }
+                  }
+                }
+              }
+            }
+          },
+          "401": {
+            "description": "Unauthorized",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/Error401"
+                },
+                "examples": {
+                  "fail---unauthorized": {
+                    "summary": "Fail - Unauthorized",
+                    "value": {
+                      "status": {
+                        "code": 401,
+                        "message": "Unauthorized",
+                        "bizCode": "E10002",
+                        "bizMessage": "Invalid or expired access token.",
+                        "requestId": "req-7a2cba3e-1b2d-4caf-8cce-3b1d7b3dcb6d",
+                        "timestamp": "2026-11-05T12:43:10.456Z",
+                        "status": "ERROR"
+                      }
+                    }
+                  }
+                }
+              }
+            }
+          },
+          "404": {
+            "description": "Not Found",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/Error404"
+                },
+                "examples": {
+                  "fail---not-found": {
+                    "summary": "Fail - Not Found",
+                    "value": {
+                      "status": {
+                        "code": 404,
+                        "message": "Not Found",
+                        "bizCode": "E10004",
+                        "bizMessage": "Consent not found.",
+                        "requestId": "req-404a1b2c-3d4e-5f6a-7b8c-9d0e1f2a3b4c",
+                        "timestamp": "2026-11-05T12:44:05.321Z",
+                        "status": "ERROR"
+                      }
+                    }
+                  }
+                }
+              }
+            }
+          },
+          "408": {
+            "description": "Request Timeout",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/Error408"
+                },
+                "examples": {
+                  "fail---request-timeout": {
+                    "summary": "Fail - Request Timeout",
+                    "value": {
+                      "status": {
+                        "code": 408,
+                        "message": "Request Timeout",
+                        "bizCode": "E90001",
+                        "bizMessage": "The server timed out waiting for the request.",
+                        "requestId": "req-408a1b2c-3d4e-5f6a-7b8c-9d0e1f2a3b4c",
+                        "timestamp": "2026-11-05T12:45:30.123Z",
+                        "status": "ERROR"
+                      }
+                    }
+                  }
+                }
+              }
+            }
+          },
+          "409": {
+            "description": "Conflict",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/Error409"
+                },
+                "examples": {
+                  "fail---conflict": {
+                    "summary": "Fail - Conflict",
+                    "value": {
+                      "status": {
+                        "code": 409,
+                        "message": "Conflict",
+                        "bizCode": "E10003",
+                        "bizMessage": "Consent version is not the current version.",
+                        "requestId": "req-409a1b2c-3d4e-5f6a-7b8c-9d0e1f2a3b4c",
+                        "timestamp": "2026-11-05T12:44:20.789Z",
+                        "status": "ERROR"
+                      }
+                    }
+                  }
+                }
+              }
+            }
+          },
+          "500": {
+            "description": "Internal Server Error",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/Error500"
+                },
+                "examples": {
+                  "fail---internal-server-error": {
+                    "summary": "Fail - Internal Server Error",
+                    "value": {
+                      "status": {
+                        "code": 500,
+                        "message": "Internal Server Error",
+                        "bizMessage": "An unexpected error occurred.",
+                        "requestId": "req-submit-review",
+                        "timestamp": "2026-11-07T12:00:00.123Z",
+                        "status": "ERROR"
+                      }
+                    }
+                  }
+                }
+              }
+            }
+          }
+        }
+      }
+    },
+    "/v1/consent/type": {
+      "get": {
+        "tags": [
+          "consent"
+        ],
+        "operationId": "inquiryConsentType",
+        "summary": "Inquiry Consent Type API",
+        "description": "Inquiry the list of consent types with paging and search, Inquiry by id returns a list with one item, Deleted consent types are excluded\n\nSource spec: `e-commerce/doc/api/consent/08-inquiry-consent-type/spec.md`",
+        "x-spec": "e-commerce/doc/api/consent/08-inquiry-consent-type/spec.md",
+        "parameters": [
+          {
+            "$ref": "#/components/parameters/Timestamp"
+          },
+          {
+            "$ref": "#/components/parameters/RequestId"
+          },
+          {
+            "name": "id",
+            "in": "query",
+            "required": false,
+            "description": "Consent Type Id, Response is a list with one item",
+            "schema": {
+              "type": "string",
+              "format": "uuid",
+              "examples": [
+                "a7b8c9d0-1e2f-4a3b-8c4d-5e6f7a8b9c0d"
+              ]
+            }
+          },
+          {
+            "name": "pageIndex",
+            "in": "query",
+            "required": false,
+            "description": "Page index starting from 1, Defaults to 1",
+            "schema": {
+              "type": "integer",
+              "default": 1,
+              "examples": [
+                1
+              ]
+            }
+          },
+          {
+            "name": "pageSize",
+            "in": "query",
+            "required": false,
+            "description": "Number of items per page (max 100), Defaults to 10",
+            "schema": {
+              "type": "integer",
+              "maximum": 100,
+              "default": 10,
+              "examples": [
+                10
+              ]
+            }
+          },
+          {
+            "name": "search",
+            "in": "query",
+            "required": false,
+            "description": "Search by consent type name or consent type description",
+            "schema": {
+              "type": "string",
+              "examples": [
+                "terms"
+              ]
+            }
+          },
+          {
+            "name": "isRequired",
+            "in": "query",
+            "required": false,
+            "description": "Filter by is required (true, false), Not filtered when not specified",
+            "schema": {
+              "type": "boolean",
+              "examples": [
+                true
+              ]
+            }
+          },
+          {
+            "name": "rowStatus",
+            "in": "query",
+            "required": false,
+            "description": "Row status filter (ACTIVE, INACTIVE, LOCKED, ARCHIVED), All statuses except DELETED when not specified",
+            "schema": {
+              "type": "string",
+              "enum": [
+                "ACTIVE",
+                "INACTIVE",
+                "LOCKED",
+                "ARCHIVED"
+              ],
+              "examples": [
+                "ACTIVE"
+              ]
+            }
+          }
+        ],
+        "security": [
+          {
+            "bearerAuth": []
+          }
+        ],
+        "responses": {
+          "200": {
+            "description": "Ok",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "type": "object",
+                  "required": [
+                    "status"
+                  ],
+                  "properties": {
+                    "status": {
+                      "$ref": "#/components/schemas/Status"
+                    },
+                    "data": {
+                      "type": "object",
+                      "properties": {
+                        "items": {
+                          "description": "Consent types, Empty array when not found",
+                          "type": "array",
+                          "items": {
+                            "type": "object",
+                            "properties": {
+                              "consentTypeId": {
+                                "description": "Consent Type Id",
+                                "type": "string",
+                                "format": "uuid",
+                                "examples": [
+                                  "a7b8c9d0-1e2f-4a3b-8c4d-5e6f7a8b9c0d"
+                                ]
+                              },
+                              "name": {
+                                "description": "Consent Type Name",
+                                "type": "string",
+                                "examples": [
+                                  "Terms and Conditions"
+                                ]
+                              },
+                              "description": {
+                                "description": "Consent Type Description, null when not set",
+                                "type": [
+                                  "string",
+                                  "null"
+                                ],
+                                "examples": [
+                                  "Terms that every customer accepts to use the platform"
+                                ]
+                              },
+                              "isRequired": {
+                                "description": "Reference data only, the consent decides whether it must be accepted",
+                                "type": "boolean",
+                                "examples": [
+                                  true
+                                ]
+                              },
+                              "rowStatus": {
+                                "description": "Row status (ACTIVE, INACTIVE, LOCKED, ARCHIVED)",
+                                "type": "string",
+                                "enum": [
+                                  "ACTIVE",
+                                  "INACTIVE",
+                                  "LOCKED",
+                                  "ARCHIVED"
+                                ],
+                                "examples": [
+                                  "ACTIVE"
+                                ]
+                              }
+                            },
+                            "required": [
+                              "consentTypeId",
+                              "name",
+                              "isRequired",
+                              "rowStatus"
+                            ]
+                          }
+                        },
+                        "pageIndex": {
+                          "description": "Current page index",
+                          "type": "integer",
+                          "examples": [
+                            1
+                          ]
+                        },
+                        "pageSize": {
+                          "description": "Number of items per page",
+                          "type": "integer",
+                          "examples": [
+                            10
+                          ]
+                        },
+                        "totalItems": {
+                          "description": "Total number of items",
+                          "type": "integer",
+                          "examples": [
+                            2
+                          ]
+                        },
+                        "totalPages": {
+                          "description": "Total number of pages",
+                          "type": "integer",
+                          "examples": [
+                            1
+                          ]
+                        }
+                      },
+                      "required": [
+                        "items",
+                        "pageIndex",
+                        "pageSize",
+                        "totalItems",
+                        "totalPages"
+                      ]
+                    }
+                  }
+                },
+                "examples": {
+                  "success": {
+                    "summary": "Success",
+                    "value": {
+                      "status": {
+                        "code": 200,
+                        "message": "Ok",
+                        "bizCode": "S10000",
+                        "bizMessage": "Inquiry Consent Type Success",
+                        "requestId": "req-9b1deb4d-3b7d-4bad-9bdd-2b0d7b3dcb6d",
+                        "timestamp": "2026-11-05T12:42:00.123Z",
+                        "status": "SUCCESS"
+                      },
+                      "data": {
+                        "items": [
+                          {
+                            "consentTypeId": "a7b8c9d0-1e2f-4a3b-8c4d-5e6f7a8b9c0d",
+                            "name": "Terms and Conditions",
+                            "description": "Terms that every customer accepts to use the platform",
+                            "isRequired": true,
+                            "rowStatus": "ACTIVE"
+                          },
+                          {
+                            "consentTypeId": "b8c9d0e1-2f3a-4b4c-9d5e-6f7a8b9c0d1e",
+                            "name": "Marketing",
+                            "description": "Permission to send promotions and news",
+                            "isRequired": false,
+                            "rowStatus": "ACTIVE"
+                          }
+                        ],
+                        "pageIndex": 1,
+                        "pageSize": 10,
+                        "totalItems": 2,
+                        "totalPages": 1
+                      }
+                    }
+                  },
+                  "success---by-id": {
+                    "summary": "Success - By Id",
+                    "value": {
+                      "status": {
+                        "code": 200,
+                        "message": "Ok",
+                        "bizCode": "S10000",
+                        "bizMessage": "Inquiry Consent Type Success",
+                        "requestId": "req-8f6a2b4c-5d7e-4f9a-b1c3-4d5e6f7a8b9c",
+                        "timestamp": "2026-11-05T12:48:00.123Z",
+                        "status": "SUCCESS"
+                      },
+                      "data": {
+                        "items": [
+                          {
+                            "consentTypeId": "a7b8c9d0-1e2f-4a3b-8c4d-5e6f7a8b9c0d",
+                            "name": "Terms and Conditions",
+                            "description": "Terms that every customer accepts to use the platform",
+                            "isRequired": true,
+                            "rowStatus": "ACTIVE"
+                          }
+                        ],
+                        "pageIndex": 1,
+                        "pageSize": 10,
+                        "totalItems": 1,
+                        "totalPages": 1
+                      }
+                    }
+                  },
+                  "success---not-found": {
+                    "summary": "Success - Not Found",
+                    "value": {
+                      "status": {
+                        "code": 200,
+                        "message": "Ok",
+                        "bizCode": "S10000",
+                        "bizMessage": "Inquiry Consent Type Success",
+                        "requestId": "req-9a7b3c5d-6e8f-4a0b-c2d4-5e6f7a8b9c0d",
+                        "timestamp": "2026-11-05T12:49:00.123Z",
+                        "status": "SUCCESS"
+                      },
+                      "data": {
+                        "items": [],
+                        "pageIndex": 1,
+                        "pageSize": 10,
+                        "totalItems": 0,
+                        "totalPages": 0
+                      }
+                    }
+                  }
+                }
+              }
+            }
+          },
+          "400": {
+            "description": "Bad Request",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/Error400"
+                },
+                "examples": {
+                  "fail---bad-request": {
+                    "summary": "Fail - Bad Request",
+                    "value": {
+                      "status": {
+                        "code": 400,
+                        "message": "Bad Request",
+                        "bizCode": "E10001",
+                        "bizMessage": "Page Index and Page Size must be greater than 0, Page Size must not be greater than 100.",
+                        "requestId": "req-400a1b2c-3d4e-5f6a-7b8c-9d0e1f2a3b4c",
+                        "timestamp": "2026-11-05T12:44:40.123Z",
+                        "status": "ERROR"
+                      }
+                    }
+                  },
+                  "fail---bad-request-row-status": {
+                    "summary": "Fail - Bad Request Row Status",
+                    "value": {
+                      "status": {
+                        "code": 400,
+                        "message": "Bad Request",
+                        "bizCode": "E10001",
+                        "bizMessage": "Row status must be one of ACTIVE, INACTIVE, LOCKED, ARCHIVED.",
+                        "requestId": "req-410a1b2c-3d4e-5f6a-7b8c-9d0e1f2a3b4c",
+                        "timestamp": "2026-11-05T12:45:47.123Z",
+                        "status": "ERROR"
+                      }
+                    }
+                  }
+                }
+              }
+            }
+          },
+          "401": {
+            "description": "Unauthorized",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/Error401"
+                },
+                "examples": {
+                  "fail---unauthorized": {
+                    "summary": "Fail - Unauthorized",
+                    "value": {
+                      "status": {
+                        "code": 401,
+                        "message": "Unauthorized",
+                        "bizCode": "E10002",
+                        "bizMessage": "Invalid or expired access token.",
+                        "requestId": "req-7a2cba3e-1b2d-4caf-8cce-3b1d7b3dcb6d",
+                        "timestamp": "2026-11-05T12:43:10.456Z",
+                        "status": "ERROR"
+                      }
+                    }
+                  }
+                }
+              }
+            }
+          },
+          "408": {
+            "description": "Request Timeout",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/Error408"
+                },
+                "examples": {
+                  "fail---request-timeout": {
+                    "summary": "Fail - Request Timeout",
+                    "value": {
+                      "status": {
+                        "code": 408,
+                        "message": "Request Timeout",
+                        "bizCode": "E90001",
+                        "bizMessage": "The server timed out waiting for the request.",
+                        "requestId": "req-408a1b2c-3d4e-5f6a-7b8c-9d0e1f2a3b4c",
+                        "timestamp": "2026-11-05T12:45:30.123Z",
+                        "status": "ERROR"
+                      }
+                    }
+                  }
+                }
+              }
+            }
+          },
+          "500": {
+            "description": "Internal Server Error",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/Error500"
+                },
+                "examples": {
+                  "fail---internal-server-error": {
+                    "summary": "Fail - Internal Server Error",
+                    "value": {
+                      "status": {
+                        "code": 500,
+                        "message": "Internal Server Error",
+                        "bizMessage": "An unexpected error occurred.",
+                        "requestId": "req-500a1b2c-3d4e-5f6a-7b8c-9d0e1f2a3b4c",
+                        "timestamp": "2026-11-05T12:46:10.123Z",
+                        "status": "ERROR"
+                      }
+                    }
+                  }
+                }
+              }
+            }
+          }
+        }
+      }
+    },
+    "/v1/consent/type/upsert": {
+      "post": {
+        "tags": [
+          "consent"
+        ],
+        "operationId": "upsertConsentType",
+        "summary": "Upsert Consent Type API",
+        "description": "Insert, update or delete a consent type, only a platform administrator can call it, Insert when id is not specified, Update when id is specified, Delete when rowStatus is DELETED (HTTP 204 No Content, no response body), Archive when rowStatus is ARCHIVED (HTTP 200)\n\nSource spec: `e-commerce/doc/api/consent/06-upsert-consent-type/spec.md`",
+        "x-spec": "e-commerce/doc/api/consent/06-upsert-consent-type/spec.md",
+        "parameters": [
+          {
+            "$ref": "#/components/parameters/Timestamp"
+          },
+          {
+            "$ref": "#/components/parameters/RequestId"
+          }
+        ],
+        "security": [
+          {
+            "bearerAuth": []
+          }
+        ],
+        "requestBody": {
+          "required": true,
+          "content": {
+            "application/json": {
+              "schema": {
+                "type": "object",
+                "properties": {
+                  "id": {
+                    "description": "Consent Type Id, Insert when not specified, Update, Delete or Archive when specified, The id of a DELETED consent type counts as not found",
+                    "type": "string",
+                    "format": "uuid",
+                    "examples": [
+                      "a7b8c9d0-1e2f-4a3b-8c4d-5e6f7a8b9c0d"
+                    ]
+                  },
+                  "name": {
+                    "description": "Consent Type Name (max 128 characters), Unique among consent types that are not DELETED",
+                    "type": "string",
+                    "maxLength": 128,
+                    "examples": [
+                      "Terms and Conditions"
+                    ]
+                  },
+                  "description": {
+                    "description": "Consent Type Description (max 1000 characters), Not specified keeps the current description on update, null clears it",
+                    "type": [
+                      "string",
+                      "null"
+                    ],
+                    "maxLength": 1000,
+                    "examples": [
+                      "Terms that every customer accepts to use the platform"
+                    ]
+                  },
+                  "isRequired": {
+                    "description": "Reference data only, the consent decides whether it must be accepted, Defaults to FALSE on insert, Not specified keeps the current value on update",
+                    "type": "boolean",
+                    "examples": [
+                      true
+                    ]
+                  },
+                  "rowStatus": {
+                    "description": "Row status (ACTIVE, INACTIVE, DELETED, LOCKED, ARCHIVED), Defaults to ACTIVE, Delete when DELETED, Archive when ARCHIVED, DELETED is not allowed when inserting, Delete or archive is allowed only when the consent type is not used by any consent that is not DELETED",
+                    "type": "string",
+                    "enum": [
+                      "ACTIVE",
+                      "INACTIVE",
+                      "DELETED",
+                      "LOCKED",
+                      "ARCHIVED"
+                    ],
+                    "default": "ACTIVE",
+                    "examples": [
+                      "ACTIVE"
+                    ]
+                  }
+                },
+                "required": [
+                  "name"
+                ]
+              },
+              "examples": {
+                "insert": {
+                  "summary": "Insert",
+                  "value": {
+                    "name": "Terms and Conditions",
+                    "description": "Terms that every customer accepts to use the platform",
+                    "isRequired": true,
+                    "rowStatus": "ACTIVE"
+                  }
+                },
+                "update": {
+                  "summary": "Update",
+                  "value": {
+                    "id": "a7b8c9d0-1e2f-4a3b-8c4d-5e6f7a8b9c0d",
+                    "name": "Terms of Service",
+                    "description": "Terms that every customer accepts to use the platform",
+                    "isRequired": true,
+                    "rowStatus": "ACTIVE"
+                  }
+                },
+                "delete": {
+                  "summary": "Delete",
+                  "value": {
+                    "id": "a7b8c9d0-1e2f-4a3b-8c4d-5e6f7a8b9c0d",
+                    "name": "Terms of Service",
+                    "description": "Terms that every customer accepts to use the platform",
+                    "isRequired": true,
+                    "rowStatus": "DELETED"
+                  }
+                }
+              }
+            }
+          }
+        },
+        "responses": {
+          "200": {
+            "description": "Ok",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "type": "object",
+                  "required": [
+                    "status"
+                  ],
+                  "properties": {
+                    "status": {
+                      "$ref": "#/components/schemas/Status"
+                    },
+                    "data": {
+                      "type": "object",
+                      "properties": {
+                        "consentTypeId": {
+                          "description": "Inserted, Updated or Archived Consent Type Id, Not returned when deleted (HTTP 204)",
+                          "type": "string",
+                          "format": "uuid",
+                          "examples": [
+                            "a7b8c9d0-1e2f-4a3b-8c4d-5e6f7a8b9c0d"
+                          ]
+                        }
+                      },
+                      "required": [
+                        "consentTypeId"
+                      ]
+                    }
+                  }
+                },
+                "examples": {
+                  "success---update": {
+                    "summary": "Success - Update",
+                    "value": {
+                      "status": {
+                        "code": 200,
+                        "message": "Ok",
+                        "bizCode": "S10000",
+                        "bizMessage": "Update Consent Type Success",
+                        "requestId": "req-5c3d9e1f-2a4b-4c6d-8e0f-1a2b3c4d5e6f",
+                        "timestamp": "2026-11-05T12:50:00.123Z",
+                        "status": "SUCCESS"
+                      },
+                      "data": {
+                        "consentTypeId": "a7b8c9d0-1e2f-4a3b-8c4d-5e6f7a8b9c0d"
+                      }
+                    }
+                  },
+                  "success---archive": {
+                    "summary": "Success - Archive",
+                    "value": {
+                      "status": {
+                        "code": 200,
+                        "message": "Ok",
+                        "bizCode": "S10000",
+                        "bizMessage": "Archive Consent Type Success",
+                        "requestId": "req-7e5f1a3b-4c6d-4e8f-8a2b-3c4d5e6f7a8b",
+                        "timestamp": "2026-11-05T12:57:00.123Z",
+                        "status": "SUCCESS"
+                      },
+                      "data": {
+                        "consentTypeId": "a7b8c9d0-1e2f-4a3b-8c4d-5e6f7a8b9c0d"
+                      }
+                    }
+                  }
+                }
+              }
+            }
+          },
+          "201": {
+            "description": "Created",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "type": "object",
+                  "required": [
+                    "status"
+                  ],
+                  "properties": {
+                    "status": {
+                      "$ref": "#/components/schemas/Status"
+                    },
+                    "data": {
+                      "type": "object",
+                      "properties": {
+                        "consentTypeId": {
+                          "description": "Inserted, Updated or Archived Consent Type Id, Not returned when deleted (HTTP 204)",
+                          "type": "string",
+                          "format": "uuid",
+                          "examples": [
+                            "a7b8c9d0-1e2f-4a3b-8c4d-5e6f7a8b9c0d"
+                          ]
+                        }
+                      },
+                      "required": [
+                        "consentTypeId"
+                      ]
+                    }
+                  }
+                },
+                "examples": {
+                  "success---insert": {
+                    "summary": "Success - Insert",
+                    "value": {
+                      "status": {
+                        "code": 201,
+                        "message": "Created",
+                        "bizCode": "S10000",
+                        "bizMessage": "Insert Consent Type Success",
+                        "requestId": "req-9b1deb4d-3b7d-4bad-9bdd-2b0d7b3dcb6d",
+                        "timestamp": "2026-11-05T12:42:00.123Z",
+                        "status": "SUCCESS"
+                      },
+                      "data": {
+                        "consentTypeId": "a7b8c9d0-1e2f-4a3b-8c4d-5e6f7a8b9c0d"
+                      }
+                    }
+                  }
+                }
+              }
+            }
+          },
+          "204": {
+            "description": "No Content"
+          },
+          "400": {
+            "description": "Bad Request",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/Error400"
+                },
+                "examples": {
+                  "fail---bad-request": {
+                    "summary": "Fail - Bad Request",
+                    "value": {
+                      "status": {
+                        "code": 400,
+                        "message": "Bad Request",
+                        "bizCode": "E10001",
+                        "bizMessage": "Name is a required field.",
+                        "requestId": "req-400a1b2c-3d4e-5f6a-7b8c-9d0e1f2a3b4c",
+                        "timestamp": "2026-11-05T12:44:40.123Z",
+                        "status": "ERROR"
+                      }
+                    }
+                  },
+                  "fail---bad-request-row-status": {
+                    "summary": "Fail - Bad Request Row Status",
+                    "value": {
+                      "status": {
+                        "code": 400,
+                        "message": "Bad Request",
+                        "bizCode": "E10001",
+                        "bizMessage": "Row status must not be DELETED when inserting a consent type.",
+                        "requestId": "req-410a1b2c-3d4e-5f6a-7b8c-9d0e1f2a3b4c",
+                        "timestamp": "2026-11-05T12:45:47.123Z",
+                        "status": "ERROR"
+                      }
+                    }
+                  }
+                }
+              }
+            }
+          },
+          "401": {
+            "description": "Unauthorized",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/Error401"
+                },
+                "examples": {
+                  "fail---unauthorized": {
+                    "summary": "Fail - Unauthorized",
+                    "value": {
+                      "status": {
+                        "code": 401,
+                        "message": "Unauthorized",
+                        "bizCode": "E10002",
+                        "bizMessage": "Invalid or expired access token.",
+                        "requestId": "req-7a2cba3e-1b2d-4caf-8cce-3b1d7b3dcb6d",
+                        "timestamp": "2026-11-05T12:43:10.456Z",
+                        "status": "ERROR"
+                      }
+                    }
+                  }
+                }
+              }
+            }
+          },
+          "403": {
+            "description": "Forbidden",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/Error403"
+                },
+                "examples": {
+                  "fail---forbidden": {
+                    "summary": "Fail - Forbidden",
+                    "value": {
+                      "status": {
+                        "code": 403,
+                        "message": "Forbidden",
+                        "bizCode": "E10009",
+                        "bizMessage": "You do not have permission to change consent types.",
+                        "requestId": "req-430a1b2c-3d4e-5f6a-7b8c-9d0e1f2a3b4c",
+                        "timestamp": "2026-11-06T09:41:47.123Z",
+                        "status": "ERROR"
+                      }
+                    }
+                  }
+                }
+              }
+            }
+          },
+          "404": {
+            "description": "Not Found",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/Error404"
+                },
+                "examples": {
+                  "fail---not-found": {
+                    "summary": "Fail - Not Found",
+                    "value": {
+                      "status": {
+                        "code": 404,
+                        "message": "Not Found",
+                        "bizCode": "E10004",
+                        "bizMessage": "Consent type not found.",
+                        "requestId": "req-420a1b2c-3d4e-5f6a-7b8c-9d0e1f2a3b4c",
+                        "timestamp": "2026-11-05T12:40:54.123Z",
+                        "status": "ERROR"
+                      }
+                    }
+                  }
+                }
+              }
+            }
+          },
+          "408": {
+            "description": "Request Timeout",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/Error408"
+                },
+                "examples": {
+                  "fail---request-timeout": {
+                    "summary": "Fail - Request Timeout",
+                    "value": {
+                      "status": {
+                        "code": 408,
+                        "message": "Request Timeout",
+                        "bizCode": "E90001",
+                        "bizMessage": "The server timed out waiting for the request.",
+                        "requestId": "req-408a1b2c-3d4e-5f6a-7b8c-9d0e1f2a3b4c",
+                        "timestamp": "2026-11-05T12:45:30.123Z",
+                        "status": "ERROR"
+                      }
+                    }
+                  }
+                }
+              }
+            }
+          },
+          "409": {
+            "description": "Conflict",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/Error409"
+                },
+                "examples": {
+                  "fail---conflict": {
+                    "summary": "Fail - Conflict",
+                    "value": {
+                      "status": {
+                        "code": 409,
+                        "message": "Conflict",
+                        "bizCode": "E10003",
+                        "bizMessage": "Consent type name already exists.",
+                        "requestId": "req-440a1b2c-3d4e-5f6a-7b8c-9d0e1f2a3b4c",
+                        "timestamp": "2026-11-05T12:42:08.123Z",
+                        "status": "ERROR"
+                      }
+                    }
+                  },
+                  "fail---conflict-in-use": {
+                    "summary": "Fail - Conflict In Use",
+                    "value": {
+                      "status": {
+                        "code": 409,
+                        "message": "Conflict",
+                        "bizCode": "E10006",
+                        "bizMessage": "Consent type is used by consents.",
+                        "requestId": "req-450a1b2c-3d4e-5f6a-7b8c-9d0e1f2a3b4c",
+                        "timestamp": "2026-11-05T12:43:15.123Z",
+                        "status": "ERROR"
+                      }
+                    }
+                  }
+                }
+              }
+            }
+          },
+          "500": {
+            "description": "Internal Server Error",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/Error500"
+                },
+                "examples": {
+                  "fail---internal-server-error": {
+                    "summary": "Fail - Internal Server Error",
+                    "value": {
+                      "status": {
+                        "code": 500,
+                        "message": "Internal Server Error",
+                        "bizMessage": "An unexpected error occurred.",
+                        "requestId": "req-500a1b2c-3d4e-5f6a-7b8c-9d0e1f2a3b4c",
+                        "timestamp": "2026-11-05T12:46:10.123Z",
+                        "status": "ERROR"
+                      }
+                    }
+                  }
+                }
+              }
+            }
+          }
+        }
+      }
+    },
+    "/v1/consent/type/upsert/batch": {
+      "post": {
+        "tags": [
+          "consent"
+        ],
+        "operationId": "upsertConsentTypeBatch",
+        "summary": "Upsert Consent Type Batch API",
+        "description": "Insert, update or delete multiple consent types at the same time, only a platform administrator can call it, Each consent type is inserted when id is not specified, updated when id is specified, deleted when rowStatus is DELETED, archived when rowStatus is ARCHIVED, The response is always HTTP 200 for a successful batch including when it deletes (each result is reported in the body with its action), All consent types are processed in one transaction in the request order, If any consent type fails then no consent type is changed\n\nSource spec: `e-commerce/doc/api/consent/07-upsert-consent-type-batch/spec.md`",
+        "x-spec": "e-commerce/doc/api/consent/07-upsert-consent-type-batch/spec.md",
+        "parameters": [
+          {
+            "$ref": "#/components/parameters/Timestamp"
+          },
+          {
+            "$ref": "#/components/parameters/RequestId"
+          }
+        ],
+        "security": [
+          {
+            "bearerAuth": []
+          }
+        ],
+        "requestBody": {
+          "required": true,
+          "content": {
+            "application/json": {
+              "schema": {
+                "type": "object",
+                "properties": {
+                  "consentTypes": {
+                    "description": "Consent types to insert, update or delete (min 1, max 100 items)",
+                    "type": "array",
+                    "items": {
+                      "type": "object",
+                      "properties": {
+                        "id": {
+                          "description": "Consent Type Id, Insert when not specified, Update, Delete or Archive when specified, The id of a DELETED consent type counts as not found, Must not be duplicated in the request",
+                          "type": "string",
+                          "format": "uuid",
+                          "examples": [
+                            "b8c9d0e1-2f3a-4b4c-9d5e-6f7a8b9c0d1e"
+                          ]
+                        },
+                        "name": {
+                          "description": "Consent Type Name (max 128 characters), Unique among consent types that are not DELETED",
+                          "type": "string",
+                          "maxLength": 128,
+                          "examples": [
+                            "Terms and Conditions"
+                          ]
+                        },
+                        "description": {
+                          "description": "Consent Type Description (max 1000 characters), Not specified keeps the current description on update, null clears it",
+                          "type": [
+                            "string",
+                            "null"
+                          ],
+                          "maxLength": 1000,
+                          "examples": [
+                            "Terms that every customer accepts to use the platform"
+                          ]
+                        },
+                        "isRequired": {
+                          "description": "Reference data only, the consent decides whether it must be accepted, Defaults to FALSE on insert, Not specified keeps the current value on update",
+                          "type": "boolean",
+                          "examples": [
+                            true
+                          ]
+                        },
+                        "rowStatus": {
+                          "description": "Row status (ACTIVE, INACTIVE, DELETED, LOCKED, ARCHIVED), Defaults to ACTIVE, Delete when DELETED, Archive when ARCHIVED, DELETED is not allowed when inserting, Delete or archive is allowed only when the consent type is not used by any consent that is not DELETED",
+                          "type": "string",
+                          "enum": [
+                            "ACTIVE",
+                            "INACTIVE",
+                            "DELETED",
+                            "LOCKED",
+                            "ARCHIVED"
+                          ],
+                          "default": "ACTIVE",
+                          "examples": [
+                            "ACTIVE"
+                          ]
+                        }
+                      },
+                      "required": [
+                        "name"
+                      ]
+                    }
+                  }
+                },
+                "required": [
+                  "consentTypes"
+                ]
+              },
+              "examples": {
+                "example": {
+                  "summary": "Example",
+                  "value": {
+                    "consentTypes": [
+                      {
+                        "name": "Terms and Conditions",
+                        "description": "Terms that every customer accepts to use the platform",
+                        "isRequired": true,
+                        "rowStatus": "ACTIVE"
+                      },
+                      {
+                        "id": "b8c9d0e1-2f3a-4b4c-9d5e-6f7a8b9c0d1e",
+                        "name": "Marketing",
+                        "description": "Permission to send promotions and news",
+                        "isRequired": false,
+                        "rowStatus": "ACTIVE"
+                      },
+                      {
+                        "id": "c5d6e7f8-a9b0-4c1d-8e2f-4a5b6c7d8e9f",
+                        "name": "Cookies",
+                        "description": "Permission to store cookies in the browser",
+                        "isRequired": false,
+                        "rowStatus": "DELETED"
+                      }
+                    ]
+                  }
+                }
+              }
+            }
+          }
+        },
+        "responses": {
+          "200": {
+            "description": "Ok",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "type": "object",
+                  "required": [
+                    "status"
+                  ],
+                  "properties": {
+                    "status": {
+                      "$ref": "#/components/schemas/Status"
+                    },
+                    "data": {
+                      "type": "object",
+                      "properties": {
+                        "consentTypes": {
+                          "description": "Result of each consent type, Same order as the request",
+                          "type": "array",
+                          "items": {
+                            "type": "object",
+                            "properties": {
+                              "index": {
+                                "description": "Index of the consent type in the request, Starting from 0",
+                                "type": "number",
+                                "examples": [
+                                  0
+                                ]
+                              },
+                              "consentTypeId": {
+                                "description": "Inserted, Updated, Deleted or Archived Consent Type Id",
+                                "type": "string",
+                                "format": "uuid",
+                                "examples": [
+                                  "a7b8c9d0-1e2f-4a3b-8c4d-5e6f7a8b9c0d"
+                                ]
+                              },
+                              "action": {
+                                "description": "Action of the consent type (INSERT, UPDATE, DELETE, ARCHIVE)",
+                                "type": "string",
+                                "enum": [
+                                  "INSERT",
+                                  "UPDATE",
+                                  "DELETE",
+                                  "ARCHIVE"
+                                ],
+                                "examples": [
+                                  "INSERT"
+                                ]
+                              }
+                            },
+                            "required": [
+                              "index",
+                              "consentTypeId",
+                              "action"
+                            ]
+                          }
+                        }
+                      },
+                      "required": [
+                        "consentTypes"
+                      ]
+                    }
+                  }
+                },
+                "examples": {
+                  "success": {
+                    "summary": "Success",
+                    "value": {
+                      "status": {
+                        "code": 200,
+                        "message": "Ok",
+                        "bizCode": "S10000",
+                        "bizMessage": "Batch Upsert Consent Type Success",
+                        "requestId": "req-9b1deb4d-3b7d-4bad-9bdd-2b0d7b3dcb6d",
+                        "timestamp": "2026-11-05T12:42:00.123Z",
+                        "status": "SUCCESS"
+                      },
+                      "data": {
+                        "consentTypes": [
+                          {
+                            "index": 0,
+                            "consentTypeId": "a7b8c9d0-1e2f-4a3b-8c4d-5e6f7a8b9c0d",
+                            "action": "INSERT"
+                          },
+                          {
+                            "index": 1,
+                            "consentTypeId": "b8c9d0e1-2f3a-4b4c-9d5e-6f7a8b9c0d1e",
+                            "action": "UPDATE"
+                          },
+                          {
+                            "index": 2,
+                            "consentTypeId": "c5d6e7f8-a9b0-4c1d-8e2f-4a5b6c7d8e9f",
+                            "action": "DELETE"
+                          }
+                        ]
+                      }
+                    }
+                  }
+                }
+              }
+            }
+          },
+          "400": {
+            "description": "Bad Request",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/Error400"
+                },
+                "examples": {
+                  "fail---bad-request": {
+                    "summary": "Fail - Bad Request",
+                    "value": {
+                      "status": {
+                        "code": 400,
+                        "message": "Bad Request",
+                        "bizCode": "E10001",
+                        "bizMessage": "consentTypes[0]: Name is a required field.",
+                        "requestId": "req-400a1b2c-3d4e-5f6a-7b8c-9d0e1f2a3b4c",
+                        "timestamp": "2026-11-05T12:44:40.123Z",
+                        "status": "ERROR"
+                      }
+                    }
+                  },
+                  "fail---bad-request-item-count": {
+                    "summary": "Fail - Bad Request Item Count",
+                    "value": {
+                      "status": {
+                        "code": 400,
+                        "message": "Bad Request",
+                        "bizCode": "E10001",
+                        "bizMessage": "Consent types must contain 1 to 100 items.",
+                        "requestId": "req-410a1b2c-3d4e-5f6a-7b8c-9d0e1f2a3b4c",
+                        "timestamp": "2026-11-05T12:45:47.123Z",
+                        "status": "ERROR"
+                      }
+                    }
+                  },
+                  "fail---bad-request-duplicate-id": {
+                    "summary": "Fail - Bad Request Duplicate Id",
+                    "value": {
+                      "status": {
+                        "code": 400,
+                        "message": "Bad Request",
+                        "bizCode": "E10001",
+                        "bizMessage": "consentTypes[2]: Id is duplicated with consentTypes[1].",
+                        "requestId": "req-420a1b2c-3d4e-5f6a-7b8c-9d0e1f2a3b4c",
+                        "timestamp": "2026-11-05T12:40:54.123Z",
+                        "status": "ERROR"
+                      }
+                    }
+                  },
+                  "fail---bad-request-duplicate-name": {
+                    "summary": "Fail - Bad Request Duplicate Name",
+                    "value": {
+                      "status": {
+                        "code": 400,
+                        "message": "Bad Request",
+                        "bizCode": "E10001",
+                        "bizMessage": "consentTypes[2]: Name is duplicated with consentTypes[0].",
+                        "requestId": "req-430a1b2c-3d4e-5f6a-7b8c-9d0e1f2a3b4c",
+                        "timestamp": "2026-11-05T12:41:01.123Z",
+                        "status": "ERROR"
+                      }
+                    }
+                  },
+                  "fail---bad-request-row-status": {
+                    "summary": "Fail - Bad Request Row Status",
+                    "value": {
+                      "status": {
+                        "code": 400,
+                        "message": "Bad Request",
+                        "bizCode": "E10001",
+                        "bizMessage": "consentTypes[1]: Row status must not be DELETED when inserting a consent type.",
+                        "requestId": "req-460a1b2c-3d4e-5f6a-7b8c-9d0e1f2a3b4c",
+                        "timestamp": "2026-11-05T12:44:22.123Z",
+                        "status": "ERROR"
+                      }
+                    }
+                  }
+                }
+              }
+            }
+          },
+          "401": {
+            "description": "Unauthorized",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/Error401"
+                },
+                "examples": {
+                  "fail---unauthorized": {
+                    "summary": "Fail - Unauthorized",
+                    "value": {
+                      "status": {
+                        "code": 401,
+                        "message": "Unauthorized",
+                        "bizCode": "E10002",
+                        "bizMessage": "Invalid or expired access token.",
+                        "requestId": "req-7a2cba3e-1b2d-4caf-8cce-3b1d7b3dcb6d",
+                        "timestamp": "2026-11-05T12:43:10.456Z",
+                        "status": "ERROR"
+                      }
+                    }
+                  }
+                }
+              }
+            }
+          },
+          "403": {
+            "description": "Forbidden",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/Error403"
+                },
+                "examples": {
+                  "fail---forbidden": {
+                    "summary": "Fail - Forbidden",
+                    "value": {
+                      "status": {
+                        "code": 403,
+                        "message": "Forbidden",
+                        "bizCode": "E10009",
+                        "bizMessage": "You do not have permission to change consent types.",
+                        "requestId": "req-430a1b2c-3d4e-5f6a-7b8c-9d0e1f2a3b4c",
+                        "timestamp": "2026-11-06T09:41:47.123Z",
+                        "status": "ERROR"
+                      }
+                    }
+                  }
+                }
+              }
+            }
+          },
+          "404": {
+            "description": "Not Found",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/Error404"
+                },
+                "examples": {
+                  "fail---not-found": {
+                    "summary": "Fail - Not Found",
+                    "value": {
+                      "status": {
+                        "code": 404,
+                        "message": "Not Found",
+                        "bizCode": "E10004",
+                        "bizMessage": "consentTypes[1]: Consent type not found.",
+                        "requestId": "req-450a1b2c-3d4e-5f6a-7b8c-9d0e1f2a3b4c",
+                        "timestamp": "2026-11-05T12:43:15.123Z",
+                        "status": "ERROR"
+                      }
+                    }
+                  }
+                }
+              }
+            }
+          },
+          "408": {
+            "description": "Request Timeout",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/Error408"
+                },
+                "examples": {
+                  "fail---request-timeout": {
+                    "summary": "Fail - Request Timeout",
+                    "value": {
+                      "status": {
+                        "code": 408,
+                        "message": "Request Timeout",
+                        "bizCode": "E90001",
+                        "bizMessage": "The server timed out waiting for the request.",
+                        "requestId": "req-408a1b2c-3d4e-5f6a-7b8c-9d0e1f2a3b4c",
+                        "timestamp": "2026-11-05T12:45:30.123Z",
+                        "status": "ERROR"
+                      }
+                    }
+                  }
+                }
+              }
+            }
+          },
+          "409": {
+            "description": "Conflict",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/Error409"
+                },
+                "examples": {
+                  "fail---conflict": {
+                    "summary": "Fail - Conflict",
+                    "value": {
+                      "status": {
+                        "code": 409,
+                        "message": "Conflict",
+                        "bizCode": "E10003",
+                        "bizMessage": "consentTypes[0]: Consent type name already exists.",
+                        "requestId": "req-470a1b2c-3d4e-5f6a-7b8c-9d0e1f2a3b4c",
+                        "timestamp": "2026-11-05T12:45:29.123Z",
+                        "status": "ERROR"
+                      }
+                    }
+                  },
+                  "fail---conflict-in-use": {
+                    "summary": "Fail - Conflict In Use",
+                    "value": {
+                      "status": {
+                        "code": 409,
+                        "message": "Conflict",
+                        "bizCode": "E10006",
+                        "bizMessage": "consentTypes[2]: Consent type is used by consents.",
+                        "requestId": "req-480a1b2c-3d4e-5f6a-7b8c-9d0e1f2a3b4c",
+                        "timestamp": "2026-11-05T12:40:36.123Z",
+                        "status": "ERROR"
+                      }
+                    }
+                  }
+                }
+              }
+            }
+          },
+          "500": {
+            "description": "Internal Server Error",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/Error500"
+                },
+                "examples": {
+                  "fail---internal-server-error": {
+                    "summary": "Fail - Internal Server Error",
+                    "value": {
+                      "status": {
+                        "code": 500,
+                        "message": "Internal Server Error",
+                        "bizMessage": "An unexpected error occurred.",
+                        "requestId": "req-500a1b2c-3d4e-5f6a-7b8c-9d0e1f2a3b4c",
+                        "timestamp": "2026-11-05T12:46:10.123Z",
+                        "status": "ERROR"
+                      }
+                    }
+                  }
+                }
+              }
+            }
+          }
+        }
+      }
+    },
+    "/v1/consent/upsert": {
+      "post": {
+        "tags": [
+          "consent"
+        ],
+        "operationId": "upsertConsent",
+        "summary": "Upsert Consent API",
+        "description": "Insert, update or delete a consent, Insert when id is not specified, Update when id is specified, Delete when rowStatus is DELETED (HTTP 204 No Content, no response body), Archive when rowStatus is ARCHIVED (HTTP 200), only a platform administrator can call it, Only a platform administrator can call it\n\nSource spec: `e-commerce/doc/api/consent/02-upsert-consent/spec.md`",
+        "x-spec": "e-commerce/doc/api/consent/02-upsert-consent/spec.md",
+        "parameters": [
+          {
+            "$ref": "#/components/parameters/Timestamp"
+          },
+          {
+            "$ref": "#/components/parameters/RequestId"
+          }
+        ],
+        "security": [
+          {
+            "bearerAuth": []
+          }
+        ],
+        "requestBody": {
+          "required": true,
+          "content": {
+            "application/json": {
+              "schema": {
+                "type": "object",
+                "properties": {
+                  "id": {
+                    "description": "Consent Id, Insert when not specified, Update or Delete when specified",
+                    "type": "string",
+                    "format": "uuid",
+                    "examples": [
+                      "c1a2b3d4-e5f6-4a7b-8c9d-0e1f2a3b4c5d"
+                    ]
+                  },
+                  "code": {
+                    "description": "Consent Code (max 64 characters), Unique among all consents including a DELETED one",
+                    "type": "string",
+                    "maxLength": 64,
+                    "examples": [
+                      "PRIVACY_POLICY"
+                    ]
+                  },
+                  "consentTypeId": {
+                    "description": "Consent Type Id, An ACTIVE type when the consent is created, opened to ACTIVE or moved to another type",
+                    "type": "string",
+                    "format": "uuid",
+                    "examples": [
+                      "a7b8c9d0-1e2f-4a3b-8c4d-5e6f7a8b9c0d"
+                    ]
+                  },
+                  "consentVersion": {
+                    "description": "Consent Version (max 8 characters), Defaults to 1.0.0, Any different value may be set on update",
+                    "type": "string",
+                    "maxLength": 8,
+                    "examples": [
+                      "1.0.0"
+                    ]
+                  },
+                  "consentName": {
+                    "description": "Consent Name (max 128 characters)",
+                    "type": "string",
+                    "maxLength": 128,
+                    "examples": [
+                      "Privacy Policy"
+                    ]
+                  },
+                  "consentDescription": {
+                    "description": "Consent Description",
+                    "type": "string",
+                    "examples": [
+                      "Privacy policy of the service"
+                    ]
+                  },
+                  "effectiveAt": {
+                    "description": "Consent Effective Timestamp (Without time zone UTC), Defaults to now",
+                    "type": "string",
+                    "format": "date-time",
+                    "examples": [
+                      "2026-01-01T00:00:00.000Z"
+                    ]
+                  },
+                  "expiredAt": {
+                    "description": "Consent Expired Timestamp (Without time zone UTC), Later than effectiveAt when both are given",
+                    "type": [
+                      "string",
+                      "null"
+                    ],
+                    "format": "date-time",
+                    "examples": [
+                      "2027-01-01T00:00:00.000Z"
+                    ]
+                  },
+                  "isRequired": {
+                    "description": "Consent is required to be accepted, Defaults to FALSE",
+                    "type": "boolean",
+                    "default": false,
+                    "examples": [
+                      true
+                    ]
+                  },
+                  "rowStatus": {
+                    "description": "Row status (ACTIVE, INACTIVE, DELETED, LOCKED, ARCHIVED), Defaults to ACTIVE, Delete when DELETED (final), Archive when ARCHIVED",
+                    "type": "string",
+                    "enum": [
+                      "ACTIVE",
+                      "INACTIVE",
+                      "DELETED",
+                      "LOCKED",
+                      "ARCHIVED"
+                    ],
+                    "default": "ACTIVE",
+                    "examples": [
+                      "ACTIVE"
+                    ]
+                  },
+                  "body": {
+                    "description": "Consent Body",
+                    "type": "object"
+                  }
+                },
+                "required": [
+                  "code",
+                  "consentTypeId",
+                  "consentName",
+                  "body"
+                ]
+              },
+              "examples": {
+                "insert": {
+                  "summary": "Insert",
+                  "value": {
+                    "code": "PRIVACY_POLICY",
+                    "consentTypeId": "a7b8c9d0-1e2f-4a3b-8c4d-5e6f7a8b9c0d",
+                    "consentVersion": "1.0.0",
+                    "consentName": "Privacy Policy",
+                    "consentDescription": "Privacy policy of the service",
+                    "effectiveAt": "2026-01-01T00:00:00.000Z",
+                    "expiredAt": null,
+                    "isRequired": true,
+                    "rowStatus": "ACTIVE",
+                    "body": {
+                      "title": "Privacy Policy",
+                      "content": "We collect and use your personal data as follows..."
+                    }
+                  }
+                },
+                "update": {
+                  "summary": "Update",
+                  "value": {
+                    "id": "c1a2b3d4-e5f6-4a7b-8c9d-0e1f2a3b4c5d",
+                    "code": "PRIVACY_POLICY",
+                    "consentTypeId": "a7b8c9d0-1e2f-4a3b-8c4d-5e6f7a8b9c0d",
+                    "consentVersion": "1.1.0",
+                    "consentName": "Privacy Policy",
+                    "consentDescription": "Privacy policy of the service",
+                    "effectiveAt": "2026-01-01T00:00:00.000Z",
+                    "expiredAt": null,
+                    "isRequired": true,
+                    "rowStatus": "ACTIVE",
+                    "body": {
+                      "title": "Privacy Policy",
+                      "content": "We collect and use your personal data as follows..."
+                    }
+                  }
+                },
+                "delete": {
+                  "summary": "Delete",
+                  "value": {
+                    "id": "c1a2b3d4-e5f6-4a7b-8c9d-0e1f2a3b4c5d",
+                    "code": "PRIVACY_POLICY",
+                    "consentTypeId": "a7b8c9d0-1e2f-4a3b-8c4d-5e6f7a8b9c0d",
+                    "consentVersion": "1.1.0",
+                    "consentName": "Privacy Policy",
+                    "consentDescription": "Privacy policy of the service",
+                    "effectiveAt": "2026-01-01T00:00:00.000Z",
+                    "expiredAt": null,
+                    "isRequired": true,
+                    "rowStatus": "DELETED",
+                    "body": {
+                      "title": "Privacy Policy",
+                      "content": "We collect and use your personal data as follows..."
+                    }
+                  }
+                }
+              }
+            }
+          }
+        },
+        "responses": {
+          "200": {
+            "description": "Ok",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "type": "object",
+                  "required": [
+                    "status"
+                  ],
+                  "properties": {
+                    "status": {
+                      "$ref": "#/components/schemas/Status"
+                    },
+                    "data": {
+                      "type": "object",
+                      "properties": {
+                        "consentId": {
+                          "description": "Inserted, Updated or Archived Consent Id, Not returned when deleted (HTTP 204)",
+                          "type": "string",
+                          "format": "uuid",
+                          "examples": [
+                            "c1a2b3d4-e5f6-4a7b-8c9d-0e1f2a3b4c5d"
+                          ]
+                        }
+                      },
+                      "required": [
+                        "consentId"
+                      ]
+                    }
+                  }
+                },
+                "examples": {
+                  "success---update": {
+                    "summary": "Success - Update",
+                    "value": {
+                      "status": {
+                        "code": 200,
+                        "message": "Ok",
+                        "bizCode": "S10000",
+                        "bizMessage": "Update Consent Success",
+                        "requestId": "req-5c3d9e1f-2a4b-4c6d-8e0f-1a2b3c4d5e6f",
+                        "timestamp": "2026-11-05T12:50:00.123Z",
+                        "status": "SUCCESS"
+                      },
+                      "data": {
+                        "consentId": "c1a2b3d4-e5f6-4a7b-8c9d-0e1f2a3b4c5d"
+                      }
+                    }
+                  },
+                  "success---archive": {
+                    "summary": "Success - Archive",
+                    "value": {
+                      "status": {
+                        "code": 200,
+                        "message": "Ok",
+                        "bizCode": "S10000",
+                        "bizMessage": "Archive Consent Success",
+                        "requestId": "req-7e5f1a3b-4c6d-4e8f-8a2b-3c4d5e6f7a8b",
+                        "timestamp": "2026-11-05T12:57:00.123Z",
+                        "status": "SUCCESS"
+                      },
+                      "data": {
+                        "consentId": "c1a2b3d4-e5f6-4a7b-8c9d-0e1f2a3b4c5d"
+                      }
+                    }
+                  }
+                }
+              }
+            }
+          },
+          "201": {
+            "description": "Created",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "type": "object",
+                  "required": [
+                    "status"
+                  ],
+                  "properties": {
+                    "status": {
+                      "$ref": "#/components/schemas/Status"
+                    },
+                    "data": {
+                      "type": "object",
+                      "properties": {
+                        "consentId": {
+                          "description": "Inserted, Updated or Archived Consent Id, Not returned when deleted (HTTP 204)",
+                          "type": "string",
+                          "format": "uuid",
+                          "examples": [
+                            "c1a2b3d4-e5f6-4a7b-8c9d-0e1f2a3b4c5d"
+                          ]
+                        }
+                      },
+                      "required": [
+                        "consentId"
+                      ]
+                    }
+                  }
+                },
+                "examples": {
+                  "success---insert": {
+                    "summary": "Success - Insert",
+                    "value": {
+                      "status": {
+                        "code": 201,
+                        "message": "Created",
+                        "bizCode": "S10000",
+                        "bizMessage": "Insert Consent Success",
+                        "requestId": "req-9b1deb4d-3b7d-4bad-9bdd-2b0d7b3dcb6d",
+                        "timestamp": "2026-11-05T12:42:00.123Z",
+                        "status": "SUCCESS"
+                      },
+                      "data": {
+                        "consentId": "c1a2b3d4-e5f6-4a7b-8c9d-0e1f2a3b4c5d"
+                      }
+                    }
+                  }
+                }
+              }
+            }
+          },
+          "204": {
+            "description": "No Content"
+          },
+          "400": {
+            "description": "Bad Request",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/Error400"
+                },
+                "examples": {
+                  "fail---bad-request": {
+                    "summary": "Fail - Bad Request",
+                    "value": {
+                      "status": {
+                        "code": 400,
+                        "message": "Bad Request",
+                        "bizCode": "E10001",
+                        "bizMessage": "Code, Consent Type Id, Consent Name and Body are required fields.",
+                        "requestId": "req-400a1b2c-3d4e-5f6a-7b8c-9d0e1f2a3b4c",
+                        "timestamp": "2026-11-05T12:43:45.123Z",
+                        "status": "ERROR"
+                      }
+                    }
+                  },
+                  "fail---bad-request-period": {
+                    "summary": "Fail - Bad Request Period",
+                    "value": {
+                      "status": {
+                        "code": 400,
+                        "message": "Bad Request",
+                        "bizCode": "E10001",
+                        "bizMessage": "Expired timestamp must be later than the effective timestamp.",
+                        "requestId": "req-415a1b2c-3d4e-5f6a-7b8c-9d0e1f2a3b4c",
+                        "timestamp": "2026-11-05T12:41:20.123Z",
+                        "status": "ERROR"
+                      }
+                    }
+                  }
+                }
+              }
+            }
+          },
+          "401": {
+            "description": "Unauthorized",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/Error401"
+                },
+                "examples": {
+                  "fail---unauthorized": {
+                    "summary": "Fail - Unauthorized",
+                    "value": {
+                      "status": {
+                        "code": 401,
+                        "message": "Unauthorized",
+                        "bizCode": "E10002",
+                        "bizMessage": "Invalid or expired access token.",
+                        "requestId": "req-7a2cba3e-1b2d-4caf-8cce-3b1d7b3dcb6d",
+                        "timestamp": "2026-11-05T12:43:10.456Z",
+                        "status": "ERROR"
+                      }
+                    }
+                  }
+                }
+              }
+            }
+          },
+          "403": {
+            "description": "Forbidden",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/Error403"
+                },
+                "examples": {
+                  "fail---forbidden": {
+                    "summary": "Fail - Forbidden",
+                    "value": {
+                      "status": {
+                        "code": 403,
+                        "message": "Forbidden",
+                        "bizCode": "E10009",
+                        "bizMessage": "You do not have permission to manage consents.",
+                        "requestId": "req-430a1b2c-3d4e-5f6a-7b8c-9d0e1f2a3b4c",
+                        "timestamp": "2026-11-06T09:41:47.123Z",
+                        "status": "ERROR"
+                      }
+                    }
+                  }
+                }
+              }
+            }
+          },
+          "404": {
+            "description": "Not Found",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/Error404"
+                },
+                "examples": {
+                  "fail---not-found": {
+                    "summary": "Fail - Not Found",
+                    "value": {
+                      "status": {
+                        "code": 404,
+                        "message": "Not Found",
+                        "bizCode": "E10004",
+                        "bizMessage": "Consent not found.",
+                        "requestId": "req-404a1b2c-3d4e-5f6a-7b8c-9d0e1f2a3b4c",
+                        "timestamp": "2026-11-05T12:44:05.321Z",
+                        "status": "ERROR"
+                      }
+                    }
+                  },
+                  "fail---not-found-consent-type": {
+                    "summary": "Fail - Not Found Consent Type",
+                    "value": {
+                      "status": {
+                        "code": 404,
+                        "message": "Not Found",
+                        "bizCode": "E10005",
+                        "bizMessage": "Consent type not found or not ACTIVE.",
+                        "requestId": "req-475a1b2c-3d4e-5f6a-7b8c-9d0e1f2a3b4c",
+                        "timestamp": "2026-11-05T12:47:30.123Z",
+                        "status": "ERROR"
+                      }
+                    }
+                  }
+                }
+              }
+            }
+          },
+          "408": {
+            "description": "Request Timeout",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/Error408"
+                },
+                "examples": {
+                  "fail---request-timeout": {
+                    "summary": "Fail - Request Timeout",
+                    "value": {
+                      "status": {
+                        "code": 408,
+                        "message": "Request Timeout",
+                        "bizCode": "E90001",
+                        "bizMessage": "The server timed out waiting for the request.",
+                        "requestId": "req-408a1b2c-3d4e-5f6a-7b8c-9d0e1f2a3b4c",
+                        "timestamp": "2026-11-05T12:45:30.123Z",
+                        "status": "ERROR"
+                      }
+                    }
+                  }
+                }
+              }
+            }
+          },
+          "409": {
+            "description": "Conflict",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/Error409"
+                },
+                "examples": {
+                  "fail---conflict": {
+                    "summary": "Fail - Conflict",
+                    "value": {
+                      "status": {
+                        "code": 409,
+                        "message": "Conflict",
+                        "bizCode": "E10003",
+                        "bizMessage": "Consent code already exists.",
+                        "requestId": "req-409a1b2c-3d4e-5f6a-7b8c-9d0e1f2a3b4c",
+                        "timestamp": "2026-11-05T12:44:20.789Z",
+                        "status": "ERROR"
+                      }
+                    }
+                  }
+                }
+              }
+            }
+          },
+          "500": {
+            "description": "Internal Server Error",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/Error500"
+                },
+                "examples": {
+                  "fail---internal-server-error": {
+                    "summary": "Fail - Internal Server Error",
+                    "value": {
+                      "status": {
+                        "code": 500,
+                        "message": "Internal Server Error",
+                        "bizMessage": "An unexpected error occurred.",
+                        "requestId": "req-consent-upsert-review",
+                        "timestamp": "2026-11-14T00:00:00.123Z",
+                        "status": "ERROR"
+                      }
+                    }
+                  }
+                }
+              }
+            }
+          }
+        }
+      }
+    },
     "/v1/user/address": {
       "get": {
         "tags": [
           "authen-and-author"
         ],
         "operationId": "inquiryUserAddress",
-        "summary": null,
-        "description": "None\n\nSource spec: `e-commerce/doc/api/authen-and-author/10-inquiry-user-address/spec.md`",
+        "summary": "Inquiry User Address API",
+        "description": "Inquiry the delivery addresses of the logged-in user with paging and search, Inquiry by id returns a list with one item, Deleted addresses are excluded, The default address comes first\n\nSource spec: `e-commerce/doc/api/authen-and-author/10-inquiry-user-address/spec.md`",
         "x-spec": "e-commerce/doc/api/authen-and-author/10-inquiry-user-address/spec.md",
         "parameters": [
           {
@@ -7978,8 +11405,8 @@
           "authen-and-author"
         ],
         "operationId": "upsertUserAddress",
-        "summary": null,
-        "description": "None\n\nSource spec: `e-commerce/doc/api/authen-and-author/09-upsert-user-address/spec.md`",
+        "summary": "Upsert User Address API",
+        "description": "Insert, update or delete a delivery address of the logged-in user, Insert when id is not specified (HTTP 201), Update when id is specified (HTTP 200), Delete when rowStatus is DELETED (HTTP 204 No Content, no response body), A user has one default address, At most 10 addresses per user\n\nSource spec: `e-commerce/doc/api/authen-and-author/09-upsert-user-address/spec.md`",
         "x-spec": "e-commerce/doc/api/authen-and-author/09-upsert-user-address/spec.md",
         "parameters": [
           {
@@ -8418,8 +11845,8 @@
           "authen-and-author"
         ],
         "operationId": "inquiryUserProfile",
-        "summary": null,
-        "description": "None\n\nSource spec: `e-commerce/doc/api/authen-and-author/08-inquiry-user-profile/spec.md`",
+        "summary": "Inquiry User Profile API",
+        "description": "Inquiry the profile of the logged-in user, The user comes from the access token, Sensitive fields are returned as plain text\n\nSource spec: `e-commerce/doc/api/authen-and-author/08-inquiry-user-profile/spec.md`",
         "x-spec": "e-commerce/doc/api/authen-and-author/08-inquiry-user-profile/spec.md",
         "parameters": [
           {
@@ -8764,8 +12191,8 @@
           "authen-and-author"
         ],
         "operationId": "upsertUserProfile",
-        "summary": null,
-        "description": "None\n\nSource spec: `e-commerce/doc/api/authen-and-author/07-upsert-user-profile/spec.md`",
+        "summary": "Upsert User Profile API",
+        "description": "Update the profile of the logged-in user (name, display name, picture, phone number, address, date of birth, gender), The user comes from the access token, Fields that are not specified keep their value, null clears an optional field\n\nSource spec: `e-commerce/doc/api/authen-and-author/07-upsert-user-profile/spec.md`",
         "x-spec": "e-commerce/doc/api/authen-and-author/07-upsert-user-profile/spec.md",
         "parameters": [
           {
