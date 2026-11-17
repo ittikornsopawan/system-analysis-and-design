@@ -23,6 +23,33 @@ CREATE TABLE
         key_value BYTEA NOT NULL
     );
 
+CREATE TABLE
+    IF NOT EXISTS public.t_parameter (
+        id UUID NOT NULL DEFAULT GEN_RANDOM_UUID () PRIMARY KEY,
+        created_by VARCHAR(64) NOT NULL,
+        created_at TIMESTAMP WITHOUT TIME ZONE NOT NULL DEFAULT NOW (),
+        updated_by VARCHAR(64),
+        updated_at TIMESTAMP WITHOUT TIME ZONE,
+        row_status VARCHAR(32) NOT NULL DEFAULT 'ACTIVE' CHECK (
+            row_status IN (
+                'ACTIVE',
+                'INACTIVE',
+                'DELETED',
+                'LOCKED',
+                'ARCHIVED',
+                'EXPIRED'
+            )
+        ),
+        effective_at TIMESTAMP WITHOUT TIME ZONE NOT NULL DEFAULT NOW (),
+        expired_at TIMESTAMP WITHOUT TIME ZONE,
+        parent_id UUID REFERENCES public.t_parameter (id) ON DELETE RESTRICT,
+        key VARCHAR(128) NOT NULL UNIQUE,
+        value JSONB NOT NULL,
+        title JSONB,
+        display JSONB,
+        metadata JSONB
+    );
+
 CREATE SCHEMA IF NOT EXISTS consent;
 
 CREATE TABLE

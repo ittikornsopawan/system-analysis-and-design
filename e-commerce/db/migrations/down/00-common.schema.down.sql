@@ -4,6 +4,8 @@ DROP TABLE IF EXISTS consent.t_consent;
 
 DROP TABLE IF EXISTS consent.m_consent_type;
 
+DROP TABLE IF EXISTS public.t_parameter;
+
 DROP TABLE IF EXISTS public.t_key;
 
 DROP SCHEMA IF EXISTS consent;
