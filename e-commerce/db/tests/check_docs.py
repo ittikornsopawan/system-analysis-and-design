@@ -9120,6 +9120,42 @@ def check_api_contract() -> int:
 COMMANDS["api-contract"] = check_api_contract
 
 
+# ---------------------------------------------------------------- limits and rate limiting (owner answers of 2026-11-17, security review F7 and F9)
+LIMITED_PUBLIC_SPECS = ["authen-and-author/01-register", "authen-and-author/02-login", "authen-and-author/05-refresh-token", "authen-and-author/03-reset-password",
+                        "authen-and-author/04-create-new-password", "consent/01-inquiry-active-consent", "shop/04-inquiry-storefront-product",
+                        "shop/14-inquiry-storefront-shop-product", "shop/16-inquiry-storefront-product-review"]
+
+
+def check_api_limits() -> int:
+    """Every batch spec says 1 to 100 items, the public specs carry the 429 rule, the webhook has the 64 KB cap and the conventions hold all three."""
+    errors = []
+    conventions = read(".agents/skills/api-contract-design/references/api-conventions.md")
+    errors += [f"api-conventions.md missing: {n!r}" for n in missing_needles(conventions, [
+        "| 429 | E90002 |", "## Limits and rate limiting", "at most 64 KB (65536 bytes)", "default 60 requests per minute", "`Retry-After`", "1 to 100 items"])]
+    for path in sorted((ROOT / "e-commerce/doc/api").glob("*/*batch*/spec.md")):
+        md = path.read_text(encoding="utf-8")
+        if "(min 1, max 100 items)" not in md or not re.search(r"must contain 1 to 100 items\.", md):
+            errors.append(f"{path.relative_to(ROOT)}: the batch needs 'min 1, max 100 items' in its body table and the 400 example 'must contain 1 to 100 items.'")
+    for folder in LIMITED_PUBLIC_SPECS:
+        md = read(f"e-commerce/doc/api/{folder}/spec.md")
+        domain = md.split("## Domain", 1)[1].split("\n---\n", 1)[0]
+        if "429 (E90002)" not in domain or "`Retry-After`" not in domain:
+            errors.append(f"{folder}/spec.md: the Domain rules need the rate limit line with 429 (E90002) and Retry-After")
+    webhook = "e-commerce/doc/api/payment/02-stripe-webhook/"
+    if "64 KB (65536 bytes" not in read(webhook + "spec.md") or "at most 64 KB" not in read(webhook + "sequence.wsd"):
+        errors.append("payment/02-stripe-webhook: the spec and the sequence need the 64 KB body cap before the signature check")
+    for folder, codes in error_status_codes().get("E90002", {}).items():
+        if folder != 429:
+            errors.append(f"E90002 must be HTTP 429, found {folder}")
+    if errors:
+        return fail("; ".join(errors))
+    print("OK: api-limits")
+    return 0
+
+
+COMMANDS["api-limits"] = check_api_limits
+
+
 def main(argv: list[str]) -> int:
     if len(argv) < 2:
         print("usage: check_docs.py <subcommand>")

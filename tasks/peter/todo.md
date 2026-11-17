@@ -27,7 +27,7 @@ Started at: 2026-11-17T14:00:00+07:00
 
 - Assignment: Josh (message of 2026-11-17). Both specs stay `status: approved` (owner-ordered change). Contract regenerated with `gen_contract.py`, never hand-edited.
 
-- [ ] PR 1 (F1): `shop/03-inquiry-shop-product-sku` member permission (spec, sequence, checker needles, contract, answers line in the review doc)
-- [ ] PR 2 (F7, F9, F8): batch at most 100 items, webhook body at most 64 KB, 429 E90002 on public endpoints, webhook amount and currency check (`api-conventions.md`, concerned specs, contract)
+- [x] PR 1 (F1): `shop/03-inquiry-shop-product-sku` member permission (spec, sequence, checker needles, contract, answers line in the review doc) — #213 merged 2026-11-17T13:14:50Z, CI `checks` passed
+- [ ] PR 2 (F7, F9): webhook body at most 64 KB, 429 E90002 on the 9 public endpoints, `api-limits` checker, `api-conventions.md`, correction of the batch claim in the review (F8 was done by Tommy in #212)
 
 Completed records are in `success-task.md`.

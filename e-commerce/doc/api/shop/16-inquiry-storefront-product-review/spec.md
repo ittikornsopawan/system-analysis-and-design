@@ -34,6 +34,7 @@ approved_at: 2026-11-16T09:24:57+07:00
 - `sort`: NEWEST (default) orders by `createdAt`, newest first. HIGHEST orders by rating from 5 down to 1 and LOWEST from 1 up to 5. Every sort ends with `reviewId` ascending as the tie-break, so the pages never repeat or skip a review.
 - A review that was changed shows `updatedAt`, otherwise `updatedAt` is null. The comment of a review is optional.
 - The reviews are about the product sold by that shop: the same product of another shop has its own reviews.
+- Rate limit: this API, which needs no access token, answers 429 (E90002) with a `Retry-After` header when a client IP sends more than 60 requests per minute (configurable); the limiter answers before the handler runs, so the 429 is not drawn in the sequence diagram. The rule is in the section Limits and rate limiting of `api-conventions.md`.
 
 ---
 

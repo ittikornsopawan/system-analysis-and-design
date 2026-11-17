@@ -120,8 +120,8 @@ Scanned all request and response examples for JWTs, `sk_`/`whsec_` keys, signatu
   - 33 of 33 request arrays have no `maxItems`; only 77 of 252 request strings have `maxLength`.
   - `POST /v1/auth/login`: `password` has no `maxLength` (register allows 128). A very long password costs the password hash time on every call of an unauthenticated endpoint.
   - 44 of 45 request bodies have no `additionalProperties`, which in OpenAPI means extra properties are allowed. The specs say fields such as `userId` and `role` are never read from the request, but a generated .NET model would silently bind extra fields.
-- **Evidence (missing in the specs):** the 14 `*/upsert/batch` specs do not say how many items a batch may have. A batch runs in one transaction, so a very large batch is a way to hold locks. The webhook has no body size limit.
-- **Recommendation:** Marry adds `maxItems: 100` for `cartIds`, `maxLength` and `maxItems` wherever a spec states one, `maxLength: 128` for the login password, and `additionalProperties: false` for request bodies except the webhook. For batch size and the webhook body size the **owner** should decide a limit (suggestion: 100 items per batch, 64 KB for the webhook body) and Josh writes it into the specs.
+- **Evidence (missing in the specs):** the Stripe webhook had no body size limit. *Correction of 2026-11-17: the first version of this review said that the 14 `*/upsert/batch` specs give no batch size. That was wrong: every batch spec states `min 1, max 100 items` in its body table and has the 400 example `must contain 1 to 100 items.`. The gap is only in the contract, which has no `maxItems` for them (Marry).*
+- **Recommendation:** Marry adds `maxItems: 100` for `cartIds`, `maxLength` and `maxItems` wherever a spec states one, `maxLength: 128` for the login password, and `additionalProperties: false` for request bodies except the webhook. For the webhook body size the **owner** should decide a limit (suggestion: 64 KB) and Josh writes it into the spec. The generator can read `max 100 items` from the batch body tables to produce `maxItems`.
 - **Who fixes:** **Marry** for what the specs already state; **Owner** for batch size and body size.
 
 ### F8 · Low · Webhook payload: `additionalProperties: true` and amount check
@@ -151,7 +151,7 @@ Scanned all request and response examples for JWTs, `sk_`/`whsec_` keys, signatu
 
 | Owner of the fix | Findings |
 | --- | --- |
-| **Owner** (spec change, then Josh/Peter update the specs, then Marry the contract) | F1 (High), F2, F7 batch and body limits, F8 amount check and metadata sentence, F9 |
+| **Owner** (spec change, then Josh/Peter update the specs, then Marry the contract) | F1 (High), F2, F7 webhook body size, F8 amount check and metadata sentence, F9 |
 | **Marry** (generator or contract only, no spec change) | F3, F4, F5, F6, F7 limits already in specs, F8 `created` type, F10 |
 
 Suggested order: F1 first (it blocks the backend of shop SKU), then F3 to F5 together in the contract refactor, because they are text the generator can produce from the specs.
@@ -164,4 +164,4 @@ Suggested order: F1 first (it blocks the backend of shop SKU), then F3 to F5 tog
 
 ## 6. Owner answers (2026-11-17, relayed by Josh)
 
-F1: only an ACTIVE OWNER, ADMIN or STAFF of the shop, or `PLATFORM_ADMIN`, may call `GET /v1/shop/product-sku`, otherwise 403 E10009 (follow-up PR by Peter). F2: keep as is (no change). F7 and F9: set the limits now: batch at most 100 items, webhook body at most 64 KB, 429 with code E90002 on public endpoints (follow-up PR by Peter). F8: add the amount and currency check to the webhook.
+F1: only an ACTIVE OWNER, ADMIN or STAFF of the shop, or `PLATFORM_ADMIN`, may call `GET /v1/shop/product-sku`, otherwise 403 E10009 (follow-up PR by Peter). F2: keep as is (no change). F7 and F9: set the limits now: webhook body at most 64 KB and 429 with code E90002 on public endpoints (follow-up PR by Peter; the batch limit of 100 already exists in the specs, see the correction in F7). F8: add the amount and currency check to the webhook.

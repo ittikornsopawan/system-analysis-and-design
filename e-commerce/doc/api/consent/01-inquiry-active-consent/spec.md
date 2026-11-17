@@ -33,6 +33,7 @@ approved_at: 2026-11-16T09:24:57+07:00
 - Return every visible current consent, including both required and optional ones.
 - Preserve effective_at ASC, id ASC order, including a deterministic id tie-break.
 - The order of the checks, the locks and every outcome is in the sequence diagram.
+- Rate limit: this API, which needs no access token, answers 429 (E90002) with a `Retry-After` header when a client IP sends more than 60 requests per minute (configurable); the limiter answers before the handler runs, so the 429 is not drawn in the sequence diagram. The rule is in the section Limits and rate limiting of `api-conventions.md`.
 
 ---
 

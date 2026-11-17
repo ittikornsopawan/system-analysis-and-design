@@ -33,6 +33,7 @@ approved_at: 2026-11-16T09:24:57+07:00
 - A reset token is created only for an ACTIVE user.
 - Throttle: a user can ask at most 3 times per hour (configurable), measured by successful reset issuance rows created in the rolling window, whatever their status.
 - The order of the checks, the locks and every outcome is in the sequence diagram.
+- Rate limit: this API, which needs no access token, answers 429 (E90002) with a `Retry-After` header when a client IP sends more than 60 requests per minute (configurable); the limiter answers before the handler runs, so the 429 is not drawn in the sequence diagram. The rule is in the section Limits and rate limiting of `api-conventions.md`.
 
 ---
 
