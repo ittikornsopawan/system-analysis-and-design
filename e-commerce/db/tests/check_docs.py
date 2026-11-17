@@ -8878,6 +8878,78 @@ def check_md_frontmatter() -> int:
 COMMANDS["md-frontmatter"] = check_md_frontmatter
 
 
+# ---------------------------------------------------------------- OpenAPI contract against the approved specs
+API_CONTRACT = "e-commerce/api/api-contract.json"
+# Domains published in the contract so far (owner order of 2026-11-17: one PR per domain); add each domain as it lands.
+API_CONTRACT_DOMAINS = ["authen-and-author"]
+
+
+def spec_operation(md: str) -> tuple:
+    """(METHOD, /path) from the '# [METHOD]: path' title of a spec."""
+    match = re.search(r"^# \[(\w+)\]: (\S+)", md, re.MULTILINE)
+    return (match.group(1).upper(), "/" + match.group(2)) if match else None
+
+
+def spec_example_statuses(md: str) -> set:
+    """HTTP status codes of the response examples: status.code of each JSON example, 204 for a 'No Content' example."""
+    examples = section(md, "### Example Response Parameters", "## Database Relations")
+    codes = {204} if "HTTP/1.1 204 No Content" in examples else set()
+    for block in JSON_BLOCK.findall(examples):
+        status = json.loads(block).get("status") if block.strip() else None
+        if isinstance(status, dict) and "code" in status:
+            codes.add(status["code"])
+    return codes
+
+
+def check_api_contract() -> int:
+    """Every spec of a published domain has exactly its method, path and status codes in the contract, and nothing more."""
+    errors = []
+    try:
+        contract = json.loads(read(API_CONTRACT))
+    except ValueError as error:
+        return fail(f"{API_CONTRACT} is not valid JSON: {error}")
+    if contract.get("openapi") != "3.1.0":
+        errors.append(f"{API_CONTRACT}: openapi must be 3.1.0")
+    published = {}
+    for path, item in contract.get("paths", {}).items():
+        for method, op in item.items():
+            published[(method.upper(), path)] = op
+    specs = {}
+    for domain in API_CONTRACT_DOMAINS:
+        paths = sorted((ROOT / "e-commerce/doc/api" / domain).glob("*/spec.md"))
+        if not paths:
+            errors.append(f"API_CONTRACT_DOMAINS lists {domain}, which has no spec")
+        for path in paths:
+            rel = str(path.relative_to(ROOT))
+            md = path.read_text(encoding="utf-8")
+            key = spec_operation(md)
+            if key is None:
+                errors.append(f"{rel}: no '# [METHOD]: path' title")
+            elif key in specs:
+                errors.append(f"{rel}: {key[0]} {key[1]} is also defined by {specs[key][0]}")
+            else:
+                specs[key] = (rel, spec_example_statuses(md))
+    for key, (rel, codes) in sorted(specs.items()):
+        op = published.get(key)
+        if op is None:
+            errors.append(f"{rel}: {key[0]} {key[1]} is missing from the contract")
+            continue
+        if op.get("x-spec") != rel:
+            errors.append(f"{key[0]} {key[1]}: x-spec must be {rel}, found {op.get('x-spec')}")
+        found = {int(code) for code in op.get("responses", {})}
+        if found != codes:
+            errors.append(f"{key[0]} {key[1]}: responses {sorted(found)} differ from the spec examples {sorted(codes)}")
+    for key in sorted(set(published) - set(specs)):
+        errors.append(f"{key[0]} {key[1]} is in the contract but no spec of {', '.join(API_CONTRACT_DOMAINS)} defines it")
+    if errors:
+        return fail("; ".join(errors))
+    print(f"OK: api-contract ({len(specs)} operations of {len(API_CONTRACT_DOMAINS)} domains)")
+    return 0
+
+
+COMMANDS["api-contract"] = check_api_contract
+
+
 def main(argv: list[str]) -> int:
     if len(argv) < 2:
         print("usage: check_docs.py <subcommand>")
