@@ -11,8 +11,8 @@ Checked on 2026-11-16 against `main` (c190f70) and the pull requests on GitHub. 
 | ----------------------------------------------- | ------ |
 | 1. Owner decisions and actions                  | 1      |
 | 2. Shop roles rollout (done 2026-11-16)         | 0      |
-| 3. Deferred work and backlog                    | 3      |
-| **Real work still open**                        | **4**  |
+| 3. Deferred work and backlog                    | 1      |
+| **Real work still open**                        | **2**  |
 | 4. Records closed on 2026-11-16                 | 27     |
 
 ## 1. Owner decisions and actions
@@ -44,7 +44,7 @@ Source: `tasks/peter/todo.md`, design `docs/superpowers/specs/2026-11-14-shop-ro
 
 ## 3. Deferred work and backlog
 
-- [ ] WP5b: author specs 13–17 (role permission upsert and inquiry, user permission upsert and inquiry, check); deferred until an API enforces permissions (owner confirmed on 2026-11-16).
+- [ ] WP5b: author specs 13–17 (role permission upsert and inquiry, user permission upsert and inquiry, check); deferred until an API enforces permissions (owner confirmed on 2026-11-16). Record: `tasks/owner/todo.md`, Blocked.
 - [x] Remove `ADMIN_WRITE_LIVE_QUERIES` from `check_docs.py`; no spec uses the live role queries any more. Done in the checker cleanup pull request of 2026-11-16: `admin-write-spec` now checks only the JWT claims path.
 - [x] Merge the two `er_name_rows` helpers of `check_docs.py`. Done in the same pull request: the first one, which the second overrode, is removed.
 - [x] Extend `audit_all.py` to a column without an alias in the `WHERE` of an `UPDATE`. Done 2026-11-16: 129 UPDATE statements are now checked, 0 findings; a subquery or `UPDATE ... FROM` is skipped.
@@ -53,8 +53,8 @@ Source: `tasks/peter/todo.md`, design `docs/superpowers/specs/2026-11-14-shop-ro
 - [x] Rewrite the team protocol in `docs/handoff/` to match the named-agent rule. Done 2026-11-16: `docs/handoff/2026-11-16-team-protocol.md`; the 2026-11-06 protocol points to it as superseded.
 - [x] Record the consent/02 answer in `docs/superpowers/specs/2026-11-07-api-review-design.md` (the root item was misread as a Head of Technology answer). Already done: section "Consent type of a consent (2026-11-14)" of that file.
 - [x] Owner: verify the resource registry and the diagram role after Jinny's scope is released (`tasks/owner/todo.md`). Done 2026-11-16: the record in `tasks/owner/todo.md` is Complete with the evidence; moving it to `success-task.md` needs an assignment that owns that file.
-- [ ] Owner: resolve every legacy task of `tasks/todo.md` with evidence or closure (blocked).
-- [ ] Owner: move the closed legacy records to the owner folders and turn `tasks/todo.md` into an index (blocked by the item above).
+- [x] Owner: resolve every legacy task of `tasks/todo.md` with evidence or closure. Done 2026-11-17: WP5b moved to `tasks/owner/todo.md` as Blocked by owner order; every other item was already closed.
+- [x] Owner: move the closed legacy records to the owner folders and turn `tasks/todo.md` into an index. Done 2026-11-17: all 108 completed records moved to `tasks/owner/success-task.md` (owner order), `tasks/todo.md` is an index.
 
 ## 4. Records closed on 2026-11-16
 
