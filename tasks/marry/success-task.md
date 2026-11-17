@@ -5,6 +5,20 @@ description: Verified completed task records of Marry, moved from todo.md.
 
 # Marry Completed Tasks
 
+## e-commerce: OpenAPI contract, payment domain
+
+Owner: marry
+Status: Complete
+Created at: 2026-11-17T13:10:00+07:00
+Started at: 2026-11-17T13:10:00+07:00
+Completed at: 2026-11-17T13:11:42+07:00
+
+Assignment: agent `marry`, delivery `open-pr`, authorized by `ittikorn`, workspace `.workspace/marry`, branch `docs/marry-api-contract-payment`, scopes `e-commerce/api/api-contract.json`, `e-commerce/db/tests/check_docs.py`, `tasks/marry/todo.md`, `tasks/marry/success-task.md`, `.agents/skills/api-contract-design/scripts/gen_contract.py`, `.agents/skills/api-contract-design/SKILL.md`. Step 8 of the contract rollout.
+
+- [x] Publish the 5 approved operations of `payment`; the Stripe webhook body nests its dotted names (a parent is required when a child is MANDATORY) and marks the external payload `additionalProperties: true` (lead decision of Josh, 2026-11-17); 3/3 deliberate faults rejected.
+- [x] Verification: 71 `check_docs.py` sub-commands 0 failed, `gen_contract.py --check` up to date, `audit_all.py` 0 findings, both test suites OK, `preflight.py` no blockers; no OpenAPI 3.1 validator installed (not run).
+- [x] Open the PR, tell Josh when `checks` is green, suspend, wait for the merge. Evidence: pull request #208, CI `checks` passed (35s), merged at 2026-11-17T13:11:42+07:00 (91624c0).
+
 ## e-commerce: OpenAPI contract, sales domain
 
 Owner: marry
