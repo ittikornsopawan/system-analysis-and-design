@@ -5572,6 +5572,24 @@ def author_example_errors(key: str, md: str) -> list[str]:
             errors += author_status(md, t, code, biz)
     elif key == "14":
         by_id = re.search(r"Request: `GET v1/author/role/permission\?id=([0-9a-f-]{36})`", md).group(1)
+        for t in ("Success", "Success - By Id", "Success - Not Found"):
+            data = author_json(md, t)["data"]
+            if data["totalItems"] != len(data["items"]) or data["totalPages"] != (0 if not data["items"] else 1):
+                errors.append(f"'{t}' has wrong totals")
+            keys = [(i["roleName"], i["permissionName"], i["rolePermissionId"]) for i in data["items"]]
+            if keys != sorted(keys):
+                errors.append(f"'{t}' must be sorted by role name, permission name and id")
+            for item in data["items"]:
+                if item["rowStatus"] == "DELETED" or any(sc["rowStatus"] == "DELETED" for sc in item["scopes"]):
+                    errors.append(f"'{t}' lists a DELETED row or scope")
+                if any(set(sc) != {"rolePermissionScopeId", "permissionScopeId", "scopeId", "scope", "rowStatus"} for sc in item["scopes"]):
+                    errors.append(f"'{t}' has a scope with the wrong keys")
+                if [sc["scope"] for sc in item["scopes"]] != sorted(sc["scope"] for sc in item["scopes"]):
+                    errors.append(f"'{t}' must sort scopes by scope code")
+            if t == "Success - By Id" and [i["rolePermissionId"] for i in data["items"]] != [by_id]:
+                errors.append("the By Id example must list only its id")
+        for t, code, biz in (("Fail - Bad Request", 400, "E10001"), ("Fail - Unauthorized", 401, "E10002"), ("Fail - Forbidden", 403, "E10009"), ("Fail - Request Timeout", 408, "E90001")):
+            errors += author_status(md, t, code, biz)
     elif key == "15":
         bodies = {t: json.loads(re.search(rf"##### {t}\n\n```JSON\n(.*?)```", md, re.DOTALL).group(1)) for t in ("Insert", "Update", "Delete")}
         rid = bodies["Update"]["id"]
@@ -5596,17 +5614,6 @@ def author_example_errors(key: str, md: str) -> list[str]:
             data = author_json(md, t)["data"]
             if data["totalItems"] != len(data["items"]) or data["totalPages"] != (0 if not data["items"] else 1):
                 errors.append(f"'{t}' has wrong totals")
-            keys = [(i["roleName"], i["permissionName"], i["rolePermissionId"]) for i in data["items"]]
-            if keys != sorted(keys):
-                errors.append(f"'{t}' must be sorted by role name, permission name and id")
-            for item in data["items"]:
-                if item["rowStatus"] == "DELETED" or any(sc["rowStatus"] == "DELETED" for sc in item["scopes"]):
-                    errors.append(f"'{t}' lists a DELETED row or scope")
-                if any(set(sc) != {"rolePermissionScopeId", "permissionScopeId", "scopeId", "scope", "rowStatus"} for sc in item["scopes"]):
-                    errors.append(f"'{t}' has a scope with the wrong keys")
-                if [sc["scope"] for sc in item["scopes"]] != sorted(sc["scope"] for sc in item["scopes"]):
-                    errors.append(f"'{t}' must sort scopes by scope code")
-            if t == "Success - By Id" and [i["rolePermissionId"] for i in data["items"]] != [by_id]:
             keys = [(i["permissionName"], i["userDisplayName"] or "", i["scope"] or "\uffff", i["userPermissionId"]) for i in data["items"]]
             if keys != sorted(keys):
                 errors.append(f"'{t}' must be sorted by permission name, user display name, scope (no scope last) and id")
