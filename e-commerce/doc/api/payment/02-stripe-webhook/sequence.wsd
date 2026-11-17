@@ -74,6 +74,8 @@ activate stripe
                           COMPLETED / charge.refunded / REFUNDED / PAYMENT_CONFIRMED -> REFUNDED and the stock goes back to the lots / PAYMENT_REFUNDED
                           FAILED, CANCELLED / payment_intent.succeeded / REFUNDED (late payment, see below) / no change / LATE_PAYMENT_REFUNDED
                           any other / any other / no change / no change / IGNORED
+                        - **Amount check:** before any update the amount of the event must equal `amount` x 100 of the payment and its currency must equal `currency` in lower case. A mismatch changes nothing, is written to the application log
+                          for a person to handle and is answered 200 IGNORED so that Stripe stops sending the event. The charge may stay unrefunded until a person acts, the database keeps no trace (a trace would need a new table).
                         - On `payment_intent.succeeded` the payment gets `transaction_code` (the charge id), `transaction_at` (the time of the event, UTC) and `payment_name` (a
                           label such as `Visa 4242` or `PromptPay`), and the order is changed with a guarded update (`AND status = 'WAIT_PAYMENT'`). The order is accepted
                           even when `expires_at` has passed as long as the order is still `WAIT_PAYMENT`, because the stock is still held.
@@ -106,7 +108,8 @@ activate stripe
                                     p.order_id,
                                     p.status,
                                     p.payment_method,
-                                    p.amount
+                                    p.amount,
+                                    p.currency
                                 FROM payment.t_payment p
                                 WHERE p.provider_payment_id = '<sequence.providerPaymentId>' -- the PaymentIntent id of the event, no row means the event is IGNORED
                                 AND p.row_status = 'ACTIVE'
@@ -133,7 +136,14 @@ activate stripe
                                 t_order -> infra: Return query result
                             deactivate t_order
                             infra -> app: Return the locked order
-                            alt PENDING and payment_intent.processing
+                            alt The amount or the currency of the event differs from the payment
+                                note right of app
+                                    The mismatch is written to the application log (eventId, paymentId, stored and event amount and currency) for a person to handle; the payment and the order are not changed
+                                end note
+                                app -> infra: COMMIT
+                                app -> api: HTTP 200 S10000 action IGNORED
+                                api -> stripe: Event received
+                            else PENDING and payment_intent.processing
                                 app -> infra: UPDATE - Mark the payment as processing
                                 infra -> t_payment: UPDATE - Mark the payment as processing
                                 activate t_payment
