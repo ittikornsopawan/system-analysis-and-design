@@ -1,9 +1,9 @@
 ---
 name: Role Permission Upsert API Specification
 description: Defines verified JWT administration, current credentials, the caller/role/permission/grant lock order, scope links that must be scopes of the permission, the final scoped-grant rule and the atomic lifecycle of a role permission with its scope links; read when reviewing or implementing role permission upsert.
-status: in-review
-approved_by: null
-approved_at: null
+status: approved
+approved_by: Josh (SA Lead, delegated by Ittikorn 2026-11-17)
+approved_at: 2026-11-17T20:23:48+07:00
 ---
 
 # [POST]: v1/author/role/permission/upsert
