@@ -8941,8 +8941,9 @@ COMMANDS["md-frontmatter"] = check_md_frontmatter
 
 # ---------------------------------------------------------------- OpenAPI contract against the approved specs
 API_CONTRACT = "e-commerce/api/api-contract.json"
-# Domains published in the contract so far (owner order of 2026-11-17: one PR per domain); add each domain as it lands.
-API_CONTRACT_DOMAINS = ["authen-and-author"]
+# Domains published in the contract so far (owner order of 2026-11-17: one PR per domain); add each domain as it lands,
+# then regenerate with .agents/skills/api-contract-design/scripts/gen_contract.py. Only approved specs are published.
+API_CONTRACT_DOMAINS = ["authen-and-author", "author"]
 
 
 def spec_operation(md: str) -> tuple:
@@ -8963,7 +8964,7 @@ def spec_example_statuses(md: str) -> set:
 
 
 def check_api_contract() -> int:
-    """Every spec of a published domain has exactly its method, path and status codes in the contract, and nothing more."""
+    """Every approved spec of a published domain has exactly its method, path and status codes in the contract, and nothing more."""
     errors = []
     try:
         contract = json.loads(read(API_CONTRACT))
@@ -8983,6 +8984,8 @@ def check_api_contract() -> int:
         for path in paths:
             rel = str(path.relative_to(ROOT))
             md = path.read_text(encoding="utf-8")
+            if not re.search(r"^status: approved$", md, re.MULTILINE):
+                continue
             key = spec_operation(md)
             if key is None:
                 errors.append(f"{rel}: no '# [METHOD]: path' title")
