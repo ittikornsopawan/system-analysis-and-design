@@ -2,8 +2,8 @@
 name: Register API Specification
 description: Defines atomic registration, required current consent acceptance, displayed-consent read evidence, optional address and referral, validation and exact SQL for POST v1/auth/register.
 status: approved
-approved_by: Ittikorn
-approved_at: 2026-11-16T09:24:57+07:00
+approved_by: Josh (SA Lead, delegated by Ittikorn 2026-11-17)
+approved_at: 2026-11-18T13:18:23+07:00
 ---
 
 # [POST]: v1/auth/register
@@ -29,6 +29,8 @@ approved_at: 2026-11-16T09:24:57+07:00
 - Governing decisions: owner-confirmed API review Q3/Q5/Q6/Q8/Q16/Q17 (approved by the product owner).
 - Validate mandatory headers, JSON and object shapes before SQL.
 - Sensitive fields (`username`, `emailAddress`, `firstName`, `lastName`, `phoneNumber`, `address` and address fields except title) are sent as Plain text over TLS and encrypted on the server before storage.
+- `emailAddress` must be a valid email address: exactly one `@` with a non-empty local part before it and a non-empty domain after it; otherwise 400 E10001 `Email Address must be a valid email address.` (Josh, SA Lead, delegated by the owner, 2026-11-18).
+- Every 400 message follows the section Validation messages of `api-conventions.md`, including header failures and the `consents[<i>]: ` / `addresses: ` prefixes.
 - `addresses` is one optional object, never an array.
 - `consents` may be omitted/empty only when there are no applicable required consents.
 - Use one REPEATABLE READ transaction for validation reads and every write.
