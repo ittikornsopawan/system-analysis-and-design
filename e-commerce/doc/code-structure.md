@@ -26,7 +26,7 @@ This guide explains the e-commerce backend across **Presentation, Application, D
 | Use case / Handler | A use case is an operation requested by a caller; a handler is the Application class that coordinates its execution | Register, Login, RequestPasswordReset, ResetPassword, GetCurrentUser |
 | Contract / DTO | A data shape used across a boundary, separate from a domain entity's state | HTTP requests, Command/Query inputs and response records |
 | Port | An inner-layer interface describing a required capability independently of concrete technology | `IUserRepository`, `IUnitOfWork`, `IPasswordHasher` |
-| Adapter | A technology-specific implementation of a port | Dapper repositories, `UnitOfWork`, password hasher |
+| Adapter | A technology-specific implementation of a port | EF Core repositories (Dapper ones until replaced), `UnitOfWork`, password hasher |
 
 ### 1.2 Overview of all five layers
 
@@ -45,6 +45,8 @@ These layers do not prescribe an API → Application → Domain → Infrastructu
 Within the Domain layer, this project uses **Service = Domain** to mean reusable business operations, with the owner-selected path `src/Ecommerce.Domain/<Feature>/Domain/`, such as `Authen/Domain/`. Entities and ValueObjects retain their own invariants. Sections 2.3 and 5 explain this convention. Infrastructure services such as `TokenService` retain their technical responsibilities under their respective ports.
 
 **Baseline:** The inspected code is the [e-commerce-backend](https://github.com/ittikornsopawan/e-commerce-backend/tree/d8255183cba54d0c2b218607456b895a70df32f0) Component Repository pinned by [REPOS.md](../REPOS.md). It contains five production projects, two test projects and five Authen use cases. `Authen/Domain/` is an owner-directed design without an implementation at this commit. The domain model diagram describes data concepts rather than an inventory of existing business service classes.
+
+**Data access (owner decision 2026-11-18):** persistence moves from Dapper to EF Core + LINQ, with no raw SQL in handlers or repositories. The specification SQL stays the reference for meaning: row locks, lock order, REPEATABLE READ and guarded updates (`RETURNING`) are kept through `ForUpdate()`, the transaction and `ExecuteUpdate`. EF Core runs as 10.x (Npgsql provider 10.0.3) on net11.0. The DbContext and `ForUpdate()` exist since [e-commerce-backend#3](https://github.com/ittikornsopawan/e-commerce-backend/pull/3) (merge `22807d3b`). The EF repositories and transaction helper arrive with the 01 register slice; until then the Dapper rows in sections 2.4 and 7 describe code that still exists and is being replaced.
 
 This document covers every layer/sub-layer, its responsibilities, inputs/outputs, collaboration, limitations and observed source examples, distinguishing CODE, SPEC and PROPOSED as the diagrams do. The guide is approved as the layer and placement guide for development (2026-11-18). Describing a design does not approve new business behavior; inspect the governing specification and its approval before implementation, following the [SDD workflow](../../.agents/workflows/spec-driven-development.md).
 
@@ -108,7 +110,7 @@ Domain expresses accepted business meaning: valid values, permitted states/trans
 | Entities / Aggregates | Hold identity/state and control their own behavior/transitions; an aggregate root marks an invariant boundary that requires explicit design | Typed identity/values and current state → entity or transition success/failure | `Authen/Entities/User.cs`, `PasswordResetToken.cs` — CODE; User has an aggregate-root marker |
 | ValueObjects | Define business values, validity, normalization and value equality | Raw values → typed values or validation errors, such as `Username.Create` and `PlainPassword.Create` | `Authen/ValueObjects/` — CODE |
 | Business Domain — Service = Domain | Group reusable business operations or operations without a single owning entity, following the project convention | Business facts/values/models/policy → business results consumed by handlers | `Authen/Domain/` — OWNER-DIRECTED DESIGN; no implementation yet |
-| Repository contracts | Define model read/write interfaces needed by inner layers without Dapper/Npgsql/SQL syntax | Typed IDs/values/entities → asynchronous results; Application can use these interfaces directly | `Authen/Repositories/IAuthenRepositories.cs` — CODE |
+| Repository contracts | Define model read/write interfaces needed by inner layers without EF Core/Dapper/Npgsql/SQL syntax | Typed IDs/values/entities → asynchronous results; Application can use these interfaces directly | `Authen/Repositories/IAuthenRepositories.cs` — CODE |
 | Common / Errors / Status | Supply entity/value equality, the aggregate-root marker, domain statuses and expected-failure vocabulary | Identity/value components/state → primitives, `UserStatus`, `AuthenErrors`; `DuplicateKeyException` communicates unique-write failures | `Common/`, `AuthenErrors.cs`, `UserStatus.cs`, `DuplicateKeyException.cs` — CODE |
 
 **Working example:** `User.Register()` creates an Active user, `EnsureCanSignIn()` rejects an inactive account, `PasswordResetToken.Consume(now)` changes state when the token is usable, and `PlainPassword.Create()` checks new-password strength. Future Business Domain operations can compose these behaviors while preserving each model's invariant ownership.
@@ -123,9 +125,11 @@ Infrastructure interacts with external systems through ports declared by Domain/
 
 | Sub-layer | Responsibilities and owned work | Input → Output / collaboration | Source / status |
 | -------------------------------- | ------------------------------------------------------------------------------------------------------------------ | ----------------------------------------------------------------------------------------------- | ------------------------------------------------------------------------------------- |
-| Repository adapters | Execute parameterized SQL, map rows, encrypt/decrypt stored fields and hydrate domain models | Repository calls/typed values → DB commands/rows → User/credential/token or translated failure | `Persistence/Authen/{User,Password,Token}Repository.cs` — CODE |
-| DbSession / connection | Share a lazy-opened connection and transaction within a DI scope, pass transaction/cancellation to Dapper and dispose resources | SQL, parameters and cancellation → affected rows/scalars/mapped rows | `Persistence/DbSession.cs` — CODE |
-| UnitOfWork / transaction adapter | Implement the transaction port using begin/commit/rollback, reusing an existing transaction | Asynchronous delegate → committed writes or rollback on exception | `Persistence/UnitOfWork.cs` — CODE; handlers select the work boundary |
+| Repository adapters | Execute parameterized SQL, map rows, encrypt/decrypt stored fields and hydrate domain models | Repository calls/typed values → DB commands/rows → User/credential/token or translated failure | `Persistence/Authen/{User,Password,Token}Repository.cs` — CODE (Dapper, replaced by EF Core repositories from 01 register) |
+| DbSession / connection | Share a lazy-opened connection and transaction within a DI scope, pass transaction/cancellation to Dapper and dispose resources | SQL, parameters and cancellation → affected rows/scalars/mapped rows | `Persistence/DbSession.cs` — CODE (Dapper, replaced from 01 register) |
+| UnitOfWork / transaction adapter | Implement the transaction port using begin/commit/rollback, reusing an existing transaction | Asynchronous delegate → committed writes or rollback on exception | `Persistence/UnitOfWork.cs` — CODE (Dapper, replaced from 01 register); handlers select the work boundary |
+| EF Core model (DbContext) | Map tables owned by the Showcase migrations to record classes; the migrations stay the schema source of truth, so EF never creates or alters tables | LINQ queries and tracked records → SQL commands, rows and affected counts | `Persistence/Ef/EcommerceDbContext.cs`, `UserRecord.cs` — CODE (`authen.m_user` only) |
+| Row lock (`ForUpdate()`) | Give LINQ the specs' pessimistic lock: `query.ForUpdate()` tags the query and `ForUpdateInterceptor` appends `FOR UPDATE`; valid only inside a transaction, never on a split query or an aggregate | Tagged query → `SELECT ... FOR UPDATE` that holds the rows until commit | `Persistence/Ef/ForUpdate.cs` — CODE |
 | Security adapters | Implement password derivation/verification, JWT/opaque-token generation, token hashing and field protection | Credential/plain input/configuration/time → verification flag, hashes, issued tokens or protected values | `Security/Pbkdf2PasswordHasher.cs`, `TokenService.cs`, `FieldProtector.cs` — CODE |
 | Email adapter | Implement the email port; currently a development logging stand-in | Reset-email arguments → completed task/logs; no actual email delivery | `Email/LoggingEmailSender.cs` — CODE, development-only |
 | Options / DI registration | Read settings, perform implemented startup validation, construct clients and bind interfaces with their lifetimes | Configuration → options and singleton/scoped services consumed by the composition root | `Options/InfrastructureOptions.cs`, `DependencyInjection.cs` — CODE |
@@ -135,7 +139,7 @@ Infrastructure interacts with external systems through ports declared by Domain/
 
 **Boundary to preserve:** The transaction adapter commits when its delegate completes normally and rolls back on an exception; it does not inspect `Result.Failure` to choose rollback. Read-before-write operations still require concurrency and zero-row outcome design. DbSession/repositories are scoped; the data source/security/email services are singleton in current DI. A singleton must not capture a request's scoped connection.
 
-Source: [DbSession](https://github.com/ittikornsopawan/e-commerce-backend/blob/d8255183cba54d0c2b218607456b895a70df32f0/src/Ecommerce.Infrastructure/Persistence/DbSession.cs), [UnitOfWork](https://github.com/ittikornsopawan/e-commerce-backend/blob/d8255183cba54d0c2b218607456b895a70df32f0/src/Ecommerce.Infrastructure/Persistence/UnitOfWork.cs), [security options](https://github.com/ittikornsopawan/e-commerce-backend/blob/d8255183cba54d0c2b218607456b895a70df32f0/src/Ecommerce.Infrastructure/Options/InfrastructureOptions.cs), [LoggingEmailSender](https://github.com/ittikornsopawan/e-commerce-backend/blob/d8255183cba54d0c2b218607456b895a70df32f0/src/Ecommerce.Infrastructure/Email/LoggingEmailSender.cs)
+Source: [EcommerceDbContext](https://github.com/ittikornsopawan/e-commerce-backend/blob/22807d3b8f08b55e5494701820490cb1fd9f8ee8/src/Ecommerce.Infrastructure/Persistence/Ef/EcommerceDbContext.cs), [ForUpdate](https://github.com/ittikornsopawan/e-commerce-backend/blob/22807d3b8f08b55e5494701820490cb1fd9f8ee8/src/Ecommerce.Infrastructure/Persistence/Ef/ForUpdate.cs), [DbSession](https://github.com/ittikornsopawan/e-commerce-backend/blob/d8255183cba54d0c2b218607456b895a70df32f0/src/Ecommerce.Infrastructure/Persistence/DbSession.cs), [UnitOfWork](https://github.com/ittikornsopawan/e-commerce-backend/blob/d8255183cba54d0c2b218607456b895a70df32f0/src/Ecommerce.Infrastructure/Persistence/UnitOfWork.cs), [security options](https://github.com/ittikornsopawan/e-commerce-backend/blob/d8255183cba54d0c2b218607456b895a70df32f0/src/Ecommerce.Infrastructure/Options/InfrastructureOptions.cs), [LoggingEmailSender](https://github.com/ittikornsopawan/e-commerce-backend/blob/d8255183cba54d0c2b218607456b895a70df32f0/src/Ecommerce.Infrastructure/Email/LoggingEmailSender.cs)
 
 ### 2.5 Shared layer — Common request and result mechanisms
 
@@ -353,8 +357,8 @@ Application calls interfaces; Infrastructure implements them with concrete techn
 
 | Port / responsibility                 | Implementation                                                 |
 | ------------------------------------- | -------------------------------------------------------------- |
-| User, password and token repositories | Dapper/Npgsql repositories in `Persistence/Authen/` |
-| Transaction coordination | Handler invokes `IUnitOfWork`; `UnitOfWork` uses scoped `DbSession` |
+| User, password and token repositories | Dapper/Npgsql repositories in `Persistence/Authen/`, replaced by EF Core repositories over `EcommerceDbContext` from 01 register |
+| Transaction coordination | Handler invokes `IUnitOfWork`; `UnitOfWork` uses scoped `DbSession` until the EF transaction helper of 01 register; row locks use `ForUpdate()` |
 | Password hashing                      | `Pbkdf2PasswordHasher`                                         |
 | JWT and opaque tokens | `TokenService` |
 | Stored personal-field protection      | `FieldProtector`                                               |
@@ -395,7 +399,7 @@ Use this view to understand the facts Business Domain needs. Operation names, ag
 
 ## 10. Tests and checks for business-operation development
 
-Test projects verify production layers; they are not additional runtime layers. Both projects use xUnit and introduce no request-flow steps.
+Test projects verify production layers; they are not additional runtime layers. All test projects use xUnit and introduce no request-flow steps.
 
 | Test project / sub-layer | Tested behavior and inputs/outputs | Dependencies / limitations |
 | ---------------------------------------------------------- | ----------------------------------------------------------------------------------------------------------- | ---------------------------------------------------------------------------------------------------------------------------- |
@@ -403,6 +407,7 @@ Test projects verify production layers; they are not additional runtime layers. 
 | `Ecommerce.Domain.Tests/Authen/ValueObjectTests.cs` | Pass normal/out-of-range inputs to factories and check typed values/errors, normalization and equality | No HTTP/DB; persistence mappings and request contracts need separate verification |
 | `Ecommerce.Application.Tests/Authen/AuthenHandlerTests.cs` | Dispatch commands to real handlers backed by fakes, checking results and side effects | References Application/Domain/Shared; does not use concrete Infrastructure |
 | `Ecommerce.Application.Tests/Authen/Fakes.cs` | Replace repositories, hasher, token service, email and unit of work with controlled implementations | `InlineUnitOfWork` performs no real transaction; fake password verification/token revocation does not prove JWT middleware or rollback |
+| `Ecommerce.Infrastructure.Tests/PersistenceTests.cs`, `PostgresFixture.cs` | Run EF Core against a throwaway PostgreSQL 17 loaded with the Showcase migrations; prove the row lock, the guarded update and REPEATABLE READ | Needs a local PostgreSQL 17; proves the persistence mechanics, not a use case |
 
 Source: [Domain entity tests](https://github.com/ittikornsopawan/e-commerce-backend/blob/d8255183cba54d0c2b218607456b895a70df32f0/tests/Ecommerce.Domain.Tests/Authen/EntityTests.cs), [Domain value tests](https://github.com/ittikornsopawan/e-commerce-backend/blob/d8255183cba54d0c2b218607456b895a70df32f0/tests/Ecommerce.Domain.Tests/Authen/ValueObjectTests.cs), [Application handler tests](https://github.com/ittikornsopawan/e-commerce-backend/blob/d8255183cba54d0c2b218607456b895a70df32f0/tests/Ecommerce.Application.Tests/Authen/AuthenHandlerTests.cs), [test fakes](https://github.com/ittikornsopawan/e-commerce-backend/blob/d8255183cba54d0c2b218607456b895a70df32f0/tests/Ecommerce.Application.Tests/Authen/Fakes.cs)
 
