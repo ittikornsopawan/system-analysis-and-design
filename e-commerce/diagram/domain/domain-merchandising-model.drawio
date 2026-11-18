@@ -178,7 +178,7 @@
         <mxCell id="page-subtitle" value="Named entities inside schema groups. Selected associations show all-row cardinality, not request order or aggregate ownership." style="text;html=0;spacing=0;align=left;verticalAlign=middle;fontSize=12;fontFamily=Geist,Arial,sans-serif;fontColor=#4f5d75;" parent="1" vertex="1">
           <mxGeometry as="geometry" x="40" y="102" width="1504" height="20" />
         </mxCell>
-        <mxCell id="page-source" value="Source: db/migrations/up + doc/schema | 53 tables / 11 schemas / 75 FK columns | Full references in companion Markdown" style="text;html=0;spacing=0;align=left;verticalAlign=middle;fontSize=9;fontFamily=Geist Mono,Courier New,monospace;fontColor=#5a6580;" parent="1" vertex="1">
+        <mxCell id="page-source" value="Source: db/migrations/up + doc/schema | 54 tables / 11 schemas / 76 FK columns | Full references in companion Markdown" style="text;html=0;spacing=0;align=left;verticalAlign=middle;fontSize=9;fontFamily=Geist Mono,Courier New,monospace;fontColor=#5a6580;" parent="1" vertex="1">
           <mxGeometry as="geometry" x="40" y="1025" width="1504" height="17" />
         </mxCell>
         <mxCell id="legend-line" value="" style="shape=line;strokeColor=#bfc0c0;" parent="1" vertex="1">

@@ -10,11 +10,11 @@ Domain model ให้ความสำคัญกับชื่อและ�
 
 | หน้า | หน้าที่ | เหตุผล |
 | --- | --- | --- |
-| Identity / Access / Consent / public | Account, credential, evidence, grants, consent publication และ key material | แยกผู้ใช้ สิทธิ์ และหลักฐานการยินยอม; key material เป็น technical support |
+| Identity / Access / Consent / public | Account, credential, evidence, grants, consent publication, key material และ reference parameter | แยกผู้ใช้ สิทธิ์ และหลักฐานการยินยอม; key material และ reference parameter เป็นข้อมูลกลางของ schema public |
 | Product / Shop | Global catalog, variant selections, merchant listing และ stock lot | Product SKU ไม่ใช่ Shop SKU และไม่ใช่ stock lot; ราคา/จำนวนขายอยู่ที่ lot |
 | Cart / Sales / Payment / Shipping / Campaign | Selection, stored business snapshots, financial attempts, fulfilment allocation และ budget movement | เน้นความสัมพันธ์ของธุรกรรมและประวัติ ไม่สรุปว่าทุกชุดอยู่ใน aggregate/transaction เดียว |
 
-หน้ารายละเอียดมี 21, 19 และ 13 concepts รวม53ตาราง แต่ไม่มีการบังคับว่าตารางหนึ่งต้องเท่ากับ C# entity หนึ่งตัว การแยก class/value object/aggregate ต้องใช้ requirements และ use cases เพิ่มเติม ตารางเชื่อมที่มีข้อมูลของตนเองถูกตั้งชื่อให้เห็นความหมาย เช่น Scoped role grant, Shipment allocation และ Budget movement
+หน้ารายละเอียดมี 22, 19 และ 13 concepts รวม54ตาราง แต่ไม่มีการบังคับว่าตารางหนึ่งต้องเท่ากับ C# entity หนึ่งตัว การแยก class/value object/aggregate ต้องใช้ requirements และ use cases เพิ่มเติม ตารางเชื่อมที่มีข้อมูลของตนเองถูกตั้งชื่อให้เห็นความหมาย เช่น Scoped role grant, Shipment allocation และ Budget movement
 
 ## ข้อมูลที่ต้องอ่านให้ถูก
 
@@ -23,7 +23,8 @@ Domain model ให้ความสำคัญกับชื่อและ�
 - Order → Payment attempt เป็น0..*เมื่อรวมประวัติ การจำกัด live payment เป็น partial unique subset ไม่ใช่ unconditional1:1
 - Campaign budget movement แม้ขึ้นต้น m_ ก็เป็น movement ledger ที่เชื่อม budget, campaign และ order ไม่ใช่ config ทั่วไป
 - `public.t_key` เป็น binary key material ไม่ใช่ MongoDB configuration ตามภาพ operational เดิม ไม่มี key values หรือ secret ถูกอ่านจาก runtime
-- MongoDB/Redis/outbox ที่เสนอในชุดก่อนหน้าไม่มีตารางใน SQL53ตารางนี้ จึงไม่เพิ่มเป็น entity ที่มีอยู่จริงใน domain model จาก DB
+- `public.m_parameter` เป็น reference data กลางแบบ key/value ซ้อน parent/child ผ่าน parent_id ของตัวเอง (เช่น ประเทศ > จังหวัด > อำเภอ) ยังไม่มีตารางอื่นมี FK มาหา จึงไม่มีเส้นข้ามกลุ่มในภาพรวม
+- MongoDB/Redis/outbox ที่เสนอในชุดก่อนหน้าไม่มีตารางใน SQL54ตารางนี้ จึงไม่เพิ่มเป็น entity ที่มีอยู่จริงใน domain model จาก DB
 
 ## ความเชื่อมโยงกับโฟลเดอร์ Domain ที่เจ้าของงานกำหนด
 
@@ -41,6 +42,8 @@ Authorization แยก Role, Permission, Scope และ association entities �
 
 Consent type เป็นชนิดข้อยินยอม Consent version คือเนื้อหาที่เผยแพร่ ส่วน Consent acknowledgement อยู่ authen และบันทึกผู้ใช้/เวอร์ชัน/ผลการตอบรับ การแยกสามแนวคิดนี้ช่วยไม่ให้สับสนระหว่างการแก้เอกสารกับหลักฐานที่ผู้ใช้เคยเห็น
 
+กรอบ public รวม Key material กับ Reference parameter ซึ่งเป็นข้อมูลกลางที่ทุก feature ใช้ซ้ำ Reference parameter อ้าง parent ของตัวเองแบบ optional (self-reference 0..1 / 0..*) ภาพไม่ลากเส้นวนกลับเข้ากล่องเดิม ให้อ่าน parent_id? ในกล่องและ FK catalogue แทน
+
 ## Cardinality และประวัติ
 
 ใช้ all-row cardinality ตาม FK: แถวลูกที่มี FK NOT NULL อ้าง parentหนึ่งแถว; ลูกอาจมี0..*ต่อparent เพราะ DDL ไม่บังคับให้ parentต้องมีลูก และ partial indexesยังอนุญาตแถวเก่า/แถวที่ไม่เข้าpredicate กรณี User profile ไม่ใช่ unconditional1:1; Password credential จำกัดหนึ่ง ACTIVE PASSWORD; reset request จำกัดหนึ่ง ACTIVE; addressจำกัดหนึ่งdefaultที่ไม่DELETED แต่ไม่จำกัดว่าผู้ใช้มีaddressได้เพียงหนึ่ง
@@ -57,6 +60,7 @@ Scoped permission → Direct permission grant เป็น optional0..1จาก
 | Login attempt | user_id nullable รองรับidentifierที่ไม่ตรงบัญชี | ไม่มี User เป็นparentบังคับทุกattempt |
 | Scoped grant | แต่ละFKมีparentจริง | ไม่รับรองว่า scoped permissionเป็นของ permission_idเดียวกับ direct grant |
 | Key material | key_nameไม่ซ้ำ, binary value, effective/expiry fields | ไม่พิสูจน์ runtime key rotation, secret storage controls หรือ encryption of the value |
+| Reference parameter | keyไม่ซ้ำเฉพาะแถวที่ไม่DELETED, parent_id nullable อ้างตารางเดียวกัน ON DELETE RESTRICT | ไม่กันวงวน parent (A→B→A) ไม่จำกัดความลึก และไม่บังคับว่า parent ต้องมีชนิดเดียวกัน |
 
 ## เหตุผลของการจัดรูป
 

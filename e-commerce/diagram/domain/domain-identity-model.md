@@ -1,9 +1,9 @@
 ---
 name: Identity, access & consent concepts — explanation and SQL traceability
 description: อธิบาย domain diagram domain-identity-model พร้อมเหตุผล ตารางต้นทาง ความสัมพันธ์และcardinalityจากSQL ใช้ก่อนreviewหรือแก้ภาพนี้
-status: approved
-approved_by: Ittikorn
-approved_at: 2026-11-16T09:24:57+07:00
+status: in-review
+approved_by: null
+approved_at: null
 ---
 
 # Identity, access & consent concepts
@@ -17,6 +17,8 @@ User เป็นตัวตนบัญชี ส่วน Password credential
 Authorization แยก Role, Permission, Scope และ association entities สามารถตามว่า role ได้ permission ใด มี scope ใด และ user ได้สิทธิ์ผ่าน role หรือ direct grant ใด คำว่า author ในชื่อ schema หมายถึง authorization ไม่ใช่ผู้เขียนบทความ การซ้อนกรอบไม่แปลว่า config/feature flag สามารถให้สิทธิ์แทนตารางเหล่านี้
 
 Consent type เป็นชนิดข้อยินยอม Consent version คือเนื้อหาที่เผยแพร่ ส่วน Consent acknowledgement อยู่ authen และบันทึกผู้ใช้/เวอร์ชัน/ผลการตอบรับ การแยกสามแนวคิดนี้ช่วยไม่ให้สับสนระหว่างการแก้เอกสารกับหลักฐานที่ผู้ใช้เคยเห็น
+
+กรอบ public รวม Key material กับ Reference parameter ซึ่งเป็นข้อมูลกลางที่ทุก feature ใช้ซ้ำ Reference parameter อ้าง parent ของตัวเองแบบ optional (self-reference 0..1 / 0..*) ภาพไม่ลากเส้นวนกลับเข้ากล่องเดิม ให้อ่าน parent_id? ในกล่องและ FK catalogue แทน
 
 ## Cardinality และประวัติ
 
@@ -34,6 +36,7 @@ Scoped permission → Direct permission grant เป็น optional0..1จาก
 | Login attempt | user_id nullable รองรับidentifierที่ไม่ตรงบัญชี | ไม่มี User เป็นparentบังคับทุกattempt |
 | Scoped grant | แต่ละFKมีparentจริง | ไม่รับรองว่า scoped permissionเป็นของ permission_idเดียวกับ direct grant |
 | Key material | key_nameไม่ซ้ำ, binary value, effective/expiry fields | ไม่พิสูจน์ runtime key rotation, secret storage controls หรือ encryption of the value |
+| Reference parameter | keyไม่ซ้ำเฉพาะแถวที่ไม่DELETED, parent_id nullable อ้างตารางเดียวกัน ON DELETE RESTRICT | ไม่กันวงวน parent (A→B→A) ไม่จำกัดความลึก และไม่บังคับว่า parent ต้องมีชนิดเดียวกัน |
 
 ## เหตุผลของการจัดรูป
 
@@ -48,6 +51,7 @@ Scoped permission → Direct permission grant เป็น optional0..1จาก
 | SQL table / schema doc | Business concept | รายละเอียดที่เลือกแสดง | Migration |
 | --- | --- | --- | --- |
 | [public.t_key](../../doc/schema/public/t_key.md) | Key material | `# id; key_name; effective_at / expired_at` | [00-common.schema.up.sql](../../db/migrations/up/00-common.schema.up.sql) |
+| [public.m_parameter](../../doc/schema/public/m_parameter.md) | Reference parameter | `# id / parent_id?; key (unique live) / value; title / display / metadata` | [00-common.schema.up.sql](../../db/migrations/up/00-common.schema.up.sql) |
 | [consent.m_consent_type](../../doc/schema/consent/m_consent_type.md) | Consent type | `# id; name / is_required` | [00-common.schema.up.sql](../../db/migrations/up/00-common.schema.up.sql) |
 | [consent.t_consent](../../doc/schema/consent/t_consent.md) | Consent version | `# id / code; consent_type_id; consent_version / body` | [00-common.schema.up.sql](../../db/migrations/up/00-common.schema.up.sql) |
 | [authen.m_user](../../doc/schema/authen/m_user.md) | User | `# id; username / email_address; display_name` | [01-authen.schema.up.sql](../../db/migrations/up/01-authen.schema.up.sql) |
@@ -94,6 +98,7 @@ Scoped permission → Direct permission grant เป็น optional0..1จาก
 
 | Child FK | Parent table | Parentต่อchild | Childต่อparent | ON DELETE | ในภาพ |
 | --- | --- | --- | --- | --- | --- |
+| `public.m_parameter.parent_id` | `public.m_parameter` | 0..1 | 0..* | RESTRICT | field / catalogue |
 | `consent.t_consent.consent_type_id` | `consent.m_consent_type` | 1 | 0..* | RESTRICT | วาดเส้น |
 | `authen.t_user_consent.user_id` | `authen.m_user` | 1 | 0..* | CASCADE | field / catalogue |
 | `authen.t_user_consent.consent_id` | `consent.t_consent` | 1 | 0..* | CASCADE | field / catalogue |
@@ -122,6 +127,7 @@ Scoped permission → Direct permission grant เป็น optional0..1จาก
 
 | Table | Unique index / predicate |
 | --- | --- |
+| `public.m_parameter` | `uq_m_parameter_key ON public.m_parameter (key) WHERE row_status <> 'DELETED';` |
 | `consent.m_consent_type` | `uq_m_consent_type_name ON consent.m_consent_type (name) WHERE row_status <> 'DELETED';` |
 | `authen.m_user_password` | `uq_m_user_password_user_id_password ON authen.m_user_password (user_id) WHERE row_type = 'PASSWORD' AND row_status = 'ACTIVE';` |
 | `authen.t_user_reset_password` | `uq_t_user_reset_password_user_id_active ON authen.t_user_reset_password (user_id) WHERE row_status = 'ACTIVE';` |
@@ -159,4 +165,4 @@ python3 -B e-commerce/scripts/diagrams/generate_domain_diagrams.py --finalize-pn
 - [Microsoft domain analysis](https://learn.microsoft.com/en-us/azure/architecture/microservices/model/domain-analysis): ใช้ประกอบการแยกconcept/ขอบเขตเชิงธุรกิจ; ไม่ถือว่าSQLschemaเท่ากับboundedcontext
 - [PostgreSQL constraints](https://www.postgresql.org/docs/18/ddl-constraints.html) และ [partial indexes](https://www.postgresql.org/docs/18/indexes-partial.html): ใช้ตีความFK, nullabilityและconditionaluniqueness
 
-SQL/schema baseline commit: `1e5d2a27db7145ace709fbedc052e586e17954b3`; file hashesบันทึกในinventoryเพื่อให้ตรวจdriftได้ แม้ภายหลังbranchมีcommitงานภาพเพิ่ม
+SQL/schema baseline commit: `73d667854c224d4357d9fd9c66409113c70fe034`; file hashesบันทึกในinventoryเพื่อให้ตรวจdriftได้ แม้ภายหลังbranchมีcommitงานภาพเพิ่ม

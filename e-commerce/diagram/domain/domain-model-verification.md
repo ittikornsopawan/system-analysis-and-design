@@ -65,3 +65,19 @@ Packagingล่าสุด:8Markdown frontmattersและ328local linksผ่�
 `--check` failed on `main` at `1e5d2a2` because the DB evidence had drifted: the product category FKs became `ON DELETE RESTRICT` and two partial unique indexes on name were added (#176), `shop.t_shop_user.role` now accepts `OWNER` (#179), and the schema docs gained approval frontmatter. The model fields do not list role values, so no box, field or association changed: HTML, draw.io and PNG for all 4 views are byte-identical. The inventory was refreshed (`source_commit` `1e5d2a27db7145ace709fbedc052e586e17954b3`).
 
 The generator now keeps a companion's approval frontmatter when only the baseline-commit line differs. Before this, it always wrote `status: in-review`, so `--check` could never pass on an approved companion. A changed body resets the companion to `in-review`. That happened to `domain-merchandising-model.md` (4 FKs now RESTRICT, 2 partial unique indexes) and `domain-commerce-model.md` (`t_campaign_product.product_category_id` now RESTRICT); both need the owner's re-approval. `domain-model.md` and `domain-identity-model.md` keep the 2026-11-16 approval.
+
+## 54 tables: `public.m_parameter` — 2026-11-18
+
+#219 and #221 added `public.m_parameter`, a reference-data master table with a self-reference `parent_id` (nullable, `ON DELETE RESTRICT`) and a key unique among non-`DELETED` rows. `--check` failed on `main` with "Every existing SQL table must map to exactly one concept". The table is now the concept **Reference parameter**, placed with Key material in the identity view's `public` group, renamed "Shared reference & keys" (2 tables). It is shared reference data, not identity data; the identity view already holds the `public` schema, so no new view was needed. To make room, the authorization rows moved up 40 px and 80 px; no association changed. The self-reference is not drawn as a loop; it is the field `parent_id?` and a row in the FK catalogue.
+
+Counts are now 54 tables / 11 schemas / 76 FK columns (8 nullable), identity 22 tables / 24 FK. The inventory was refreshed (`source_commit` `73d667854c224d4357d9fd9c66409113c70fe034`, 65 source files).
+
+```text
+python3 -B e-commerce/scripts/diagrams/generate_domain_diagrams.py --check
+PASS domain-identity-model: 22 source tables; 12 verified associations; 24 cardinalities
+PASS domain source coverage: 54/54 tables; 76/76 FK columns; schema documentation comparison 0 findings
+```
+
+All 4 views were re-exported with draw.io Desktop and finalized (2378×1682, editable source embedded), because the source footer of every view now reads 54/76. The 4 PNGs were viewed: the identity view shows the new group with no overlap and readable cardinalities; the overview shows "Shared reference & keys" and 54/76; merchandising and commerce changed only in the footer.
+
+Approval: `domain-model.md` and `domain-identity-model.md` changed in body, so they went back to `in-review`. `domain-merchandising-model.md` and `domain-commerce-model.md` keep their approval (only the baseline-commit line changed).
