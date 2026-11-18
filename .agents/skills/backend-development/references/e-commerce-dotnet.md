@@ -45,6 +45,8 @@ Ecommerce.Shared/
 - API binding, Application validation, model invariants and persistence guards prove different things. Trusted caller identity comes from verified security context; permissions/current session state follow the approved contract rather than a caller-supplied id.
 - Return mapped response models rather than exposing entity state accidentally. Align exact HTTP statuses, public error bodies and bizCodes with the approved spec/OpenAPI; legacy ProblemDetails/Result mappings may require scoped work rather than blind copying.
 
+For the [owner standards](../SKILL.md#owner-standards-for-every-backend-change), the layers are the projects: `Ecommerce.Shared` is the shared layer (reusable by every layer), and `Ecommerce.Api`, `Ecommerce.Application`, `Ecommerce.Domain` and `Ecommerce.Infrastructure` keep the meanings in the map above. Data access is EF Core with LINQ (owner decision 2026-11-18): no raw SQL in handlers or repositories; row locks use `ForUpdate()`, isolation is set on the transaction and `ExecuteUpdate` with its condition replaces an `UPDATE ... RETURNING` guard. The spec SQL stays the reference for meaning.
+
 ## SQL and transaction translation
 
 Translate spec placeholders into named, bound runtime parameters. Preserve predicates, joins, ordering, row-status filters, null semantics, result shapes, lock order and transaction boundaries; never concatenate caller values into SQL. Check zero-row and duplicate/concurrent outcomes where required. The sequence/spec SQL parity rule governs those design artifacts; executable parameter binding requires an explicit semantic mapping, not raw insertion of `<sequence.*>` strings into runtime SQL.
