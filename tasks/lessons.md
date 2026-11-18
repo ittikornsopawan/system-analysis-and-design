@@ -583,3 +583,11 @@ description: Repository-wide and project-specific lessons captured from user cor
 - **Corrected behavior**: After each push, compare `gh pr view <n> --json headRefOid` with local `HEAD` before saying the PR is ready; after a merge, prove the last commit is an ancestor of the base and carry a missing commit alone in a new PR.
 - **Preventive skill change**: `.agents/skills/commit-and-pr/SKILL.md`, section "After the PR exists".
 - **Verification**: #4 headRefOid `1d5b50a` equalled local HEAD before merge; after merge `1d5b50a` is an ancestor of `origin/main` (`00089bdc`) and Program.cs on main has 0 `DefaultIgnoreCondition`.
+
+### 2026-11-18 — Run every PostgreSQL session in UTC when timestamps are WITHOUT TIME ZONE
+
+- **Correction**: Building 01-register, TC-REG-019 found `t_user_consent.read_at` stored 7 hours ahead of the handler's UTC `now`. Every time column written through Npgsql had the same shift.
+- **Root cause**: Npgsql sends a UTC `DateTime` as `timestamptz`; PostgreSQL converts it to the session time zone (the server's +07:00) when storing into `TIMESTAMP WITHOUT TIME ZONE`. The test fixture connected the same way, so only a read-back against the handler's clock showed it.
+- **Corrected behavior**: Every connection runs with `Timezone=UTC` (`EcommerceDbContext.UtcSession`, applied to the EF context and the `NpgsqlDataSource`); test fixtures open connections through the same helper. Josh (SA Lead) confirmed the rule: the columns hold UTC.
+- **Preventive skill change**: `.agents/skills/backend-development/references/e-commerce-dotnet.md`, paragraph before "Evidence and baseline limits".
+- **Verification**: e-commerce-backend#5 — TC-REG-019 passes; removing `UtcSession` from `EcommerceDbContext.Configure` makes it fail again (mutation check), restoring it makes all 161 tests pass.
