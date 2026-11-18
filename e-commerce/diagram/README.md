@@ -62,12 +62,12 @@ Checkout สร้าง `WAIT_PAYMENT`, จอง stock/budget, บันทึ
 
 ไฟล์ภาพ คำอธิบาย source และinventoryอยู่ในโฟลเดอร์ [domain/](domain/README.md) แยกจากชุดarchitecture/operationsเดิม
 
-ชุดใหม่อ่านจาก migrations/schema docsครบ **53ตาราง /11schemas /75FK** แสดงภาพรวมและconceptual ERแยกรายละเอียด พร้อมกล่องย่อยจริง ชื่อธุรกิจ attributes และall-row cardinality ไม่ประกาศschemaให้เป็นDDDaggregateหรือmicroserviceโดยอัตโนมัติ
+ชุดใหม่อ่านจาก migrations/schema docsครบ **54ตาราง /11schemas /76FK** แสดงภาพรวมและconceptual ERแยกรายละเอียด พร้อมกล่องย่อยจริง ชื่อธุรกิจ attributes และall-row cardinality ไม่ประกาศschemaให้เป็นDDDaggregateหรือmicroserviceโดยอัตโนมัติ
 
 | ภาพแก้ไขได้ | คำอธิบายและsource traceability | ขอบเขต |
 | --- | --- | --- |
-| [domain-model.drawio.png](domain/domain-model.drawio.png) | [domain-model.md](domain/domain-model.md) | ภาพรวม11กลุ่มแนวคิด พร้อมแผนที่53ตาราง |
-| [domain-identity-model.drawio.png](domain/domain-identity-model.drawio.png) | [domain-identity-model.md](domain/domain-identity-model.md) | Identity / Authorization / Consent / Key material:21ตาราง,23FK |
+| [domain-model.drawio.png](domain/domain-model.drawio.png) | [domain-model.md](domain/domain-model.md) | ภาพรวม11กลุ่มแนวคิด พร้อมแผนที่54ตาราง |
+| [domain-identity-model.drawio.png](domain/domain-identity-model.drawio.png) | [domain-identity-model.md](domain/domain-identity-model.md) | Identity / Authorization / Consent / Shared reference & keys:22ตาราง,24FK |
 | [domain-merchandising-model.drawio.png](domain/domain-merchandising-model.drawio.png) | [domain-merchandising-model.md](domain/domain-merchandising-model.md) | Catalog / Merchant offer / Stock:19ตาราง,25FK |
 | [domain-commerce-model.drawio.png](domain/domain-commerce-model.drawio.png) | [domain-commerce-model.md](domain/domain-commerce-model.md) | Cart / Order / Payment / Shipping / Campaign:13ตาราง,27FK |
 

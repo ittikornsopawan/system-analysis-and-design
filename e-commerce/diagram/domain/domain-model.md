@@ -1,9 +1,9 @@
 ---
 name: E-commerce domain map from the database — explanation and SQL traceability
 description: อธิบาย domain diagram domain-model พร้อมเหตุผล ตารางต้นทาง ความสัมพันธ์และcardinalityจากSQL ใช้ก่อนreviewหรือแก้ภาพนี้
-status: approved
-approved_by: Ittikorn
-approved_at: 2026-11-16T09:24:57+07:00
+status: in-review
+approved_by: null
+approved_at: null
 ---
 
 # E-commerce domain map from the database
@@ -20,11 +20,11 @@ Domain model ให้ความสำคัญกับชื่อและ�
 
 | หน้า | หน้าที่ | เหตุผล |
 | --- | --- | --- |
-| Identity / Access / Consent / public | Account, credential, evidence, grants, consent publication และ key material | แยกผู้ใช้ สิทธิ์ และหลักฐานการยินยอม; key material เป็น technical support |
+| Identity / Access / Consent / public | Account, credential, evidence, grants, consent publication, key material และ reference parameter | แยกผู้ใช้ สิทธิ์ และหลักฐานการยินยอม; key material และ reference parameter เป็นข้อมูลกลางของ schema public |
 | Product / Shop | Global catalog, variant selections, merchant listing และ stock lot | Product SKU ไม่ใช่ Shop SKU และไม่ใช่ stock lot; ราคา/จำนวนขายอยู่ที่ lot |
 | Cart / Sales / Payment / Shipping / Campaign | Selection, stored business snapshots, financial attempts, fulfilment allocation และ budget movement | เน้นความสัมพันธ์ของธุรกรรมและประวัติ ไม่สรุปว่าทุกชุดอยู่ใน aggregate/transaction เดียว |
 
-หน้ารายละเอียดมี 21, 19 และ 13 concepts รวม53ตาราง แต่ไม่มีการบังคับว่าตารางหนึ่งต้องเท่ากับ C# entity หนึ่งตัว การแยก class/value object/aggregate ต้องใช้ requirements และ use cases เพิ่มเติม ตารางเชื่อมที่มีข้อมูลของตนเองถูกตั้งชื่อให้เห็นความหมาย เช่น Scoped role grant, Shipment allocation และ Budget movement
+หน้ารายละเอียดมี 22, 19 และ 13 concepts รวม54ตาราง แต่ไม่มีการบังคับว่าตารางหนึ่งต้องเท่ากับ C# entity หนึ่งตัว การแยก class/value object/aggregate ต้องใช้ requirements และ use cases เพิ่มเติม ตารางเชื่อมที่มีข้อมูลของตนเองถูกตั้งชื่อให้เห็นความหมาย เช่น Scoped role grant, Shipment allocation และ Budget movement
 
 ## ข้อมูลที่ต้องอ่านให้ถูก
 
@@ -33,7 +33,8 @@ Domain model ให้ความสำคัญกับชื่อและ�
 - Order → Payment attempt เป็น0..*เมื่อรวมประวัติ การจำกัด live payment เป็น partial unique subset ไม่ใช่ unconditional1:1
 - Campaign budget movement แม้ขึ้นต้น m_ ก็เป็น movement ledger ที่เชื่อม budget, campaign และ order ไม่ใช่ config ทั่วไป
 - `public.t_key` เป็น binary key material ไม่ใช่ MongoDB configuration ตามภาพ operational เดิม ไม่มี key values หรือ secret ถูกอ่านจาก runtime
-- MongoDB/Redis/outbox ที่เสนอในชุดก่อนหน้าไม่มีตารางใน SQL53ตารางนี้ จึงไม่เพิ่มเป็น entity ที่มีอยู่จริงใน domain model จาก DB
+- `public.m_parameter` เป็น reference data กลางแบบ key/value ซ้อน parent/child ผ่าน parent_id ของตัวเอง (เช่น ประเทศ > จังหวัด > อำเภอ) ยังไม่มีตารางอื่นมี FK มาหา จึงไม่มีเส้นข้ามกลุ่มในภาพรวม
+- MongoDB/Redis/outbox ที่เสนอในชุดก่อนหน้าไม่มีตารางใน SQL54ตารางนี้ จึงไม่เพิ่มเป็น entity ที่มีอยู่จริงใน domain model จาก DB
 
 ## ความเชื่อมโยงกับโฟลเดอร์ Domain ที่เจ้าของงานกำหนด
 
@@ -50,6 +51,7 @@ FKยืนยันแต่ละ reference แต่ไม่รับรอ�
 | SQL table / schema doc | Business concept | รายละเอียดที่เลือกแสดง | Migration |
 | --- | --- | --- | --- |
 | [public.t_key](../../doc/schema/public/t_key.md) | Key material | `# id; key_name; effective_at / expired_at` | [00-common.schema.up.sql](../../db/migrations/up/00-common.schema.up.sql) |
+| [public.m_parameter](../../doc/schema/public/m_parameter.md) | Reference parameter | `# id / parent_id?; key (unique live) / value; title / display / metadata` | [00-common.schema.up.sql](../../db/migrations/up/00-common.schema.up.sql) |
 | [consent.m_consent_type](../../doc/schema/consent/m_consent_type.md) | Consent type | `# id; name / is_required` | [00-common.schema.up.sql](../../db/migrations/up/00-common.schema.up.sql) |
 | [consent.t_consent](../../doc/schema/consent/t_consent.md) | Consent version | `# id / code; consent_type_id; consent_version / body` | [00-common.schema.up.sql](../../db/migrations/up/00-common.schema.up.sql) |
 | [authen.m_user](../../doc/schema/authen/m_user.md) | User | `# id; username / email_address; display_name` | [01-authen.schema.up.sql](../../db/migrations/up/01-authen.schema.up.sql) |
@@ -119,11 +121,11 @@ FKยืนยันแต่ละ reference แต่ไม่รับรอ�
 
 ## เปิดภาพรายละเอียด
 
-- [Identity / Access / Consent](domain-identity-model.md):21ตาราง /23FK
+- [Identity / Access / Consent / Shared reference](domain-identity-model.md):22ตาราง /24FK
 - [Catalog / Shop / Stock](domain-merchandising-model.md):19ตาราง /25FK
 - [Commerce](domain-commerce-model.md):13ตาราง /27FK
 
-ทั้งสามหน้าแบ่ง53ตารางแบบไม่ซ้ำกัน มีFKcatalogueรวม75รายการ รวมถึง7nullableFK ไม่บังคับให้วาดเส้นทั้ง75บนภาพเดียว
+ทั้งสามหน้าแบ่ง54ตารางแบบไม่ซ้ำกัน มีFKcatalogueรวม76รายการ รวมถึง8nullableFK ไม่บังคับให้วาดเส้นทั้ง76บนภาพเดียว
 
 ## การตรวจและการสร้างซ้ำ
 
@@ -147,4 +149,4 @@ python3 -B e-commerce/scripts/diagrams/generate_domain_diagrams.py --finalize-pn
 - [Microsoft domain analysis](https://learn.microsoft.com/en-us/azure/architecture/microservices/model/domain-analysis): ใช้ประกอบการแยกconcept/ขอบเขตเชิงธุรกิจ; ไม่ถือว่าSQLschemaเท่ากับboundedcontext
 - [PostgreSQL constraints](https://www.postgresql.org/docs/18/ddl-constraints.html) และ [partial indexes](https://www.postgresql.org/docs/18/indexes-partial.html): ใช้ตีความFK, nullabilityและconditionaluniqueness
 
-SQL/schema baseline commit: `1e5d2a27db7145ace709fbedc052e586e17954b3`; file hashesบันทึกในinventoryเพื่อให้ตรวจdriftได้ แม้ภายหลังbranchมีcommitงานภาพเพิ่ม
+SQL/schema baseline commit: `73d667854c224d4357d9fd9c66409113c70fe034`; file hashesบันทึกในinventoryเพื่อให้ตรวจdriftได้ แม้ภายหลังbranchมีcommitงานภาพเพิ่ม

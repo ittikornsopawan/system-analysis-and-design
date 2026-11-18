@@ -95,3 +95,14 @@ Moved all 13 project Python modules from `diagram/scripts/` and `diagram/domain/
 Both relocated generator families pass `--check` and `--finalize-pngs`. SHA-256 comparison against the pre-extraction snapshot confirms all 19 `.drawio`, 19 PNGs, 19 HTML previews and the SQL inventory are byte-identical. The shared verifier passes all 19 bundles with native nesting required. Domain evidence still accounts for 53/53 tables and 75/75 FK columns with zero schema documentation findings. No new image rendering, browser inspection or native edit session was performed for this code/path-only refactor; artifact parity preserves the existing visual evidence.
 
 The new artifact regression suite passes 11 tests covering PNG corruption/truncation, stale/conflicting embedded models, missing references, cycles, false nesting, compatibility finalization, compressed pages, metadata encodings, size limits and same-renderer pixel streams. Run it with `python3 -B -m unittest discover -s .agents/skills/diagram-creator/tests -v`.
+
+## Domain package at 54 tables — 2026-11-18
+
+The domain package now covers `public.m_parameter` (#219, #221). The domain generator reports:
+
+```text
+python3 -B e-commerce/scripts/diagrams/generate_domain_diagrams.py --check
+PASS domain source coverage: 54/54 tables; 76/76 FK columns; schema documentation comparison 0 findings
+```
+
+The 53/75 results above are historical. The placement, re-rendered views and approval states are recorded in [domain-model-verification.md](../domain/domain-model-verification.md).

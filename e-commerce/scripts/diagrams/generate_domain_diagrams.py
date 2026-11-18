@@ -23,10 +23,10 @@ def evidence():
  assert not audit.FINDINGS,audit.FINDINGS
  assert set(tables)==set(CONCEPTS),'Every existing SQL table must map to exactly one concept'
  fk_count=sum(bool(c['ref'])for t in tables.values()for c in t['cols'])
- assert (len(tables),len({t['schema']for t in tables.values()}),fk_count)==(53,11,75)
+ assert (len(tables),len({t['schema']for t in tables.values()}),fk_count)==(54,11,76)
  files=list((ROOT/'e-commerce/db/migrations/up').glob('*.sql'))+list((ROOT/'e-commerce/doc/schema').glob('*/*.md'))+[ROOT/'e-commerce/doc/schema/README.md']
  paths={str(p.relative_to(ROOT)):hashlib.sha256(p.read_bytes()).hexdigest()for p in sorted(files)if p.name!='template.md'}
- result=dict(table_count=53,schema_count=11,fk_count=75,source_files=paths,tables={k:dict(v,concept=CONCEPTS[k][0],indexes=indexes.get(k,[]))for k,v in tables.items()})
+ result=dict(table_count=54,schema_count=11,fk_count=76,source_files=paths,tables={k:dict(v,concept=CONCEPTS[k][0],indexes=indexes.get(k,[]))for k,v in tables.items()})
  return result
 
 def sync_inventory(fresh,refresh=False):
@@ -79,7 +79,7 @@ def validate(d,source):
   assert not re.search(r'\bUNIQUE\s*\(\s*'+re.escape(fk['column'])+r'\s*\)',source['tables'][fk['child']]['sql'])
   e['parent_card']='0..1'if column['nullable']else'1';e['child_card']='0..*'
  labels=card_boxes(d)if d['schemas']else[]
- print(f'PASS {d["slug"]}: {len(expected) if d["schemas"]else 53} source tables; {len(d["edges"])} verified associations; {len(labels)} cardinalities')
+ print(f'PASS {d["slug"]}: {len(expected) if d["schemas"]else 54} source tables; {len(d["edges"])} verified associations; {len(labels)} cardinalities')
  return labels
 
 def render(d,labels):
@@ -135,7 +135,7 @@ approved_at: null
   text+='\n## Cross-schema references ที่เลือกในภาพรวม\n\nเส้นไม่มีหัวลูกศร แต่ละปลายคือกลุ่มหลายconcept จึงไม่ใส่cardinalityระดับentityหรือสื่อการเรียกservice ใช้FKต่อไปนี้เป็นหลักฐานและอ่านตัวเลขในหน้ารายละเอียดแทน\n\n| กลุ่มที่เชื่อม | FK evidence | Parent table |\n| --- | --- | --- |\n'
   by_id={n['id']:n for n in d['nodes']}
   for e in d['edges']:text+=f"| {by_id[e['source']]['title']} — {by_id[e['target']]['title']} | `{e['fk']['child']}.{e['fk']['column']}` | `{e['fk']['parent']}` |\n"
-  text+='\n## เปิดภาพรายละเอียด\n\n- [Identity / Access / Consent](domain-identity-model.md):21ตาราง /23FK\n- [Catalog / Shop / Stock](domain-merchandising-model.md):19ตาราง /25FK\n- [Commerce](domain-commerce-model.md):13ตาราง /27FK\n\nทั้งสามหน้าแบ่ง53ตารางแบบไม่ซ้ำกัน มีFKcatalogueรวม75รายการ รวมถึง7nullableFK ไม่บังคับให้วาดเส้นทั้ง75บนภาพเดียว\n'
+  text+='\n## เปิดภาพรายละเอียด\n\n- [Identity / Access / Consent / Shared reference](domain-identity-model.md):22ตาราง /24FK\n- [Catalog / Shop / Stock](domain-merchandising-model.md):19ตาราง /25FK\n- [Commerce](domain-commerce-model.md):13ตาราง /27FK\n\nทั้งสามหน้าแบ่ง54ตารางแบบไม่ซ้ำกัน มีFKcatalogueรวม76รายการ รวมถึง8nullableFK ไม่บังคับให้วาดเส้นทั้ง76บนภาพเดียว\n'
  text+='''
 ## การตรวจและการสร้างซ้ำ
 
@@ -183,7 +183,7 @@ def main():
    assert(OUT/f'{d["slug"]}.md').read_text()==md,d['slug']+' companion drift'
   else:
    (OUT/f'{d["slug"]}.html').write_text(html);(OUT/f'{d["slug"]}.drawio').write_text(xml);(OUT/f'{d["slug"]}.md').write_text(md)
- assert len(coverage)==len(set(coverage))==53 and fk_count==75
- print('PASS domain source coverage: 53/53 tables; 75/75 FK columns; schema documentation comparison 0 findings')
+ assert len(coverage)==len(set(coverage))==54 and fk_count==76
+ print('PASS domain source coverage: 54/54 tables; 76/76 FK columns; schema documentation comparison 0 findings')
 
 if __name__=='__main__':main()
