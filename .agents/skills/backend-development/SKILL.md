@@ -26,6 +26,14 @@ Use the project's public contracts, conventions and smallest complete design. Ad
 
 For persistence and external effects, derive transaction completion, retained writes, ordering, idempotency and failure outcomes from each approved branch. A failure Result or HTTP error can still require a committed audit/security effect. Bind parameters rather than interpolating inputs, propagate cancellation/timeouts through actual I/O, dispose resources through the stack's lifetime model, and check conditional-write/affected-row outcomes. Test required constraints, locks and race behavior at their real boundary.
 
+## Owner standards for every backend change
+
+Set by the owner on 2026-11-18; they apply to every backend task and every layer.
+
+1. **Reusable function first.** Before writing logic, decide whether other code will call it. If yes, extract it as its own named function and place it by reach: logic used by every layer goes in the shared layer; logic used inside one layer, or by that layer and the layers directly related to it, goes in the layer that owns its meaning. Logic with one caller stays where it is used. Do not create a helper for a caller that does not exist yet.
+2. **Each layer keeps its meaning.** A layer does only the work its meaning defines: the API/presentation layer handles HTTP, binding, the caller identity and result-to-response mapping; the application layer orchestrates the use case and its transaction intent; the domain layer owns values, state and business rules; the infrastructure layer performs database, cryptography and external-system work; the shared layer holds cross-cutting building blocks. Code that does another layer's job moves to that layer; changing a layer's meaning is an architecture decision that needs approval.
+3. **Test cases before done.** After implementing an API, create or update its test cases with [api-test-case-creator](../api-test-case-creator/SKILL.md) (`test-cases.md` beside the spec), then automate every runnable case as unit, integration or API tests at the level that proves its claim, naming each test after its case ID. Run them all. A failing case is fixed in code, or raised as a spec gap through the clarification contract; never weaken or skip a test to make it pass. The change is done only when every runnable case passes; report the case-to-test mapping and any blocked case.
+
 ## Verify and hand off
 
 Follow [verification and worked examples](references/verification.md). Unit tests/fakes can prove business decisions or orchestration; changed SQL, transactions, locking and concurrency require appropriate real database evidence, and changed HTTP/authentication behavior requires the actual relevant framework pipeline. Choose tests by the claim being made. Inspect configured build/test/static checks and compare resulting behavior with the governing spec and published contract.

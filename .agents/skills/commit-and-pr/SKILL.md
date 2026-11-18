@@ -48,6 +48,8 @@ Every error encountered while using this skill requires an improvement in the sa
 
 Do not merge the PR and do not enable auto-merge. Those actions are outside this skill and the named-agent delivery lifecycle; main-to-task integration remains permitted. Attach/bind the PR when the session provides that tool, and read its status once; do not poll CI in a loop.
 
+After every push to the PR branch, and before telling anyone the PR is ready, prove `gh pr view <n> --json headRefOid` equals the local `HEAD`; a fix pushed after the reader starts merging is lost. When told a PR merged, prove the last pushed commit is an ancestor of the base (`git merge-base --is-ancestor <sha> origin/<base>`); if it is not, carry that commit alone in a new PR and name it in the description.
+
 ## Done when
 
 - The authored task commit contains exactly the chosen files and its message follows the template; integration commits contain only the verified base merge and its resolutions.
