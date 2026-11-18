@@ -57,7 +57,7 @@ API แยกตาม domain:
 
 ## 4. Repository ของโค้ด
 
-- Backend อยู่ใน Component Repository แยก: `e-commerce-backend` (.NET 10) ตาม `e-commerce/REPOS.md` ใช้ skill `repository-bootstrap` เพื่อ checkout ลงใน `e-commerce/repository/` ห้าม clone เอง
+- Backend อยู่ใน Component Repository แยก: `e-commerce-backend` (.NET 11 / C# 15) ตาม `e-commerce/REPOS.md` ใช้ skill `repository-bootstrap` เพื่อ checkout ลงใน `e-commerce/repository/` ห้าม clone เอง
 - baseline ใน REPOS.md เป็นโค้ด Authen รุ่นเก่า มีช่องว่างกับ spec ใหม่ที่บันทึกไว้ใน code guide ของ repo นั้น
 - Showcase repo นี้ไม่เก็บ source ของ backend
 
