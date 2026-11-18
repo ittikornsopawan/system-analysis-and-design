@@ -1,9 +1,9 @@
 ---
 name: "Upsert Parameter Batch API"
 description: "Insert, update, delete or archive several parameters in one transaction, with the parent, cycle and children rules checked on the final state, only for a platform administrator authorized from the verified JWT roles claim after the caller lock and the current credential check. Read it when you implement, review or test POST v1/parameter/upsert/batch."
-status: in-review
-approved_by: null
-approved_at: null
+status: approved
+approved_by: Josh (SA Lead, delegated by Ittikorn 2026-11-17)
+approved_at: 2026-11-18T08:23:39+07:00
 ---
 
 # [POST]: v1/parameter/upsert/batch

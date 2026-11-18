@@ -1,9 +1,9 @@
 ---
 name: "Inquiry Parameter API"
 description: "Public inquiry of the parameters (reference data such as countries, provinces, districts, subdistricts and postal codes) with the parent, root, key, status and effective-period filters and paging; only ACTIVE parameters are returned. Read it when you implement, review or test GET v1/parameter."
-status: in-review
-approved_by: null
-approved_at: null
+status: approved
+approved_by: Josh (SA Lead, delegated by Ittikorn 2026-11-17)
+approved_at: 2026-11-18T08:23:39+07:00
 ---
 
 # [GET]: v1/parameter
