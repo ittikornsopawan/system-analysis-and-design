@@ -13,7 +13,7 @@ description: "Documented scenarios and expected results for POST v1/auth/refresh
 - Source approval: approved (`approved_by: Ittikorn`, `approved_at: 2026-11-16T09:24:57+07:00`)
 - Test design baseline: approved-source
 - Scope and exclusions: refresh only. The claim resolution rules themselves are covered by [02-login TC-LOGIN-017](../02-login/test-cases.md#tc-login-017--authorization-claims); here one case proves refresh resolves current grants instead of copying old ones.
-- Execution summary: Not run — automated tests in e-commerce-backend will carry the case ID in their names.
+- Execution summary: every case automated in e-commerce-backend (test names start with the case ID) and passing; see [Revision and execution history](#revision-and-execution-history).
 
 ## Shared fixtures and observation prerequisites
 
@@ -43,67 +43,67 @@ description: "Documented scenarios and expected results for POST v1/auth/refresh
 
 ### TC-REFRESH-001 — Rotation
 
-- Source: F01, F02, F12. Design readiness: Ready. Execution status: Not run.
+- Source: F01, F02, F12. Design readiness: Ready. Execution status: Pass (automated).
 
 **Request:** VR without an authorization header. **Expected:** 200, "Ok", S10000 "Refresh Token Success"; data has exactly tokenType "Bearer", accessToken, refreshAccessToken (≠ R1), expiresIn 900; R1's row INACTIVE with updated_by = U_OK id; session S1 now has 2 access rows (A1 still ACTIVE) and 2 refresh rows (the new one ACTIVE, hash = SHA-256 of the returned token); S2 untouched; the new JWT `sub` = U_OK id.
 
 ### TC-REFRESH-002 — Claims are resolved again
 
-- Source: F03. Design readiness: Ready. Execution status: Not run.
+- Source: F03. Design readiness: Ready. Execution status: Pass (automated).
 
 **Steps:** log in with role `R_A` granting `catalog.manage`; then remove the role assignment (INACTIVE) and grant role `R_B` with `order.view`; refresh. **Expected:** the new JWT `roles` = ["R_B"], `permissions` = ["order:view"]; `user` matches the current row.
 
 ### TC-REFRESH-003 — Missing token
 
-- Source: F04. Design readiness: Ready. Execution status: Not run.
+- Source: F04. Design readiness: Ready. Execution status: Pass (automated).
 
 **Request:** body without `refreshAccessToken`, then `""`. **Expected:** 400 E10001 "Refresh Access Token is a required field."; nothing changed.
 
 ### TC-REFRESH-004 — Unknown or expired token
 
-- Source: F05. Design readiness: Ready. Execution status: Not run.
+- Source: F05. Design readiness: Ready. Execution status: Pass (automated).
 
 **Request:** an unknown token; then R1 after its `expired_at` is set one second in the past. **Expected:** 401 E10002 "Invalid or expired refresh token."; no row changed.
 
 ### TC-REFRESH-005 — User not ACTIVE
 
-- Source: F05. Design readiness: Ready. Execution status: Not run.
+- Source: F05. Design readiness: Ready. Execution status: Pass (automated).
 
 **Preconditions:** U_OK is LOCKED. **Expected:** the same 401; R1 stays ACTIVE (not consumed).
 
 ### TC-REFRESH-006 — Replay inside the grace window
 
-- Source: F06. Design readiness: Ready. Execution status: Not run.
+- Source: F06. Design readiness: Ready. Execution status: Pass (automated).
 
 **Steps:** refresh with R1 (200, gives R2); immediately refresh with R1 again. **Expected:** the second is the same 401; R2 and the new access row stay ACTIVE.
 
 ### TC-REFRESH-007 — Replay after the grace window closes the session
 
-- Source: F07. Design readiness: Ready. Execution status: Not run.
+- Source: F07. Design readiness: Ready. Execution status: Pass (automated).
 
 **Steps:** refresh with R1 (gives R2); move R1's `updated_at` 10 seconds back; refresh with R1 again. Variant: R1 INACTIVE with `updated_at` NULL. **Expected:** 401; every refresh and access row of S1 INACTIVE (R2 and A1 included) and committed; S2 rows still ACTIVE; R2 then fails with 401.
 
 ### TC-REFRESH-008 — Concurrent refreshes
 
-- Source: F08. Design readiness: Ready. Execution status: Not run.
+- Source: F08. Design readiness: Ready. Execution status: Pass (automated).
 
 **Steps:** send 3 VRs with R1 at once. **Expected:** exactly one 200 and two 401; exactly one new ACTIVE refresh row in S1 and it stays ACTIVE.
 
 ### TC-REFRESH-009 — The user row lock
 
-- Source: F09, F10. Design readiness: Ready. Execution status: Not run.
+- Source: F09, F10. Design readiness: Ready. Execution status: Pass (automated).
 
 **Steps:** a second connection holds U_OK's row `FOR UPDATE`; VR runs with a 1-second command timeout. **Expected:** 408 E90001; R1 still ACTIVE; no new row. After release, VR → 200.
 
 ### TC-REFRESH-010 — Unexpected failure
 
-- Source: F10. Design readiness: Ready. Execution status: Not run.
+- Source: F10. Design readiness: Ready. Execution status: Pass (automated).
 
 **Steps:** a test-only wrapper throws after the new token inserts. **Expected:** 500, "An unexpected error occurred.", no bizCode; R1 still ACTIVE; no new row.
 
 ### TC-REFRESH-011 — Rate limit
 
-- Source: F11. Design readiness: Ready. Execution status: Not run.
+- Source: F11. Design readiness: Ready. Execution status: Pass (automated).
 
 **Steps:** with the standard limit at 60, send 61 requests from one IP. **Expected:** the 61st is 429 E90002 "Too many requests. Try again later." with `Retry-After` 1–60.
 
@@ -117,8 +117,9 @@ description: "Documented scenarios and expected results for POST v1/auth/refresh
 
 - Every obligation F01–F12 maps to a case, and every case cites its obligation.
 - Codes and messages come from the spec examples.
-- No case has run yet.
+- Every case runs automatically; see the execution history.
 
 ## Revision and execution history
 
 - 2026-11-18: first version (Drake), Not run.
+- 2026-11-18: executed by the automated tests of e-commerce-backend on branch `feat/drake-05-refresh-token` (stacked on 04): `RefreshTokenApiTests` (HTTP + real PostgreSQL 17, 12 tests), `RefreshTokenCommandHandlerTests` (6), `RefreshTokenRepositoryTests` (4, real database), `RefreshTokenReuseTests` (10). Result: every case passes (`dotnet test`: Api 162, Application 31, Domain 58, Infrastructure 41, 0 failed). Mutation checks: removing the grace window fails TC-REFRESH-006 (three tests) and TC-REFRESH-008; removing `ForUpdate()` fails the repository TC-REFRESH-009.
