@@ -52,3 +52,11 @@ agents:
     reports_to: josh
     workspace_key: jinny
     capabilities: []
+  - name: drake
+    enabled: true
+    role: .agents/agents/backend-developer.md
+    title: Backend Developer
+    scope: repository-wide
+    reports_to: ittikorn
+    workspace_key: drake
+    capabilities: []
