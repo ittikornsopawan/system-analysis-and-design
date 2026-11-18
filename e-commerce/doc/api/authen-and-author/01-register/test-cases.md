@@ -142,7 +142,7 @@ description: "Documented scenarios and expected results for POST v1/auth/registe
 
 - Source: R04, G3. Design readiness: Ready. Execution status: Pass (automated).
 
-**Request/input:** `dateOfBirth "1990-13-01"`, `"31-01-1990"` → "Date Of Birth must be a valid date (YYYY-MM-DD)."; `gender "male"`, `"X"` → "Gender must be MALE, FEMALE or OTHER."; `referrerId "abc"` → "Referrer Id must be a valid UUID."; `emailAddress "abc"`, `"a@b@c"` → "Email Address must be a valid email address."; each 400 E10001 with no rows. `gender "X"` with `referrerId "abc"` → "Gender must be MALE, FEMALE or OTHER, Referrer Id must be a valid UUID." (field order). `gender "OTHER"` and `dateOfBirth "2000-02-29"` → 201.
+**Request/input:** `dateOfBirth "1990-13-01"`, `"31-01-1990"` → "Date Of Birth must be a valid date (YYYY-MM-DD)."; `gender "male"`, `"X"` → "Gender must be MALE, FEMALE or OTHER."; `referrerId "abc"` → "Referrer Id must be a valid UUID."; `emailAddress "abc"`, `"a@b@c"` → "Email Address must be a valid email address."; added 2026-11-18 for the owner's stricter rule (Not run until the backend change lands): `"a.b@c"` (no dot in the domain), `"a b@shop.co"`, `"A <a@shop.co>"` → the same message, and `" a.b@shop.co"` (leading space); each 400 E10001 with no rows. `gender "X"` with `referrerId "abc"` → "Gender must be MALE, FEMALE or OTHER, Referrer Id must be a valid UUID." (field order). `gender "OTHER"` and `dateOfBirth "2000-02-29"` → 201.
 
 ### TC-REG-007 — Address object validation
 
@@ -307,7 +307,7 @@ description: "Documented scenarios and expected results for POST v1/auth/registe
 | --- | --- | --- | --- | --- |
 | G1 | spec examples give bizMessage only for required fields, password and consent | R01, R03–R06 | exact bizMessage text | resolved — Josh, 2026-11-18, api-conventions "Validation messages" (PR #237) |
 | G2 | no example for a header failure; content-type could be a framework 415 | R07 | status and message for headers | resolved — 400 E10001, header messages (PR #237) |
-| G3 | emailAddress had only a length | R03 | email format rule | resolved — exactly one @ with non-empty parts, "Email Address must be a valid email address." (PR #237) |
+| G3 | emailAddress had only a length | R03 | email format rule | resolved — exactly one @ with non-empty parts, "Email Address must be a valid email address." (PR #237); superseded 2026-11-18 by the owner: the `EmailAddress` rule with a dot required in the domain (api-conventions "Email address") |
 | G4 | no form for a JSON value of the wrong type or a body that is not an object | TC-REG-007, TC-REG-008 | message forms | resolved — Josh, 2026-11-18 (PR #238): "<Field> must be a string. / a number. / a boolean. / an array."; "Request Body must be an object." alone |
 
 ## Document verification and limitations

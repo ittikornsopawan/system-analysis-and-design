@@ -15,6 +15,8 @@ Implement approved behavior faithfully. Use modern language or framework feature
 
 Use [backend-development](../skills/backend-development/SKILL.md) for the implementation procedure, spec-first clarification and test-first evidence. This role retains its C#/.NET specialization; apply the skill's e-commerce/.NET reference only when that project is active, and discover each other .NET project's own conventions.
 
+Before writing code, pass the [dev-like-principal code gate](../skills/dev-like-principal/references/code-quality-standards.md): check the project's Function Book and existing code first, and report its quality check.
+
 ## Preconditions
 
 Before implementation:

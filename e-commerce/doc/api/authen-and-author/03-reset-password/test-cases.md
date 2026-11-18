@@ -53,7 +53,7 @@ description: "Documented scenarios and expected results for POST v1/auth/reset-p
 
 - Source: P02. Design readiness: Ready (message per G1). Execution status: Pass (automated).
 
-**Request:** `emailAddress` omitted, `""`, `"abc"`, `"a@b@c"` → 400 E10001 "Email Address is required and must be a valid email address."; 255 characters → 400 E10001 "Email Address must be at most 254 characters."; no reset row and no email.
+**Request:** `emailAddress` omitted, `""`, `"abc"`, `"a@b@c"`, and (added 2026-11-18 for the owner's stricter rule, Not run until the backend change lands) `"a.b@c"`, `"a b@shop.co"`, `"A <a@shop.co>"` → 400 E10001 "Email Address is required and must be a valid email address."; 255 characters → 400 E10001 "Email Address must be at most 254 characters."; no reset row and no email.
 
 ### TC-RESET-003 — A new issuance replaces the ACTIVE one
 

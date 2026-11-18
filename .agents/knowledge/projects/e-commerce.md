@@ -32,6 +32,8 @@ Status: `manifest-managed`
 | Backend architecture and feature conventions     | `e-commerce/repository/e-commerce-backend/project-structure.md`                                            |
 | Backend build configuration and target framework | `e-commerce/repository/e-commerce-backend/Directory.Build.props` and `e-commerce/repository/e-commerce-backend/Ecommerce.sln` |
 | Backend tests                                    | `e-commerce/repository/e-commerce-backend/tests/`                                                          |
+| Shared reusable functions (Function Book)        | `e-commerce/doc/function-book.md`; check it before writing any backend function |
+| Layer and sub-layer placement                    | `e-commerce/doc/code-structure.md` |
 
 ## Templates
 

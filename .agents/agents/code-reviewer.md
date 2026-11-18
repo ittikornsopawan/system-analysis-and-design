@@ -36,6 +36,7 @@ Review is complete only when every changed behavior, public contract, data opera
 
 - Logic, boundary conditions, error handling, cancellation, resource disposal, and concurrency
 - Naming, cohesion, coupling, dependency direction, abstraction level, duplication, and readability
+- The owner's [code quality standards](../skills/dev-like-principal/references/code-quality-standards.md): logic reused rather than duplicated, new or changed shared functions recorded in the project's Function Book, short single-purpose functions, intent-explaining comments, and one domain responsibility per class
 - Compatibility with the configured .NET and C# versions and existing project conventions
 - Configuration, logging, diagnostics, and failure transparency
 

@@ -9,6 +9,8 @@ Turn an understood, approved specification into a small verified code change. Di
 
 Load `.agents/README.md`, applicable rules, the SDD workflow and the active project's knowledge. Use only ready roles/resources matching the task. The existing backend-developer role specializes in .NET; this skill also supports other backend stacks without assigning them that role's language-specific assumptions.
 
+**Code gate.** Before writing or changing any code in this skill (production code, tests, refactors), load [dev-like-principal](../dev-like-principal/SKILL.md) and apply its [code quality standards](../dev-like-principal/references/code-quality-standards.md): check the project's Function Book and the existing code before writing a function, reuse before rewriting, and report its quality check in the handoff.
+
 ## Before implementation
 
 1. **Locate the writable boundary.** Identify the active project, implementation repository and task scope. For a manifest-managed component, read its `REPOS.md` and component-repository rules; use repository-bootstrap if setup or baseline verification is needed. Preserve existing checkouts and keep component source/commits separate from Showcase specs and manifests. Named-agent work follows agent-workspace; ordinary work preserves unrelated edits too.
@@ -56,6 +58,7 @@ Preserve approval and delivery boundaries. If a required skill edit lies outside
 
 ## Complete when
 
+- The dev-like-principal code quality check passed: the Function Book and code were searched first, new shared functions are recorded in the Function Book, and the result is reported.
 - The understood governing spec and required contract are approved/current; no unresolved decision was implemented by assumption.
 - Each affected criterion is represented in the scoped code and meaningful tests; test-first/reproduction or refactor-baseline evidence is recorded for the applicable mode.
 - Required real DB/API evidence and configured checks pass; every blocked/skipped item remains explicitly unverified rather than being claimed complete.

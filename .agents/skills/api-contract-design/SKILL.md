@@ -9,6 +9,8 @@ The API specs are the contract that the C# backend will implement, so every beha
 
 Load first: `.agents/README.md`, `.agents/rules/global.md`, `.agents/knowledge/projects/e-commerce.md`. `e-commerce/doc/api/template.md` is the project's template (copy in `assets/api-spec.md.tmpl`) and overrides `.agents/templates/api-spec.md`.
 
+**Code gate.** Before writing or changing any code in this skill (checker sub-commands, generators, helper scripts), load [dev-like-principal](../dev-like-principal/SKILL.md) and apply its [code quality standards](../dev-like-principal/references/code-quality-standards.md): check the project's Function Book and the existing code before writing a function, reuse before rewriting, and report its quality check in the handoff.
+
 ## Inputs you need before starting
 
 - The table(s) the API works on and the rules the business wants. Read the real migration and schema doc; a spec SQL that names a column that does not exist fails `audit_all.py`.
