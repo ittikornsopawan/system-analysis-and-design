@@ -13,7 +13,7 @@ description: "Documented scenarios and expected results for POST v1/auth/create-
 - Source approval: approved (`approved_by: Ittikorn`, `approved_at: 2026-11-16T09:24:57+07:00`)
 - Test design baseline: approved-source
 - Scope and exclusions: create-new-password only. Excluded: TLS; timing of the constant-time comparison (the comparison method is a code property, not an HTTP observation).
-- Execution summary: Not run — automated tests in e-commerce-backend will carry the case ID in their names.
+- Execution summary: every case automated in e-commerce-backend (test names start with the case ID) and passing; see [Revision and execution history](#revision-and-execution-history).
 
 ## Shared fixtures and observation prerequisites
 
@@ -47,73 +47,73 @@ description: "Documented scenarios and expected results for POST v1/auth/create-
 
 ### TC-NEWPW-001 — The password is replaced and every session is closed
 
-- Source: N01–N04, N13. Design readiness: Ready. Execution status: Not run.
+- Source: N01–N04, N13. Design readiness: Ready. Execution status: Pass (automated).
 
 **Request:** VR. **Expected:** 200, message "Ok", S10000 "Create New Password Success", no `data`, body without the token or a password; the reset row INACTIVE with updated_by = U_OK id; old PASSWORD row INACTIVE (updated_by = U_OK id), one new ACTIVE PASSWORD row (created_by = U_OK id, 16-byte salt) that verifies `NewSecret1x` and not the old password; all 4 ACTIVE token rows of U_OK INACTIVE (including the expired one); U_OTHER's rows unchanged; no new token row.
 
 ### TC-NEWPW-002 — Missing fields
 
-- Source: N05. Design readiness: Ready. Execution status: Not run.
+- Source: N05. Design readiness: Ready. Execution status: Pass (automated).
 
 **Request:** without `resetToken` → "Reset Token is a required field."; without `newPassword` → "New Password is a required field."; with neither → "Reset Token and New Password are required fields."; each 400 E10001, nothing changed.
 
 ### TC-NEWPW-003 — Password policy before any lookup
 
-- Source: N06. Design readiness: Ready. Execution status: Not run.
+- Source: N06. Design readiness: Ready. Execution status: Pass (automated).
 
 **Request:** VR with `newPassword` `Short1`, `nouppercase1`, `NOLOWERCASE1`, `NoDigitsHere`, 129 characters; and with an unknown `resetToken` plus `Short1`. **Expected:** 400 E10001 "Password must be 8 to 128 characters and contain an upper-case letter, a lower-case letter and a digit." each time (the policy answers before the token lookup); nothing changed; T_OK still usable.
 
 ### TC-NEWPW-004 — An unknown token
 
-- Source: N07. Design readiness: Ready. Execution status: Not run.
+- Source: N07. Design readiness: Ready. Execution status: Pass (automated).
 
 **Request:** VR with a token that has no row. **Expected:** 400 E10001 "Reset token is invalid or expired."; nothing changed.
 
 ### TC-NEWPW-005 — A used or replaced token
 
-- Source: N07, N09. Design readiness: Ready. Execution status: Not run.
+- Source: N07, N09. Design readiness: Ready. Execution status: Pass (automated).
 
 **Steps:** use T_OK successfully, then send it again with another new password; and a token whose row is INACTIVE because a newer reset replaced it. **Expected:** the generic 400 each time; nothing changed by the second call.
 
 ### TC-NEWPW-006 — An expired token
 
-- Source: N07, N15. Design readiness: Ready. Execution status: Not run.
+- Source: N07, N15. Design readiness: Ready. Execution status: Pass (automated).
 
 **Preconditions:** the reset row expired one second ago (and a variant with `expired_at` equal to the lookup time, which counts as expired). **Expected:** the generic 400; nothing changed.
 
 ### TC-NEWPW-007 — A user that is not ACTIVE
 
-- Source: N07. Design readiness: Ready. Execution status: Not run.
+- Source: N07. Design readiness: Ready. Execution status: Pass (automated).
 
 **Preconditions:** U_OK is LOCKED (then INACTIVE). **Expected:** the generic 400; the reset row stays ACTIVE (rollback); nothing changed.
 
 ### TC-NEWPW-008 — The same password is refused and the token stays usable
 
-- Source: N08. Design readiness: Ready. Execution status: Not run.
+- Source: N08. Design readiness: Ready. Execution status: Pass (automated).
 
 **Steps:** VR with `newPassword` = `Passw0rd-Example` (the current password); then VR with `NewSecret1x`. **Expected:** first 400 E10001 "New password must be different from the current password." with the reset row still ACTIVE and no password or token change; then 200 as TC-NEWPW-001.
 
 ### TC-NEWPW-009 — Concurrent requests consume the token once
 
-- Source: N09, N10. Design readiness: Ready. Execution status: Not run.
+- Source: N09, N10. Design readiness: Ready. Execution status: Pass (automated).
 
 **Steps:** send 3 VRs with different new passwords at once. **Expected:** exactly one 200 and two generic 400; exactly one new ACTIVE PASSWORD row.
 
 ### TC-NEWPW-010 — The user row lock
 
-- Source: N10, N12. Design readiness: Ready. Execution status: Not run.
+- Source: N10, N12. Design readiness: Ready. Execution status: Pass (automated).
 
 **Steps:** a second connection holds U_OK's row `FOR UPDATE`; VR runs with a 1-second command timeout. **Expected:** 408 E90001 "The server timed out waiting for the request."; nothing changed. After the lock is released, VR → 200.
 
 ### TC-NEWPW-011 — Missing current password
 
-- Source: N11. Design readiness: Ready. Execution status: Not run.
+- Source: N11. Design readiness: Ready. Execution status: Pass (automated).
 
 **Preconditions:** U_OK's PASSWORD row is INACTIVE. **Expected:** 500, "An unexpected error occurred.", no bizCode, no `data`; the reset row stays ACTIVE; no token row changed.
 
 ### TC-NEWPW-012 — Rate limit
 
-- Source: N14. Design readiness: Ready. Execution status: Not run.
+- Source: N14. Design readiness: Ready. Execution status: Pass (automated).
 
 **Steps:** with the limit at 10, send 11 requests from one IP. **Expected:** the 11th is 429 E90002 "Too many requests. Try again later." with `Retry-After` 1–60.
 
@@ -127,8 +127,9 @@ description: "Documented scenarios and expected results for POST v1/auth/create-
 
 - Every obligation N01–N15 maps to a case, and every case cites its obligation.
 - Codes and messages come from the spec examples and api-conventions.
-- No case has run yet.
+- Every case runs automatically; see the execution history.
 
 ## Revision and execution history
 
 - 2026-11-18: first version (Drake), Not run.
+- 2026-11-18: executed by the automated tests of e-commerce-backend on branch `feat/drake-04-create-new-password` (stacked on 03): `CreateNewPasswordApiTests` (HTTP + real PostgreSQL 17, 16 tests), `CreateNewPasswordCommandHandlerTests` (6), `CreateNewPasswordRepositoryTests` (4, real database). Result: every case passes (`dotnet test`: Api 150, Application 25, Domain 48, Infrastructure 37, 0 failed). Mutation checks: removing the single-use guard fails TC-NEWPW-005, 006 and 009; removing `ForUpdate()` fails the repository TC-NEWPW-010 (the guarded consumption alone already keeps TC-NEWPW-009 correct).
