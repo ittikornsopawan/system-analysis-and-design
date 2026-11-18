@@ -575,3 +575,11 @@ description: Repository-wide and project-specific lessons captured from user cor
 - **Corrected behavior**: Keep comments out of `CREATE TABLE` bodies, document column meaning in the schema doc, and edit README rows in the compact form without realigning. A new table also needs its rollback `DROP`, a `*.test.sql`, both ER pages (schema page and "7 All Tables") and the overview list, and the `NN tables` count in `check_docs.py schema`.
 - **Preventive skill change**: `.agents/skills/data-modeling/SKILL.md` step 5 now says not to realign the schema README and to keep comments out of `CREATE TABLE`.
 - **Verification**: `audit_all.py` reports 0 findings, `check_docs.py` 72/72 OK and `run_db_tests.sh` ALL PASSED, including `00-parameter.test.sql`.
+
+### 2026-11-18 — Prove the PR head before "ready" and the last fix after a merge
+
+- **Correction**: Review fixes were lost twice in e-commerce-backend: `70e00ad` was not in the merge of #2 (merged at `69e6a4e`), and `36bc810` was pushed at 13:07 after #3 was merged at 13:06 (`22807d3`). Main dropped every null inside `data` until #4 carried the fix alone. Josh (SA Lead) found both.
+- **Root cause**: I reported fixes as pushed without proving that the PR head equalled my local HEAD, and did not check after the merge that my last commit reached the base.
+- **Corrected behavior**: After each push, compare `gh pr view <n> --json headRefOid` with local `HEAD` before saying the PR is ready; after a merge, prove the last commit is an ancestor of the base and carry a missing commit alone in a new PR.
+- **Preventive skill change**: `.agents/skills/commit-and-pr/SKILL.md`, section "After the PR exists".
+- **Verification**: #4 headRefOid `1d5b50a` equalled local HEAD before merge; after merge `1d5b50a` is an ancestor of `origin/main` (`00089bdc`) and Program.cs on main has 0 `DefaultIgnoreCondition`.
