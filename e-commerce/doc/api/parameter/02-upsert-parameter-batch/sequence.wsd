@@ -1,0 +1,352 @@
+@startuml UpsertParameterBatch Sequence
+
+title Upsert Parameter Batch API Sequence
+
+' Leading SQL apostrophes use &#39; so PlantUML preserves literals; parity compares decoded SQL.
+
+' Visual style
+skinparam defaultFontName "Sarabun"
+skinparam defaultFontSize 14
+skinparam backgroundColor #FFFFFF
+skinparam shadowing false
+skinparam roundcorner 10
+skinparam sequence {
+    ArrowColor #475569
+    ArrowFontColor #334155
+    LifeLineBorderColor #CBD5E1
+    LifeLineBackgroundColor #F8FAFC
+    ParticipantBorderColor #94A3B8
+    ParticipantBackgroundColor #F1F5F9
+    ParticipantFontColor #0F172A
+    GroupBorderColor #94A3B8
+    GroupBackgroundColor #F8FAFC
+    GroupFontColor #334155
+}
+
+' Do not show participant footers at the bottom of the diagram
+hide footbox
+
+actor "User" as user
+box "Frontend" #F8FAFC
+    participant "Upsert Parameter Batch Page" as page
+end box
+box "Web API" #F8FAFC
+    participant "API" as api
+    participant "Application" as app
+    participant "Domain" as domain
+    participant "Infrastructure" as infra
+end box
+box "Database" #F8FAFC
+    database "m_user" as m_user
+    database "t_user_access_token" as t_user_access_token
+    database "m_parameter" as m_parameter
+end box
+
+user -> page: Submit Upsert Parameter Batch
+activate page
+    page -> api: POST v1/parameter/upsert/batch
+    activate api
+        api -> app: [**UpsertParameterBatchCommandHandler**] Process request
+        activate app
+            app -> app: Create request context; generate requestId when omitted
+            app -> app: Validate headers and the whole body in item order (1 to 100 items, key, value, localized texts, metadata size, effective period when both dates are sent, rowStatus, duplicate id, duplicate key among the items that are not DELETED)
+            alt Invalid input
+                app -> api: HTTP 400 E10001 with the item position
+                api -> page: Bad request
+                page -> user: Display validation error
+            else Valid input
+                app -> app: Verify JWT signature, issuer, audience, exp, UUID sub and the roles claim (an array of role names)
+                alt Missing, malformed or invalid JWT or roles claim
+                    app -> api: HTTP 401 E10002 Invalid or expired access token.
+                    api -> page: Authentication error
+                    page -> user: Display authentication error
+                else Verified JWT
+                    app -> app: callerUserId = verified sub; accessTokenHash = SHA-256 of the exact JWT; createdBy/updatedBy = caller UUID string
+                    note over app, infra
+                        - Order of checks: validate the request (400) -> verify the JWT and its roles claim (401) -> BEGIN -> lock the caller user (FOR UPDATE) -> current credential and user (401) ->
+                          lock and existence checks in ascending id order (FOR UPDATE, 404) -> permission from the roles claim (403, E10009, once for the request) so the 403 message has no item position ->
+                          per item in the request order: effective period (400), duplicate key (409), write -> final state: parent ACTIVE (FOR SHARE, 404, E10005), cycle (400), children (409, E10006) -> COMMIT;
+                          the author tables are never queried.
+                    end note
+                    app -> infra: BEGIN READ COMMITTED
+                    activate infra
+                    alt Work completes before commit
+                        app -> infra: QUERY - Lock the caller user
+                        infra -> m_user: QUERY - Lock the caller user
+                        activate m_user
+                            note right of m_user
+                                SELECT
+                                    u.id as user_id
+                                FROM authen.m_user u
+                                WHERE u.id = '<sequence.callerUserId>'
+                                FOR UPDATE
+                            end note
+                            m_user -> infra: Return query result
+                        deactivate m_user
+                        infra -> app: Return result of Lock the caller user
+                        alt Caller user not found
+                            app -> infra: ROLLBACK
+                            app -> api: HTTP 401 E10002 Invalid or expired access token.
+                            api -> page: Unauthorized
+                            page -> user: Display authentication error
+                        end
+                        app -> app: Capture the fresh UTC now after the lock; recheck the JWT exp at now
+                        alt JWT expired while waiting for the caller lock
+                            app -> infra: ROLLBACK
+                            app -> api: HTTP 401 E10002 Invalid or expired access token.
+                            api -> page: Unauthorized
+                            page -> user: Display authentication error
+                        end
+                        app -> infra: QUERY - Check current credential and user
+                        infra -> t_user_access_token: QUERY - Check current credential and user
+                        activate t_user_access_token
+                            note right of t_user_access_token
+                                SELECT
+                                    at.id as access_token_id
+                                FROM authen.t_user_access_token at
+                                JOIN authen.m_user u ON u.id = at.user_id
+                                WHERE at.token = '<sequence.accessTokenHash>'
+                                AND at.user_id = '<sequence.callerUserId>'
+                                AND at.row_status = 'ACTIVE'
+                                AND at.expired_at > '<sequence.now>'
+                                AND u.row_status = 'ACTIVE'
+                            end note
+                            t_user_access_token -> infra: Return query result
+                        deactivate t_user_access_token
+                        infra -> app: Return result of Check current credential and user
+                        alt Current credential or user is missing, inactive, revoked or expired
+                            app -> infra: ROLLBACK
+                            app -> api: HTTP 401 E10002 Invalid or expired access token.
+                            api -> page: Unauthorized
+                            page -> user: Display authentication error
+                        end
+                        loop For each item with an id, in ascending id order (lock order)
+                            app -> infra: QUERY - Check existing parameter
+                            infra -> m_parameter: QUERY - Check existing parameter
+                            activate m_parameter
+                                note right of m_parameter
+                                    SELECT
+                                        p.id as parameter_id,
+                                        p.effective_at
+                                    FROM public.m_parameter p
+                                    WHERE p.id = '<sequence.parameters.id>'
+                                    AND p.row_status <> 'DELETED' -- the id of a DELETED parameter counts as not found
+                                    FOR UPDATE
+                                end note
+                                m_parameter -> infra: Return locked parameter (id, effective_at) or no row
+                            deactivate m_parameter
+                            infra -> app: Return result of Check existing parameter
+                            alt parameters[i]: parameter not found or DELETED
+                                app -> infra: ROLLBACK
+                                app -> api: HTTP 404 E10004 parameters[i]: Parameter not found.
+                                api -> page: Not found
+                                page -> user: Display error message
+                            end
+                        end
+                        app -> app: Authorize once using only exact case-sensitive PLATFORM_ADMIN in the verified JWT roles; never reload live grants
+                        alt The verified roles claim has no PLATFORM_ADMIN
+                            app -> infra: ROLLBACK
+                            app -> api: HTTP 403 E10009 You do not have permission to manage parameters.
+                            api -> page: Forbidden
+                            page -> user: Display error message
+                        end
+                        loop For each item (request order, one transaction)
+                            app -> app: effectiveAt = item effectiveAt, else the stored effective_at on update, else now on insert
+                            alt parameters[i]: expiredAt is specified and is not later than effectiveAt
+                                app -> infra: ROLLBACK
+                                app -> api: HTTP 400 E10001 parameters[i]: Expired at must be later than effective at.
+                                api -> page: Bad request
+                                page -> user: Display error message
+                            end
+                            app -> infra: QUERY - Check duplicate key
+                            infra -> m_parameter: QUERY - Check duplicate key
+                            activate m_parameter
+                                note right of m_parameter
+                                    SELECT
+                                        p.id as parameter_id
+                                    FROM public.m_parameter p
+                                    WHERE p.key = '<sequence.parameters.key>'
+                                    AND p.row_status <> 'DELETED'
+                                    AND p.id <> '<sequence.parameters.id>' -- only when id is specified
+                                end note
+                                m_parameter -> infra: Return query result
+                            deactivate m_parameter
+                            infra -> app: Return result of Check duplicate key
+                            alt parameters[i]: key is held by another parameter that is not DELETED
+                                app -> infra: ROLLBACK
+                                app -> api: HTTP 409 E10003 parameters[i]: Parameter key already exists.
+                                api -> page: Conflict
+                                page -> user: Display error message
+                            end
+                            alt id is not specified (insert)
+                                app -> infra: INSERT - Create parameter
+                                infra -> m_parameter: INSERT - Create parameter
+                                activate m_parameter
+                                    note right of m_parameter
+                                        INSERT INTO public.m_parameter (
+                                            created_by,
+                                            row_status,
+                                            effective_at,
+                                            expired_at,
+                                            parent_id,
+                                            key,
+                                            value,
+                                            title,
+                                            display,
+                                            metadata
+                                        )
+                                        VALUES (
+                                            &#39;<sequence.createdBy>',
+                                            &#39;<sequence.parameters.rowStatus>',
+                                            &#39;<sequence.parameters.effectiveAt>',
+                                            &#39;<sequence.parameters.expiredAt>',
+                                            &#39;<sequence.parameters.parentId>',
+                                            &#39;<sequence.parameters.key>',
+                                            &#39;<sequence.parameters.value>',
+                                            &#39;<sequence.parameters.title>',
+                                            &#39;<sequence.parameters.display>',
+                                            &#39;<sequence.parameters.metadata>'
+                                        )
+                                        RETURNING id as parameter_id
+                                    end note
+                                    m_parameter -> infra: Return inserted result
+                                deactivate m_parameter
+                                infra -> app: Return result of Create parameter
+                            else id is specified (update, delete or archive)
+                                app -> infra: UPDATE - Update or delete parameter
+                                infra -> m_parameter: UPDATE - Update or delete parameter
+                                activate m_parameter
+                                    note right of m_parameter
+                                        UPDATE public.m_parameter
+                                        SET
+                                            updated_by = '<sequence.updatedBy>',
+                                            updated_at = NOW() AT TIME ZONE 'UTC',
+                                            row_status = '<sequence.parameters.rowStatus>',
+                                            effective_at = '<sequence.parameters.effectiveAt>',
+                                            expired_at = '<sequence.parameters.expiredAt>',
+                                            parent_id = '<sequence.parameters.parentId>',
+                                            key = '<sequence.parameters.key>',
+                                            value = '<sequence.parameters.value>',
+                                            title = '<sequence.parameters.title>',
+                                            display = '<sequence.parameters.display>',
+                                            metadata = '<sequence.parameters.metadata>'
+                                        WHERE id = '<sequence.parameters.id>'
+                                        RETURNING id as parameter_id
+                                    end note
+                                    m_parameter -> infra: Return updated result
+                                deactivate m_parameter
+                                infra -> app: Return result of Update or delete parameter
+                            end
+                            alt The unique index uq_m_parameter_key rejects the write (a concurrent request wrote the same key)
+                                app -> infra: ROLLBACK
+                                app -> api: HTTP 409 E10003 parameters[i]: Parameter key already exists.
+                                api -> page: Conflict
+                                page -> user: Display error message
+                            end
+                        end
+                        note over app, infra
+                            Final state: every item is written; the parent, cycle and children rules are checked once on the result.
+                        end note
+                        loop For each item with a parentId (request order)
+                            app -> infra: QUERY - Check parent parameter
+                            infra -> m_parameter: QUERY - Check parent parameter
+                            activate m_parameter
+                                note right of m_parameter
+                                    SELECT
+                                        pp.id as parent_id
+                                    FROM public.m_parameter pp
+                                    WHERE pp.id = '<sequence.parameters.parentId>'
+                                    AND pp.row_status = 'ACTIVE'
+                                    FOR SHARE
+                                end note
+                                m_parameter -> infra: Return ACTIVE parent (locked FOR SHARE) or no row
+                            deactivate m_parameter
+                            infra -> app: Return result of Check parent parameter
+                            alt parameters[i]: parent not found, DELETED or not ACTIVE
+                                app -> infra: ROLLBACK
+                                app -> api: HTTP 404 E10005 parameters[i]: Parent parameter not found.
+                                api -> page: Not found
+                                page -> user: Display error message
+                            end
+                            alt id is specified
+                                app -> infra: QUERY - Check parent cycle
+                                infra -> m_parameter: QUERY - Check parent cycle
+                                activate m_parameter
+                                    note right of m_parameter
+                                        WITH RECURSIVE ancestor AS (
+                                            SELECT
+                                                a.id,
+                                                a.parent_id
+                                            FROM public.m_parameter a
+                                            WHERE a.id = '<sequence.parameters.parentId>'
+                                            UNION
+                                            SELECT
+                                                n.id,
+                                                n.parent_id
+                                            FROM public.m_parameter n
+                                            JOIN ancestor c ON n.id = c.parent_id
+                                        )
+                                        SELECT
+                                            an.id as ancestor_id
+                                        FROM ancestor an
+                                        WHERE an.id = '<sequence.parameters.id>' -- only when id and parentId are specified
+                                    end note
+                                    m_parameter -> infra: Return the parameter when it is the parent or one of its ancestors, or no row
+                                deactivate m_parameter
+                                infra -> app: Return result of Check parent cycle
+                                alt parameters[i]: the parent is the parameter itself or one of its descendants
+                                    app -> infra: ROLLBACK
+                                    app -> api: HTTP 400 E10001 parameters[i]: Parent must not be the parameter itself or one of its descendants.
+                                    api -> page: Bad request
+                                    page -> user: Display error message
+                                end
+                            end
+                        end
+                        loop For each item with rowStatus DELETED or ARCHIVED (request order)
+                            app -> infra: QUERY - Check child parameter
+                            infra -> m_parameter: QUERY - Check child parameter
+                            activate m_parameter
+                                note right of m_parameter
+                                    SELECT
+                                        cp.id as child_id
+                                    FROM public.m_parameter cp
+                                    WHERE cp.parent_id = '<sequence.parameters.id>' -- only when rowStatus is DELETED or ARCHIVED
+                                    AND cp.row_status <> 'DELETED'
+                                end note
+                                m_parameter -> infra: Return query result
+                            deactivate m_parameter
+                            infra -> app: Return result of Check child parameter
+                            alt parameters[i]: a child parameter that is not DELETED exists
+                                app -> infra: ROLLBACK
+                                app -> api: HTTP 409 E10006 parameters[i]: Parameter has child parameters.
+                                api -> page: Conflict
+                                page -> user: Display error message
+                            end
+                        end
+                        app -> infra: COMMIT
+                        app -> api: HTTP 200 S10000 with the result of every item
+                        api -> page: Return committed result
+                        page -> user: Display success result
+                    else Timeout before COMMIT
+                        note over app, infra
+                            A timeout can interrupt any preceding SQL or domain step.
+                            No success response is sent without a successful COMMIT.
+                        end note
+                        app -> infra: ROLLBACK
+                        app -> api: HTTP 408 E90001
+                        api -> page: Request timeout
+                        page -> user: Retry if needed
+                    else Unexpected failure before COMMIT (including a deadlock with a concurrent request)
+                        app -> infra: ROLLBACK
+                        app -> api: HTTP 500 generic error; no new bizCode
+                        api -> page: Internal server error
+                        page -> user: Display generic failure
+                    end
+                    deactivate infra
+                end
+            end
+        deactivate app
+    deactivate api
+deactivate page
+
+@enduml

@@ -817,6 +817,7 @@ SINGLE_UPSERT_SPECS = [
     "e-commerce/doc/api/shop/05-upsert-shop-type/spec.md",
     "e-commerce/doc/api/shop/08-upsert-shop/spec.md",
     "e-commerce/doc/api/shop/11-upsert-shop-user/spec.md",
+    "e-commerce/doc/api/parameter/01-upsert-parameter/spec.md",
 ]
 BATCH_UPSERT_SPECS = [
     "e-commerce/doc/api/product/03-upsert-product-batch/spec.md",
@@ -826,6 +827,7 @@ BATCH_UPSERT_SPECS = [
     "e-commerce/doc/api/shop/06-upsert-shop-type-batch/spec.md",
     "e-commerce/doc/api/shop/09-upsert-shop-batch/spec.md",
     "e-commerce/doc/api/shop/12-upsert-shop-user-batch/spec.md",
+    "e-commerce/doc/api/parameter/02-upsert-parameter-batch/spec.md",
 ]
 
 
@@ -6113,6 +6115,8 @@ ADMIN_WRITE_SPECS = {  # folder: (the thing it manages, batch)
     "product/06-upsert-product-category-batch": ("product categories", True),
     "product/07-upsert-product-category-attribute": ("product category attributes", False),
     "product/09-upsert-product-category-attribute-batch": ("product category attributes", True),
+    "parameter/01-upsert-parameter": ("parameters", False),
+    "parameter/02-upsert-parameter-batch": ("parameters", True),
 }
 _IN_DIAGRAM_CAMPAIGN = ("A product category cannot be deleted while it is in a campaign that is not DELETED and has not ended (a live campaign.t_campaign_product row of a campaign "
                         "whose end_at is after now), 409 (E10006) with the campaign name in the message.")
@@ -6122,7 +6126,8 @@ ADMIN_WRITE_CAMPAIGN = {  # migrated folders that keep the campaign delete rule
 }
 # Claims specs whose existing target row is locked (FOR UPDATE) before the permission decision, the in-use check and the write (lead decision of 2026-11-15);
 # the batch locks the rows in ascending id order.
-ADMIN_WRITE_TARGET_LOCK = {"shop/05-upsert-shop-type": "QUERY - Check existing shop type", "shop/06-upsert-shop-type-batch": "QUERY - Check existing shop type"}
+ADMIN_WRITE_TARGET_LOCK = {"shop/05-upsert-shop-type": "QUERY - Check existing shop type", "shop/06-upsert-shop-type-batch": "QUERY - Check existing shop type",
+                           "parameter/01-upsert-parameter": "QUERY - Check existing parameter", "parameter/02-upsert-parameter-batch": "QUERY - Check existing parameter"}
 ADMIN_WRITE_CLAIMS_RULE = "the verified JWT `roles` claim (an array of role names, an empty array is valid) must contain the exact case-sensitive role `PLATFORM_ADMIN`"
 
 
@@ -6238,7 +6243,7 @@ def check_admin_write_spec() -> int:
         errors.extend(f"{path} (sequence): {error}" for error in admin_write_claims_flow_errors(read(str(Path(path).with_name("sequence.wsd"))), batch, thing))
     if errors:
         return fail("; ".join(errors))
-    print("OK: admin-write-spec (9 specs)")
+    print(f"OK: admin-write-spec ({len(ADMIN_WRITE_SPECS)} specs)")
     return 0
 
 
@@ -9033,7 +9038,7 @@ COMMANDS["md-frontmatter"] = check_md_frontmatter
 API_CONTRACT = "e-commerce/api/api-contract.json"
 # Domains published in the contract so far (owner order of 2026-11-17: one PR per domain); add each domain as it lands,
 # then regenerate with .agents/skills/api-contract-design/scripts/gen_contract.py. Only approved specs are published.
-API_CONTRACT_DOMAINS = ["authen-and-author", "author", "consent", "product", "shop", "cart", "sales", "payment", "shipping", "campaign"]
+API_CONTRACT_DOMAINS = ["authen-and-author", "author", "consent", "product", "shop", "cart", "sales", "payment", "shipping", "campaign", "parameter"]
 
 
 def spec_operation(md: str) -> tuple:
@@ -9131,7 +9136,8 @@ COMMANDS["api-contract"] = check_api_contract
 # ---------------------------------------------------------------- limits and rate limiting (owner answers of 2026-11-17, security review F7 and F9)
 LIMITED_PUBLIC_SPECS = ["authen-and-author/01-register", "authen-and-author/02-login", "authen-and-author/05-refresh-token", "authen-and-author/03-reset-password",
                         "authen-and-author/04-create-new-password", "consent/01-inquiry-active-consent", "shop/04-inquiry-storefront-product",
-                        "shop/14-inquiry-storefront-shop-product", "shop/16-inquiry-storefront-product-review"]
+                        "shop/14-inquiry-storefront-shop-product", "shop/16-inquiry-storefront-product-review",
+                        "parameter/03-inquiry-parameter"]
 
 
 def check_api_limits() -> int:
@@ -9139,7 +9145,8 @@ def check_api_limits() -> int:
     errors = []
     conventions = read(".agents/skills/api-contract-design/references/api-conventions.md")
     errors += [f"api-conventions.md missing: {n!r}" for n in missing_needles(conventions, [
-        "| 429 | E90002 |", "## Limits and rate limiting", "at most 64 KB (65536 bytes)", "at 10 requests per minute", "at 60 requests per minute", "`Retry-After`", "1 to 100 items"])]
+        "| 429 | E90002 |", "## Limits and rate limiting", "at most 64 KB (65536 bytes)", "at 10 requests per minute", "at 60 requests per minute", "`Retry-After`", "1 to 100 items",
+        "the three storefront APIs and the parameter inquiry at 60 requests per minute"])]
     for path in sorted((ROOT / "e-commerce/doc/api").glob("*/*batch*/spec.md")):
         md = path.read_text(encoding="utf-8")
         if "(min 1, max 100 items)" not in md or not re.search(r"must contain 1 to 100 items\.", md):
@@ -9165,6 +9172,127 @@ def check_api_limits() -> int:
 
 
 COMMANDS["api-limits"] = check_api_limits
+
+
+# ---------------------------------------------------------------- parameter (public.m_parameter), decided by Josh under the owner's delegation of 2026-11-18
+PARAMETER_SPECS = {
+    "01": "e-commerce/doc/api/parameter/01-upsert-parameter/spec.md",
+    "02": "e-commerce/doc/api/parameter/02-upsert-parameter-batch/spec.md",
+    "03": "e-commerce/doc/api/parameter/03-inquiry-parameter/spec.md",
+}
+PARAMETER_DECISION = "decided by Josh, SA Lead, delegated by the owner, 2026-11-18"
+
+
+def parameter_batch_example_errors(md: str) -> list[str]:
+    errors = []
+    items = json.loads(re.search(r"#### Example Body Parameters\n\n```JSON\n(.*?)```", md, re.DOTALL).group(1))["parameters"]
+    result = json_examples(md, "Success")["data"]["parameters"]
+    if len(result) != len(items):
+        errors.append(f"02: {len(result)} results for {len(items)} request items")
+    keys = [i["key"] for i in items if i.get("rowStatus") != "DELETED"]
+    if len(keys) != len(set(keys)):
+        errors.append("02: the request example repeats a key among the items that are not DELETED")
+    for position, (item, res) in enumerate(zip(items, result)):
+        action = {"DELETED": "DELETE", "ARCHIVED": "ARCHIVE"}.get(item.get("rowStatus"), "UPDATE" if "id" in item else "INSERT")
+        if res["index"] != position or res["action"] != action or ("id" in item and res["parameterId"] != item["id"]):
+            errors.append(f"02: result {position} does not match request item {position} (index, action {action}, id)")
+    return errors
+
+
+def parameter_inquiry_example_errors(md: str) -> list[str]:
+    data = json_examples(md, "Success")["data"]
+    errors = [] if data["totalItems"] == len(data["items"]) else ["03: totalItems differs from the number of items"]
+    keys = [(item["key"], item["parameterId"]) for item in data["items"]]
+    if keys != sorted(keys):
+        errors.append("03: the example items must be sorted by key, then id")
+    if any(item["rowStatus"] != "ACTIVE" for item in data["items"]):
+        errors.append("03: a public caller sees only ACTIVE parameters")
+    return errors
+
+
+def check_parameter_spec() -> int:
+    errors = []
+    mds = {}
+    for key, path in PARAMETER_SPECS.items():
+        try:
+            mds[key] = read(path)
+            mds[key + "wsd"] = read(path.replace("spec.md", "sequence.wsd"))
+        except FileNotFoundError as exc:
+            errors.append(f"{path}: {exc.filename} does not exist")
+            continue
+        for bad in table_lines_aligned(mds[key]):
+            errors.append(f"{path} misaligned table: {bad[:40]}")
+        for bad in json_blocks_parse(mds[key]):
+            errors.append(f"{path} invalid JSON block: {bad[:40]}")
+        for link in relative_links_exist(path, mds[key]):
+            errors.append(f"{path} broken link {link}")
+    if errors:
+        return fail("; ".join(errors))
+    sql = {key: {h: q for _, h, q in spec_database_operations(mds[key])} for key in PARAMETER_SPECS}
+    needles = {
+        "01": ["# [POST]: v1/parameter/upsert", PARAMETER_DECISION, "(../../../schema/public/m_parameter.md)",
+               "`key` and `value` are required in every request", "an update that omits `parentId` makes the parameter a root",
+               "keeps the stored value on update", "lowercase ISO 639-1 language code", "No language is mandatory", "at most 4 KB (4096 bytes)",
+               "The key can change on update", "`uq_m_parameter_key` rejects the second write", "`expiredAt` must be later than `effectiveAt` (400, E10001)",
+               "The parent must exist and be ACTIVE on every write that has a `parentId`, also when the parent is not changed, otherwise 404 (E10005)",
+               "must not be the parameter itself or one of its descendants (400, E10001)",
+               "cannot be deleted or archived while it has a child parameter that is not DELETED, 409 (E10006)",
+               "Parameter key already exists.", "Parameter has child parameters.", "Parent parameter not found.", "Parameter not found.",
+               "Row status must not be DELETED when inserting a parameter.", "Expired at must be later than effective at.",
+               "Parent must not be the parameter itself or one of its descendants."],
+        "02": ["# [POST]: v1/parameter/upsert/batch", PARAMETER_DECISION, "they are checked once after all items are written",
+               "one batch can delete a parent together with all its children", "Parameters must contain 1 to 100 items.",
+               "parameters[2]: Id is duplicated with parameters[1].", "parameters[2]: Key is duplicated with parameters[0].", "Swapping the keys",
+               "parameters[0]: Parent parameter not found.", "parameters[2]: Parameter has child parameters."],
+        "03": ["# [GET]: v1/parameter", PARAMETER_DECISION, "- This API is public: it needs no access token",
+               "a DELETED, INACTIVE, LOCKED or ARCHIVED parameter is never returned", "any value other than ACTIVE answers 200 with `items` empty",
+               "`rootOnly` true together with `parentId` is 400 (E10001)", "sorted by `key` ascending, then by `parameterId` ascending",
+               "rootOnly must not be true together with parentId.", "more than 60 requests per minute"],
+    }
+    for key, need in needles.items():
+        for missing in missing_needles(mds[key], need):
+            errors.append(f"{PARAMETER_SPECS[key]} missing: {missing!r}")
+    for key in ("01", "02"):
+        q = sql[key]
+        if "FOR UPDATE" not in q.get("QUERY - Check existing parameter", "") or "p.effective_at" not in q.get("QUERY - Check existing parameter", ""):
+            errors.append(f"{key}: Check existing parameter must lock the row (FOR UPDATE) and return effective_at")
+        if not re.search(r"pp\.row_status = 'ACTIVE'\nFOR SHARE\n?$", q.get("QUERY - Check parent parameter", "")):
+            errors.append(f"{key}: Check parent parameter must read an ACTIVE parent with FOR SHARE")
+        if "WITH RECURSIVE ancestor" not in q.get("QUERY - Check parent cycle", "") or "\n    UNION\n" not in q.get("QUERY - Check parent cycle", ""):
+            errors.append(f"{key}: Check parent cycle must walk the ancestors with WITH RECURSIVE and UNION (stops on an existing loop)")
+        if "cp.row_status <> 'DELETED'" not in q.get("QUERY - Check child parameter", ""):
+            errors.append(f"{key}: Check child parameter must count the children that are not DELETED")
+        for heading in ("INSERT - Create parameter", "UPDATE - Update or delete parameter"):
+            for column in ("effective_at", "expired_at", "parent_id", "key", "value", "title", "display", "metadata"):
+                if not re.search(rf"\b{column}\b", q.get(heading, "")):
+                    errors.append(f"{key}: {heading} must write {column}")
+    wsd02 = mds["02wsd"]
+    if not 0 < wsd02.find("app -> infra: UPDATE - Update or delete parameter") < wsd02.find("app -> infra: QUERY - Check parent parameter") \
+            < wsd02.find("app -> infra: QUERY - Check child parameter") < wsd02.find("app -> infra: COMMIT"):
+        errors.append("02: the parent, cycle and children checks run on the final state, after the writes and before COMMIT")
+    for heading in ("QUERY - Get parameters", "QUERY - Get total items"):
+        q = sql["03"].get(heading, "")
+        for needle in ("WHERE p.row_status = 'ACTIVE'", "AND p.parent_id IS NULL -- only when rootOnly is true",
+                       "AND p.effective_at <= '<sequence.now>' -- unless includeNotEffective is true",
+                       "AND (p.expired_at IS NULL OR p.expired_at > '<sequence.now>') -- unless includeNotEffective is true"):
+            if needle not in q:
+                errors.append(f"03: {heading} missing {needle!r}")
+    if "ORDER BY p.key, p.id" not in sql["03"].get("QUERY - Get parameters", ""):
+        errors.append("03: Get parameters must sort by key, then id")
+    header = mds["03"].split("### Header Parameters", 1)[1].split("###", 1)[0]
+    if "authorization" in header or "E10002" in mds["03"] or "BEGIN" in mds["03wsd"]:
+        errors.append("03: the public inquiry has no authorization header, no 401 and no transaction")
+    try:
+        errors += parameter_batch_example_errors(mds["02"]) + parameter_inquiry_example_errors(mds["03"])
+    except (KeyError, TypeError, AttributeError, ValueError) as exc:
+        errors.append(f"an example does not have the expected shape: {exc!r}")
+    if errors:
+        return fail("; ".join(errors))
+    print("OK: parameter-spec (3 specs)")
+    return 0
+
+
+COMMANDS["parameter-spec"] = check_parameter_spec
 
 
 def main(argv: list[str]) -> int:
