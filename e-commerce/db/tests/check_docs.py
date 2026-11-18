@@ -9258,6 +9258,12 @@ def check_parameter_spec() -> int:
             errors.append(f"{key}: Check existing parameter must lock the row (FOR UPDATE) and return effective_at")
         if not re.search(r"pp\.row_status = 'ACTIVE'\nFOR SHARE\n?$", q.get("QUERY - Check parent parameter", "")):
             errors.append(f"{key}: Check parent parameter must read an ACTIVE parent with FOR SHARE")
+        # review fix of 2026-11-18: one advisory lock serializes parent changes, so two requests cannot build a cycle together
+        if "pg_advisory_xact_lock(hashtext('public.m_parameter.parent'))" not in q.get("QUERY - Lock the parameter tree", ""):
+            errors.append(f"{key}: Lock the parameter tree must take pg_advisory_xact_lock(hashtext('public.m_parameter.parent'))")
+        wsd_k = read(PARAMETER_SPECS[key].replace("spec.md", "sequence.wsd"))
+        if not 0 < wsd_k.find("app -> infra: QUERY - Lock the parameter tree") < wsd_k.find("app -> infra: QUERY - Check parent cycle"):
+            errors.append(f"{key} (sequence): the parameter tree lock comes before the cycle check")
         if "WITH RECURSIVE ancestor" not in q.get("QUERY - Check parent cycle", "") or "\n    UNION\n" not in q.get("QUERY - Check parent cycle", ""):
             errors.append(f"{key}: Check parent cycle must walk the ancestors with WITH RECURSIVE and UNION (stops on an existing loop)")
         if "cp.row_status <> 'DELETED'" not in q.get("QUERY - Check child parameter", ""):
@@ -9271,6 +9277,8 @@ def check_parameter_spec() -> int:
             < wsd02.find("app -> infra: QUERY - Check child parameter") < wsd02.find("app -> infra: COMMIT"):
         errors.append("02: the parent, cycle and children checks run on the final state, after the writes and before COMMIT")
     for heading in ("QUERY - Get parameters", "QUERY - Get total items"):
+        if sql["03"].get(heading, "").count("ESCAPE '\\'") != 2:
+            errors.append(f"03: {heading} must match search literally with ESCAPE '\\' on both ILIKE")
         q = sql["03"].get(heading, "")
         for needle in ("WHERE p.row_status = 'ACTIVE'", "AND p.parent_id IS NULL -- only when rootOnly is true",
                        "AND p.effective_at <= '<sequence.now>' -- unless includeNotEffective is true",

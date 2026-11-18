@@ -1,6 +1,7 @@
 -- Tests for public.m_parameter:
 --   * key is unique among rows that are not DELETED (a DELETED key can be reused)
 --   * row_status takes the 5 standard values
+--   * parent_id is indexed
 --   * parent_id references m_parameter(id) ON DELETE RESTRICT
 --   * value is required
 -- Run after 00-common.schema.up.sql. Everything is rolled back at the end.
@@ -60,6 +61,15 @@ BEGIN
     EXCEPTION WHEN check_violation THEN NULL;
     END;
     RAISE NOTICE 'PASS test 4: row_status takes the 5 standard values';
+END $$;
+
+-- test 5: parent_id has an index, for the public list of children and the children check before a delete
+DO $$
+BEGIN
+    IF NOT EXISTS (SELECT 1 FROM pg_indexes WHERE schemaname = 'public' AND tablename = 'm_parameter' AND indexname = 'ix_m_parameter_parent_id') THEN
+        RAISE EXCEPTION 'FAIL: index ix_m_parameter_parent_id is missing';
+    END IF;
+    RAISE NOTICE 'PASS test 5: parent_id is indexed';
 END $$;
 
 ROLLBACK;

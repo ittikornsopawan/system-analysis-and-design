@@ -33,7 +33,7 @@ approved_at: 2026-11-18T07:49:47+07:00
 - `value`, `title` and `display` are localized texts: a JSON object with at least one key, every key is a lowercase ISO 639-1 language code (two letters, for example `en`, `th`) and every value is a non-empty string of at most 512 characters. No language is mandatory. `metadata` is any JSON object (not an array or a scalar) of at most 4 KB (4096 bytes) when serialized. Anything else is 400 (E10001).
 - `expiredAt` must be later than `effectiveAt` (400, E10001). On an update without `effectiveAt` the stored `effective_at` is compared, after the existence check.
 - The parent must exist and be ACTIVE on every write that has a `parentId`, also when the parent is not changed, otherwise 404 (E10005). Only the row status of the parent is checked, not its `effectiveAt` and `expiredAt`. The parent is read with `FOR SHARE`, so a delete or an archive of the parent that runs at the same time (which locks the parent with `FOR UPDATE` and then checks its children) waits for this request or makes it fail with 404.
-- `parentId` must not be the parameter itself or one of its descendants (400, E10001), checked inside the transaction by walking up the ancestors of the new parent. An insert cannot make a cycle because the new parameter has no children.
+- `parentId` must not be the parameter itself or one of its descendants (400, E10001), checked inside the transaction by walking up the ancestors of the new parent. Before the walk the transaction takes one advisory lock for the parameter tree (`pg_advisory_xact_lock`), so two requests that change parents run one after the other and cannot build a cycle together; the lock ends with the transaction. An insert cannot make a cycle because the new parameter has no children.
 - DELETED is final: a DELETED parameter is never reopened and its `id` counts as not found (404, E10004). INACTIVE, LOCKED and ARCHIVED are reversible: an update with `rowStatus` ACTIVE opens the parameter again. `rowStatus` DELETED is rejected with 400 (E10001) when the request inserts a parameter.
 - A parameter cannot be deleted or archived while it has a child parameter that is not DELETED, 409 (E10006). INACTIVE and LOCKED are allowed even when it has children, the children are not changed, but no write can use it as a parent while it is not ACTIVE.
 - Governing decisions: owner-confirmed API review Q2, Q4, Q10 and Q13 (JWT payload of 2026-11-13).
@@ -524,6 +524,12 @@ FROM public.m_parameter pp
 WHERE pp.id = '<sequence.parentId>'
 AND pp.row_status = 'ACTIVE'
 FOR SHARE
+```
+
+#### QUERY - Lock the parameter tree
+
+```SQL
+SELECT pg_advisory_xact_lock(hashtext('public.m_parameter.parent'))
 ```
 
 #### QUERY - Check parent cycle

@@ -29,7 +29,7 @@ approved_at: 2026-11-18T07:49:47+07:00
 - Every parameter follows the rules of the single upsert (parameter/01): the whole parameter is replaced, `key` and `value` are required, `key` is unique among parameters that are not DELETED, the localized texts and `metadata` have the same format, `expiredAt` is later than `effectiveAt`, DELETED is final, the parent must exist and be ACTIVE, a parent cannot be its own descendant, and delete and archive are rejected while a child parameter that is not DELETED exists.
 - The rules of this batch, including the final-state checks below, were decided by Josh, SA Lead, delegated by the owner, 2026-11-18 (parameter API review).
 - The parameters are processed in the request order in one transaction, so the checks of an item see the changes of the items before it. When any item fails the whole request is rolled back and no parameter is changed.
-- The parent, cycle and children rules depend on the final state, so they are checked once after all items are written: every item with a `parentId` must have a parent that exists and is ACTIVE (404, E10005), every updated item with a `parentId` must not be under itself (400, E10001), and every item that is DELETED or ARCHIVED must have no child parameter that is not DELETED (409, E10006). So one batch can delete a parent together with all its children, or activate a parent and move a child under it, in any item order. The message starts with the position of the item that fails.
+- The parent, cycle and children rules depend on the final state, so they are checked once after all items are written: every item with a `parentId` must have a parent that exists and is ACTIVE (404, E10005), every updated item with a `parentId` must not be under itself (400, E10001; the advisory lock of the parameter tree, `pg_advisory_xact_lock`, is taken before the walk so concurrent parent changes cannot build a cycle together), and every item that is DELETED or ARCHIVED must have no child parameter that is not DELETED (409, E10006). So one batch can delete a parent together with all its children, or activate a parent and move a child under it, in any item order. The message starts with the position of the item that fails.
 - `id` must not be duplicated in the request, and `key` must not be duplicated among the items that are not DELETED (400, E10001). The key of a DELETED item is not compared.
 - Swapping the keys of two parameters in one request is rejected with 409 (E10003) at the first item, because that key is still held by the other parameter when the item is checked. Change them in two requests.
 - An item without `id` and with `rowStatus` DELETED is rejected with 400 (E10001).
@@ -591,6 +591,12 @@ FROM public.m_parameter pp
 WHERE pp.id = '<sequence.parameters.parentId>'
 AND pp.row_status = 'ACTIVE'
 FOR SHARE
+```
+
+#### QUERY - Lock the parameter tree
+
+```SQL
+SELECT pg_advisory_xact_lock(hashtext('public.m_parameter.parent'))
 ```
 
 #### QUERY - Check parent cycle
