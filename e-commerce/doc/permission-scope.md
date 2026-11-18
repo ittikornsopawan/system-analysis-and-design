@@ -1,19 +1,19 @@
 ---
 name: E-commerce Permission and Scope API Matrix
 description: รวม permission claim แบบ resource:action, scope claim แบบ type:value และ API allowlist พร้อมลิงก์ spec ตาม JWT payload ใหม่; อ่านก่อน review หรือเปิดใช้ authorization policy ของ API.
-status: in-review
-approved_by: null
-approved_at: null
+status: approved
+approved_by: Josh (SA Lead, delegated by Ittikorn 2026-11-17)
+approved_at: 2026-11-18T07:33:34+07:00
 ---
 
 # Permission และ Scope ของ API
 
-เจ้าของงานตัดสินเมื่อ 2026-11-13 ให้ใช้ **JWT payload ใหม่แทนรูปแบบเดิม** (`iss`, `sub`, `aud`, `jti`, `iat`, `exp`, `user`, `roles` เป็นชื่อ, `permissions` เป็น `resource:action`, `scopes` เป็น `type:value`) และให้รูปแบบนี้ **แทน Allow Scope สี่ส่วน `module:resource:action:effect`** รวม effect `deny` และกฎ "deny ชนะ" ที่อนุมัติเมื่อ 2026-11-09 ดู [คำตัดสิน](../../docs/superpowers/specs/2026-11-07-api-review-design.md) เอกสารนี้รวม API → permission claim → scope claim และรายการ API ที่แต่ละ permission เปิดได้ พร้อมลิงก์ spec ครบ **83 API** โดยทำเครื่องหมายคิว review 40 API
+เจ้าของงานตัดสินเมื่อ 2026-11-13 ให้ใช้ **JWT payload ใหม่แทนรูปแบบเดิม** (`iss`, `sub`, `aud`, `jti`, `iat`, `exp`, `user`, `roles` เป็นชื่อ, `permissions` เป็น `resource:action`, `scopes` เป็น `type:value`) และให้รูปแบบนี้ **แทน Allow Scope สี่ส่วน `module:resource:action:effect`** รวม effect `deny` และกฎ "deny ชนะ" ที่อนุมัติเมื่อ 2026-11-09 ดู [คำตัดสิน](../../docs/superpowers/specs/2026-11-07-api-review-design.md) เอกสารนี้รวม API → permission claim → scope claim และรายการ API ที่แต่ละ permission เปิดได้ พร้อมลิงก์ spec ครบ **88 API** (รวม author 13–17 ของ WP5b) คิว review 40 API ได้รับการตรวจและอนุมัติแล้วเมื่อ 2026-11-18
 
 ## สถานะและขอบเขต
 
 - **สิ่งที่ถูกแทนที่:** rule สี่ส่วน `module:resource:action:allow` เดิมถูกแปลงเป็น permission claim `module.resource:action` (resource ที่มีขีดกลางใช้ underscore ให้ตรง naming ของ `m_permission.name` เช่น `management:shop-type:crud:allow` เป็น `management.shop_type:crud`); ชื่อใน DB คือ claim ที่เปลี่ยน `:` ตัวสุดท้ายกลับเป็น `.` (`management.shop_type.crud`) ส่วน effect `deny` และกฎ deny ชนะ **ถูกยกเลิก**: มี permission ที่ต้องใช้ = ทำได้ ไม่มี = ทำไม่ได้
-- การจับคู่ permission/API แต่ละรายการยัง **in-review**; ชื่อ permission ใหม่ในตารางเป็นข้อเสนอที่ยังไม่อยู่ใน [seed ปัจจุบัน](../db/seed/author.seed.sql) (3 scope codes, 7 permission names, 12 definition pairs) และเอกสารนี้ไม่เปลี่ยน seed/schema
+- การจับคู่ permission/API ในเอกสารนี้ **อนุมัติแล้ว** (2026-11-18) เป็นเป้าหมายของ authorization policy; ชื่อ permission ใหม่ในตารางยังไม่อยู่ใน [seed ปัจจุบัน](../db/seed/author.seed.sql) (3 scope codes, 7 permission names, 12 definition pairs) และเอกสารนี้ไม่เปลี่ยน seed/schema
 - **Scope claim** คือ `<รหัส scope ตัวเล็ก>:*` (`ALL` เป็น `all:*`, `SHOP` เป็น `shop:*`, `OWN` เป็น `own:*`) หมายถึงทุก instance ของ type นั้น ไม่มีค่า instance ใน DB; การตรวจว่าเป็นสมาชิก ACTIVE ของร้านนั้นหรือเป็นเจ้าของข้อมูลนั้นยังทำที่ API ตามเดิม (Q10) ไม่ใช่ที่ scope claim
 - [login](api/authen-and-author/02-login/spec.md) และ [refresh](api/authen-and-author/05-refresh-token/spec.md) ยังคง Q12 ตอน resolve (scope ของ permission หนึ่งไม่ให้ permission อื่น) แต่ payload แบบแบนไม่แสดงการผูกนี้ ผู้ตรวจห้ามถือว่า scope ใดใช้ได้กับทุก permission
 - **Shop role** (OWNER, ADMIN, STAFF แบบ fixed permission) เก็บใน `shop.t_shop_user.role` และแต่ละ API อ่านจาก DB ใน transaction ของตัวเอง **ไม่ใช่ JWT claim** และไม่มี `owner:*` scope ([shop roles design](../../docs/superpowers/specs/2026-11-14-shop-roles-design.md) D6 อนุมัติโดยเจ้าของงาน 2026-11-16); ACTIVE member ของร้านคือ OWNER, ADMIN หรือ STAFF ที่ ACTIVE และร้านต้องมี OWNER ที่ ACTIVE อย่างน้อยหนึ่งคน
@@ -118,6 +118,14 @@ scopes:      ["<boundary>:*"]                    เช่น "all:*", "shop:*",
 - [author/01-upsert-role](api/author/01-upsert-role/spec.md) — scope `all:*`
 - [author/02-upsert-role-batch](api/author/02-upsert-role-batch/spec.md) — scope `all:*`
 
+### management.role_permission:crud
+
+- [author/13-upsert-role-permission](api/author/13-upsert-role-permission/spec.md) — scope `all:*`
+
+### management.role_permission:read
+
+- [author/14-inquiry-role-permission](api/author/14-inquiry-role-permission/spec.md) — scope `all:*`
+
 ### management.role:read
 
 - [author/03-inquiry-role](api/author/03-inquiry-role/spec.md) — scope `all:*`
@@ -139,6 +147,14 @@ scopes:      ["<boundary>:*"]                    เช่น "all:*", "shop:*",
 ### management.user_role:crud
 
 - [author/10-upsert-user-role](api/author/10-upsert-user-role/spec.md) — scope `all:*`
+
+### management.user_permission:crud
+
+- [author/15-upsert-user-permission](api/author/15-upsert-user-permission/spec.md) — scope `all:*`
+
+### management.user_permission:read
+
+- [author/16-inquiry-user-permission](api/author/16-inquiry-user-permission/spec.md) — scope `all:*`
 
 ### management.user_role:read
 
@@ -202,7 +218,7 @@ scopes:      ["<boundary>:*"]                    เช่น "all:*", "shop:*",
 
 ## API → Permission → Scope claim
 
-**คิว40** คือ API ที่ Peter ต้อง review ต่อ; นอกคิว40 ไม่ได้หมายความว่าเปิดใช้ policy ใหม่แล้ว Seed permission เป็นชื่ออ้างอิงจากข้อเสนอรอบก่อนเพื่อ trace กลับ seed ไม่ใช่ permission claim ใหม่ที่ติดตั้งแล้ว `own:*` ที่ไม่มี permission เป็นขอบเขตของ token/owner route เดิม ไม่เพิ่ม grant ใหม่
+**คิว40** คือ API ที่ Peter review แล้ว และอนุมัติพร้อมเอกสารนี้เมื่อ 2026-11-18; นอกคิว40 ไม่ได้หมายความว่าเปิดใช้ policy ใหม่แล้ว Seed permission เป็นชื่ออ้างอิงจากข้อเสนอรอบก่อนเพื่อ trace กลับ seed ไม่ใช่ permission claim ใหม่ที่ติดตั้งแล้ว `own:*` ที่ไม่มี permission เป็นขอบเขตของ token/owner route เดิม ไม่เพิ่ม grant ใหม่
 
 ### authen-and-author
 
@@ -221,20 +237,25 @@ scopes:      ["<boundary>:*"]                    เช่น "all:*", "shop:*",
 
 ### author
 
-| API / Spec                                                                              | Permission claim             | Scope claim | Seed permission | เงื่อนไขและข้อยกเว้น                                                                             | คิว       |
-| --------------------------------------------------------------------------------------- | ---------------------------- | ----------- | --------------- | ------------------------------------------------------------------------------------------------ | --------- |
-| [POST v1/author/role/upsert](api/author/01-upsert-role/spec.md)                         | `management.role:crud`       | `all:*`     | `author.manage` | PLATFORM_ADMIN; กฎผู้ดูแลคนสุดท้าย/role ระบบ/ข้อมูลถูกใช้งานยังบังคับ                            | นอกคิว40  |
-| [POST v1/author/role/upsert/batch](api/author/02-upsert-role-batch/spec.md)             | `management.role:crud`       | `all:*`     | `author.manage` | PLATFORM_ADMIN; กฎผู้ดูแลคนสุดท้าย/role ระบบ/ข้อมูลถูกใช้งานยังบังคับ                            | นอกคิว40  |
-| [GET v1/author/role](api/author/03-inquiry-role/spec.md)                                | `management.role:read`       | `all:*`     | `author.manage` | PLATFORM_ADMIN; กฎผู้ดูแลคนสุดท้าย/role ระบบ/ข้อมูลถูกใช้งานยังบังคับ                            | นอกคิว40  |
-| [POST v1/author/permission/upsert](api/author/04-upsert-permission/spec.md)             | `management.permission:crud` | `all:*`     | `author.manage` | PLATFORM_ADMIN; กฎผู้ดูแลคนสุดท้าย/role ระบบ/ข้อมูลถูกใช้งานยังบังคับ                            | นอกคิว40  |
-| [POST v1/author/permission/upsert/batch](api/author/05-upsert-permission-batch/spec.md) | `management.permission:crud` | `all:*`     | `author.manage` | PLATFORM_ADMIN; กฎผู้ดูแลคนสุดท้าย/role ระบบ/ข้อมูลถูกใช้งานยังบังคับ                            | นอกคิว40  |
-| [GET v1/author/permission](api/author/06-inquiry-permission/spec.md)                    | `management.permission:read` | `all:*`     | `author.manage` | PLATFORM_ADMIN; กฎผู้ดูแลคนสุดท้าย/role ระบบ/ข้อมูลถูกใช้งานยังบังคับ                            | นอกคิว40  |
-| [POST v1/author/scope/upsert](api/author/07-upsert-scope/spec.md)                       | `management.scope:crud`      | `all:*`     | `author.manage` | PLATFORM_ADMIN; กฎผู้ดูแลคนสุดท้าย/role ระบบ/ข้อมูลถูกใช้งานยังบังคับ                            | นอกคิว40  |
-| [POST v1/author/scope/upsert/batch](api/author/08-upsert-scope-batch/spec.md)           | `management.scope:crud`      | `all:*`     | `author.manage` | PLATFORM_ADMIN; กฎผู้ดูแลคนสุดท้าย/role ระบบ/ข้อมูลถูกใช้งานยังบังคับ                            | **คิว40** |
-| [GET v1/author/scope](api/author/09-inquiry-scope/spec.md)                              | `management.scope:read`      | `all:*`     | `author.manage` | PLATFORM_ADMIN; กฎผู้ดูแลคนสุดท้าย/role ระบบ/ข้อมูลถูกใช้งานยังบังคับ                            | **คิว40** |
-| [POST v1/author/user/role/upsert](api/author/10-upsert-user-role/spec.md)               | `management.user_role:crud`  | `all:*`     | `author.manage` | PLATFORM_ADMIN; กฎผู้ดูแลคนสุดท้าย/role ระบบ/ข้อมูลถูกใช้งานยังบังคับ                            | **คิว40** |
-| [GET v1/author/user/role](api/author/11-inquiry-user-role/spec.md)                      | `management.user_role:read`  | `all:*`     | `author.manage` | PLATFORM_ADMIN; กฎผู้ดูแลคนสุดท้าย/role ระบบ/ข้อมูลถูกใช้งานยังบังคับ                            | **คิว40** |
-| [GET v1/author/me](api/author/12-me/spec.md)                                            | ไม่บังคับ permission         | `own:*`     | ไม่บังคับเพิ่ม  | token ถูกต้อง; คืนสิทธิ์ของ token ผู้เรียกเท่านั้น — ขอบเขตข้อมูลเดิม; ไม่เพิ่ม permission grant | นอกคิว40  |
+| API / Spec                                                                              | Permission claim                  | Scope claim | Seed permission | เงื่อนไขและข้อยกเว้น                                                                                                                  | คิว       |
+| --------------------------------------------------------------------------------------- | --------------------------------- | ----------- | --------------- | ------------------------------------------------------------------------------------------------------------------------------------- | --------- |
+| [POST v1/author/role/upsert](api/author/01-upsert-role/spec.md)                         | `management.role:crud`            | `all:*`     | `author.manage` | PLATFORM_ADMIN; กฎผู้ดูแลคนสุดท้าย/role ระบบ/ข้อมูลถูกใช้งานยังบังคับ                                                                 | นอกคิว40  |
+| [POST v1/author/role/upsert/batch](api/author/02-upsert-role-batch/spec.md)             | `management.role:crud`            | `all:*`     | `author.manage` | PLATFORM_ADMIN; กฎผู้ดูแลคนสุดท้าย/role ระบบ/ข้อมูลถูกใช้งานยังบังคับ                                                                 | นอกคิว40  |
+| [GET v1/author/role](api/author/03-inquiry-role/spec.md)                                | `management.role:read`            | `all:*`     | `author.manage` | PLATFORM_ADMIN; กฎผู้ดูแลคนสุดท้าย/role ระบบ/ข้อมูลถูกใช้งานยังบังคับ                                                                 | นอกคิว40  |
+| [POST v1/author/permission/upsert](api/author/04-upsert-permission/spec.md)             | `management.permission:crud`      | `all:*`     | `author.manage` | PLATFORM_ADMIN; กฎผู้ดูแลคนสุดท้าย/role ระบบ/ข้อมูลถูกใช้งานยังบังคับ                                                                 | นอกคิว40  |
+| [POST v1/author/permission/upsert/batch](api/author/05-upsert-permission-batch/spec.md) | `management.permission:crud`      | `all:*`     | `author.manage` | PLATFORM_ADMIN; กฎผู้ดูแลคนสุดท้าย/role ระบบ/ข้อมูลถูกใช้งานยังบังคับ                                                                 | นอกคิว40  |
+| [GET v1/author/permission](api/author/06-inquiry-permission/spec.md)                    | `management.permission:read`      | `all:*`     | `author.manage` | PLATFORM_ADMIN; กฎผู้ดูแลคนสุดท้าย/role ระบบ/ข้อมูลถูกใช้งานยังบังคับ                                                                 | นอกคิว40  |
+| [POST v1/author/scope/upsert](api/author/07-upsert-scope/spec.md)                       | `management.scope:crud`           | `all:*`     | `author.manage` | PLATFORM_ADMIN; กฎผู้ดูแลคนสุดท้าย/role ระบบ/ข้อมูลถูกใช้งานยังบังคับ                                                                 | นอกคิว40  |
+| [POST v1/author/scope/upsert/batch](api/author/08-upsert-scope-batch/spec.md)           | `management.scope:crud`           | `all:*`     | `author.manage` | PLATFORM_ADMIN; กฎผู้ดูแลคนสุดท้าย/role ระบบ/ข้อมูลถูกใช้งานยังบังคับ                                                                 | **คิว40** |
+| [GET v1/author/scope](api/author/09-inquiry-scope/spec.md)                              | `management.scope:read`           | `all:*`     | `author.manage` | PLATFORM_ADMIN; กฎผู้ดูแลคนสุดท้าย/role ระบบ/ข้อมูลถูกใช้งานยังบังคับ                                                                 | **คิว40** |
+| [POST v1/author/user/role/upsert](api/author/10-upsert-user-role/spec.md)               | `management.user_role:crud`       | `all:*`     | `author.manage` | PLATFORM_ADMIN; กฎผู้ดูแลคนสุดท้าย/role ระบบ/ข้อมูลถูกใช้งานยังบังคับ                                                                 | **คิว40** |
+| [GET v1/author/user/role](api/author/11-inquiry-user-role/spec.md)                      | `management.user_role:read`       | `all:*`     | `author.manage` | PLATFORM_ADMIN; กฎผู้ดูแลคนสุดท้าย/role ระบบ/ข้อมูลถูกใช้งานยังบังคับ                                                                 | **คิว40** |
+| [GET v1/author/me](api/author/12-me/spec.md)                                            | ไม่บังคับ permission              | `own:*`     | ไม่บังคับเพิ่ม  | token ถูกต้อง; คืนสิทธิ์ของ token ผู้เรียกเท่านั้น — ขอบเขตข้อมูลเดิม; ไม่เพิ่ม permission grant                                      | นอกคิว40  |
+| [POST v1/author/role/permission/upsert](api/author/13-upsert-role-permission/spec.md)   | `management.role_permission:crud` | `all:*`     | `author.manage` | PLATFORM_ADMIN จาก verified `roles` claim (owner answers Q1–Q6 ของ 2026-11-17); scoped permission ต้องมี scope; ไม่มี admin exemption | นอกคิว40  |
+| [GET v1/author/role/permission](api/author/14-inquiry-role-permission/spec.md)          | `management.role_permission:read` | `all:*`     | `author.manage` | PLATFORM_ADMIN จาก verified `roles` claim (owner answers Q1–Q6 ของ 2026-11-17); scoped permission ต้องมี scope; ไม่มี admin exemption | นอกคิว40  |
+| [POST v1/author/user/permission/upsert](api/author/15-upsert-user-permission/spec.md)   | `management.user_permission:crud` | `all:*`     | `author.manage` | PLATFORM_ADMIN จาก verified `roles` claim (owner answers Q1–Q6 ของ 2026-11-17); scoped permission ต้องมี scope; ไม่มี admin exemption | นอกคิว40  |
+| [GET v1/author/user/permission](api/author/16-inquiry-user-permission/spec.md)          | `management.user_permission:read` | `all:*`     | `author.manage` | PLATFORM_ADMIN จาก verified `roles` claim (owner answers Q1–Q6 ของ 2026-11-17); scoped permission ต้องมี scope; ไม่มี admin exemption | นอกคิว40  |
+| [GET v1/author/check](api/author/17-check-permission/spec.md)                           | ไม่บังคับ permission              | `own:*`     | ไม่บังคับเพิ่ม  | token ถูกต้อง; ตอบจาก `permissions`/`scopes` ของ token ผู้เรียกเท่านั้น (Q1–Q3) เสมอ 200 ไม่มี 403                                    | นอกคิว40  |
 
 ### campaign
 
@@ -341,7 +362,7 @@ scopes:      ["<boundary>:*"]                    เช่น "all:*", "shop:*",
 
 1. Review module/resource/action/API mappings ในเอกสารนี้; โดยเฉพาะ management กับ shop, resource user กับ user_role, `crud` ที่เป็นชื่อเดียว และ custom cancel/refund แยกต่างหาก รายการใหม่ทั้งหมดยังไม่ใช่ permission ที่ติดตั้งแล้ว
 2. ออกแบบ seed/ข้อมูล permission ใหม่ให้ตรงชื่อ `module.resource.action` ใน DB (claim คือชื่อนี้ที่เปลี่ยน `.` ตัวสุดท้ายเป็น `:`) และการแปลง grants เดิมของ 7 permission names ก่อนเปลี่ยน seed/login/refresh จริง
-3. WP5b grant-management/check APIs ยังพักไว้ ต้องออกแบบและอนุมัติก่อนเปิดจัดการสิทธิ์ละเอียด การมีตารางนี้ไม่สร้าง API เหล่านั้นเอง
+3. WP5b grant-management/check APIs เสร็จและอนุมัติแล้ว (author 13–17, #200, #202, #203, #218) การมีตารางนี้ไม่สร้าง grant เองนเอง
 4. ทยอยเพิ่มการอ้างสิทธิ์ใน spec และ sequence ของแต่ละ API (รูปแบบตาม template ใหม่) พร้อม checker/ตัวอย่างผล 403 ใน PR เดียวกัน; API ละหนึ่ง PR และไม่อ้างว่าปรับทั้ง 83 endpoint แล้ว
 5. แก้ประโยค `roles` แบบ `{roleId,name}` ใน spec/sequence/checker ของ API อื่นให้เป็นชื่อ role ตาม payload ใหม่ (แต่ละคนในกลุ่มของตัวเองตอนจัด template)
 6. ประสาน Tommy ก่อนแก้ sales/05 และ payment/05 ที่ซ้อน T1 และรักษา current token/user, owner/member/ADMIN, bootstrap, public/provider, field masking และ business invariants ทั้งหมด
@@ -351,6 +372,6 @@ Q18/Q19 ได้คำตอบแล้ว: consent/03 เฉพาะ PLATFOR
 
 ## หลักฐานและการตรวจ
 
-- Inventory 83 API/spec links และคิว 40 API; ชื่อ route เทียบจากไฟล์จริงที่มีและไม่มี frontmatter
+- Inventory 88 API/spec links และคิว 40 API; ชื่อ route เทียบจากไฟล์จริงที่มีและไม่มี frontmatter
 - ทุก API ที่มี candidate permission อยู่ใน reverse allowlist; ตารางผูก permission claim ใหม่กับ scope claim และ seed permission โดยไม่แก้ endpoint หรือฐานข้อมูล
 - Seed เดิม 3 scopes / 7 permissions / 12 definitions ไม่เปลี่ยน; ไม่มี backend/JWT enforcement ในงานนี้ ผลตรวจเป็นความสอดคล้องของเอกสารเท่านั้น
