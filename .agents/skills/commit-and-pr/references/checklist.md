@@ -43,6 +43,7 @@ This gate runs after the task commit and before push/PR creation or update. `<ba
 Required when the change includes any of `e-commerce/doc/api/`, `e-commerce/doc/schema/`, `e-commerce/db/migrations/`, `e-commerce/db/tests/`, `e-commerce/db/er-diagram.drawio`:
 
 - every `python3 e-commerce/db/tests/check_docs.py <sub-command>` listed by running the script with no arguments: each must print `OK`
+- `md-frontmatter` lists files with `git ls-files`, so before staging it cannot see new files. The preflight therefore checks every untracked `.md` in scope itself, with the same rule and exemptions (`check_docs.md_file_errors`), even without `--run-checks`. After staging, run `check_docs.py md-frontmatter` once more: a pass while the files were untracked once hid 70 eval files from it (2026-11-18)
 - before that, `check_docs.py` must parse (a file that does not parse lists no sub-commands, and the preflight reports it as a blocker instead of `0/0 OK`); the sub-command `check-registry` fails when a check function does not end with `return` or `raise` or is neither registered in `COMMANDS` nor called, which is what a merge that cuts the end of a checker leaves behind
 - `python3 e-commerce/db/tests/audit_all.py`: must end with `0 findings`
 - `bash e-commerce/db/tests/run_db_tests.sh`: must end with `ALL PASSED` (needs PostgreSQL tools; if they are missing, say it was not run and why)

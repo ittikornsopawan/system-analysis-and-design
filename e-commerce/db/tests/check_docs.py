@@ -8971,6 +8971,18 @@ def markdown_files() -> list[str]:
     return sorted(result.stdout.split())
 
 
+# Eval files of a skill in the `claude plugin eval` format: that loader rejects unknown frontmatter keys, so they carry only the tool's
+# keys (owner decision 2026-11-18, `.agents/rules/markdown.md`). They must still start with frontmatter.
+EVAL_TOOL_MARKDOWN = re.compile(r"\.agents/skills/[^/]+/evals/[^/]+/(prompt\.md|graders/[^/]+\.md)$")
+
+
+def md_file_errors(path: str, md: str) -> list[str]:
+    """The md-frontmatter errors of one file, applying the eval-format exemption; preflight calls it for untracked files too."""
+    if EVAL_TOOL_MARKDOWN.match(path):
+        return [e for e in frontmatter_errors(path, md) if e == "does not start with YAML frontmatter"]
+    return frontmatter_errors(path, md)
+
+
 def is_spec_markdown(path: str) -> bool:
     return bool(re.match(r"e-commerce/doc/api/[^/]+/[^/]+/spec\.md$", path)) or path.startswith("docs/superpowers/specs/")
 
@@ -9019,7 +9031,7 @@ def check_md_frontmatter() -> int:
         if entry not in paths:
             errors.append(f"MD_FRONTMATTER_PENDING lists {entry}, which is not a tracked Markdown file")
     for path in paths:
-        found = frontmatter_errors(path, (ROOT / path).read_text(encoding="utf-8"))
+        found = md_file_errors(path, (ROOT / path).read_text(encoding="utf-8"))
         if path in MD_FRONTMATTER_PENDING:
             if not found:
                 errors.append(f"{path}: already has the frontmatter, remove it from MD_FRONTMATTER_PENDING")

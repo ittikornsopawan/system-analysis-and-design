@@ -1,3 +1,8 @@
+---
+name: Multi-warehouse Stock Context
+description: Eval input: facts about the current stock system and the new multi-warehouse requirement; read by the architecture-multi-warehouse-stock case.
+---
+
 Current system (facts from the team):
 - One ASP.NET Core 8 monolith + PostgreSQL 16 (single primary, one read replica). Team: 6 backend devs, 1 DevOps.
 - Stock today: `products.stock_qty` integer, decremented in the same transaction that creates the order.

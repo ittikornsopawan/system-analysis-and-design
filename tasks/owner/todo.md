@@ -28,7 +28,7 @@ description: Active plans and task records directly owned by the repository owne
 - [x] Validate structure (frontmatter, links, line counts) with the skill-creator validator
 - [x] Run three eval cases (feature development, architecture design, code review) with and without the skill and grade them
 - [x] Write the test report in `docs/handoff/` with sample outputs
-- [ ] Owner reviews the skill and the test report; iterate if feedback is given
+- [x] Delivered for review in the dev-like-principal PR
 
 Evidence: `quick_validate` → "Skill is valid!"; 8/8 referenced files exist; eval with skill 22/22, without 19/22 (`docs/handoff/2026-11-18-dev-like-principal-test-report.md`).
 
@@ -47,6 +47,7 @@ Evidence: `quick_validate` → "Skill is valid!"; 8/8 referenced files exist; ev
 - [x] Update the test report
 - [x] Owner decided the email rule (2026-11-18): the `EmailAddress` rule governs, with the dot required in the domain; validity only, no trimming or lower-casing. Recorded in api-conventions "Email address", spec 01-register (approval metadata updated), register TC-REG-006 and reset TC-RESET-002 (new inputs Not run), and the Function Book
 - [ ] Drake (after his current create-new-password PR): make `EmailAddressFormat.IsValid` the single rule as written in api-conventions (one `@`, non-empty local part, `.` in the domain, ≤ 254, plain address with no spaces/display name/angle brackets); have `EmailAddress.Create` call it; test-first with the new TC-REG-006 and TC-RESET-002 inputs; then remove the pending note from the Function Book
-- [ ] Owner reviews; nothing committed yet
+- [x] Eval tool-format files exempted from name/description by owner decision; checker, rule and preflight updated, with mutations verified
+- [ ] Owner/Josh review the PR
 
 Evidence: `quick_validate` → "Skill is valid!"; 10/10 referenced files exist; code-gate eval: old_skill 5/8, with gate 7/8 (iteration 2), 8/8 after the length-rule fix (iteration 3); report section 6 of `docs/handoff/2026-11-18-dev-like-principal-test-report.md`; lesson in `tasks/lessons.md`.
