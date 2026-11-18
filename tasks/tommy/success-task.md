@@ -181,3 +181,49 @@ Assignment: agent `tommy`, delivery `open-pr`, authorized by `ittikorn`, workspa
 - [x] PR 9, `shipping/01–04`: the member check, same change; shipping needles. Evidence: pull request #186 merged at 2026-11-16T14:57:05+07:00, CI `checks` passed.
 - [x] PR 10, `campaign/02`: the member check, same change; campaign needles. Evidence: pull request #187 merged at 2026-11-16T14:57:25+07:00, CI `checks` passed; after it, `grep "role IN ('ADMIN', 'STAFF')"` finds nothing in the sales, payment, shipping and campaign specs and sequences.
 - [x] Before each PR: every `check_docs.py` sub-command, `audit_all.py`, `test_sequence_skeleton.py`, `test_agent_workspace.py` and `preflight.py`; after CI is green, the link to Josh, then `suspend`. Evidence: before every PR `check_docs.py` 70/70 OK, `audit_all.py` 53 tables and 0 findings, both skill tests OK, preflight no blockers, and one deliberate fault caught per folder; `run_db_tests.sh` not run (no SQL touched); all four workspaces suspended and parked.
+
+## F8: Stripe webhook amount and currency check
+
+- Owner: Tommy
+- Created at: 2026-11-17
+- Started at: 2026-11-17
+- Status: Complete
+- Completed at: 2026-11-17T13:27:58+07:00
+
+- [x] Spec: domain rule, body parameters, `p.currency` in the query
+- [x] Sequence: mismatch branch, amount-check note
+- [x] Checker needles for 02-stripe-webhook
+- [x] Regenerate `api-contract.json` with `gen_contract.py`
+- [x] Run all checks and preflight, open PR, send link to Josh Evidence (closed by Josh, 2026-11-18): PR #212 merged 2026-11-17T13:27:58+07:00 (merge commit a1216af), CI `checks` passed.
+
+## OpenAPI 3.1 validator in CI
+
+- Owner: Tommy
+- Created at: 2026-11-17
+- Started at: 2026-11-17
+- Status: Complete
+- Completed at: 2026-11-17T13:21:54+07:00
+
+- [x] Validate current main contract: `openapi-spec-validator` 0.9.0 reports OK (no errors to route to Josh)
+- [x] Add pinned install, validate and deliberate-fault steps to `.github/workflows/checks.yml`
+- [x] Add optional validator pass to `check_docs.py api-contract`
+- [x] Run all checks and preflight, open PR, send link to Josh Evidence (closed by Josh, 2026-11-18): PR #210 merged 2026-11-17T13:21:54+07:00 (merge commit 1a53cf5), CI `checks` passed.
+
+## Parameter APIs 01-03 (public.m_parameter)
+
+- Owner: Tommy
+- Created at: 2026-11-18
+- Started at: 2026-11-18
+- Status: Complete
+- Completed at: 2026-11-18T08:06:58+07:00
+
+- [x] Questions Q1-Q7 answered by Josh (delegated by the owner, 2026-11-18); Q6 changed to a public inquiry
+- [x] Spec and sequence 01-upsert-parameter
+- [x] Spec and sequence 02-upsert-parameter-batch
+- [x] Spec and sequence 03-inquiry-parameter (public, 60 requests per minute)
+- [x] `parameter-spec` checker, admin-write/upsert/limits lists, `API_CONTRACT_DOMAINS`, skeleton count 91, conventions rate-limit line, regenerate `api-contract.json`
+- [x] Run all checks, `run_db_tests.sh` and preflight, open PR #226, send link to Josh
+- [x] CI green after approval commit, send link to Josh Evidence (closed by Josh, 2026-11-18): PR #226 merged 2026-11-18T08:06:58+07:00 (merge commit e00138b), CI `checks` passed.
+- [x] Approved by Josh (SA Lead, delegated by Ittikorn 2026-11-17) at 2026-11-18T07:49:47+07:00: approval fields set, contract regenerated (91 operations, inquiry `security: []`)
+
+Completed records are in `success-task.md`.
