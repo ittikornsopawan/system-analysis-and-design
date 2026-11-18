@@ -180,6 +180,15 @@ activate page
                             page -> user: Display error message
                         end
                         alt id and parentId are specified
+                            app -> infra: QUERY - Lock the parameter tree
+                            infra -> m_parameter: QUERY - Lock the parameter tree
+                            activate m_parameter
+                                note right of m_parameter
+                                    SELECT pg_advisory_xact_lock(hashtext('public.m_parameter.parent'))
+                                end note
+                                m_parameter -> infra: Return when the lock is held (it waits for another request that changes a parent)
+                            deactivate m_parameter
+                            infra -> app: Return result of Lock the parameter tree
                             app -> infra: QUERY - Check parent cycle
                             infra -> m_parameter: QUERY - Check parent cycle
                             activate m_parameter

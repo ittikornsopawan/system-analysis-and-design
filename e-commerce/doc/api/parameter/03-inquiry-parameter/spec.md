@@ -31,7 +31,7 @@ approved_at: 2026-11-18T07:49:47+07:00
 - A public caller sees only ACTIVE parameters: a DELETED, INACTIVE, LOCKED or ARCHIVED parameter is never returned. `rowStatus` stays a filter, but any value other than ACTIVE answers 200 with `items` empty. A parameter is returned on its own status, the status of its parent is not checked.
 - By default only the parameters effective now are returned: `effectiveAt` is now or earlier and `expiredAt` is null or later than now (UTC, the server time of the request). `includeNotEffective` true also returns the ACTIVE parameters that are not effective yet or have expired.
 - `parentId` returns the children of that parameter. `rootOnly` true returns only the parameters without a parent (for example the countries). `rootOnly` true together with `parentId` is 400 (E10001). Without both, the parameters of every level are returned.
-- `key` is an exact match (case-sensitive). `search` matches part of the key or of the text of any language of `value`, ignoring case.
+- `key` is an exact match (case-sensitive). `search` matches part of the key or of the text of any language of `value`, ignoring case. It is matched literally: the service escapes `\`, `%` and `_` in `search` before binding it, and the SQL says `ESCAPE '\'`, so `10_00` does not match `10100`.
 - The parameters are sorted by `key` ascending, then by `parameterId` ascending, so the pages never repeat or skip a parameter. Nothing found is 200 with `items` empty.
 - `value`, `title` and `display` are returned as the whole localized JSON object; the client picks the language. `title`, `display`, `metadata`, `parentId` and `expiredAt` are null when they are not set.
 - Rate limit: this API, which needs no access token, answers 429 (E90002) with a `Retry-After` header when a client IP sends more than 60 requests per minute (configurable); the limiter answers before the handler runs, so the 429 is not drawn in the sequence diagram. The rule is in the section Limits and rate limiting of `api-conventions.md`.
@@ -281,7 +281,7 @@ AND p.id = '<sequence.id>' -- only when id is specified
 AND p.parent_id = '<sequence.parentId>' -- only when parentId is specified
 AND p.parent_id IS NULL -- only when rootOnly is true
 AND p.key = '<sequence.key>' -- only when key is specified
-AND (p.key ILIKE '%<sequence.search>%' OR EXISTS (SELECT 1 FROM jsonb_each_text(p.value) v WHERE v.value ILIKE '%<sequence.search>%')) -- only when search is specified
+AND (p.key ILIKE '%<sequence.search>%' ESCAPE '\' OR EXISTS (SELECT 1 FROM jsonb_each_text(p.value) v WHERE v.value ILIKE '%<sequence.search>%' ESCAPE '\')) -- only when search is specified
 AND p.row_status = '<sequence.rowStatus>' -- only when rowStatus is specified
 AND p.effective_at <= '<sequence.now>' -- unless includeNotEffective is true
 AND (p.expired_at IS NULL OR p.expired_at > '<sequence.now>') -- unless includeNotEffective is true
@@ -300,7 +300,7 @@ AND p.id = '<sequence.id>' -- only when id is specified
 AND p.parent_id = '<sequence.parentId>' -- only when parentId is specified
 AND p.parent_id IS NULL -- only when rootOnly is true
 AND p.key = '<sequence.key>' -- only when key is specified
-AND (p.key ILIKE '%<sequence.search>%' OR EXISTS (SELECT 1 FROM jsonb_each_text(p.value) v WHERE v.value ILIKE '%<sequence.search>%')) -- only when search is specified
+AND (p.key ILIKE '%<sequence.search>%' ESCAPE '\' OR EXISTS (SELECT 1 FROM jsonb_each_text(p.value) v WHERE v.value ILIKE '%<sequence.search>%' ESCAPE '\')) -- only when search is specified
 AND p.row_status = '<sequence.rowStatus>' -- only when rowStatus is specified
 AND p.effective_at <= '<sequence.now>' -- unless includeNotEffective is true
 AND (p.expired_at IS NULL OR p.expired_at > '<sequence.now>') -- unless includeNotEffective is true

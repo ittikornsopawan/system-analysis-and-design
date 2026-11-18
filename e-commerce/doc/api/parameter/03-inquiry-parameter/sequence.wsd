@@ -82,7 +82,7 @@ activate page
                                 AND p.parent_id = '<sequence.parentId>' -- only when parentId is specified
                                 AND p.parent_id IS NULL -- only when rootOnly is true
                                 AND p.key = '<sequence.key>' -- only when key is specified
-                                AND (p.key ILIKE '%<sequence.search>%' OR EXISTS (SELECT 1 FROM jsonb_each_text(p.value) v WHERE v.value ILIKE '%<sequence.search>%')) -- only when search is specified
+                                AND (p.key ILIKE '%<sequence.search>%' ESCAPE '\' OR EXISTS (SELECT 1 FROM jsonb_each_text(p.value) v WHERE v.value ILIKE '%<sequence.search>%' ESCAPE '\')) -- only when search is specified
                                 AND p.row_status = '<sequence.rowStatus>' -- only when rowStatus is specified
                                 AND p.effective_at <= '<sequence.now>' -- unless includeNotEffective is true
                                 AND (p.expired_at IS NULL OR p.expired_at > '<sequence.now>') -- unless includeNotEffective is true
@@ -104,7 +104,7 @@ activate page
                                 AND p.parent_id = '<sequence.parentId>' -- only when parentId is specified
                                 AND p.parent_id IS NULL -- only when rootOnly is true
                                 AND p.key = '<sequence.key>' -- only when key is specified
-                                AND (p.key ILIKE '%<sequence.search>%' OR EXISTS (SELECT 1 FROM jsonb_each_text(p.value) v WHERE v.value ILIKE '%<sequence.search>%')) -- only when search is specified
+                                AND (p.key ILIKE '%<sequence.search>%' ESCAPE '\' OR EXISTS (SELECT 1 FROM jsonb_each_text(p.value) v WHERE v.value ILIKE '%<sequence.search>%' ESCAPE '\')) -- only when search is specified
                                 AND p.row_status = '<sequence.rowStatus>' -- only when rowStatus is specified
                                 AND p.effective_at <= '<sequence.now>' -- unless includeNotEffective is true
                                 AND (p.expired_at IS NULL OR p.expired_at > '<sequence.now>') -- unless includeNotEffective is true

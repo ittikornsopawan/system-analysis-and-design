@@ -53,6 +53,8 @@ CREATE UNIQUE INDEX IF NOT EXISTS uq_m_parameter_key ON public.m_parameter (key)
 WHERE
     row_status <> 'DELETED';
 
+CREATE INDEX IF NOT EXISTS ix_m_parameter_parent_id ON public.m_parameter (parent_id);
+
 CREATE SCHEMA IF NOT EXISTS consent;
 
 CREATE TABLE

@@ -28,12 +28,13 @@ Description: Master table of the `public` schema (defined in `db/migrations/up/0
 
 ## Constain
 
-| Key Name                  | Column Name | Description                                                                   |
-| ------------------------- | ----------- | ----------------------------------------------------------------------------- |
-| pk_m_parameter_id         | id          | Primary key                                                                   |
-| fk_m_parameter_parent_id  | parent_id   | References public.m_parameter(id), ON DELETE RESTRICT                         |
-| uq_m_parameter_key        | key         | Unique among rows where row_status <> 'DELETED'                               |
-| ck_m_parameter_row_status | row_status  | CHECK (row_status IN ('ACTIVE', 'INACTIVE', 'DELETED', 'LOCKED', 'ARCHIVED')) |
+| Key Name                  | Column Name | Description                                                                             |
+| ------------------------- | ----------- | --------------------------------------------------------------------------------------- |
+| pk_m_parameter_id         | id          | Primary key                                                                             |
+| fk_m_parameter_parent_id  | parent_id   | References public.m_parameter(id), ON DELETE RESTRICT                                   |
+| uq_m_parameter_key        | key         | Unique among rows where row_status <> 'DELETED'                                         |
+| ix_m_parameter_parent_id  | parent_id   | Index to list the children of a parent and to check children before a delete or archive |
+| ck_m_parameter_row_status | row_status  | CHECK (row_status IN ('ACTIVE', 'INACTIVE', 'DELETED', 'LOCKED', 'ARCHIVED'))           |
 
 ---
 
@@ -67,4 +68,6 @@ CREATE TABLE
 CREATE UNIQUE INDEX IF NOT EXISTS uq_m_parameter_key ON public.m_parameter (key)
 WHERE
     row_status <> 'DELETED';
+
+CREATE INDEX IF NOT EXISTS ix_m_parameter_parent_id ON public.m_parameter (parent_id);
 ```
