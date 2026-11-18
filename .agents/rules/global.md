@@ -28,6 +28,7 @@ description: Mandatory repository-wide rules Claude and Codex must load and foll
 - Preserve existing user changes and unrelated worktree state.
 - Add a dependency, change architecture, or change a public contract only after the change is represented in an approved spec.
 - Keep secrets, credentials, tokens, and sensitive data out of source control.
+- Before writing or changing code in any task or skill, load `.agents/skills/dev-like-principal/SKILL.md` and apply `references/code-quality-standards.md`: check the project's Function Book and existing code first, and record new shared functions in the Function Book in the same change.
 
 ## Verification and Handoff
 

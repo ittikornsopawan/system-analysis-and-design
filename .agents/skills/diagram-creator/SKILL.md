@@ -7,6 +7,8 @@ description: Create, update, or review architecture, repository, domain, sequenc
 
 Turn inspected evidence into diagrams that answer different engineering questions. Preserve the user's requested paths and formats. This skill owns evidence, view semantics, reproducibility and review; an available `diagram-design` skill supplies visual language and rendering conventions when requested or useful.
 
+**Code gate.** Before writing or changing any code in this skill (generators, verification or helper scripts), load [dev-like-principal](../dev-like-principal/SKILL.md) and apply its [code quality standards](../dev-like-principal/references/code-quality-standards.md): check the project's Function Book and the existing code before writing a function, reuse before rewriting, and report its quality check in the handoff.
+
 ## Establish the drawing contract
 
 1. Identify the audience, question, source baseline and requested outputs. For existing diagrams, inspect both the render and editable model before changing them; account for meaningful nodes and relationships that will be retained, split or omitted.

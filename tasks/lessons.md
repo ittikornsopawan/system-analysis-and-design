@@ -5,6 +5,14 @@ description: Repository-wide and project-specific lessons captured from user cor
 
 # Lessons
 
+### 2026-11-18 — Measure function length instead of claiming it
+
+- **Issue**: In the code-gate eval, the run with the new `dev-like-principal` gate wrote a 50-line `Handle()` method, then reported "Functions: Pass" in its quality check without measuring it.
+- **Root cause**: `code-quality-standards.md` said "a screen at most", which can be judged by eye, and it accepted a "pass" in the quality check without evidence.
+- **Corrected behavior**: Aim for 20 lines or fewer. Over 30 lines, split the function or justify it in the handoff. Measure each new method's lines; a handler is not exempt. Every "pass" in the quality check names its evidence.
+- **Preventive resource**: `.agents/skills/dev-like-principal/references/code-quality-standards.md` sections 3 and "Before delivery". Recheck by rerunning the `code-gate-newsletter-subscription` eval and measuring each new method.
+- **Also caught**: adding a `:` to the `SKILL.md` description broke its YAML, and `quick_validate` failed. Rerun the validator after every frontmatter edit.
+
 ### 2026-11-14 — Define the Head of Technology as the final quality gate
 
 - **Correction**: The owner clarified that the Head of Technology is second only to the owner, reviews only after all work is complete and the lead/manager submits a final report, and may fail work that does not meet quality. A failure must include a concrete rework plan explaining what to change, why, and how.

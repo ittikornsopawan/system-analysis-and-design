@@ -73,6 +73,7 @@ Skills marked `placeholder` are unavailable until designed. Design each `SKILL.m
 | `skills/api-test-case-creator/SKILL.md` | ready | Creating or updating documented API test cases from specs, with rule coverage, concrete expected outcomes and explicit gaps |
 | `skills/code-review/SKILL.md` | placeholder | Reserved |
 | `skills/diagram-creator/SKILL.md` | ready | Creating, updating or reviewing system diagrams from specs, code or DB evidence, with editable artifacts and rendered review |
+| `skills/dev-like-principal/SKILL.md` | ready | Before writing or changing any code from any skill (code quality standards and Function Book check); making or reviewing technical decisions with principal-engineer judgment: architecture and boundaries, trade-offs, technology selection, compatibility and migration, reliability, security, performance, or code/design review beyond style; supplies judgment and defers to the governing workflow and design skills for process |
 
 The ready skills carry their own `references/`, `assets/` (templates ending in `.tmpl`), and `scripts/`; load those files only when the skill's procedure points to them.
 

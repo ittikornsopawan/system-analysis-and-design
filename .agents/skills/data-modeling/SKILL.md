@@ -9,6 +9,8 @@ This is the method for any change to the database design of a project (the e-com
 
 Load first: `.agents/README.md`, `.agents/rules/global.md`, `.agents/knowledge/projects/e-commerce.md`. The project's own templates override the generic ones in `.agents/templates/`.
 
+**Code gate.** Before writing or changing any code in this skill (migration SQL, SQL tests, checker or harness scripts), load [dev-like-principal](../dev-like-principal/SKILL.md) and apply its [code quality standards](../dev-like-principal/references/code-quality-standards.md): check the project's Function Book and the existing code before writing a function, reuse before rewriting, and report its quality check in the handoff.
+
 ## Inputs you need before starting
 
 - The tables and columns to add or change and the business reason. If a rule is a business decision you cannot read from the repo (who may delete, whether a value may repeat, what a status means), ask the owner, or choose the safest option and record it as a decision (step 3).

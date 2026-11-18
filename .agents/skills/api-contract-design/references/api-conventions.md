@@ -60,7 +60,7 @@ Every 400 E10001 `bizMessage` uses these forms (Josh, SA Lead, delegated by the 
 - **Items and objects:** the position comes first, `consents[1]: Consent Id must not be duplicated.`, `addresses: Postal Code must be at most 10 characters.`
 - **Several failures:** the messages of every failed rule in request field order, each without its period, joined by `, ` and ended with one period, as in `items[0]: Shop Product SKU Id is a required field, Quantity must be an integer greater than 0.`
 - **Headers:** a missing or malformed header is 400 E10001, never 415: `Timestamp is a required header.`, `Timestamp must be a valid UTC timestamp.`, `Content-Type must be application/json.` These run before body validation and need no example in each spec.
-- **Email address:** valid means exactly one `@` with a non-empty local part before it and a non-empty domain after it.
+- **Email address:** valid means: at most 254 characters; exactly one `@` with a non-empty local part before it; a domain after it that contains at least one `.`; and a plain address only, with no spaces, display name or angle brackets (`a.b@shop.co` is valid; `abc`, `a@b@c`, `a.b@c`, `a b@shop.co`, `<a@shop.co>` and `A <a@shop.co>` are not). Owner decision 2026-11-18: the rule of the domain value object `EmailAddress` governs, with the dot required in the domain; it replaces the earlier "non-empty parts" rule. Only validity changes: the value is still stored and compared as sent (no trimming or lower-casing).
 
 ## Limits and rate limiting
 
