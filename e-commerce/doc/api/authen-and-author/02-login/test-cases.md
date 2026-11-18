@@ -14,7 +14,7 @@ description: "Documented scenarios and expected results for POST v1/auth/login; 
 - Test design baseline: approved-source
 - Implementation decision: the "QUERY - Serialize identifier" advisory lock runs through one Infrastructure helper with a fixed, parameterized statement (owner decision 2026-11-18; every other query is EF Core LINQ).
 - Scope and exclusions: the login endpoint only. Excluded: response-time equality of the dummy password verification (the spec requires the dummy work, not a timing bound; covered by a call-count check); the 30-day attempt clean-up job (separate system job); TLS.
-- Execution summary: Not run — automated tests in e-commerce-backend will carry the case ID in their names.
+- Execution summary: every case automated in e-commerce-backend (test names start with the case ID) and passing; see [Revision and execution history](#revision-and-execution-history).
 
 ## Shared fixtures and observation prerequisites
 
@@ -54,7 +54,7 @@ description: "Documented scenarios and expected results for POST v1/auth/login; 
 
 ### TC-LOGIN-001 — Successful login
 
-- Source: L01, L02, L03, L08. Design readiness: Ready. Execution status: Not run.
+- Source: L01, L02, L03, L08. Design readiness: Ready. Execution status: Pass (automated).
 
 **Preconditions:** `U_OK` with display name `John Doe`, one ACTIVE role `CATALOG_MANAGER` granting ACTIVE permission `catalog.manage` (unscoped). **Request:** VR with `requestId: req-TC-LOGIN-001`.
 
@@ -69,73 +69,73 @@ description: "Documented scenarios and expected results for POST v1/auth/login; 
 
 ### TC-LOGIN-002 — Missing fields
 
-- Source: L04, L06. Design readiness: Ready. Execution status: Not run.
+- Source: L04, L06. Design readiness: Ready. Execution status: Pass (automated).
 
 **Request:** VR without `username` → "Username is a required field."; without `password` → "Password is a required field."; with neither → "Username and Password are required fields."; `username ""` → "Username is a required field.". **Expected:** 400 E10001, no `data`, no attempt row and no token row.
 
 ### TC-LOGIN-003 — Length limits
 
-- Source: L04. Design readiness: Ready. Execution status: Not run.
+- Source: L04. Design readiness: Ready. Execution status: Pass (automated).
 
 **Request:** `username` of 255 characters → "Username must be at most 254 characters."; `password` of 129 → "Password must be at most 128 characters."; each 400 E10001 with no attempt row. `username` of 254 (unknown) → 401 (it is a valid attempt).
 
 ### TC-LOGIN-004 — No password complexity at login
 
-- Source: L05. Design readiness: Ready. Execution status: Not run.
+- Source: L05. Design readiness: Ready. Execution status: Pass (automated).
 
 **Request:** VR with `password "abc"`. **Expected:** 401 E10002 (not 400); one FAILED attempt row.
 
 ### TC-LOGIN-005 — Unknown username
 
-- Source: L07, L08, L20. Design readiness: Ready. Execution status: Not run.
+- Source: L07, L08, L20. Design readiness: Ready. Execution status: Pass (automated).
 
 **Request:** VR with a username no user has. **Expected:** 401 E10002 "Invalid username or password.", no `data`; one attempt FAILED with user_id NULL; no token row; the password hasher was called once (dummy verification).
 
 ### TC-LOGIN-006 — Wrong password
 
-- Source: L07, L08, L09. Design readiness: Ready. Execution status: Not run.
+- Source: L07, L08, L09. Design readiness: Ready. Execution status: Pass (automated).
 
 **Request:** VR with `password "Wrong-Passw0rd"`. **Expected:** 401 E10002; one FAILED attempt with user_id = U_OK id, committed; no token row.
 
 ### TC-LOGIN-007 — User not ACTIVE
 
-- Source: L07. Design readiness: Ready. Execution status: Not run.
+- Source: L07. Design readiness: Ready. Execution status: Pass (automated).
 
 **Preconditions:** a user with the right password and row_status INACTIVE, then LOCKED, then DELETED. **Expected:** 401 E10002 each time; FAILED with user_id NULL (the lock query only matches ACTIVE users); no token row.
 
 ### TC-LOGIN-008 — The answer never says which failure it is
 
-- Source: L07. Design readiness: Ready. Execution status: Not run.
+- Source: L07. Design readiness: Ready. Execution status: Pass (automated).
 
 **Steps:** compare the bodies of TC-LOGIN-005, 006, 007, 009, 010 and 013. **Expected:** identical except `requestId` and `timestamp`.
 
 ### TC-LOGIN-009 — No ACTIVE PASSWORD row
 
-- Source: L07, L20. Design readiness: Ready. Execution status: Not run.
+- Source: L07, L20. Design readiness: Ready. Execution status: Pass (automated).
 
 **Preconditions:** `U_NOPW`. **Expected:** 401 E10002; FAILED with user_id = U_NOPW id; hasher called once.
 
 ### TC-LOGIN-010 — Ambiguous identifier
 
-- Source: L07, L08. Design readiness: Ready. Execution status: Not run.
+- Source: L07, L08. Design readiness: Ready. Execution status: Pass (automated).
 
 **Preconditions:** ACTIVE user A with username `x@example.test` and ACTIVE user B with email `x@example.test` (both with the password). **Request:** username `x@example.test`. **Expected:** 401 E10002; FAILED with user_id NULL; no token row for A or B.
 
 ### TC-LOGIN-011 — Identifier is compared exactly
 
-- Source: L10. Design readiness: Ready. Execution status: Not run.
+- Source: L10. Design readiness: Ready. Execution status: Pass (automated).
 
 **Request:** VR with the username upper-cased, then with a trailing space. **Expected:** 401 E10002 each time (no match), FAILED with user_id NULL.
 
 ### TC-LOGIN-012 — Login by email address
 
-- Source: L10. Design readiness: Ready. Execution status: Not run.
+- Source: L10. Design readiness: Ready. Execution status: Pass (automated).
 
 **Request:** VR with U_OK's email as `username`. **Expected:** 200 S10000; the attempt identifier_hash is SHA-256 of the email.
 
 ### TC-LOGIN-013 — Five failures refuse the sixth
 
-- Source: L07, L09, L11. Design readiness: Ready. Execution status: Not run.
+- Source: L07, L09, L11. Design readiness: Ready. Execution status: Pass (automated).
 
 **Steps:** 5 wrong-password requests, then the right password, then the right password again.
 
@@ -147,25 +147,25 @@ description: "Documented scenarios and expected results for POST v1/auth/login; 
 
 ### TC-LOGIN-014 — Old failures do not count
 
-- Source: L12. Design readiness: Ready. Execution status: Not run.
+- Source: L12. Design readiness: Ready. Execution status: Pass (automated).
 
 **Preconditions:** 5 FAILED rows for the identifier with created_at = now − 16 minutes, and 4 with now − 14 minutes in a second variant. **Expected:** the right password → 200 in both variants (5 old do not count; 4 recent are below 5).
 
 ### TC-LOGIN-015 — The counter is per supplied identifier
 
-- Source: L13. Design readiness: Ready. Execution status: Not run.
+- Source: L13. Design readiness: Ready. Execution status: Pass (automated).
 
 **Preconditions:** 5 recent FAILED rows for U_OK's username. **Request:** U_OK's email with the right password. **Expected:** 200 (the email has no failures), while the username is refused.
 
 ### TC-LOGIN-016 — Concurrent attempts cannot pass a stale count
 
-- Source: L14. Design readiness: Ready. Execution status: Not run.
+- Source: L14. Design readiness: Ready. Execution status: Pass (automated).
 
 **Preconditions:** 4 recent FAILED rows for the identifier. **Steps:** send 5 wrong-password requests at once. **Expected:** all 401; exactly 1 new FAILED and 4 REFUSED rows (each request saw the count after the previous one committed).
 
 ### TC-LOGIN-017 — Authorization claims
 
-- Source: L15. Design readiness: Ready. Execution status: Not run.
+- Source: L15. Design readiness: Ready. Execution status: Pass (automated).
 
 **Preconditions (one user):**
 
@@ -176,25 +176,25 @@ description: "Documented scenarios and expected results for POST v1/auth/login; 
 
 ### TC-LOGIN-018 — Each login is a new session
 
-- Source: L03. Design readiness: Ready. Execution status: Not run.
+- Source: L03. Design readiness: Ready. Execution status: Pass (automated).
 
 **Steps:** log in twice. **Expected:** two different session_ids, each with one access and one refresh row; different jti.
 
 ### TC-LOGIN-019 — Login waits for the user row lock
 
-- Source: L16, L17. Design readiness: Ready. Execution status: Not run.
+- Source: L16, L17. Design readiness: Ready. Execution status: Pass (automated).
 
 **Steps:** a second connection holds `SELECT ... FOR UPDATE` on U_OK's row; login runs with a 1-second command timeout. **Expected:** 408 E90001 "The server timed out waiting for the request."; no token row and no attempt row (rolled back). After the lock is released, login → 200.
 
 ### TC-LOGIN-020 — Unexpected failure
 
-- Source: L18. Design readiness: Ready. Execution status: Not run.
+- Source: L18. Design readiness: Ready. Execution status: Pass (automated).
 
 **Steps:** a test-only wrapper throws after the token inserts. **Expected:** 500, bizMessage "An unexpected error occurred.", no bizCode, no `data`; no token row and no attempt row.
 
 ### TC-LOGIN-021 — Rate limit
 
-- Source: L19. Design readiness: Ready. Execution status: Not run.
+- Source: L19. Design readiness: Ready. Execution status: Pass (automated).
 
 **Steps:** with the limit at 10, send 11 requests from one IP. **Expected:** the 11th is 429 E90002 "Too many requests. Try again later." with `Retry-After` 1–60, and writes no attempt row.
 
@@ -208,8 +208,9 @@ description: "Documented scenarios and expected results for POST v1/auth/login; 
 
 - Every obligation L01–L20 maps to a case, and every case cites its obligation. Codes and messages come from the spec examples and api-conventions.
 - Not covered: timing equality of the dummy verification (only its call), the 30-day clean-up job.
-- No case has run yet.
+- Every case runs automatically; see the execution history.
 
 ## Revision and execution history
 
 - 2026-11-18: first version (Drake), Not run.
+- 2026-11-18: executed by the automated tests of e-commerce-backend on branch `feat/drake-02-login`: `LoginApiTests` (HTTP + real PostgreSQL 17, 25 tests), `LoginCommandHandlerTests` (6), `LoginRepositoryTests` (9, real database), `AuthorizationClaimsTests` (9). Result: every case passes (`dotnet test`: Api 116, Application 16, Domain 48, Infrastructure 29, 0 failed). Mutation checks: removing the advisory lock fails both TC-LOGIN-016 tests; removing `ForUpdate()` fails the repository TC-LOGIN-019 test (the HTTP TC-LOGIN-019 still times out, because the token insert also waits for the user row).
