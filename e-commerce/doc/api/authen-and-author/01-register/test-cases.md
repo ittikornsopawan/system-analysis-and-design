@@ -148,13 +148,13 @@ description: "Documented scenarios and expected results for POST v1/auth/registe
 
 - Source: R05. Design readiness: Ready. Execution status: Pass (automated).
 
-**Request/input:** `addresses` as an array → "Addresses must be an object."; `city` missing → "addresses: City is a required field."; `postalCode ""` → "addresses: Postal Code is a required field."; `title` of 129 characters → "addresses: Title must be at most 128 characters."; `isDefault "yes"` → "addresses: Is Default must be a boolean." (form G4); each 400 E10001 and no rows. `title` of 128 → 201.
+**Request/input:** `addresses` as an array → "Addresses must be an object."; `city` missing → "addresses: City is a required field."; `postalCode ""` → "addresses: Postal Code is a required field."; `title` of 129 characters → "addresses: Title must be at most 128 characters."; `isDefault "yes"` → "addresses: Is Default must be a boolean." (G4); each 400 E10001 and no rows. `title` of 128 → 201. A body that is not valid JSON (`not json`), an array (`[]`) or a string (`"text"`) → "Request Body must be an object." alone, before any field rule (G4).
 
 ### TC-REG-008 — Consent item validation
 
 - Source: R06. Design readiness: Ready. Execution status: Pass (automated).
 
-**Request/input:** second consent with `consentId "x"` → "consents[1]: Consent Id must be a valid UUID."; `consentVersion ""` → "consents[0]: Consent Version is a required field."; `consentVersion "1.0.0.123"` (9 characters) → "consents[0]: Consent Version must be at most 8 characters."; `result "true"` (string) → "consents[0]: Result must be a boolean." (form G4); each 400 E10001 and no rows. `consentVersion` of 8 characters that does not match the current version → TC-REG-015 path, not this one.
+**Request/input:** second consent with `consentId "x"` → "consents[1]: Consent Id must be a valid UUID."; `consentVersion ""` → "consents[0]: Consent Version is a required field."; `consentVersion "1.0.0.123"` (9 characters) → "consents[0]: Consent Version must be at most 8 characters."; `result "true"` (string) → "consents[0]: Result must be a boolean." (G4); each 400 E10001 and no rows. `consentVersion` of 8 characters that does not match the current version → TC-REG-015 path, not this one.
 
 ### TC-REG-009 — Duplicate consentId
 
@@ -308,7 +308,7 @@ description: "Documented scenarios and expected results for POST v1/auth/registe
 | G1 | spec examples give bizMessage only for required fields, password and consent | R01, R03–R06 | exact bizMessage text | resolved — Josh, 2026-11-18, api-conventions "Validation messages" (PR #237) |
 | G2 | no example for a header failure; content-type could be a framework 415 | R07 | status and message for headers | resolved — 400 E10001, header messages (PR #237) |
 | G3 | emailAddress had only a length | R03 | email format rule | resolved — exactly one @ with non-empty parts, "Email Address must be a valid email address." (PR #237) |
-| G4 | the Validation messages list has no form for a JSON value of the wrong type (a string where a boolean belongs) or a body that is not an object | TC-REG-007, TC-REG-008 | confirm "<Field> must be a boolean." / "a string" / "an array" and "Request Body must be an object." | pending — asked Josh; implemented with these forms |
+| G4 | no form for a JSON value of the wrong type or a body that is not an object | TC-REG-007, TC-REG-008 | message forms | resolved — Josh, 2026-11-18 (PR #238): "<Field> must be a string. / a number. / a boolean. / an array."; "Request Body must be an object." alone |
 
 ## Document verification and limitations
 
@@ -322,3 +322,4 @@ description: "Documented scenarios and expected results for POST v1/auth/registe
 - 2026-11-18: first version (Drake), Not run.
 - 2026-11-18: G1–G3 resolved (PR #237); messages added to TC-REG-002, 003, 005–010; G4 opened.
 - 2026-11-18: executed by the automated tests of e-commerce-backend at commit `5dc828a` (branch `feat/drake-01-register`): `RegisterApiTests` (HTTP + real PostgreSQL 17, 48 tests), `RegisterCommandHandlerTests` (6), `RegistrationRepositoryTests` (12), `RegistrationConsentPolicyTests` (9). Result: every case passes (`dotnet test`: Api 90, Application 12, Domain 39, Infrastructure 17, 0 failed). TC-REG-012, 022, 023, 024 and 025 are proven at the repository and handler level (real-database exceptions and their HTTP mapping) because the race or failure cannot be timed through HTTP alone; TC-REG-019 consentId insert order is enforced in code but not observable in the stored rows.
+- 2026-11-18: G4 resolved (PR #238); three body cases added to TC-REG-007 and passing at backend commit `353075c` (Api 93, Application 12, Domain 39, Infrastructure 17, 0 failed).
