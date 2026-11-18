@@ -50,6 +50,18 @@ Query parameters: `id` (a list with one item), `pageIndex` (from 1, default 1), 
 
 A bizCode has **one** HTTP status in the whole project (`check_docs.py biz-codes` enforces it). Before you invent a code, read the table in the checker's data: `grep -rhn '"bizCode"' e-commerce/doc/api | sort | uniq -c`. Success is `S10000`.
 
+## Validation messages
+
+Every 400 E10001 `bizMessage` uses these forms (Josh, SA Lead, delegated by the owner, 2026-11-18), so the API, the tests and the client see the same text. A spec example that already shows a message keeps it.
+
+- **Field name:** the request field in Title Case words, `emailAddress` → `Email Address`, `referrerId` → `Referrer Id`.
+- **Forms:** `<Field> is a required field.` (several: `<A>, <B> and <C> are required fields.`), `<Field> must be at most <n> characters.`, `<Field> must be a valid UUID.`, `<Field> must be a valid date (YYYY-MM-DD).`, `<Field> must be <A>, <B> or <C>.`, `<Field> must be a valid email address.`, `<Field> must be an object.`, `<Field> must not be duplicated.`
+- **Wrong JSON type:** a value of the wrong JSON type answers `<Field> must be a string.`, `<Field> must be a number.`, `<Field> must be a boolean.` or `<Field> must be an array.` (`"isDefault": "yes"` → `addresses: Is Default must be a boolean.`). A body that is not valid JSON or not a JSON object answers `Request Body must be an object.` alone, before any field rule (Josh, SA Lead, delegated by the owner, 2026-11-18).
+- **Items and objects:** the position comes first, `consents[1]: Consent Id must not be duplicated.`, `addresses: Postal Code must be at most 10 characters.`
+- **Several failures:** the messages of every failed rule in request field order, each without its period, joined by `, ` and ended with one period, as in `items[0]: Shop Product SKU Id is a required field, Quantity must be an integer greater than 0.`
+- **Headers:** a missing or malformed header is 400 E10001, never 415: `Timestamp is a required header.`, `Timestamp must be a valid UTC timestamp.`, `Content-Type must be application/json.` These run before body validation and need no example in each spec.
+- **Email address:** valid means exactly one `@` with a non-empty local part before it and a non-empty domain after it.
+
 ## Limits and rate limiting
 
 - **Batch:** 1 to 100 items; outside it is 400 E10001 `<Items> must contain 1 to 100 items.` Every batch spec states it in its body table and has the 400 example. `cartIds` of the checkout and the order has at most 100 ids (400, E10001).
