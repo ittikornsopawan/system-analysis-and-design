@@ -13,7 +13,7 @@ description: "Documented scenarios and expected results for POST v1/auth/reset-p
 - Source approval: approved (`approved_by: Ittikorn`, `approved_at: 2026-11-16T09:24:57+07:00`)
 - Test design baseline: approved-source, except gaps G1 and G2 below (implementation choices recorded, waiting for the lead's review)
 - Scope and exclusions: the reset request only (create-new-password is 04). Excluded: real email delivery (outside the spec); response-time equality (the spec says runtime verification is needed; covered by "the same preparation runs for every valid request").
-- Execution summary: Not run — automated tests in e-commerce-backend will carry the case ID in their names.
+- Execution summary: every case automated in e-commerce-backend (test names start with the case ID) and passing; see [Revision and execution history](#revision-and-execution-history).
 
 ## Shared fixtures and observation prerequisites
 
@@ -45,73 +45,73 @@ description: "Documented scenarios and expected results for POST v1/auth/reset-p
 
 ### TC-RESET-001 — Issuance for an active user
 
-- Source: P01, P03, P04, P07, P11. Design readiness: Ready. Execution status: Not run.
+- Source: P01, P03, P04, P07, P11. Design readiness: Ready. Execution status: Pass (automated).
 
 **Request:** VR. **Expected:** GA; one ACTIVE reset row: created_by = U_OK id, created_at within the request, expired_at = created_at + 30 min, reset_token = SHA-256 of the token in the handed-off link; exactly one email hand-off to U_OK's address with link `https://reset.test/reset-password?token=<raw>`, where `<raw>` decodes from unpadded base64url to 32 bytes; U_OK's password row and token rows unchanged.
 
 ### TC-RESET-002 — Invalid email address
 
-- Source: P02. Design readiness: Ready (message per G1). Execution status: Not run.
+- Source: P02. Design readiness: Ready (message per G1). Execution status: Pass (automated).
 
 **Request:** `emailAddress` omitted, `""`, `"abc"`, `"a@b@c"` → 400 E10001 "Email Address is required and must be a valid email address."; 255 characters → 400 E10001 "Email Address must be at most 254 characters."; no reset row and no email.
 
 ### TC-RESET-003 — A new issuance replaces the ACTIVE one
 
-- Source: P05. Design readiness: Ready. Execution status: Not run.
+- Source: P05. Design readiness: Ready. Execution status: Pass (automated).
 
 **Steps:** request twice for U_OK; another user has an ACTIVE row. **Expected:** both GA; U_OK has 2 rows: the first INACTIVE with updated_by = U_OK id and updated_at = the second request's now, the second ACTIVE; the other user's row is still ACTIVE.
 
 ### TC-RESET-004 — Unknown email
 
-- Source: P01, P07, P09. Design readiness: Ready. Execution status: Not run.
+- Source: P01, P07, P09. Design readiness: Ready. Execution status: Pass (automated).
 
 **Request:** an email no user has; then U_OK's email upper-cased. **Expected:** GA each time; no row; no email.
 
 ### TC-RESET-005 — User not ACTIVE
 
-- Source: P01. Design readiness: Ready. Execution status: Not run.
+- Source: P01. Design readiness: Ready. Execution status: Pass (automated).
 
 **Preconditions:** the user is INACTIVE, LOCKED, then DELETED. **Expected:** GA; no row; no email.
 
 ### TC-RESET-006 — Three per hour, then refused
 
-- Source: P01, P06, P07. Design readiness: Ready. Execution status: Not run.
+- Source: P01, P06, P07. Design readiness: Ready. Execution status: Pass (automated).
 
 **Steps:** 4 requests for U_OK. **Expected:** all GA; 3 rows (2 INACTIVE, 1 ACTIVE); 3 emails; the 4th changes nothing and sends nothing.
 
 ### TC-RESET-007 — The rolling window
 
-- Source: P06. Design readiness: Ready. Execution status: Not run.
+- Source: P06. Design readiness: Ready. Execution status: Pass (automated).
 
 **Preconditions:** 3 rows with created_at = now − 61 minutes (any status). **Expected:** a request issues (GA, 4th row, email). Variant: 3 rows at now − 59 minutes → refused (no new row, no email).
 
 ### TC-RESET-008 — Concurrent requests respect the limit
 
-- Source: P08. Design readiness: Ready. Execution status: Not run.
+- Source: P08. Design readiness: Ready. Execution status: Pass (automated).
 
 **Steps:** 5 requests for U_OK at once. **Expected:** all GA; exactly 3 rows, exactly one ACTIVE; exactly 3 emails.
 
 ### TC-RESET-009 — The user row lock
 
-- Source: P08, P10. Design readiness: Ready. Execution status: Not run.
+- Source: P08, P10. Design readiness: Ready. Execution status: Pass (automated).
 
 **Steps:** a second connection holds U_OK's row `FOR UPDATE`; the request runs with a 1-second command timeout. **Expected:** 408 E90001 "The server timed out waiting for the request."; no row; no email. After the lock is released → GA and one row.
 
 ### TC-RESET-010 — Unexpected failure
 
-- Source: P10. Design readiness: Ready. Execution status: Not run.
+- Source: P10. Design readiness: Ready. Execution status: Pass (automated).
 
 **Steps:** a test-only wrapper throws after the insert. **Expected:** 500, "An unexpected error occurred.", no bizCode, no `data`; the earlier ACTIVE row is still ACTIVE (rollback); no email.
 
 ### TC-RESET-011 — The raw token is never logged
 
-- Source: P04. Design readiness: Ready. Execution status: Not run.
+- Source: P04. Design readiness: Ready. Execution status: Pass (automated).
 
 **Steps:** run TC-RESET-001 with the development email sender and capture its log output. **Expected:** no log line contains the raw token or the reset link.
 
 ### TC-RESET-012 — Rate limit
 
-- Source: P12. Design readiness: Ready. Execution status: Not run.
+- Source: P12. Design readiness: Ready. Execution status: Pass (automated).
 
 **Steps:** with the limit at 10, send 11 requests from one IP. **Expected:** the 11th is 429 E90002 "Too many requests. Try again later." with `Retry-After` 1–60.
 
@@ -126,8 +126,9 @@ description: "Documented scenarios and expected results for POST v1/auth/reset-p
 
 - Every obligation P01–P12 maps to a case; P13 is gap G2.
 - Codes and messages come from the spec examples and api-conventions.
-- No case has run yet.
+- Every case runs automatically; see the execution history.
 
 ## Revision and execution history
 
 - 2026-11-18: first version (Drake), Not run.
+- 2026-11-18: executed by the automated tests of e-commerce-backend on branch `feat/drake-03-reset-password` (stacked on the 02-login branch): `ResetPasswordApiTests` (HTTP + real PostgreSQL 17, 17 tests), `RequestPasswordResetCommandHandlerTests` (6), `PasswordResetRequestRepositoryTests` (3, real database), `LoggingEmailSenderTests` (1). Result: every case passes (`dotnet test`: Api 133, Application 21, Domain 48, Infrastructure 33, 0 failed). Mutation checks: removing `ForUpdate()` fails TC-RESET-008 and the repository TC-RESET-009; removing the UTC read converter fails the repository TC-RESET-003; logging the link fails TC-RESET-011.
