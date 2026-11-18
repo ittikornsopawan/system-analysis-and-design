@@ -1,9 +1,9 @@
 ---
 name: E-commerce Layer and Sub-layer Code Structure Guide
 description: Explains every backend layer and sub-layer, including responsibilities, inputs/outputs, boundaries, collaboration, source examples and existing diagrams. Use before placing code, developing a use case or reviewing architecture.
-status: draft
-approved_by: null
-approved_at: null
+status: approved
+approved_by: Josh (SA Lead, delegated by Ittikorn 2026-11-17)
+approved_at: 2026-11-18T07:33:34+07:00
 observed_on: 2026-11-08
 reviewed_on: 2026-11-09
 source_component_revision: d8255183cba54d0c2b218607456b895a70df32f0
@@ -46,7 +46,7 @@ Within the Domain layer, this project uses **Service = Domain** to mean reusable
 
 **Baseline:** The inspected code is the [e-commerce-backend](https://github.com/ittikornsopawan/e-commerce-backend/tree/d8255183cba54d0c2b218607456b895a70df32f0) Component Repository pinned by [REPOS.md](../REPOS.md). It contains five production projects, two test projects and five Authen use cases. `Authen/Domain/` is an owner-directed design without an implementation at this commit. The domain model diagram describes data concepts rather than an inventory of existing business service classes.
 
-This document covers every layer/sub-layer, its responsibilities, inputs/outputs, collaboration, limitations and observed source examples, distinguishing CODE, SPEC and PROPOSED as the diagrams do. The guide remains a draft. Describing a design does not approve new business behavior; inspect the governing specification and its approval before implementation, following the [SDD workflow](../../.agents/workflows/spec-driven-development.md).
+This document covers every layer/sub-layer, its responsibilities, inputs/outputs, collaboration, limitations and observed source examples, distinguishing CODE, SPEC and PROPOSED as the diagrams do. The guide is approved as the layer and placement guide for development (2026-11-18). Describing a design does not approve new business behavior; inspect the governing specification and its approval before implementation, following the [SDD workflow](../../.agents/workflows/spec-driven-development.md).
 
 
 ## 2. Architecture: Responsibilities during request execution
@@ -391,7 +391,7 @@ Use this view to understand the facts Business Domain needs. Operation names, ag
 | Entity / ValueObject / repository interfaces | Present in source | Existing model behavior and contracts that Business Domain can reuse |
 | `Authen/Domain/` business operations | Owner-selected convention; no implementation yet | Design direction pending complete class/method/specification definitions |
 | Product, order, payment and shipping operations | Documented in Showcase; no implementation found in this component | Inspect relevant specifications and approvals before development |
-| Redis/MongoDB adapters, outbox/relay | Proposed/in-review according to diagram companions | Keep separate from CODE; do not invent SDKs/workers/transactions in the current flow |
+| Redis/MongoDB adapters, outbox/relay | Design approved 2026-11-16 (diagram companions); no implementation yet | Build from the approved design documents; keep separate from CODE until implemented |
 
 ## 10. Tests and checks for business-operation development
 
