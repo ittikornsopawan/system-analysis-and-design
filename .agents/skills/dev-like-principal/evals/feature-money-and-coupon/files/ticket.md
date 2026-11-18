@@ -1,3 +1,8 @@
+---
+name: SHOP-412 Ticket
+description: Eval input: the product owner ticket for currency in order totals and coupons; read by the feature-money-and-coupon case.
+---
+
 SHOP-412 (from Product Owner)
 
 1. We are expanding to Malaysia next quarter. Change the order response so `total` becomes

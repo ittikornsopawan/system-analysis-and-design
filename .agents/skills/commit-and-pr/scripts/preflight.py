@@ -155,6 +155,8 @@ def main():
     for f in ws:
         blockers.append(f"git diff --check reports whitespace errors: {f}")
 
+    blockers.extend(untracked_markdown_errors([f for f in present if f in untracked and f.endswith(".md")]))
+
     needs_checks = any(f.startswith(SPEC_AREAS) for f in files)
     if needs_checks:
         notes.append("the change touches specs, schema, migrations, tests or the ER diagram: the project checkers are required")
@@ -170,6 +172,18 @@ def main():
     for b in blockers:
         print("  BLOCK " + b)
     sys.exit(1 if blockers else 0)
+
+
+def untracked_markdown_errors(paths):
+    """md-frontmatter reads `git ls-files`, so it cannot see a new file until it is staged; check those files here."""
+    check = "e-commerce/db/tests/check_docs.py"
+    if not paths or not os.path.exists(check):
+        return []
+    import importlib.util
+    spec = importlib.util.spec_from_file_location("check_docs", check)
+    module = importlib.util.module_from_spec(spec)
+    spec.loader.exec_module(module)
+    return [f"md-frontmatter: {f}: {e}" for f in paths for e in module.md_file_errors(f, open(f, encoding="utf-8").read())]
 
 
 def run_project_checks():

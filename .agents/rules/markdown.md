@@ -9,6 +9,8 @@ description: Frontmatter contract for authored Markdown files and the trigger fo
 
 Apply this rule to every human-authored `*.md` file in the repository, including existing and future files. Generated, third-party, and vendor Markdown files are exempt.
 
+Skill eval files in the `claude plugin eval` format (`.agents/skills/<skill>/evals/<case>/prompt.md` and `graders/*.md`) keep only that tool's frontmatter keys, because its loader rejects unknown keys (owner decision 2026-11-18). They must still start with a frontmatter block. Input files under an eval case's `files/` follow the full contract.
+
 ## Contract
 
 Every in-scope Markdown file starts with valid YAML frontmatter containing at least:

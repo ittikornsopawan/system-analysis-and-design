@@ -105,7 +105,7 @@ The full outputs, grading files, benchmark and the static review page are in the
 
 ## 5. Known gaps and follow-ups
 
-- The eval `prompt.md` and `graders/*.md` files use the `claude plugin eval` frontmatter (`tags`/`type`) instead of `name`/`description`. That loader rejects unknown keys, so these tool-format files cannot follow the Markdown frontmatter rule. The owner should confirm the exemption.
+- The eval `prompt.md` and `graders/*.md` files keep only the `claude plugin eval` frontmatter keys. The owner exempted them from `name`/`description` on 2026-11-18 (`.agents/rules/markdown.md`, checker `md-frontmatter`); the eval input fixtures carry full frontmatter.
 - Triggering (description optimisation with `run_loop`) was not run.
 - Add a harder architecture case that separates the two configurations, e.g. a request where the right answer is a breaking API change with a deprecation plan, or where splitting a service *is* justified.
 - Iteration 2 is pending owner feedback on the outputs.

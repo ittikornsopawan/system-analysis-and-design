@@ -5,6 +5,21 @@ description: Repository-wide and project-specific lessons captured from user cor
 
 # Lessons
 
+### 2026-11-18 — A checker that reads `git ls-files` passed before the new files were staged
+
+- **Error**: `preflight.py --run-checks` reported 73/73 OK. After the commit, `check_docs.py md-frontmatter` failed on 70 new eval files under `.agents/skills/dev-like-principal/evals/`.
+- **Root cause**: `md-frontmatter` lists Markdown files with `git ls-files`, so it skips untracked files. The preflight runs before staging, so its pass covered none of the new files. The rule conflict (eval `prompt.md`/`graders/*.md` must use the `claude plugin eval` keys only) was known but not yet decided.
+- **Corrected behavior**: the owner chose to exempt the eval tool-format files from `name`/`description`; they must still start with frontmatter. The eval input fixtures got full frontmatter. The preflight now checks every untracked `.md` in scope with `check_docs.md_file_errors`, and the checklist says to rerun `md-frontmatter` after staging.
+- **Preventive resources**:
+  - `e-commerce/db/tests/check_docs.py` (`EVAL_TOOL_MARKDOWN`, `md_file_errors`)
+  - `.agents/rules/markdown.md`
+  - `.agents/skills/commit-and-pr/scripts/preflight.py` (`untracked_markdown_errors`)
+  - `.agents/skills/commit-and-pr/references/checklist.md`
+- **Verification**:
+  - mutations caught: eval prompt and grader without frontmatter, fixture without `name`, `SKILL.md` without `name`, `prompt.md` outside `evals/`
+  - preflight blocks an untracked `.md` without `name`/`description`
+  - `md-frontmatter` OK on 341 files
+
 ### 2026-11-18 — Measure function length instead of claiming it
 
 - **Issue**: In the code-gate eval, the run with the new `dev-like-principal` gate wrote a 50-line `Handle()` method, then reported "Functions: Pass" in its quality check without measuring it.
