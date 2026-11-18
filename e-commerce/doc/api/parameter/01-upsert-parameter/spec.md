@@ -1,9 +1,9 @@
 ---
 name: "Upsert Parameter API"
 description: "Insert, update, delete or archive one parameter (reference data such as a country, province, district, subdistrict or postal code), only for a platform administrator authorized from the verified JWT roles claim after the caller lock and the current credential check. Read it when you implement, review or test POST v1/parameter/upsert."
-status: in-review
-approved_by: null
-approved_at: null
+status: approved
+approved_by: Josh (SA Lead, delegated by Ittikorn 2026-11-17)
+approved_at: 2026-11-18T08:23:39+07:00
 ---
 
 # [POST]: v1/parameter/upsert

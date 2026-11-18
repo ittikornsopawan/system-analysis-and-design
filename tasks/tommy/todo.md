@@ -42,7 +42,8 @@ description: Active plans and task records of the agent Tommy (System Analyst); 
 - [x] Spec and sequence 02-upsert-parameter-batch
 - [x] Spec and sequence 03-inquiry-parameter (public, 60 requests per minute)
 - [x] `parameter-spec` checker, admin-write/upsert/limits lists, `API_CONTRACT_DOMAINS`, skeleton count 91, conventions rate-limit line, regenerate `api-contract.json`
-- [ ] Run all checks, `run_db_tests.sh` and preflight, open PR, send link to Josh
-- [ ] After Josh approves: set the approval fields, regenerate the contract so it holds the 3 operations
+- [x] Run all checks, `run_db_tests.sh` and preflight, open PR #226, send link to Josh
+- [ ] CI green after approval commit, send link to Josh
+- [x] Approved by Josh (SA Lead, delegated by Ittikorn 2026-11-17) at 2026-11-18T08:23:39+07:00: approval fields set, contract regenerated (91 operations, inquiry `security: []`)
 
 Completed records are in `success-task.md`.
