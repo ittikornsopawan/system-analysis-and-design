@@ -13,7 +13,7 @@ description: "Documented scenarios and expected results for POST v1/auth/logout;
 - Source approval: approved (`approved_by: Ittikorn`, `approved_at: 2026-11-16T09:24:57+07:00`)
 - Test design baseline: approved-source, except gap G1 (implementation choice recorded, pending the lead's review)
 - Scope and exclusions: logout only; TLS excluded. Logout has no rate limit in its spec.
-- Execution summary: Not run — automated tests in e-commerce-backend will carry the case ID in their names.
+- Execution summary: every case automated in e-commerce-backend (test names start with the case ID) and passing; see [Revision and execution history](#revision-and-execution-history).
 
 ## Shared fixtures and observation prerequisites
 
@@ -40,49 +40,49 @@ description: "Documented scenarios and expected results for POST v1/auth/logout;
 
 ### TC-LOGOUT-001 — The session is closed
 
-- Source: O01, O02, O09. Design readiness: Ready. Execution status: Not run.
+- Source: O01, O02, O09. Design readiness: Ready. Execution status: Pass (automated).
 
 **Request:** VR. **Expected:** 200, "Ok", S10000 "Logout Success", no `data`; A1, A2 and R2 INACTIVE with updated_by = U_OK id; S2 rows still ACTIVE; U_OTHER's rows in S1 still ACTIVE; no new token row.
 
 ### TC-LOGOUT-002 — Validation comes first
 
-- Source: O03. Design readiness: Ready (body message per G1). Execution status: Not run.
+- Source: O03. Design readiness: Ready (body message per G1). Execution status: Pass (automated).
 
 **Request:** VR without `timestamp` → "Timestamp is a required header."; with `timestamp "yesterday"` → "Timestamp must be a valid UTC timestamp."; with a JSON body `{}` → "Timestamp must be a valid UTC timestamp and the request body must be empty."; the same three without any authorization header still answer 400 (not 401). **Expected:** 400 E10001; nothing changed.
 
 ### TC-LOGOUT-003 — A bad JWT
 
-- Source: O04. Design readiness: Ready. Execution status: Not run.
+- Source: O04. Design readiness: Ready. Execution status: Pass (automated).
 
 **Request:** no authorization header; `Bearer not-a-jwt`; a JWT signed with another key; an expired JWT; a JWT with `sub` "abc". **Expected:** 401 E10002 "Invalid or expired access token."; nothing changed.
 
 ### TC-LOGOUT-004 — A revoked or unknown access token
 
-- Source: O05, O06. Design readiness: Ready. Execution status: Not run.
+- Source: O05, O06. Design readiness: Ready. Execution status: Pass (automated).
 
 **Steps:** a valid JWT that has no stored row; a valid JWT whose stored row is INACTIVE; a stored row of another user with the same hash is not possible (hash is unique), so a JWT whose `sub` is another user than the row owner; VR twice. **Expected:** 401 each time (the second VR included); nothing changed by those calls.
 
 ### TC-LOGOUT-005 — User not ACTIVE
 
-- Source: O05. Design readiness: Ready. Execution status: Not run.
+- Source: O05. Design readiness: Ready. Execution status: Pass (automated).
 
 **Preconditions:** U_OK LOCKED. **Expected:** 401; S1 rows still ACTIVE.
 
 ### TC-LOGOUT-006 — Concurrent logouts
 
-- Source: O07. Design readiness: Ready. Execution status: Not run.
+- Source: O07. Design readiness: Ready. Execution status: Pass (automated).
 
 **Steps:** send VR twice at once. **Expected:** one 200 and one 401; S1 closed once.
 
 ### TC-LOGOUT-007 — The user row lock
 
-- Source: O07, O08. Design readiness: Ready. Execution status: Not run.
+- Source: O07, O08. Design readiness: Ready. Execution status: Pass (automated).
 
 **Steps:** a second connection holds U_OK's row `FOR UPDATE`; VR with a 1-second command timeout. **Expected:** 408 E90001; S1 rows still ACTIVE. After release → 200.
 
 ### TC-LOGOUT-008 — Unexpected failure
 
-- Source: O08. Design readiness: Ready. Execution status: Not run.
+- Source: O08. Design readiness: Ready. Execution status: Pass (automated).
 
 **Steps:** a test-only wrapper throws after the access-token update. **Expected:** 500 "An unexpected error occurred.", no bizCode; every S1 row still ACTIVE (no partial revocation).
 
@@ -95,8 +95,9 @@ description: "Documented scenarios and expected results for POST v1/auth/logout;
 ## Document verification and limitations
 
 - Every obligation O01–O09 maps to a case, and every case cites its obligation.
-- No case has run yet.
+- Every case runs automatically; see the execution history.
 
 ## Revision and execution history
 
 - 2026-11-19: first version (Drake), Not run.
+- 2026-11-19: executed by the automated tests of e-commerce-backend on branch `feat/drake-06-logout`: `LogoutApiTests` (HTTP + real PostgreSQL 17, 8 tests), `LogoutCommandHandlerTests` (5), `LogoutRepositoryTests` (2, real database). Result: every case passes (`dotnet test`: Api 170, Application 36, Domain 58, Infrastructure 43, 0 failed). Mutation checks: removing `ForUpdate()` fails TC-LOGOUT-006 and 007; removing the `user_id` guard of the session closure fails both TC-LOGOUT-001 tests.
