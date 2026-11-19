@@ -614,3 +614,11 @@ description: Repository-wide and project-specific lessons captured from user cor
 - **Corrected behavior**: Every connection runs with `Timezone=UTC` (`EcommerceDbContext.UtcSession`, applied to the EF context and the `NpgsqlDataSource`); test fixtures open connections through the same helper. Josh (SA Lead) confirmed the rule: the columns hold UTC.
 - **Preventive skill change**: `.agents/skills/backend-development/references/e-commerce-dotnet.md`, paragraph before "Evidence and baseline limits".
 - **Verification**: e-commerce-backend#5 — TC-REG-019 passes; removing `UtcSession` from `EcommerceDbContext.Configure` makes it fail again (mutation check), restoring it makes all 161 tests pass.
+
+### 2026-11-19 — Re-read the governing skill before each API; a code gate added mid-task applies at once
+
+- **Correction**: After APIs 01–08 were delivered, the owner asked whether I had used `dev-like-principal`. I had not: no Function Book check, no measured method lengths, no `dotnet format`, no quality report in the PRs. The catch-up found ten methods over 30 lines (the longest 53) and whitespace drift in 13 files.
+- **Root cause**: I read `backend-development` once at the start of the assignment. Its code gate (load `dev-like-principal` before any code) was added on 2026-11-18 (`eb66dff`), while I was mid-task, and I kept working from the version I had read.
+- **Corrected behavior**: At the start of each API, re-read the governing skill and agent file, then pass the code gate before the first line: Function Book and code search, methods ≤ 30 lines measured (not estimated), `dotnet format --verify-no-changes`, and the seven-area quality report with evidence in the PR. APIs 09 and 10 were built this way; 01–08 were caught up in `refactor/drake-quality-catch-up`.
+- **Preventive skill change**: none needed; `.agents/skills/backend-development/SKILL.md` ("Code gate") and `.agents/agents/backend-developer.md` already require the gate. This entry records the re-read habit.
+- **Verification**: e-commerce-backend `29fa07a` — no method over 30 lines (measured; 15 between 21 and 29), `dotnet format Ecommerce.sln --verify-no-changes` exit 0, `dotnet test` Api 277, Application 42, Domain 79, Infrastructure 46, 0 failed; the Function Book now lists the shared functions of APIs 01–10.

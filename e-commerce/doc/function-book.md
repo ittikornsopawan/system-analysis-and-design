@@ -1,8 +1,8 @@
 ---
 name: E-commerce Function Book
 description: Central list of the e-commerce backend's shared, reusable functions with purpose, parameters and usage. Read before writing any new function in the e-commerce backend; update it in the same change that adds, changes or removes a shared function.
-source_component_revision: 648226c7b3b2e69897b58978184ff6ecbaa49252
-updated_on: 2026-11-18
+source_component_revision: 29fa07a0441a5d380aa8f8775f097ff841dd7ee6
+updated_on: 2026-11-19
 ---
 
 # E-commerce Function Book
@@ -15,7 +15,7 @@ Check this book and the code before writing a new function, as required by `.age
 
 The book lists only what other code is meant to call. Handlers, controllers and private methods are not listed; `e-commerce/doc/code-structure.md` explains where those live.
 
-Paths are relative to `e-commerce/repository/e-commerce-backend/src/`. The entries were checked against component revision `648226c`. The EF Core switch is in progress, so check the code when an entry concerns persistence.
+Paths are relative to `e-commerce/repository/e-commerce-backend/src/`. The entries were checked against component revision `29fa07a` (branch `refactor/drake-quality-catch-up`, which includes the open PRs for APIs 07 to 10; an entry for those APIs reaches `main` when they merge). Every authen API runs on EF Core through `ITransactionRunner`; the older Dapper path (`IUnitOfWork`, `DbSession`) is kept only for the legacy `api/authen/me` endpoint.
 
 ## Shared — Results and errors
 
@@ -25,17 +25,27 @@ Paths are relative to `e-commerce/repository/e-commerce-backend/src/`. The entri
 | `Result.Failure(Error)` / `Result.Failure(IReadOnlyList<Error>)` / `Result.Failure<T>(Error)` | `Ecommerce.Shared/Results/Result.cs` | Failed outcome carrying one or more errors | Error(s) → failure result | Implicit conversions exist: return an `Error` or a `T` directly from a `Result<T>` method |
 | `Error.Of(code, description, type, bizCode)` | `Ecommerce.Shared/Results/Error.cs` | Error with an explicit spec bizCode | Code, text, `ErrorType`, bizCode → `Error` | Use for errors whose bizCode the spec fixes; declare them once in the feature's `*Errors` class |
 | `Error.Failure/Validation/NotFound/Conflict/Unauthorized/Forbidden(code, description)` | `Ecommerce.Shared/Results/Error.cs` | Typed errors without a custom bizCode | Code, text → `Error` of that type | The `ErrorType` decides the HTTP status in `ResultExtensions.ToFailure` |
+| `AuthenErrors.*` (for example `AccessTokenInvalid`, `IdentifierTaken`, `AddressNotFound`, `AddressLimit(int max)`) | `Ecommerce.Domain/Authen/AuthenErrors.cs` | The authen specs' errors, each declared once with its spec status, bizCode and text | — / `max` → `Error` | Reuse the declared error; add a new one here, never inline the text in a handler |
 | `CommonErrors.Timeout` | `Ecommerce.Application/Common/CommonErrors.cs` | The shared timeout error (bizCode E90001) | — | Return when `ITransactionRunner` throws `TimeoutException` |
-| `ValidationErrors.From(params Result[] results)` | `Ecommerce.Application/Common/ValidationErrors.cs` | Collects the errors of every failed result | Results → all their errors | In validators, to report all problems at once instead of the first only (internal) |
+| `ValidationErrors.From(params Result[] results)` | `Ecommerce.Application/Common/ValidationErrors.cs` | Collects the errors of every failed result | Results → all their errors | In validators, to report all problems at once instead of the first only (internal). No caller yet: the authen validators collect message texts and call `ValidationMessages.Combine` |
 
 ## Shared — Validation messages and formats
 
 | Function | Location | Purpose | Parameters / returns | Use when / notes |
 | --- | --- | --- | --- | --- |
 | `ValidationMessages.Field(requestField)` | `Ecommerce.Shared/Validation/ValidationMessages.cs` | Turns a JSON field name into display words | `emailAddress` → `Email Address` | Used by the other message builders |
-| `ValidationMessages.Required/MaxLength/Uuid/Date/OneOf/Email/JsonType/Duplicated(...)` | same | The 400 E10001 message forms of `api-conventions.md` "Validation messages" | Field name (+ limit/values) → message text | Always use these instead of writing message text by hand; API filters and validators share them |
+| `ValidationMessages.Required/MaxLength/Uuid/Date/OneOf/Email/JsonType/Duplicated/UnknownField(...)` | same | The 400 E10001 message forms of `api-conventions.md` "Validation messages" | Field name (+ limit/values) → message text | Always use these instead of writing message text by hand; API filters and validators share them |
 | `ValidationMessages.At(position, message)` / `Combine(messages)` | same | Prefixes a message with its position; joins messages | Position + message → text; messages → one text | For batch items and multiple failures |
-| `EmailAddressFormat.IsValid(string value)` | `Ecommerce.Domain/Common/EmailAddressFormat.cs` | Email format check (today: exactly one `@`, non-empty local part and domain; to become the api-conventions rule) | Text → bool | Validators of register and request-password-reset use it. **Pending change (owner decision 2026-11-18):** the governing rule is now the stricter one in api-conventions "Email address" (plain address, ≤ 254, dot required in the domain). This function still applies the old "non-empty parts" rule until Drake makes it the single shared rule and `EmailAddress.Create` uses it. Do not add a third rule |
+| `EmailAddressFormat.IsValid(string value)` | `Ecommerce.Domain/Common/EmailAddressFormat.cs` | Email format check (today: exactly one `@`, non-empty local part and domain; to become the api-conventions rule) | Text → bool | Validators of register and request-password-reset use it. **Pending change (owner decision 2026-11-18), still open at `29fa07a`:** the governing rule is now the stricter one in api-conventions "Email address" (plain address, ≤ 254, dot required in the domain). This function still applies the old "non-empty parts" rule until Drake makes it the single shared rule and `EmailAddress.Create` uses it. Do not add a third rule |
+
+## Shared — Optional values and paging
+
+| Function | Location | Purpose | Parameters / returns | Use when / notes |
+| --- | --- | --- | --- | --- |
+| `Optional<T>` (`IsSet`, `Value`, `Optional<T>.Of(value)`, `default` = unset) | `Ecommerce.Shared/Optional.cs` | Tells an omitted field from an explicit null (specs 07 and 09) | Value → set optional; `default` → unset | Partial updates: omitted keeps the stored value, null clears it. Built by `JsonBody.String` |
+| `PageRequest.TryParse(pageIndex, pageSize, maxPageSize, out page)` | `Ecommerce.Shared/Paging/PageRequest.cs` | Checked offset pagination (spec 10): positive 64-bit values, defaults 1/10 only when omitted, offset fits a nonnegative BIGINT | Raw query texts + max → `PageProblem` (`None`, `OutOfRange`, `OffsetOverflow`) and the page | Every paged inquiry; an explicit empty or invalid value is never defaulted |
+| `page.Offset` / `TotalPages(totalItems)` / `ExpectedRows(totalItems)` | same | The bound offset; ceiling(total / size) or 0; the row count the page must hold | Count → number | Check the page rows against `ExpectedRows` of the same snapshot; a mismatch is a 500 |
+| `Page<T>(Items, PageIndex, PageSize, TotalItems, TotalPages)` | same | The five data keys of a paged inquiry | — | Return it as the handler response; it serializes to the spec's data object |
 
 ## Shared — CQRS
 
@@ -58,15 +68,17 @@ Paths are relative to `e-commerce/repository/e-commerce-backend/src/`. The entri
 
 Each value object validates and normalises its input in `Create` and returns a failure `Result` for bad input. `Restore` rebuilds an already-stored value without re-validating; use it only when loading from the database.
 
+At `29fa07a` only `PlainPassword.Create` has callers (register and create-new-password validators). The other factories have none: the validators apply the spec rules directly with `ValidationMessages`, `EmailAddressFormat` and `ProfileFieldRules`. Do not start using an unused factory without checking that its rule matches the spec (for example, `EmailAddress.Create` trims and lower-cases).
+
 | Function | Location | Purpose | Parameters / returns | Use when / notes |
 | --- | --- | --- | --- | --- |
 | `EmailAddress.Create(string? raw)` / `Restore(string)` | `Ecommerce.Domain/Authen/ValueObjects/EmailAddress.cs` | Valid, normalised email address | Raw text → `Result<EmailAddress>` | Not called on `main` yet. Trims and lower-cases, which register and reset do not do: they store and compare the email as sent. Its dot check is anywhere in the value; the decided rule needs the dot in the domain (see above) |
-| `Username.Create(string? raw)` / `Restore(string)` | `.../ValueObjects/Username.cs` | Valid username | Raw text → `Result<Username>` | Registration and profile input |
-| `LoginIdentifier.Create(string? raw)` | `.../ValueObjects/LoginIdentifier.cs` | Login input that is a username or an email | Raw text → `Result<LoginIdentifier>` | Login only |
-| `PersonName.Create(string? first, string? last)` / `Restore(first, last)` | `.../ValueObjects/PersonName.cs` | Valid first and last name | Two texts → `Result<PersonName>` | Registration and profile input |
-| `DisplayName.Create(string? raw, PersonName fallback)` / `Restore(string)` | `.../ValueObjects/DisplayName.cs` | Display name, defaulting from the person name | Raw text + fallback → `Result<DisplayName>` | Registration and profile input |
+| `Username.Create(string? raw)` / `Restore(string)` | `.../ValueObjects/Username.cs` | Valid username | Raw text → `Result<Username>` | No caller yet |
+| `LoginIdentifier.Create(string? raw)` | `.../ValueObjects/LoginIdentifier.cs` | Login input that is a username or an email | Raw text → `Result<LoginIdentifier>` | No caller (login matches username or email exactly) |
+| `PersonName.Create(string? first, string? last)` / `Restore(first, last)` | `.../ValueObjects/PersonName.cs` | Valid first and last name | Two texts → `Result<PersonName>` | No caller yet |
+| `DisplayName.Create(string? raw, PersonName fallback)` / `Restore(string)` | `.../ValueObjects/DisplayName.cs` | Display name, defaulting from the person name | Raw text + fallback → `Result<DisplayName>` | No caller yet |
 | `PlainPassword.Create(string? raw)` | `.../ValueObjects/PlainPassword.cs` | Password that meets the password rules | Raw text → `Result<PlainPassword>` | Before hashing; never store or log it |
-| `UserId.New()` | `.../ValueObjects/UserId.cs` | New time-ordered user id (UUID v7) | — → `UserId` | Creating a user |
+| `UserId.New()` | `.../ValueObjects/UserId.cs` | New time-ordered user id (UUID v7) | — → `UserId` | No caller: the database generates user ids (`gen_random_uuid()` default) |
 
 ## Domain — Authen business operations (Service = Domain)
 
@@ -77,7 +89,20 @@ Each value object validates and normalises its input in `Create` and returns a f
 | `AuthorizationClaims.ClaimName(permissionName)` | same | Permission name → JWT claim name | `catalog.manage` → `catalog:manage` | Any code that writes or checks permission claims |
 | `LoginThrottle.IsRefused(int recentFailures)` | same | Brute-force limit: 5 failed attempts in the window refuse the next | Failure count in the window → bool | Login; the caller counts failures in the window |
 | `PasswordResetThrottle.IsRefused(requestsInWindow, maxRequests)` | `.../Domain/PasswordResetThrottle.cs` | Reset-request limit | Count + configured max → bool | Request-password-reset |
+| `RefreshTokenReuse.Classify(row, nowUtc, grace)` | `.../Domain/RefreshTokenReuse.cs` | Spec 05 decision for a reread refresh row: rotate, replay outside the grace window (close the session), or invalid | Row (or null) + fresh now + grace → `RefreshDecision` | Refresh only, after the user lock |
+| `AddressDefaultPolicy.Resolve(rowStatus, requestedTrue, wasDefault, otherActiveExists)` | `.../Domain/AddressDefaultPolicy.cs` | Spec 09 default rule: exactly one ACTIVE default; an address leaving ACTIVE hands the default on | Target state → `AddressDefaultDecision(IsDefault, ShouldPromote)` | Address upsert; Q21 (a default must be ACTIVE) is checked earlier by the validator |
+| `AddressQuota.IsFull(nonDeletedAddresses, max)` | same | At most `max` non-DELETED addresses per user | Count + max → bool | Address insert, under the user lock |
+| `ProfileFieldRules.IsPhoneNumber(value)` / `IsDateOfBirth(value, todayUtc)` / `Genders` | `Ecommerce.Domain/Common/ProfileFieldRules.cs` | Spec 07 value rules: 8 to 15 digits with an optional +; a real date not after today UTC; MALE/FEMALE/OTHER | Text (+ today) → bool | Profile validators; register keeps its own gender list (`RegisterCommandValidator.Genders`) |
 | `RegistrationConsentPolicy.Check(...)` | `.../Domain/RegistrationConsentPolicy.cs` | Whether submitted consents may be stored (spec 01-register), in the spec's error order | Submitted and current consents → `Result` | Registration only |
+
+## Application — Shared use-case steps
+
+| Function | Location | Purpose | Parameters / returns | Use when / notes |
+| --- | --- | --- | --- | --- |
+| `Caller(UserId, AccessToken, TokenExpiresAtUtc)` | `Ecommerce.Application/Features/Authen/Common/Caller.cs` | The verified JWT of a protected call | — | Built by `VerifiedCaller.Of`; null when the JWT did not verify |
+| `CallerCredential.VerifyAsync(caller, ct)` | same | Current-credential check for writes (specs 07, 09): lock the ACTIVE user FOR UPDATE, fresh now, JWT expiry recheck, ACTIVE stored access token | Caller (or null) → `Result<DateTime>` with the post-lock now, or 401 | Inside the use case's transaction, before any write; use the returned now for audit columns |
+| `CallerCredential.CheckAsync(caller, ct)` | same | Read-only variant (spec 10): no lock; fresh now, expiry recheck, token joined with the ACTIVE user | Caller → `Result<DateTime>` or 401 | Read-only inquiries; answer 401 for a null caller before the transaction (no SQL) |
+| `SessionTokens.IssueAsync(user, sessionId, ct)` | `.../Authen/Common/SessionTokens.cs` | Issues and stores an access and refresh token pair for one session (specs 02, 05) | User + session id → `TokenPairResponse` | Login and refresh; only token hashes are stored |
 
 ## Application — Ports
 
@@ -87,7 +112,7 @@ Each value object validates and normalises its input in `Create` and returns a f
 | `IUnitOfWork.ExecuteInTransactionAsync(work, ct)` | `.../Abstractions/IUnitOfWork.cs` | One transaction: commit on success, roll back on exception | Work → completes | The older Dapper path; prefer `ITransactionRunner` for EF Core slices |
 | `IPasswordHasher.Hash(password)` / `Verify(password, credential)` | `.../Abstractions/IPasswordHasher.cs` | Hash and verify passwords (PBKDF2 implementation) | Password → `PasswordCredential`; password + credential → bool | Never compare hashes by hand |
 | `ITokenService.IssueAccessToken/IssueRefreshToken/IssuePasswordResetToken`, `Hash(token)` | `.../Abstractions/ITokenService.cs` | Issue tokens; hash an opaque token for storage | Claims → `IssuedToken`; token → SHA-256 bytes | Store only the hash of refresh and reset tokens |
-| `IEmailSender` | `.../Abstractions/IEmailSender.cs` | Send email (logging implementation today) | — | Send after the transaction commits, not inside it |
+| `IEmailSender` | `.../Abstractions/IEmailSender.cs` | Send email (logging implementation today) | — | Send after the transaction commits, not inside it. The same file holds the settings records (`PasswordResetSettings`, `RefreshSettings`, `AddressSettings`) |
 
 ## Infrastructure — Persistence and security helpers
 
@@ -95,6 +120,10 @@ Each value object validates and normalises its input in `Create` and returns a f
 | --- | --- | --- | --- | --- |
 | `query.ForUpdate()` | `Ecommerce.Infrastructure/Persistence/Ef/ForUpdate.cs` | Adds `FOR UPDATE` to a LINQ query | `IQueryable<T>` → same query, locking | Inside a transaction only; not on split queries or aggregates. The only allowed way to lock rows. Never write the SQL |
 | `database.AcquireTransactionLockAsync(long key, ct)` | `.../Persistence/Ef/AdvisoryLock.cs` | PostgreSQL transaction advisory lock | Lock key → completes when held | When a rule needs serialisation that no row lock covers; released at transaction end |
+| `EcommerceDbContext.UtcSession(connectionString)` | `.../Persistence/Ef/EcommerceDbContext.cs` | Adds `Timezone=UTC` so `TIMESTAMP WITHOUT TIME ZONE` columns hold UTC | Connection string → connection string | Every connection: the EF context, the `NpgsqlDataSource` and test fixtures |
+| `EcommerceDbContext.Create(connectionString, commandTimeoutSeconds)` / `Configure(builder, connectionString, commandTimeoutSeconds)` | same | A context with the UTC session, snake_case names, the `ForUpdate` interceptor and the command timeout | Connection string (+ timeout) → context or options | `Configure` in DI; `Create` in tests and tools |
+| `EfTransactionRunner` (implements `ITransactionRunner`) | `.../Persistence/EfTransactionRunner.cs` | Translates PostgreSQL failures: 23505 → `DuplicateKeyException`, 23503 → `MissingReferenceException`, timeout → `TimeoutException`; reruns 40001 up to 3 attempts, then `TimeoutException` | — | Registered for `ITransactionRunner`; do not open transactions elsewhere (internal) |
+| `SessionRevocation.CloseAccessTokensAsync/CloseRefreshTokensAsync(db, sessionId, userId, nowUtc, ct)` | `.../Persistence/Authen/SessionRevocation.cs` | Closes the ACTIVE token rows of one session of one user | Session + user + now → rows changed | Logout and refresh replay; both guard `user_id`, so another user's rows with the same session id are never touched (internal) |
 | `FieldProtector.Protect(string)` / `Unprotect(byte[])` | `Ecommerce.Infrastructure/Security/FieldProtector.cs` | Deterministic, authenticated encryption of personal data in `bytea` columns | Text ↔ bytes | Unique personal columns (username, email) can still be matched by equality (internal) |
 
 ## API — HTTP helpers
@@ -104,7 +133,14 @@ Each value object validates and normalises its input in `Create` and returns a f
 | `result.ToFailure(controller)` | `Ecommerce.Api/Extensions/ResultExtensions.cs` | Failed result → the spec's status envelope; the first error decides status and bizCode | Result + controller → `ObjectResult` | Every controller failure path |
 | `controller.ToSuccess<T>(httpCode, message, bizMessage, data)` | same | Successful payload → the spec's status envelope (bizCode S10000) | Status, messages, data → `ObjectResult` | Every controller success path |
 | `HttpEnvelope.RequestId(http)` / `NowUtc(http)` / `Failure(http, error)` / `WriteFailureAsync(http, error, ct)` | `Ecommerce.Api/Extensions/HttpEnvelope.cs` | Envelope for responses written outside a controller action | HttpContext + error → envelope or written response | Middleware and filters only; `RequestId` generates one if the header is missing |
+| `VerifiedCaller.Of(controller)` | `Ecommerce.Api/Security/VerifiedCaller.cs` | The verified JWT of a protected call, read in the action instead of `[Authorize]` so a 400 answers before a 401 | Controller → `Caller?` | Every protected action (specs 06 to 10); pass the result into the command or query |
+| `JsonBody.TryRead(body, fields, out read)` + `read.String(field)` / `Boolean(field)` / `Has(field)` | `Ecommerce.Api/Contracts/JsonBody.cs` | Reads a body by key presence: an object, known keys only, allowed JSON kinds | Body + field map (`JsonBody.StringOrNull`, `BooleanOnly`) → shape message or null | Partial-update bodies (specs 07, 09); `String` gives `Optional<string?>` |
+| `QueryParameters.TryRead(request, keys, out values)` | `Ecommerce.Api/Contracts/QueryParameters.cs` | Reads a GET query string: known exact-case keys, each once, and no body | Request + key set → shape message or null; absent keys are absent | GET inquiries (spec 10); value rules stay in the Application validator |
+| `RequiredHeadersFilter` | `Ecommerce.Api/Filters/RequiredHeadersFilter.cs` | 400 E10001 for a missing or non-UTC `timestamp`, and a non-JSON content-type when a body is sent | — | Registered globally; do not repeat the header checks in actions |
+| `EnvelopeExceptionHandler` | `Ecommerce.Api/Filters/EnvelopeExceptionHandler.cs` | An unhandled exception → 500 envelope "An unexpected error occurred." without bizCode | — | Registered globally; throw for defects, never return a 500 by hand |
+| `ApiEnvelope.Success/Failure(...)` | `Ecommerce.Api/Contracts/ApiEnvelope.cs` | Builds the status envelope; `data` and `bizCode` are omitted when null | — | Used by `ResultExtensions` and `HttpEnvelope`; call those instead |
 | `user.TryGetUserId(out Guid userId)` | `Ecommerce.Api/Security/CallerClaims.cs` | The caller's user id from the verified JWT | Principal → bool + id | Every endpoint that acts as the caller |
-| `user.IsPlatformAdmin()` | same | Whether the JWT `roles` claim holds `PLATFORM_ADMIN` | Principal → bool | Roles come only from the token, never from the database |
+| `user.TryGetExpiresAt(out DateTime expiresAtUtc)` | same | The verified JWT `exp` in UTC | Principal → bool + time | Used by `VerifiedCaller` for the fresh-now expiry recheck |
+| `user.IsPlatformAdmin()` | same | Whether the JWT `roles` claim holds `PLATFORM_ADMIN` | Principal → bool | Roles come only from the token, never from the database. No caller yet |
 | `InvalidBody.Response(context)` | `Ecommerce.Api/Filters/InvalidBody.cs` | 400 envelope for a body that cannot be bound | Action context → result | Registered once as the invalid-model response |
-| `services.AddPublicRateLimits(configuration)` | `Ecommerce.Api/Security/RateLimiting.cs` | Registers the public endpoints' rate limits | Services + config → services | Composition root only |
+| `services.AddPublicRateLimits(configuration)` | `Ecommerce.Api/Security/RateLimiting.cs` | Registers the public endpoints' rate limits: `public-strict` 10/min and `public-standard` 60/min per IP, 429 E90002 with `Retry-After` | Services + config → services | Composition root only; put `[EnableRateLimiting]` with the spec's policy on the action |
