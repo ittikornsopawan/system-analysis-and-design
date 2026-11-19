@@ -13,7 +13,7 @@ description: "Documented scenarios and expected results for GET v1/user/profile;
 - Source approval: approved (`approved_by: Ittikorn`, `approved_at: 2026-11-16T09:24:57+07:00`)
 - Test design baseline: approved-source, except gap G1 (implementation choice, pending the lead's review)
 - Scope and exclusions: the caller's own profile only; TLS excluded. The spec has no rate limit for this API.
-- Execution summary: Not run — automated tests in e-commerce-backend will carry the case ID in their names.
+- Execution summary: every case automated in e-commerce-backend (test names start with the case ID) and passing; see [Revision and execution history](#revision-and-execution-history).
 
 ## Shared fixtures and observation prerequisites
 
@@ -37,37 +37,37 @@ description: "Documented scenarios and expected results for GET v1/user/profile;
 
 ### TC-PROFILEQ-001 — The full profile
 
-- Source: I01, I03. Design readiness: Ready. Execution status: Not run.
+- Source: I01, I03. Design readiness: Ready. Execution status: Pass (automated).
 
 **Request:** VR. **Expected:** 200, "Ok", S10000 "Inquiry User Profile Success"; `data` has exactly `userId` (U_OK id), `emailAddress`, `firstName`, `lastName`, `displayName`, `profilePicturePath`, `phoneNumber`, `address`, `dateOfBirth` (`1990-01-31`), `gender` (`MALE`), with the stored values decrypted.
 
 ### TC-PROFILEQ-002 — Unset fields are null
 
-- Source: I02. Design readiness: Ready. Execution status: Not run.
+- Source: I02. Design readiness: Ready. Execution status: Pass (automated).
 
 **Preconditions:** `U_BARE`; then a variant with an information row whose gender is `''`. **Expected:** 200; `firstName`, `lastName`, `displayName`, `profilePicturePath`, `phoneNumber`, `address`, `dateOfBirth`, `gender` are present with JSON null; `userId` and `emailAddress` set.
 
 ### TC-PROFILEQ-003 — No query and no body
 
-- Source: I04. Design readiness: Ready (message per G1). Execution status: Not run.
+- Source: I04. Design readiness: Ready (message per G1). Execution status: Pass (automated).
 
 **Request:** VR with `?userId=<another id>`; VR with a JSON body; both also without authorization; VR without `timestamp`. **Expected:** 400 E10001 "Timestamp must be valid UTC and this endpoint accepts no query parameters or body." for the query and body cases, "Timestamp is a required header." for the missing header; never 401.
 
 ### TC-PROFILEQ-004 — Credential failures
 
-- Source: I05. Design readiness: Ready. Execution status: Not run.
+- Source: I05. Design readiness: Ready. Execution status: Pass (automated).
 
 **Request:** no authorization; a JWT signed with another key; a valid JWT with no stored row; the stored row INACTIVE; the stored row expired; the user LOCKED. **Expected:** 401 E10002 "Invalid or expired access token.".
 
 ### TC-PROFILEQ-005 — No lock, one snapshot
 
-- Source: I06. Design readiness: Ready. Execution status: Not run.
+- Source: I06. Design readiness: Ready. Execution status: Pass (automated).
 
 **Steps:** a second connection holds U_OK's row `FOR UPDATE`; VR with a 1-second command timeout. **Expected:** 200 (the read takes no lock). The single-snapshot property is a code property (one REPEATABLE READ transaction around both queries), covered by a handler test of the isolation level.
 
 ### TC-PROFILEQ-006 — Unexpected failure
 
-- Source: I07. Design readiness: Ready. Execution status: Not run.
+- Source: I07. Design readiness: Ready. Execution status: Pass (automated).
 
 **Steps:** a test-only wrapper throws on the information query. **Expected:** 500 "An unexpected error occurred.", no bizCode, no `data`.
 
@@ -81,8 +81,9 @@ description: "Documented scenarios and expected results for GET v1/user/profile;
 
 - Every obligation I01–I07 maps to a case, and every case cites its obligation.
 - The spec asks for a READ ONLY transaction; the backend opens REPEATABLE READ and issues no write (EF Core has no read-only transaction option); recorded as a limitation, not a behavior difference.
-- No case has run yet.
+- Every case runs automatically; see the execution history.
 
 ## Revision and execution history
 
 - 2026-11-19: first version (Drake), Not run.
+- 2026-11-19: executed by the automated tests of e-commerce-backend on branch `feat/drake-08-inquiry-user-profile` (stacked on 07): `GetUserProfileApiTests` (HTTP + real PostgreSQL 17, 6 tests), `GetUserProfileQueryHandlerTests` (2). Result: every case passes (`dotnet test`: Api 202, Application 42, Domain 69, Infrastructure 46, 0 failed). Mutation checks: removing the token status and expiry filters fails TC-PROFILEQ-004; keeping an empty gender fails TC-PROFILEQ-002.
