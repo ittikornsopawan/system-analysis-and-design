@@ -13,7 +13,7 @@ description: "Documented scenarios and expected results for POST v1/user/address
 - Source approval: approved (`approved_by: Ittikorn`, `approved_at: 2026-11-16T09:24:57+07:00`); Q21 approved by the product owner on 2026-11-08
 - Test design baseline: approved-source, except gap G1 (message choices, pending the lead's review)
 - Scope and exclusions: the caller's own addresses; no batch and no archive (per spec); TLS excluded. No rate limit in the spec.
-- Execution summary: Not run — automated tests in e-commerce-backend will carry the case ID in their names.
+- Execution summary: every case automated in e-commerce-backend (test names start with the case ID) and passing; see [Revision and execution history](#revision-and-execution-history).
 
 ## Shared fixtures and observation prerequisites
 
@@ -46,79 +46,79 @@ description: "Documented scenarios and expected results for POST v1/user/address
 
 ### TC-ADDRESS-001 — Insert the first address
 
-- Source: A01, A04, A05. Design readiness: Ready. Execution status: Not run.
+- Source: A01, A04, A05. Design readiness: Ready. Execution status: Pass (automated).
 
 **Request:** VR with `isDefault: false`. **Expected:** 201, "Created", S10000 "Insert User Address Success", `data` exactly `{userAddressId}`; one row ACTIVE, is_default TRUE (first ACTIVE address), title plain, other fields decrypt to the input, created_by = U_OK id.
 
 ### TC-ADDRESS-002 — Default rules on insert
 
-- Source: A05, A06. Design readiness: Ready. Execution status: Not run.
+- Source: A05, A06. Design readiness: Ready. Execution status: Pass (automated).
 
 **Steps:** insert A1 (default); insert A2 with isDefault omitted → A2 not default. For a fresh user: insert B1 with `rowStatus: INACTIVE` → not default; then insert B2 ACTIVE → B2 is default (first ACTIVE address, not the first row).
 
 ### TC-ADDRESS-003 — Choosing a new default
 
-- Source: A06. Design readiness: Ready. Execution status: Not run.
+- Source: A06. Design readiness: Ready. Execution status: Pass (automated).
 
 **Steps:** A1 default, A2 not; insert A3 with `isDefault: true` → A3 default, A1 not; update A1 with `isDefault: false` → A1 still not default, A3 still default; update A3 with `isDefault` omitted → A3 stays default. **Expected:** exactly one default at every step.
 
 ### TC-ADDRESS-004 — Update
 
-- Source: A02. Design readiness: Ready. Execution status: Not run.
+- Source: A02. Design readiness: Ready. Execution status: Pass (automated).
 
 **Request:** id of A1 with a new title and `rowStatus: INACTIVE` (A1 not default). **Expected:** 200, "Ok", S10000 "Update User Address Success", data.userAddressId = A1; the row has the new title and INACTIVE, is_default FALSE, updated_by = U_OK id.
 
 ### TC-ADDRESS-005 — Soft delete
 
-- Source: A03. Design readiness: Ready. Execution status: Not run.
+- Source: A03. Design readiness: Ready. Execution status: Pass (automated).
 
 **Request:** id of A2 with `rowStatus: DELETED` and `isDefault: false`. **Expected:** 204 with no body; the row still exists with DELETED and is_default FALSE; a second delete of A2 → 404.
 
 ### TC-ADDRESS-006 — Promotion after the default leaves
 
-- Source: A07. Design readiness: Ready. Execution status: Not run.
+- Source: A07. Design readiness: Ready. Execution status: Pass (automated).
 
 **Steps:** A1 default, A2 and A3 ACTIVE with A3 the most recently updated; delete A1 → A3 becomes default; deactivate A3 (`INACTIVE`) → A2 becomes default; delete A2 → no ACTIVE address left, no default.
 
 ### TC-ADDRESS-007 — Q21: default must be ACTIVE
 
-- Source: A08. Design readiness: Ready. Execution status: Not run.
+- Source: A08. Design readiness: Ready. Execution status: Pass (automated).
 
 **Request:** `isDefault: true` with `rowStatus: INACTIVE`; with `rowStatus: DELETED` and an id that does not exist. **Expected:** 400 E10001 "A default address must be ACTIVE." (not 404); nothing changed.
 
 ### TC-ADDRESS-008 — Validation
 
-- Source: A09, A10. Design readiness: Ready (messages per G1). Execution status: Not run.
+- Source: A09, A10. Design readiness: Ready (messages per G1). Execution status: Pass (automated).
 
 **Request (each 400 E10001, nothing changed):** every mandatory field missing → "Title, Address, City, State, Postal Code and Country are required fields."; `city` missing → "City is a required field."; `postalCode: "  "` → "Postal Code is a required field."; title 129 characters → "Title must be at most 128 characters."; `id: "x"` and `id: null` → "Id must be a valid UUID."; `rowStatus: "ARCHIVED"` and `null` → "Row Status must be ACTIVE, INACTIVE or DELETED."; `isDefault: "yes"` and `null` → "Is Default must be a boolean."; `userId: <any>` → "User Id is not a known field."; insert with `rowStatus: DELETED` → "Row status must not be DELETED when inserting a user address."; a mandatory field missing on a delete → still 400.
 
 ### TC-ADDRESS-009 — At most 10 addresses
 
-- Source: A11. Design readiness: Ready. Execution status: Not run.
+- Source: A11. Design readiness: Ready. Execution status: Pass (automated).
 
 **Steps:** 10 addresses (mixed ACTIVE and INACTIVE); insert one more → 400 "A user can have at most 10 addresses." and nothing changed; update one of them → 200; delete one → 204; insert again → 201 (the DELETED row does not count).
 
 ### TC-ADDRESS-010 — Not found
 
-- Source: A12. Design readiness: Ready. Execution status: Not run.
+- Source: A12. Design readiness: Ready. Execution status: Pass (automated).
 
 **Request:** id of U_OTHER's address; id of a DELETED address of U_OK; a random UUID. **Expected:** 404 E10004 "User address not found."; U_OTHER's row unchanged.
 
 ### TC-ADDRESS-011 — Validation before the credential, and credential failures
 
-- Source: A13. Design readiness: Ready. Execution status: Not run.
+- Source: A13. Design readiness: Ready. Execution status: Pass (automated).
 
 **Request:** an invalid body without authorization → 400; a valid body with: no authorization, another key, no stored token row, the token INACTIVE, the user LOCKED → 401 E10002 "Invalid or expired access token."; nothing changed.
 
 ### TC-ADDRESS-012 — Concurrent inserts at the limit
 
-- Source: A14. Design readiness: Ready. Execution status: Not run.
+- Source: A14. Design readiness: Ready. Execution status: Pass (automated).
 
 **Steps:** 9 addresses; send 3 inserts at once. **Expected:** exactly one 201 and two 400 "A user can have at most 10 addresses."; 10 non-DELETED rows; exactly one default.
 
 ### TC-ADDRESS-013 — Timeout and unexpected failure
 
-- Source: A15. Design readiness: Ready. Execution status: Not run.
+- Source: A15. Design readiness: Ready. Execution status: Pass (automated).
 
 **Steps:** (a) a second connection holds U_OK's row `FOR UPDATE`; insert with a 1-second command timeout → 408 E90001, no row. (b) a test-only wrapper throws after the old default was cleared, during an insert with `isDefault: true` → 500 without bizCode; the old default is still the default.
 
@@ -131,8 +131,9 @@ description: "Documented scenarios and expected results for POST v1/user/address
 ## Document verification and limitations
 
 - Every obligation A01–A15 maps to a case, and every case cites its obligation.
-- No case has run yet.
+- Every case runs automatically; see the execution history.
 
 ## Revision and execution history
 
 - 2026-11-19: first version (Drake), Not run.
+- 2026-11-19: executed by the automated tests of e-commerce-backend on branch `feat/drake-09-upsert-user-address` (stacked on 08): `UpsertUserAddressApiTests` (HTTP + real PostgreSQL 17, 26 tests including the 12 validation rows), `AddressDefaultPolicyTests` (10). Result: every case passes (`dotnet test`: Api 228, Application 42, Domain 79, Infrastructure 46, 0 failed). Mutation checks: removing the promotion fails TC-ADDRESS-006; removing the default clear on insert fails TC-ADDRESS-003; removing the user lock fails TC-ADDRESS-012.
