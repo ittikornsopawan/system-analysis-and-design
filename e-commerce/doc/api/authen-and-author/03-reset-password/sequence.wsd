@@ -95,6 +95,13 @@ else Valid input
         api -> page: Display generic operational/validation failure
     else Routing lookup completes
         app -> infra: QUERY - Find the active user by email address
+        note right of infra
+            LINQ (EF Core):
+            db.Users
+                .Where(u => u.EmailAddress == bytes && u.RowStatus == "ACTIVE")
+                .Select(u => u.Id)
+                .ToListAsync()
+        end note
         infra -> m_user: QUERY - Find the active user by email address
         activate m_user
             note right of m_user
@@ -148,6 +155,14 @@ else Valid input
             end note
             alt Transaction work completes
                 app -> infra: QUERY - Lock the user
+                note right of infra
+                    LINQ (EF Core):
+                    db.Users
+                        .Where(u => u.Id == userId && u.RowStatus == "ACTIVE" && u.EmailAddress == bytes)
+                        .ForUpdate()
+                        .Select(u => u.Id)
+                        .ToListAsync()
+                end note
                 infra -> m_user: QUERY - Lock the user
                 activate m_user
                     note right of m_user
@@ -171,6 +186,10 @@ else Valid input
                 else Locked ACTIVE same-email user
                     app -> app: Capture fresh server UTC now after user lock; windowStart = now minus 1 hour; expiredAt = now plus 30 minutes
                     app -> infra: QUERY - Count the requests of the last hour
+                    note right of infra
+                        LINQ (EF Core):
+                        db.PasswordResets.CountAsync(r => r.UserId == userId && r.CreatedAt > windowStartUtc)
+                    end note
                     infra -> t_user_reset_password: QUERY - Count the requests of the last hour
                     activate t_user_reset_password
                         note right of t_user_reset_password
@@ -191,6 +210,12 @@ else Valid input
                         page -> user: Check email if registered
                     else requests < 3
                         app -> infra: UPDATE - Make the old reset token INACTIVE
+                        note right of infra
+                            LINQ (EF Core):
+                            db.PasswordResets
+                                .Where(r => r.UserId == userId && r.RowStatus == "ACTIVE")
+                                .ExecuteUpdateAsync(s => s.SetProperty(r => r.UpdatedBy, by).SetProperty(r => r.UpdatedAt, nowUtc).SetProperty(r => r.RowStatus, "INACTIVE"))
+                        end note
                         infra -> t_user_reset_password: UPDATE - Make the old reset token INACTIVE
                         activate t_user_reset_password
                             note right of t_user_reset_password
@@ -206,6 +231,12 @@ else Valid input
                         deactivate t_user_reset_password
                         infra -> app: Return oldClosedCount; zero is valid
                         app -> infra: INSERT - Create reset token
+                        note right of infra
+                            LINQ (EF Core):
+                            db.Add(new PasswordResetRecord { CreatedBy = by, CreatedAt = nowUtc, UserId = userId,
+                                ResetToken = resetTokenHash, ExpiredAt = expiredAtUtc });
+                            await db.SaveChangesAsync()   // row.Id is reset_id
+                        end note
                         infra -> t_user_reset_password: INSERT - Create reset token
                         activate t_user_reset_password
                             note right of t_user_reset_password

@@ -99,6 +99,14 @@ else Valid input including empty object
         end note
         alt Transaction work completes
             app -> infra: QUERY - Lock the user
+            note right of infra
+                LINQ (EF Core):
+                db.Users
+                    .Where(u => u.Id == userId && u.RowStatus == "ACTIVE")
+                    .ForUpdate()
+                    .Select(u => u.Id)
+                    .ToListAsync()
+            end note
             infra -> m_user: QUERY - Lock the user
             activate m_user
                 note right of m_user
@@ -115,6 +123,10 @@ else Valid input including empty object
             alt ACTIVE user row returned
                 app -> app: Capture fresh server UTC now after user lock; recheck JWT exp
                 app -> infra: QUERY - Check the current access token
+                note right of infra
+                    LINQ (EF Core):
+                    db.AccessTokens.AnyAsync(t => t.Token == accessTokenHash && t.UserId == userId && t.RowStatus == "ACTIVE" && t.ExpiredAt > nowUtc)
+                end note
                 infra -> t_user_access_token: QUERY - Check the current access token
                 activate t_user_access_token
                     note right of t_user_access_token
@@ -132,6 +144,20 @@ else Valid input including empty object
                 alt Current stored token valid and JWT still unexpired
                     alt userFieldsPresent
                         app -> infra: UPDATE - Update user
+                        note right of infra
+                            LINQ (EF Core):
+                            db.Users
+                                .Where(u => u.Id == userId && u.RowStatus == "ACTIVE")
+                                .ExecuteUpdateAsync(s =>
+                                {
+                                    s.SetProperty(u => u.UpdatedBy, by).SetProperty(u => u.UpdatedAt, nowUtc);
+                                    if (c.FirstName.IsSet) s.SetProperty(u => u.FirstName, firstName);
+                                    if (c.LastName.IsSet) s.SetProperty(u => u.LastName, lastName);
+                                    if (c.DisplayName.IsSet) s.SetProperty(u => u.DisplayName, c.DisplayName.Value);
+                                    if (c.ProfilePicturePath.IsSet) s.SetProperty(u => u.ProfilePicturePath, c.ProfilePicturePath.Value);
+                                })
+                                == 1
+                        end note
                         infra -> m_user: UPDATE - Update user
                         activate m_user
                             note right of m_user
@@ -164,6 +190,13 @@ else Valid input including empty object
                     end
                     alt informationFieldsPresent
                         app -> infra: QUERY - Check existing information
+                        note right of infra
+                            LINQ (EF Core):
+                            db.UserInformation
+                                .Where(i => i.UserId == userId && i.RowStatus != "DELETED")
+                                .Select(i => (Guid?)i.Id)
+                                .ToListAsync()
+                        end note
                         infra -> m_user_information: QUERY - Check existing information
                         activate m_user_information
                             note right of m_user_information
@@ -179,6 +212,13 @@ else Valid input including empty object
                         alt No non-DELETED information row
                             app -> app: Bind omitted information columns to SQL NULL on first insert
                             app -> infra: INSERT - Create information
+                            note right of infra
+                                LINQ (EF Core):
+                                db.Add(new UserInformationRecord { CreatedBy = userId.ToString(), UserId = userId,
+                                    PhoneNumber = Protect(c.PhoneNumber.Value), Address = Protect(c.Address.Value),
+                                    DateOfBirth = c.DateOfBirth.Value, Gender = c.Gender.Value });
+                                await db.SaveChangesAsync()   // row.Id is information_id
+                            end note
                             infra -> m_user_information: INSERT - Create information
                             activate m_user_information
                                 note right of m_user_information
@@ -215,6 +255,20 @@ else Valid input including empty object
                         else Existing non-DELETED information row
                             app -> app: informationId = returned information_id; preserve row_status
                             app -> infra: UPDATE - Update information
+                            note right of infra
+                                LINQ (EF Core):
+                                db.UserInformation
+                                    .Where(i => i.Id == informationId && i.UserId == userId && i.RowStatus != "DELETED")
+                                    .ExecuteUpdateAsync(s =>
+                                    {
+                                        s.SetProperty(i => i.UpdatedBy, by).SetProperty(i => i.UpdatedAt, nowUtc);
+                                        if (c.PhoneNumber.IsSet) s.SetProperty(i => i.PhoneNumber, phone);
+                                        if (c.Address.IsSet) s.SetProperty(i => i.Address, address);
+                                        if (c.DateOfBirth.IsSet) s.SetProperty(i => i.DateOfBirth, c.DateOfBirth.Value);
+                                        if (c.Gender.IsSet) s.SetProperty(i => i.Gender, c.Gender.Value);
+                                    })
+                                    == 1
+                            end note
                             infra -> m_user_information: UPDATE - Update information
                             activate m_user_information
                                 note right of m_user_information

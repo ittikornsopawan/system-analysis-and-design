@@ -97,6 +97,14 @@ else Valid input
         end note
         alt Transaction work completes
             app -> infra: QUERY - Lock the user
+            note right of infra
+                LINQ (EF Core):
+                db.Users
+                    .Where(u => u.Id == userId && u.RowStatus == "ACTIVE")
+                    .ForUpdate()
+                    .Select(u => u.Id)
+                    .ToListAsync()
+            end note
             infra -> m_user: QUERY - Lock the user
             activate m_user
                 note right of m_user
@@ -113,6 +121,10 @@ else Valid input
             alt ACTIVE user row returned
                 app -> app: Capture fresh server UTC now after user lock; recheck JWT exp
                 app -> infra: QUERY - Check the current access token
+                note right of infra
+                    LINQ (EF Core):
+                    db.AccessTokens.AnyAsync(t => t.Token == accessTokenHash && t.UserId == userId && t.RowStatus == "ACTIVE" && t.ExpiredAt > nowUtc)
+                end note
                 infra -> t_user_access_token: QUERY - Check the current access token
                 activate t_user_access_token
                     note right of t_user_access_token
@@ -129,6 +141,13 @@ else Valid input
                 infra -> app: Return ACTIVE matching unexpired token or no row
                 alt Current stored token valid and JWT still unexpired
                     app -> infra: QUERY - Check existing address
+                    note right of infra
+                        LINQ (EF Core):
+                        db.UserAddresses
+                            .Where(a => a.Id == id && a.UserId == userId && a.RowStatus != "DELETED")
+                            .Select(a => new OwnedAddress(a.Id, a.IsDefault))
+                            .FirstOrDefaultAsync()
+                    end note
                     infra -> t_user_address: QUERY - Check existing address
                     activate t_user_address
                         note right of t_user_address
@@ -153,6 +172,10 @@ else Valid input
                         app -> app: wasDefault = returned is_default or false for insert
                     end
                     app -> infra: QUERY - Count addresses
+                    note right of infra
+                        LINQ (EF Core):
+                        db.UserAddresses.CountAsync(a => a.UserId == userId && a.RowStatus != "DELETED")   // insert only
+                    end note
                     infra -> t_user_address: QUERY - Count addresses
                     activate t_user_address
                         note right of t_user_address
@@ -176,6 +199,11 @@ else Valid input
                         app -> app: Quota accepted under common user lock
                     end
                     app -> infra: QUERY - Check an ACTIVE address exists
+                    note right of infra
+                        LINQ (EF Core):
+                        db.UserAddresses.AnyAsync(a => a.UserId == userId && a.RowStatus == "ACTIVE"
+                                                       && (excludeId == null || a.Id != excludeId))   // excludeId = id when updating
+                    end note
                     infra -> t_user_address: QUERY - Check an ACTIVE address exists
                     activate t_user_address
                         note right of t_user_address
@@ -194,6 +222,12 @@ else Valid input
                     app -> app: isDefault = rowStatus ACTIVE AND (requestedTrue OR wasDefault OR NOT otherActiveExists)
                     app -> app: shouldPromote = wasDefault AND rowStatus not ACTIVE; flags are server-derived, never caller flags
                     app -> infra: UPDATE - Clear the old default
+                    note right of infra
+                        LINQ (EF Core):
+                        db.UserAddresses
+                            .Where(a => a.UserId == userId && a.IsDefault && a.RowStatus != "DELETED" && (excludeId == null || a.Id != excludeId))
+                            .ExecuteUpdateAsync(s => s.SetProperty(a => a.UpdatedBy, by).SetProperty(a => a.UpdatedAt, nowUtc).SetProperty(a => a.IsDefault, false))
+                    end note
                     infra -> t_user_address: UPDATE - Clear the old default
                     activate t_user_address
                         note right of t_user_address
@@ -213,6 +247,14 @@ else Valid input
                     infra -> app: Return cleared default count; zero allowed; false isDefault guard changes nothing
                     alt Insert with id absent
                         app -> infra: INSERT - Create user address
+                        note right of infra
+                            LINQ (EF Core):
+                            db.Add(new UserAddressRecord { CreatedBy = userId.ToString(), CreatedAt = nowUtc, RowStatus = rowStatus, UserId = userId,
+                                Title = values.Title, IsDefault = isDefault, Address = protector.Protect(values.Address),
+                                City = protector.Protect(values.City), State = protector.Protect(values.State),
+                                PostalCode = protector.Protect(values.PostalCode), Country = protector.Protect(values.Country) });
+                            await db.SaveChangesAsync()   // row.Id is user_address_id
+                        end note
                         infra -> t_user_address: INSERT - Create user address
                         activate t_user_address
                             note right of t_user_address
@@ -297,6 +339,17 @@ else Valid input
                         end
                     else Delete existing id with rowStatus DELETED
                         app -> infra: UPDATE - Update or delete user address
+                        note right of infra
+                            LINQ (EF Core):
+                            db.UserAddresses
+                                .Where(a => a.Id == id && a.UserId == userId && a.RowStatus != "DELETED")
+                                .ExecuteUpdateAsync(s => s
+                                    .SetProperty(a => a.UpdatedBy, by).SetProperty(a => a.UpdatedAt, nowUtc).SetProperty(a => a.RowStatus, rowStatus)
+                                    .SetProperty(a => a.Title, v.Title).SetProperty(a => a.IsDefault, isDefault).SetProperty(a => a.Address, address)
+                                    .SetProperty(a => a.City, city).SetProperty(a => a.State, state).SetProperty(a => a.PostalCode, postalCode)
+                                    .SetProperty(a => a.Country, country))
+                                == 1
+                        end note
                         infra -> t_user_address: UPDATE - Update or delete user address
                         activate t_user_address
                             note right of t_user_address
@@ -323,6 +376,19 @@ else Valid input
                         alt Exactly one updated address id
                             app -> app: userAddressId = returned user_address_id
                             app -> infra: UPDATE - Promote another default address
+                            note right of infra
+                                LINQ (EF Core):
+                                // the spec's sub-select, then the guarded update; the user row lock keeps the two atomic
+                                var nextId = await db.UserAddresses
+                                    .Where(a => a.UserId == userId && a.RowStatus == "ACTIVE")
+                                    .OrderByDescending(a => a.UpdatedAt ?? a.CreatedAt)
+                                    .ThenBy(a => a.Id)
+                                    .Select(a => (Guid?)a.Id)
+                                    .FirstOrDefaultAsync();
+                                db.UserAddresses
+                                    .Where(a => a.Id == nextId && a.UserId == userId && a.RowStatus == "ACTIVE")
+                                    .ExecuteUpdateAsync(s => s.SetProperty(a => a.UpdatedBy, by).SetProperty(a => a.UpdatedAt, nowUtc).SetProperty(a => a.IsDefault, true))
+                            end note
                             infra -> t_user_address: UPDATE - Promote another default address
                             activate t_user_address
                                 note right of t_user_address
@@ -359,6 +425,17 @@ else Valid input
                         end
                     else Update existing id with rowStatus ACTIVE or INACTIVE
                         app -> infra: UPDATE - Update or delete user address
+                        note right of infra
+                            LINQ (EF Core):
+                            db.UserAddresses
+                                .Where(a => a.Id == id && a.UserId == userId && a.RowStatus != "DELETED")
+                                .ExecuteUpdateAsync(s => s
+                                    .SetProperty(a => a.UpdatedBy, by).SetProperty(a => a.UpdatedAt, nowUtc).SetProperty(a => a.RowStatus, rowStatus)
+                                    .SetProperty(a => a.Title, v.Title).SetProperty(a => a.IsDefault, isDefault).SetProperty(a => a.Address, address)
+                                    .SetProperty(a => a.City, city).SetProperty(a => a.State, state).SetProperty(a => a.PostalCode, postalCode)
+                                    .SetProperty(a => a.Country, country))
+                                == 1
+                        end note
                         infra -> t_user_address: UPDATE - Update or delete user address
                         activate t_user_address
                             note right of t_user_address
@@ -385,6 +462,19 @@ else Valid input
                         alt Exactly one updated address id
                             app -> app: userAddressId = returned user_address_id
                             app -> infra: UPDATE - Promote another default address
+                            note right of infra
+                                LINQ (EF Core):
+                                // the spec's sub-select, then the guarded update; the user row lock keeps the two atomic
+                                var nextId = await db.UserAddresses
+                                    .Where(a => a.UserId == userId && a.RowStatus == "ACTIVE")
+                                    .OrderByDescending(a => a.UpdatedAt ?? a.CreatedAt)
+                                    .ThenBy(a => a.Id)
+                                    .Select(a => (Guid?)a.Id)
+                                    .FirstOrDefaultAsync();
+                                db.UserAddresses
+                                    .Where(a => a.Id == nextId && a.UserId == userId && a.RowStatus == "ACTIVE")
+                                    .ExecuteUpdateAsync(s => s.SetProperty(a => a.UpdatedBy, by).SetProperty(a => a.UpdatedAt, nowUtc).SetProperty(a => a.IsDefault, true))
+                            end note
                             infra -> t_user_address: UPDATE - Promote another default address
                             activate t_user_address
                                 note right of t_user_address

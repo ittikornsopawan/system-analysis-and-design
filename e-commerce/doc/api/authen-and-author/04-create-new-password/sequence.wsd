@@ -90,6 +90,13 @@ else Valid input
         api -> page: Display failure; no durable changes
     else Routing lookup completes
         app -> infra: QUERY - Find the reset token
+        note right of infra
+            LINQ (EF Core):
+            db.PasswordResets
+                .Where(r => r.ResetToken == resetTokenHash && r.RowStatus == "ACTIVE" && r.ExpiredAt > lookupNowUtc)
+                .Select(r => new ResetRoute(r.Id, r.UserId))
+                .FirstOrDefaultAsync()
+        end note
         infra -> t_user_reset_password: QUERY - Find the reset token
         activate t_user_reset_password
             note right of t_user_reset_password
@@ -130,6 +137,14 @@ else Valid input
             end note
             alt Transaction work completes
                 app -> infra: QUERY - Lock the user
+                note right of infra
+                    LINQ (EF Core):
+                    db.Users
+                        .Where(u => u.Id == userId && u.RowStatus == "ACTIVE")
+                        .ForUpdate()
+                        .Select(u => u.Id)
+                        .ToListAsync()
+                end note
                 infra -> m_user: QUERY - Lock the user
                 activate m_user
                     note right of m_user
@@ -146,6 +161,14 @@ else Valid input
                 alt ACTIVE user row returned
                     app -> app: Capture fresh server UTC now after user lock; do not reuse lookupNow
                     app -> infra: UPDATE - Use the reset token once
+                    note right of infra
+                        LINQ (EF Core):
+                        db.PasswordResets
+                            .Where(r => r.Id == route.ResetId && r.UserId == route.UserId && r.ResetToken == resetTokenHash
+                                        && r.RowStatus == "ACTIVE" && r.ExpiredAt > nowUtc)
+                            .ExecuteUpdateAsync(s => s.SetProperty(r => r.UpdatedBy, by).SetProperty(r => r.UpdatedAt, nowUtc).SetProperty(r => r.RowStatus, "INACTIVE"))
+                            == 1   // no row means the answer is 400
+                    end note
                     infra -> t_user_reset_password: UPDATE - Use the reset token once
                     activate t_user_reset_password
                         note right of t_user_reset_password
@@ -166,6 +189,13 @@ else Valid input
                     infra -> app: Return consumed reset_id or no row
                     alt Exactly one reset_id returned
                         app -> infra: QUERY - Get current password
+                        note right of infra
+                            LINQ (EF Core):
+                            db.UserPasswords
+                                .Where(p => p.UserId == userId && p.RowType == "PASSWORD" && p.RowStatus == "ACTIVE")
+                                .Select(p => new CurrentPassword(p.Id, new PasswordCredential(p.Password, p.PasswordSalt)))
+                                .FirstOrDefaultAsync()
+                        end note
                         infra -> m_user_password: QUERY - Get current password
                         activate m_user_password
                             note right of m_user_password
@@ -186,6 +216,13 @@ else Valid input
                             alt Candidate differs from current password
                                 app -> app: Generate fresh cryptographically random 16-byte passwordSaltBytes; derive passwordBytes with PBKDF2-HMAC-SHA256 600000
                                 app -> infra: UPDATE - Make the current password INACTIVE
+                                note right of infra
+                                    LINQ (EF Core):
+                                    db.UserPasswords
+                                        .Where(p => p.Id == currentPasswordId && p.UserId == userId && p.RowType == "PASSWORD" && p.RowStatus == "ACTIVE")
+                                        .ExecuteUpdateAsync(s => s.SetProperty(p => p.UpdatedBy, by).SetProperty(p => p.UpdatedAt, nowUtc).SetProperty(p => p.RowStatus, "INACTIVE"))
+                                        == 1
+                                end note
                                 infra -> m_user_password: UPDATE - Make the current password INACTIVE
                                 activate m_user_password
                                     note right of m_user_password
@@ -205,6 +242,12 @@ else Valid input
                                 infra -> app: Return closed password_id or no row
                                 alt Exactly one password_id returned
                                     app -> infra: INSERT - Create password
+                                    note right of infra
+                                        LINQ (EF Core):
+                                        db.Add(new UserPasswordRecord { CreatedBy = by, RowType = "PASSWORD", UserId = userId,
+                                            Password = newPassword.Hash, PasswordSalt = newPassword.Salt });
+                                        await db.SaveChangesAsync()
+                                    end note
                                     infra -> m_user_password: INSERT - Create password
                                     activate m_user_password
                                         note right of m_user_password
@@ -227,6 +270,12 @@ else Valid input
                                     deactivate m_user_password
                                     infra -> app: Return inserted PASSWORD row count
                                     app -> infra: UPDATE - Close the access tokens of the user
+                                    note right of infra
+                                        LINQ (EF Core):
+                                        db.AccessTokens
+                                            .Where(t => t.UserId == userId && t.RowStatus == "ACTIVE")
+                                            .ExecuteUpdateAsync(s => s.SetProperty(t => t.UpdatedBy, by).SetProperty(t => t.UpdatedAt, nowUtc).SetProperty(t => t.RowStatus, "INACTIVE"))
+                                    end note
                                     infra -> t_user_access_token: UPDATE - Close the access tokens of the user
                                     activate t_user_access_token
                                         note right of t_user_access_token
@@ -242,6 +291,12 @@ else Valid input
                                     deactivate t_user_access_token
                                     infra -> app: Return accessClosedCount for every session
                                     app -> infra: UPDATE - Close the refresh tokens of the user
+                                    note right of infra
+                                        LINQ (EF Core):
+                                        db.RefreshTokens
+                                            .Where(t => t.UserId == userId && t.RowStatus == "ACTIVE")
+                                            .ExecuteUpdateAsync(s => s.SetProperty(t => t.UpdatedBy, by).SetProperty(t => t.UpdatedAt, nowUtc).SetProperty(t => t.RowStatus, "INACTIVE"))
+                                    end note
                                     infra -> t_user_refresh_token: UPDATE - Close the refresh tokens of the user
                                     activate t_user_refresh_token
                                         note right of t_user_refresh_token
