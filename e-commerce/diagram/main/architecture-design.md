@@ -9,7 +9,7 @@ description: คำอธิบายภาพ architecture-design อย่า�
 
 ## 1. ขอบเขตและสถานะของภาพ
 
-CODE baseline คือ Component Repository [e-commerce-backend ที่ `4a8e680`](https://github.com/ittikornsopawan/e-commerce-backend/tree/4a8e6808e1887f324aea9e987369e28faf76ec51) (main หลัง authen-and-author APIs 01–10, EF Core และ field transport) ตำแหน่ง checkout คือ `e-commerce/repository/e-commerce-backend/` มี Git history/remote ของตนเองและถูก ignore โดย Showcase ส่วน pin ใน [REPOS.md](../../REPOS.md) จะเลื่อนมาที่ revision นี้ด้วย manifest change ของตนเอง ภาพวาดใหม่ทั้งชุดจาก source ที่ revision นี้และตารางของ [code-structure.md](../../doc/code-structure.md) ไม่มีป้ายจาก first scaffold เหลืออยู่
+CODE baseline คือ Component Repository [e-commerce-backend ที่ `4a8e680`](https://github.com/ittikornsopawan/e-commerce-backend/tree/4a8e6808e1887f324aea9e987369e28faf76ec51) (main หลัง authen-and-author APIs 01–10, EF Core และ field transport) ตำแหน่ง checkout คือ `e-commerce/repository/e-commerce-backend/` มี Git history/remote ของตนเองและถูก ignore โดย Showcase และเป็น revision ที่ [REPOS.md](../../REPOS.md) pin ไว้ ภาพวาดใหม่ทั้งชุดจาก source ที่ revision นี้และตารางของ [code-structure.md](../../doc/code-structure.md) ไม่มีป้ายจาก first scaffold เหลืออยู่
 
 ภาพรวม runtime ของ backend หนึ่งแอปพลิเคชัน ประกอบกับความสามารถ commerce ที่ระบุในเอกสาร และส่วน Redis/MongoDB ที่ผู้ใช้ขอเพิ่ม ไม่ใช่แผน deployment หรือคำยืนยันว่าทุกความสามารถทำงานจริงแล้ว
 

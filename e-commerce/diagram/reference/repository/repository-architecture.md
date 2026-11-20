@@ -25,7 +25,7 @@ Path header ย่อ outer Showcase/Checkout Directory rings ให้เหล
 
 เป็นตำแหน่ง backend มี production 5 projects และ test 4 projects อยู่ใน `Ecommerce.sln` จัด CQRS ตาม feature เพื่อให้ไฟล์ของ use case เดียวอยู่ใกล้กัน เช่น register มี command, validator, handler และ response ของตนเอง ดู [project-structure.md](https://github.com/ittikornsopawan/e-commerce-backend/blob/4a8e6808e1887f324aea9e987369e28faf76ec51/project-structure.md)
 
-ภาพวาดจาก source ที่ `4a8e6808e1887f324aea9e987369e28faf76ec51` (main หลัง authen-and-author APIs 01–10, EF Core และ field transport) [REPOS.md](../../../REPOS.md) ประกาศ Component Repository ชื่อ `e-commerce-backend` และ pin ของมันจะเลื่อนมาที่ revision นี้ด้วย manifest change ของตนเอง Component มี independent Git history/remote/delivery lifecycle; Showcase เป็นเจ้าของ manifest/specifications/schema/migrations/diagrams ไม่ใช่ backend source
+ภาพวาดจาก source ที่ `4a8e6808e1887f324aea9e987369e28faf76ec51` (main หลัง authen-and-author APIs 01–10, EF Core และ field transport) [REPOS.md](../../../REPOS.md) ประกาศ Component Repository ชื่อ `e-commerce-backend` และ pin revision นี้ Component มี independent Git history/remote/delivery lifecycle; Showcase เป็นเจ้าของ manifest/specifications/schema/migrations/diagrams ไม่ใช่ backend source
 
 ### 2.2 `src/`
 
