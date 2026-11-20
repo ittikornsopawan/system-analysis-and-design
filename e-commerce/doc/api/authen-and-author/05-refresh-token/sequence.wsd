@@ -81,6 +81,13 @@ activate page
             else Valid input
                 app -> app: SHA-256 presented token; capture UTC lookupNow
                 app -> infra: QUERY - Find the refresh token
+                note right of infra
+                    LINQ (EF Core):
+                    db.RefreshTokens
+                        .Where(t => t.Token == tokenHash && t.ExpiredAt > lookupNowUtc)
+                        .Select(t => new RefreshOwner(t.Id, t.UserId))
+                        .FirstOrDefaultAsync()
+                end note
                 infra -> t_user_refresh_token: QUERY - Find the refresh token
                 activate t_user_refresh_token
                     note right of t_user_refresh_token
@@ -112,6 +119,14 @@ activate page
                     activate infra
                     alt Database work completes before COMMIT
                         app -> infra: QUERY - Lock the user
+                        note right of infra
+                            LINQ (EF Core):
+                            db.Users
+                                .Where(u => u.Id == userId && u.RowStatus == "ACTIVE")
+                                .ForUpdate()
+                                .Select(u => new { u.Id, u.Username, u.EmailAddress, u.DisplayName })
+                                .ToListAsync()
+                        end note
                         infra -> m_user: QUERY - Lock the user
                         activate m_user
                             note right of m_user
@@ -131,6 +146,13 @@ activate page
                         alt ACTIVE user row returned
                             app -> app: Capture UTC now after the user lock
                             app -> infra: QUERY - Reread the refresh token after user lock
+                            note right of infra
+                                LINQ (EF Core):
+                                db.RefreshTokens
+                                    .Where(t => t.Id == owner.RefreshTokenId && t.UserId == owner.UserId && t.Token == tokenHash)
+                                    .Select(t => new RefreshTokenRow(t.Id, t.UserId, t.SessionId, t.RowStatus, t.UpdatedAt, t.ExpiredAt))
+                                    .FirstOrDefaultAsync()
+                            end note
                             infra -> t_user_refresh_token: QUERY - Reread the refresh token after user lock
                             activate t_user_refresh_token
                                 note right of t_user_refresh_token
@@ -152,6 +174,14 @@ activate page
                             alt Fresh row is ACTIVE and expired_at > now
                                 app -> app: sessionId = the freshly read session id
                                 app -> infra: UPDATE - Use the refresh token once
+                                note right of infra
+                                    LINQ (EF Core):
+                                    db.RefreshTokens
+                                        .Where(t => t.Id == row.Id && t.UserId == row.UserId && t.SessionId == row.SessionId && t.Token == tokenHash
+                                                    && t.RowStatus == "ACTIVE" && t.ExpiredAt > nowUtc)
+                                        .ExecuteUpdateAsync(s => s.SetProperty(t => t.UpdatedBy, by).SetProperty(t => t.UpdatedAt, nowUtc).SetProperty(t => t.RowStatus, "INACTIVE"))
+                                        == 1   // no row means the answer is 401
+                                end note
                                 infra -> t_user_refresh_token: UPDATE - Use the refresh token once
                                 activate t_user_refresh_token
                                     note right of t_user_refresh_token
@@ -173,6 +203,13 @@ activate page
                                 infra -> app: Return consumed session_id or no row
                                 alt Conditional consume returned session_id
                                     app -> infra: QUERY - Get active role ids
+                                    note right of infra
+                                        LINQ (EF Core):
+                                        db.UserRoles
+                                            .Where(ur => ur.UserId == userId && ur.RowStatus == "ACTIVE")
+                                            .Select(ur => ur.RoleId)
+                                            .ToListAsync()
+                                    end note
                                     infra -> t_user_role: QUERY - Get active role ids
                                     activate t_user_role
                                         note right of t_user_role
@@ -186,6 +223,13 @@ activate page
                                     deactivate t_user_role
                                     infra -> app: Return roleIds
                                     app -> infra: QUERY - Get active roles
+                                    note right of infra
+                                        LINQ (EF Core):
+                                        db.Roles
+                                            .Where(r => roleIds.Contains(r.Id) && r.RowStatus == "ACTIVE")
+                                            .Select(r => new RoleFact(r.Id, r.Name))
+                                            .ToListAsync()
+                                    end note
                                     infra -> m_role: QUERY - Get active roles
                                     activate m_role
                                         note right of m_role
@@ -201,6 +245,13 @@ activate page
                                     infra -> app: Return activeRoles
                                     app -> app: activeRoleIds = activeRoles.role_id
                                     app -> infra: QUERY - Get active role permissions
+                                    note right of infra
+                                        LINQ (EF Core):
+                                        db.RolePermissions
+                                            .Where(rp => activeRoleIds.Contains(rp.RoleId) && rp.RowStatus == "ACTIVE")
+                                            .Select(rp => new RolePermissionFact(rp.Id, rp.PermissionId))
+                                            .ToListAsync()
+                                    end note
                                     infra -> t_role_permission: QUERY - Get active role permissions
                                     activate t_role_permission
                                         note right of t_role_permission
@@ -216,6 +267,13 @@ activate page
                                     infra -> app: Return rolePermissions
                                     app -> app: rolePermissionIds = rolePermissions.role_permission_id
                                     app -> infra: QUERY - Get active role permission scopes
+                                    note right of infra
+                                        LINQ (EF Core):
+                                        db.RolePermissionScopes
+                                            .Where(l => rolePermissionIds.Contains(l.RolePermissionId) && l.RowStatus == "ACTIVE")
+                                            .Select(l => new RoleScopeLinkFact(l.RolePermissionId, l.PermissionScopeId))
+                                            .ToListAsync()
+                                    end note
                                     infra -> t_role_permission_scope: QUERY - Get active role permission scopes
                                     activate t_role_permission_scope
                                         note right of t_role_permission_scope
@@ -230,6 +288,13 @@ activate page
                                     deactivate t_role_permission_scope
                                     infra -> app: Return roleScopeLinks
                                     app -> infra: QUERY - Get active direct permissions
+                                    note right of infra
+                                        LINQ (EF Core):
+                                        db.UserPermissions
+                                            .Where(up => up.UserId == userId && up.RowStatus == "ACTIVE")
+                                            .Select(up => new DirectPermissionFact(up.PermissionId, up.PermissionScopeId))
+                                            .ToListAsync()
+                                    end note
                                     infra -> t_user_permission: QUERY - Get active direct permissions
                                     activate t_user_permission
                                         note right of t_user_permission
@@ -245,6 +310,13 @@ activate page
                                     infra -> app: Return directPermissionGrants
                                     app -> app: permissionIds = union of role and direct permission ids
                                     app -> infra: QUERY - Get permission scope definitions
+                                    note right of infra
+                                        LINQ (EF Core):
+                                        db.PermissionScopes
+                                            .Where(ps => permissionIds.Contains(ps.PermissionId) && ps.RowStatus != "DELETED")
+                                            .Select(ps => new PermissionScopeDefinition(ps.Id, ps.PermissionId, ps.ScopeId, ps.RowStatus))
+                                            .ToListAsync()
+                                    end note
                                     infra -> t_permission_scope: QUERY - Get permission scope definitions
                                     activate t_permission_scope
                                         note right of t_permission_scope
@@ -261,6 +333,13 @@ activate page
                                     deactivate t_permission_scope
                                     infra -> app: Return permissionScopeDefinitions
                                     app -> infra: QUERY - Get active permissions
+                                    note right of infra
+                                        LINQ (EF Core):
+                                        db.Permissions
+                                            .Where(p => permissionIds.Contains(p.Id) && p.RowStatus == "ACTIVE")
+                                            .Select(p => new PermissionFact(p.Id, p.Name))
+                                            .ToListAsync()
+                                    end note
                                     infra -> m_permission: QUERY - Get active permissions
                                     activate m_permission
                                         note right of m_permission
@@ -276,6 +355,13 @@ activate page
                                     infra -> app: Return activePermissions
                                     app -> app: Derive assignedScopeIds by exact assignment/definition and permission match
                                     app -> infra: QUERY - Get active scopes
+                                    note right of infra
+                                        LINQ (EF Core):
+                                        db.Scopes
+                                            .Where(s => ids.Contains(s.Id) && s.RowStatus == "ACTIVE")
+                                            .Select(s => new ScopeFact(s.Id, s.Scope))
+                                            .ToListAsync()
+                                    end note
                                     infra -> m_scope: QUERY - Get active scopes
                                     activate m_scope
                                         note right of m_scope
@@ -296,6 +382,12 @@ activate page
                                     deactivate domain
                                     app -> app: Capture UTC issuedAt; sign fresh JWT; generate fresh random refresh; hash both
                                     app -> infra: INSERT - Create access token
+                                    note right of infra
+                                        LINQ (EF Core):
+                                        db.Add(new AccessTokenRecord { CreatedBy = createdBy, UserId = session.UserId, SessionId = session.SessionId,
+                                            Token = session.AccessTokenHash, ExpiredAt = session.AccessExpiresAtUtc });
+                                        await db.SaveChangesAsync()
+                                    end note
                                     infra -> t_user_access_token: INSERT - Create access token
                                     activate t_user_access_token
                                         note right of t_user_access_token
@@ -318,6 +410,12 @@ activate page
                                     deactivate t_user_access_token
                                     infra -> app: Return access token row inserted
                                     app -> infra: INSERT - Create refresh token
+                                    note right of infra
+                                        LINQ (EF Core):
+                                        db.Add(new RefreshTokenRecord { CreatedBy = createdBy, UserId = session.UserId, SessionId = session.SessionId,
+                                            Token = session.RefreshTokenHash, ExpiredAt = session.RefreshExpiresAtUtc });
+                                        await db.SaveChangesAsync()
+                                    end note
                                     infra -> t_user_refresh_token: INSERT - Create refresh token
                                     activate t_user_refresh_token
                                         note right of t_user_refresh_token
@@ -382,6 +480,12 @@ activate page
                             else Fresh row is INACTIVE, unexpired and outside grace (or updated_at is NULL)
                                 app -> app: sessionId = the freshly read session id
                                 app -> infra: UPDATE - Close the refresh tokens of the session (reuse)
+                                note right of infra
+                                    LINQ (EF Core):
+                                    db.RefreshTokens
+                                        .Where(t => t.SessionId == sessionId && t.UserId == userId && t.RowStatus == "ACTIVE")
+                                        .ExecuteUpdateAsync(s => s.SetProperty(t => t.UpdatedBy, by).SetProperty(t => t.UpdatedAt, nowUtc).SetProperty(t => t.RowStatus, "INACTIVE"))
+                                end note
                                 infra -> t_user_refresh_token: UPDATE - Close the refresh tokens of the session (reuse)
                                 activate t_user_refresh_token
                                     note right of t_user_refresh_token
@@ -398,6 +502,12 @@ activate page
                                 deactivate t_user_refresh_token
                                 infra -> app: Return session refresh rows closed
                                 app -> infra: UPDATE - Close the access tokens of the session (reuse)
+                                note right of infra
+                                    LINQ (EF Core):
+                                    db.AccessTokens
+                                        .Where(t => t.SessionId == sessionId && t.UserId == userId && t.RowStatus == "ACTIVE")
+                                        .ExecuteUpdateAsync(s => s.SetProperty(t => t.UpdatedBy, by).SetProperty(t => t.UpdatedAt, nowUtc).SetProperty(t => t.RowStatus, "INACTIVE"))
+                                end note
                                 infra -> t_user_access_token: UPDATE - Close the access tokens of the session (reuse)
                                 activate t_user_access_token
                                     note right of t_user_access_token

@@ -88,6 +88,14 @@ else Valid input
         end note
         alt Transaction work completes
             app -> infra: QUERY - Lock the user
+            note right of infra
+                LINQ (EF Core):
+                db.Users
+                    .Where(u => u.Id == userId && u.RowStatus == "ACTIVE")
+                    .ForUpdate()
+                    .Select(u => u.Id)
+                    .ToListAsync()
+            end note
             infra -> m_user: QUERY - Lock the user
             activate m_user
                 note right of m_user
@@ -104,6 +112,13 @@ else Valid input
             alt ACTIVE user row returned
                 app -> app: Capture fresh server UTC now after user lock; recheck JWT exp
                 app -> infra: QUERY - Get the session of the access token
+                note right of infra
+                    LINQ (EF Core):
+                    db.AccessTokens
+                        .Where(t => t.Token == accessTokenHash && t.UserId == userId && t.RowStatus == "ACTIVE" && t.ExpiredAt > nowUtc)
+                        .Select(t => (Guid?)t.SessionId)
+                        .ToListAsync()
+                end note
                 infra -> t_user_access_token: QUERY - Get the session of the access token
                 activate t_user_access_token
                     note right of t_user_access_token
@@ -121,6 +136,12 @@ else Valid input
                 alt Stored token ACTIVE, owned and unexpired; JWT still unexpired
                     app -> app: sessionId = returned stored session_id; never request/JWT session input
                     app -> infra: UPDATE - Close the access tokens of the session
+                    note right of infra
+                        LINQ (EF Core):
+                        db.AccessTokens
+                            .Where(t => t.SessionId == sessionId && t.UserId == userId && t.RowStatus == "ACTIVE")
+                            .ExecuteUpdateAsync(s => s.SetProperty(t => t.UpdatedBy, by).SetProperty(t => t.UpdatedAt, nowUtc).SetProperty(t => t.RowStatus, "INACTIVE"))
+                    end note
                     infra -> t_user_access_token: UPDATE - Close the access tokens of the session
                     activate t_user_access_token
                         note right of t_user_access_token
@@ -138,6 +159,12 @@ else Valid input
                     infra -> app: Return accessClosedCount
                     alt accessClosedCount > 0
                         app -> infra: UPDATE - Close the refresh tokens of the session
+                        note right of infra
+                            LINQ (EF Core):
+                            db.RefreshTokens
+                                .Where(t => t.SessionId == sessionId && t.UserId == userId && t.RowStatus == "ACTIVE")
+                                .ExecuteUpdateAsync(s => s.SetProperty(t => t.UpdatedBy, by).SetProperty(t => t.UpdatedAt, nowUtc).SetProperty(t => t.RowStatus, "INACTIVE"))
+                        end note
                         infra -> t_user_refresh_token: UPDATE - Close the refresh tokens of the session
                         activate t_user_refresh_token
                             note right of t_user_refresh_token
