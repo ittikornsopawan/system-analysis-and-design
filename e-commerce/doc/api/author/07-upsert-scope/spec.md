@@ -2,8 +2,8 @@
 name: Scope Upsert API Specification
 description: Defines JWT administration, current credentials and atomic scope lifecycle/usage checks; read when reviewing or implementing scope upsert.
 status: approved
-approved_by: Ittikorn
-approved_at: 2026-11-16T09:24:57+07:00
+approved_by: Josh (SA Lead, delegated by Ittikorn 2026-11-17)
+approved_at: 2026-11-20T15:26:03+07:00
 ---
 
 # [POST]: v1/author/scope/upsert
@@ -328,7 +328,7 @@ HTTP/1.1 204 No Content
         "code": 409,
         "message": "Conflict",
         "bizCode": "E10003",
-        "bizMessage": "Scope scope already exists.",
+        "bizMessage": "Scope code already exists.",
         "requestId": "req-490a1b2c-3d4e-5f6a-7b8c-9d0e1f2a3b4c",
         "timestamp": "2026-11-06T09:49:43.123Z",
         "status": "ERROR"
