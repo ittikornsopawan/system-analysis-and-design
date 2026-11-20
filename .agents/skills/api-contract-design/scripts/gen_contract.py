@@ -1,12 +1,11 @@
 #!/usr/bin/env python3
 """Regenerate e-commerce/api/api-contract.json (OpenAPI 3.1) from the approved API specs.
 
-usage: python3 .agents/skills/api-contract-design/scripts/gen_contract.py [--check | --pretty OUT]
+usage: python3 .agents/skills/api-contract-design/scripts/gen_contract.py [--check]
 
 --check writes nothing and exits 1 when the committed contract differs from a fresh generation (a hand edit, or a spec
 change that was not regenerated); `check_docs.py api-contract` runs it in CI.
---pretty OUT writes an indented copy to OUT for reading and diffing and leaves the committed contract untouched: the
-committed file stays one line because the indented one passes the 1 MB preflight limit. OUT must not be the contract.
+The contract is written indented (2 spaces) so that it reads and diffs like any other file (owner decision 2026-11-20).
 
 The domains come from API_CONTRACT_DOMAINS in e-commerce/db/tests/check_docs.py; only specs with `status: approved`
 are published. Everything is read from the spec: method and path from the title, fields from the parameter tables,
@@ -602,21 +601,6 @@ def check_examples(contract, mark_null):
     return problems
 
 
-def pretty_target(argv):
-    """The OUT path of `--pretty OUT`, or None. Stops before any write when OUT is missing, is the committed contract, or --check is also given."""
-    if "--pretty" not in argv:
-        return None
-    if "--check" in argv:
-        sys.exit("use one of --check or --pretty")
-    at = argv.index("--pretty") + 1
-    if at >= len(argv):
-        sys.exit("--pretty needs an output path")
-    out = Path(argv[at]).resolve()
-    if out == CONTRACT.resolve():
-        sys.exit("--pretty must not write the committed contract (it is kept on one line, see the 1 MB preflight limit)")
-    return out
-
-
 def main():
     loader = importlib.util.spec_from_file_location("check_docs", ROOT / "e-commerce/db/tests/check_docs.py")
     check_docs = importlib.util.module_from_spec(loader)
@@ -663,14 +647,9 @@ def main():
     errors += check_examples(contract, mark_null=False)
     errors += reuse_report(contract)
     errors += [f"{m.upper()} {p} has no `security` (write `security: []` for a public operation)" for p, item in contract["paths"].items() for m, op in item.items() if "security" not in op]
-    # one-line JSON: the indented file passes the 1 MB preflight limit (lead decision 2026-11-17)
-    text = json.dumps(contract, separators=(",", ":"), ensure_ascii=False) + "\n"
+    text = json.dumps(contract, indent=2, ensure_ascii=False) + "\n"
     count = sum(len(v) for v in contract["paths"].values())
-    pretty = pretty_target(sys.argv[1:])
-    if pretty:
-        pretty.write_text(json.dumps(contract, indent=2, ensure_ascii=False) + "\n", encoding="utf-8")
-        print(f"{pretty}: indented copy of {count} operations (the committed contract is unchanged)")
-    elif "--check" in sys.argv[1:]:
+    if "--check" in sys.argv[1:]:
         if text != CONTRACT.read_text(encoding="utf-8"):
             errors.append(f"{CONTRACT.relative_to(ROOT)} differs from a fresh generation; run gen_contract.py and commit the result")
         else:
