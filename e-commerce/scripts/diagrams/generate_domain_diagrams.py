@@ -19,7 +19,7 @@ def evidence():
  spec=importlib.util.spec_from_file_location('domain_schema_audit',ROOT/'e-commerce/db/tests/audit_all.py')
  audit=importlib.util.module_from_spec(spec);spec.loader.exec_module(audit)
  tables=audit.parse_migrations();indexes=audit.indexes_of(tables)
- audit.audit_docs(tables,indexes);audit.audit_readme(tables)
+ audit.audit_docs(tables,indexes);audit.audit_readme(tables,audit.parse_views())
  assert not audit.FINDINGS,audit.FINDINGS
  assert set(tables)==set(CONCEPTS),'Every existing SQL table must map to exactly one concept'
  fk_count=sum(bool(c['ref'])for t in tables.values()for c in t['cols'])

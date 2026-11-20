@@ -3,7 +3,7 @@
   "schema_count": 11,
   "fk_count": 76,
   "source_files": {
-    "e-commerce/db/migrations/up/00-common.schema.up.sql": "36472d602761d16b416c4eb5ca92d056f0fd90770d5896ee1f28ab7f13481602",
+    "e-commerce/db/migrations/up/00-common.schema.up.sql": "3b87622916fee120fb7cb6f75c5ac34f00fb9244f9012961309617f513f15b18",
     "e-commerce/db/migrations/up/01-authen.schema.up.sql": "344303272dd9617d5002e8ac29ea1c84db8c1a95fc91a8a8a044cf51e9fda2d0",
     "e-commerce/db/migrations/up/02-author.schema.up.sql": "fe7fe486f9538436f967709816c45fda97ddf00b0886e9aec57f92c901dff1cd",
     "e-commerce/db/migrations/up/03-product.schema.up.sql": "3e9e2276d13a5579fa965b4f97d2495a371dbe114121741a7c858f1b4e63c88b",
@@ -13,7 +13,7 @@
     "e-commerce/db/migrations/up/07-payment.schema.up.sql": "81642fbe6ca1be44f41e025b1d81847c52ebd4f7c7b003f6fb73c41179113cdc",
     "e-commerce/db/migrations/up/08-shipping.schema.up.sql": "ba9c8660a2699dcd47e3bd034254742303677a450928ce6f2ccc82034b994e81",
     "e-commerce/db/migrations/up/09-campaign.schema.up.sql": "cc0f22f091bae9ac805142c6ac207e74c5457ad967570659ae1f48ea9c7ea3ac",
-    "e-commerce/doc/schema/README.md": "3150a758b1b560b299047284fbee73cdf56abd6707326ef13059f4046433b10b",
+    "e-commerce/doc/schema/README.md": "020b41ba8c29a7edf838c9827a16ddd0319a50f625f67fdb261a0708abef8aa3",
     "e-commerce/doc/schema/authen/l_user_login_attempt.md": "9362dd6e3805b4e69f5a840be64d99a58264a9cf224e70aa92566c9ff0b87248",
     "e-commerce/doc/schema/authen/l_user_referral.md": "8eedead077fda905f2f6814f4d9ab36c5c3b99d9073279e28b75e5792012d8c7",
     "e-commerce/doc/schema/authen/m_user.md": "959a2f09f4153b53a91e820ebb5bcbddd64fa241101c616a827065d6f467b0fa",
@@ -41,6 +41,7 @@
     "e-commerce/doc/schema/cart/t_cart.md": "bf8270af6d9134625263e8a2d53000169a4b9a666ba5ae1a52c19c6bbe2f7a81",
     "e-commerce/doc/schema/consent/m_consent_type.md": "21fb5868524d65ea80dcb758aa6829b4279a5c9f8e8750c999a7106531079dda",
     "e-commerce/doc/schema/consent/t_consent.md": "b22db25d6275d130ed2ac9274dd08a5618846faf676e88cc8753e3545f85544a",
+    "e-commerce/doc/schema/consent/v_applicable_consent.md": "17cb4c951ff82ab6a58f6afdc84938caf3d9ddbaba035cd2f62c904cb1c65a95",
     "e-commerce/doc/schema/payment/t_payment.md": "a86097ab596a9b18f1e6a3106305a443cb471f297a88f8aaacc1bb40cfd3486b",
     "e-commerce/doc/schema/product/m_product.md": "4a2dbd60c7164988039be5a3d1bb2f597952b0acc9bbb075d67b00f517ad3298",
     "e-commerce/doc/schema/product/m_product_attribute.md": "49bbfd4871b3ae96454506ec191d5a295ab1425dadb577e971e653cf88d03946",
@@ -53,7 +54,7 @@
     "e-commerce/doc/schema/product/m_product_sku.md": "bc67f3e2d0e96dd3bf50f6bbe7caafa2dc3224928bb34ed92c16fd3af7146573",
     "e-commerce/doc/schema/product/m_product_sku_option_value.md": "595348da13ad0725441fc0216d2b8af7ee1ad107f94903d7e2ceee82ad8773b7",
     "e-commerce/doc/schema/product/m_product_type.md": "e300454fb471662112ed28c8ee86e42331a83edfc6ff29ef679a2f9a1582d6bc",
-    "e-commerce/doc/schema/public/m_parameter.md": "fff50ecac2aab04a220eb6fda4f5663d5c65284af75683f8956d5e3524607fc1",
+    "e-commerce/doc/schema/public/m_parameter.md": "0a951949363c7498d9ab2e1c34c736540e67bb76cace98890c9b90d6acb4ef7d",
     "e-commerce/doc/schema/public/t_key.md": "37bc67de5fcd0950d3fab5a48ba100f4bbdbf2f4dd200cb3fdd1d16d5c46c259",
     "e-commerce/doc/schema/sales/t_order.md": "f18e14c567ba1863f20fbf17ba4e722e4b113b80b2321e88fa4a2fd1f12d3343",
     "e-commerce/doc/schema/sales/t_order_item.md": "e2529d33c5636c633ba9b75b24805e4db38f328963d5726d81644e95fc2f030a",
@@ -262,7 +263,8 @@
       "table_constraints": [],
       "concept": "Reference parameter",
       "indexes": [
-        "CREATE UNIQUE INDEX IF NOT EXISTS uq_m_parameter_key ON public.m_parameter (key) WHERE row_status <> 'DELETED';"
+        "CREATE UNIQUE INDEX IF NOT EXISTS uq_m_parameter_key ON public.m_parameter (key) WHERE row_status <> 'DELETED';",
+        "CREATE INDEX IF NOT EXISTS ix_m_parameter_parent_id ON public.m_parameter (parent_id);"
       ]
     },
     "consent.m_consent_type": {
@@ -4954,5 +4956,5 @@
       ]
     }
   },
-  "source_commit": "73d667854c224d4357d9fd9c66409113c70fe034"
+  "source_commit": "37ea6b9c535e77018420e7d811c5acd7afd88020"
 }
