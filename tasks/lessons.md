@@ -654,3 +654,4 @@ description: Repository-wide and project-specific lessons captured from user cor
 - **Corrected behavior**: After any scripted edit, rewrite the file as `text.rstrip('\n') + '\n'` and run `git diff --check` before preflight.
 - **Preventive skill change**: none; `.agents/skills/commit-and-pr/references/checklist.md` row 6 already says to normalize each file to one final newline after scripted edits, and the preflight caught it as designed.
 - **Verification**: `git diff --check` clean; preflight "no blockers found".
+- **Addendum (same day)**: it recurred in the domain-drift task: a triple-quoted block that already ends in `\n` got another `\n`. Normalize with `rstrip('\n') + '\n'` as the last step of every scripted write, and run `git diff --check` right after the edit, not only at preflight.

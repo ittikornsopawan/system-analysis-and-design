@@ -3,7 +3,7 @@
   "schema_count": 11,
   "fk_count": 76,
   "source_files": {
-    "e-commerce/db/migrations/up/00-common.schema.up.sql": "36472d602761d16b416c4eb5ca92d056f0fd90770d5896ee1f28ab7f13481602",
+    "e-commerce/db/migrations/up/00-common.schema.up.sql": "9c8fff32c1ef6ac50ee465617e53b0a6f3b6097651d8af1f0e8840d69b090b70",
     "e-commerce/db/migrations/up/01-authen.schema.up.sql": "344303272dd9617d5002e8ac29ea1c84db8c1a95fc91a8a8a044cf51e9fda2d0",
     "e-commerce/db/migrations/up/02-author.schema.up.sql": "fe7fe486f9538436f967709816c45fda97ddf00b0886e9aec57f92c901dff1cd",
     "e-commerce/db/migrations/up/03-product.schema.up.sql": "3e9e2276d13a5579fa965b4f97d2495a371dbe114121741a7c858f1b4e63c88b",
@@ -53,7 +53,7 @@
     "e-commerce/doc/schema/product/m_product_sku.md": "bc67f3e2d0e96dd3bf50f6bbe7caafa2dc3224928bb34ed92c16fd3af7146573",
     "e-commerce/doc/schema/product/m_product_sku_option_value.md": "595348da13ad0725441fc0216d2b8af7ee1ad107f94903d7e2ceee82ad8773b7",
     "e-commerce/doc/schema/product/m_product_type.md": "e300454fb471662112ed28c8ee86e42331a83edfc6ff29ef679a2f9a1582d6bc",
-    "e-commerce/doc/schema/public/m_parameter.md": "fff50ecac2aab04a220eb6fda4f5663d5c65284af75683f8956d5e3524607fc1",
+    "e-commerce/doc/schema/public/m_parameter.md": "0a951949363c7498d9ab2e1c34c736540e67bb76cace98890c9b90d6acb4ef7d",
     "e-commerce/doc/schema/public/t_key.md": "37bc67de5fcd0950d3fab5a48ba100f4bbdbf2f4dd200cb3fdd1d16d5c46c259",
     "e-commerce/doc/schema/sales/t_order.md": "f18e14c567ba1863f20fbf17ba4e722e4b113b80b2321e88fa4a2fd1f12d3343",
     "e-commerce/doc/schema/sales/t_order_item.md": "e2529d33c5636c633ba9b75b24805e4db38f328963d5726d81644e95fc2f030a",
@@ -262,7 +262,8 @@
       "table_constraints": [],
       "concept": "Reference parameter",
       "indexes": [
-        "CREATE UNIQUE INDEX IF NOT EXISTS uq_m_parameter_key ON public.m_parameter (key) WHERE row_status <> 'DELETED';"
+        "CREATE UNIQUE INDEX IF NOT EXISTS uq_m_parameter_key ON public.m_parameter (key) WHERE row_status <> 'DELETED';",
+        "CREATE INDEX IF NOT EXISTS ix_m_parameter_parent_id ON public.m_parameter (parent_id);"
       ]
     },
     "consent.m_consent_type": {
@@ -4954,5 +4955,5 @@
       ]
     }
   },
-  "source_commit": "73d667854c224d4357d9fd9c66409113c70fe034"
+  "source_commit": "a8ade98f0fc658a98ec9ede346fea5cd26bd8579"
 }
