@@ -84,6 +84,11 @@ else Valid input
         app -> app: userId = verified sub; accessTokenHash = SHA-256 exact JWT
         app -> app: Bind omitted id/rowStatus/searchPattern as typed SQL NULL; searchPattern = percent + supplied search + percent, preserve ILIKE wildcards
         app -> infra: BEGIN REPEATABLE READ READ ONLY
+        note right of infra
+            LINQ (EF Core):
+            transactions.RunAsync(IsolationLevel.RepeatableRead, work, readOnly: true)
+            // after BEGIN: db.Database.ExecuteSqlRawAsync("SET TRANSACTION READ ONLY")
+        end note
         note over app, infra
             Derive accessTokenHash as SHA-256 of the exact JWT and userId from verified sub. BEGIN REPEATABLE READ READ
             ONLY, capture fresh server UTC now immediately before the joined token/user check and recheck JWT expiry.
@@ -94,6 +99,13 @@ else Valid input
             app -> app: Capture fresh server UTC now immediately before credential read; recheck JWT exp
             alt JWT still unexpired at fresh now
                 app -> infra: QUERY - Check current credential and user
+                note right of infra
+                    LINQ (EF Core):
+                    db.AccessTokens
+                        .Join(db.Users, t => t.UserId, u => u.Id, (t, u) => new { t, u })
+                        .AnyAsync(x => x.t.Token == accessTokenHash && x.t.UserId == userId && x.t.RowStatus == "ACTIVE" && x.t.ExpiredAt > nowUtc
+                                       && x.u.RowStatus == "ACTIVE")
+                end note
                 infra -> t_user_access_token: QUERY - Check current credential and user
                 activate t_user_access_token
                     note right of t_user_access_token
@@ -112,6 +124,16 @@ else Valid input
                 infra -> app: Return ACTIVE matching unexpired token/user or no row
                 alt Exactly one valid current credential/user returned
                     app -> infra: QUERY - Get total items
+                    note right of infra
+                        LINQ (EF Core):
+                        db.UserAddresses
+                            .Where(a => a.UserId == f.UserId
+                                        && a.RowStatus != "DELETED"
+                                        && (f.Id == null || a.Id == f.Id)
+                                        && (f.SearchPattern == null || EF.Functions.ILike(a.Title, f.SearchPattern))
+                                        && (f.RowStatus == null || a.RowStatus == f.RowStatus))
+                            .LongCountAsync()
+                    end note
                     infra -> t_user_address: QUERY - Get total items
                     activate t_user_address
                         note right of t_user_address
@@ -132,6 +154,22 @@ else Valid input
                         app -> app: items = []; skip page query
                     else totalItems > 0
                         app -> infra: QUERY - Get user addresses
+                        note right of infra
+                            LINQ (EF Core):
+                            db.UserAddresses
+                                .Where(a => a.UserId == f.UserId
+                                            && a.RowStatus != "DELETED"
+                                            && (f.Id == null || a.Id == f.Id)
+                                            && (f.SearchPattern == null || EF.Functions.ILike(a.Title, f.SearchPattern))
+                                            && (f.RowStatus == null || a.RowStatus == f.RowStatus))
+                                .OrderByDescending(a => a.IsDefault)
+                                .ThenByDescending(a => a.CreatedAt)
+                                .ThenBy(a => a.Id)
+                                .Skip((int)Math.Min(offset, int.MaxValue))
+                                .Take((int)limit)
+                                .Select(a => new { a.Id, a.Title, a.IsDefault, a.Address, a.City, a.State, a.PostalCode, a.Country, a.RowStatus })
+                                .ToListAsync()
+                        end note
                         infra -> t_user_address: QUERY - Get user addresses
                         activate t_user_address
                             note right of t_user_address

@@ -4605,6 +4605,18 @@ def sequence_quote_errors(text: str) -> list[str]:
     return errors
 
 
+def line_before_linq_note(lines: list[str], index: int) -> str:
+    """The line before lines[index], skipping one EF Core LINQ note on infra (api-conventions "EF Core LINQ beside the SQL")."""
+    before = index - 1
+    if before >= 0 and lines[before].strip() == "end note":
+        start = before
+        while start > 0 and lines[start].strip() != "note right of infra":
+            start -= 1
+        if start + 1 < before and lines[start + 1].strip() == "LINQ (EF Core):":
+            before = start - 1
+    return lines[before] if before >= 0 else ""
+
+
 def sequence_heading_errors(text: str) -> list[str]:
     """Each 'app -> infra: <SQL heading>' line is followed at once by 'infra -> <table>: <the same heading>'."""
     errors = []
@@ -6024,7 +6036,7 @@ def check_login_flow() -> int:
         if not exchange:
             continue
         pad, table, heading = exchange.groups()
-        if index == 0 or sequence_lines[index - 1].strip() != 'app -> infra: ' + heading:
+        if line_before_linq_note(sequence_lines, index).strip() != 'app -> infra: ' + heading:
             errors.append(f'{heading}: Application must request the Infrastructure operation')
         end = next((i for i in range(index + 1, len(sequence_lines)) if sequence_lines[i] == pad + 'deactivate ' + table), None)
         if end is None or end + 1 >= len(sequence_lines) or not sequence_lines[end + 1].startswith(pad + 'infra -> app: Return '):
@@ -6323,7 +6335,7 @@ def check_refresh_flow() -> int:
         request = re.match(r'^(\s*)infra -> (\w+): ((?:QUERY|INSERT|UPDATE)[^\n]*)$', line)
         if not request: continue
         pad, table, heading = request.groups()
-        if i == 0 or lines[i-1].strip() != 'app -> infra: ' + heading:
+        if line_before_linq_note(lines, i).strip() != 'app -> infra: ' + heading:
             errors.append(f'{heading}: missing Application request')
         end = next((j for j in range(i+1,len(lines)) if lines[j] == pad+'deactivate '+table), None)
         if end is None or end+1 >= len(lines) or not lines[end+1].startswith(pad+'infra -> app: Return '):
