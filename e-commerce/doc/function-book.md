@@ -1,7 +1,7 @@
 ---
 name: E-commerce Function Book
 description: Central list of the e-commerce backend's shared, reusable functions with purpose, parameters and usage. Read before writing any new function in the e-commerce backend; update it in the same change that adds, changes or removes a shared function.
-source_component_revision: 5287221c8cf92eec606fd80c455b0ad186a2bf47
+source_component_revision: 23fab92ca6936aa905ec3470174f78c179ac6b8a
 updated_on: 2026-11-20
 ---
 
@@ -15,7 +15,7 @@ Check this book and the code before writing a new function, as required by `.age
 
 The book lists only what other code is meant to call. Handlers, controllers and private methods are not listed; `e-commerce/doc/code-structure.md` explains where those live.
 
-Paths are relative to `e-commerce/repository/e-commerce-backend/src/`. The entries were checked against component revision `5287221` (branch `chore/drake-remove-unused-domain`; an entry reaches `main` when that PR merges). Every API runs on EF Core through `ITransactionRunner`; the Dapper path, the legacy `api/authen/me` endpoint and the unused first-scaffold domain model were removed on 2026-11-20.
+Paths are relative to `e-commerce/repository/e-commerce-backend/src/`. The entries were checked against component revision `23fab92` (`main` after #18, #19 and #20). Every API runs on EF Core through `ITransactionRunner`; the Dapper path, the legacy `api/authen/me` endpoint and the unused first-scaffold domain model were removed on 2026-11-20.
 
 ## Shared — Results and errors
 
