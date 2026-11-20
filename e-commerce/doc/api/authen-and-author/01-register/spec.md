@@ -3,7 +3,7 @@ name: Register API Specification
 description: Defines atomic registration, required current consent acceptance, displayed-consent read evidence, optional address and referral, validation and exact SQL for POST v1/auth/register.
 status: approved
 approved_by: Josh (SA Lead, delegated by Ittikorn 2026-11-17)
-approved_at: 2026-11-20T21:20:16+07:00
+approved_at: 2026-11-20T15:58:25+07:00
 ---
 
 # [POST]: v1/auth/register
@@ -414,9 +414,9 @@ FROM authen.m_user u
 WHERE (u.username = '<sequence.usernameBytes>' OR u.email_address = '<sequence.emailAddressBytes>')
 ```
 
-### Table: [consent.t_consent](../../../schema/consent/t_consent.md)
+### Table: [consent.v_applicable_consent](../../../schema/consent/v_applicable_consent.md)
 
-#### QUERY - Get effective consents
+#### QUERY - Get applicable consents
 
 ```SQL
 SELECT
@@ -424,24 +424,10 @@ SELECT
     c.consent_type_id,
     c.consent_version,
     c.is_required
-FROM consent.t_consent c
-WHERE c.row_status = 'ACTIVE'
-AND c.effective_at <= '<sequence.now>'
+FROM consent.v_applicable_consent c
+WHERE c.effective_at <= '<sequence.now>'
 AND (c.expired_at IS NULL OR c.expired_at > '<sequence.now>')
 ORDER BY c.id
-```
-
-### Table: [consent.m_consent_type](../../../schema/consent/m_consent_type.md)
-
-#### QUERY - Get active consent types
-
-```SQL
-SELECT
-    ct.id as consent_type_id
-FROM consent.m_consent_type ct
-WHERE ct.id = ANY ('<sequence.consentTypeIds>'::UUID[])
-AND ct.row_status = 'ACTIVE'
-ORDER BY ct.id
 ```
 
 ### Table: [authen.m_user](../../../schema/authen/m_user.md)

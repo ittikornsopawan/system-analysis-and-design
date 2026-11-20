@@ -108,3 +108,16 @@ CREATE TABLE
         is_required BOOLEAN NOT NULL DEFAULT FALSE,
         body JSONB NOT NULL
     );
+
+CREATE OR REPLACE VIEW consent.v_applicable_consent AS
+SELECT
+    c.id,
+    c.consent_type_id,
+    c.consent_version,
+    c.is_required,
+    c.effective_at,
+    c.expired_at
+FROM consent.t_consent c
+JOIN consent.m_consent_type ct ON ct.id = c.consent_type_id
+WHERE c.row_status = 'ACTIVE'
+AND ct.row_status = 'ACTIVE';

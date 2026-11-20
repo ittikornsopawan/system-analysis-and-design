@@ -2,8 +2,8 @@
 name: Submit Consent API Specification
 description: Defines authenticated read-only consent display, later answers, no-op repeated reads, current active-type eligibility, atomic user-scoped batch SQL and history preservation for POST v1/consent/submit.
 status: approved
-approved_by: Ittikorn
-approved_at: 2026-11-16T09:24:57+07:00
+approved_by: Josh (SA Lead, delegated by Ittikorn 2026-11-17)
+approved_at: 2026-11-20T15:58:25+07:00
 ---
 
 # [POST]: v1/consent/submit
@@ -30,7 +30,7 @@ approved_at: 2026-11-16T09:24:57+07:00
 - On displaying a consent, call this endpoint with its consentId, displayed consentVersion and isRead=true, without result.
 - Validate JSON, mandatory content-type/timestamp, consents as a non-empty array, each UUID consentId, non-empty consentVersion (maximum 8 characters), mandatory boolean isRead=true, and optional boolean result before database access.
 - Verify JWT signature, issuer, audience, exp and UUID sub using server configuration; derive userId only from the verified sub and accessTokenHash as SHA-256 (32 bytes) of the exact presented JWT.
-- The eligibility query reads submitted consents and ACTIVE types in one READ COMMITTED statement snapshot: consent itself ACTIVE, effective_at <= now, expired_at IS NULL or expired_at > now, and an ACTIVE referenced type.
+- The eligibility query reads submitted consents and ACTIVE types in one READ COMMITTED statement snapshot through the view `consent.v_applicable_consent`: consent itself ACTIVE and an ACTIVE referenced type (the view), effective_at <= now, expired_at IS NULL or expired_at > now (the query).
 - Every supplied item records its displayed current version as read.
 - The order of the checks, the locks and every outcome is in the sequence diagram.
 
@@ -322,7 +322,7 @@ curl --location --request POST 'https://www.domain.com/api-dev/v1/consent/submit
 
 ## Database Relations
 
-The consent eligibility statement includes its type in one statement snapshot via EXISTS; both tables are read together. Evidence query/insert/update execute per item under the common user lock, in consentId order. Parameters are typed and bound, not interpolated.
+The consent eligibility statement includes its type in one statement snapshot through the view `consent.v_applicable_consent`, which joins both tables. Evidence query/insert/update execute per item under the common user lock, in consentId order. Parameters are typed and bound, not interpolated.
 
 ### Table: [authen.m_user](../../../schema/authen/m_user.md)
 
@@ -351,7 +351,7 @@ AND at.row_status = 'ACTIVE'
 AND at.expired_at > '<sequence.now>'
 ```
 
-### Table: [consent.t_consent](../../../schema/consent/t_consent.md)
+### Table: [consent.v_applicable_consent](../../../schema/consent/v_applicable_consent.md)
 
 #### QUERY - Get active consents
 
@@ -359,17 +359,10 @@ AND at.expired_at > '<sequence.now>'
 SELECT
     c.id as consent_id,
     c.consent_version
-FROM consent.t_consent c
+FROM consent.v_applicable_consent c
 WHERE c.id = ANY ('<sequence.consentIds>'::UUID[])
-AND c.row_status = 'ACTIVE'
 AND c.effective_at <= '<sequence.now>'
 AND (c.expired_at IS NULL OR c.expired_at > '<sequence.now>')
-AND EXISTS (
-    SELECT 1
-    FROM consent.m_consent_type ct
-    WHERE ct.id = c.consent_type_id
-    AND ct.row_status = 'ACTIVE'
-)
 ORDER BY c.id
 ```
 

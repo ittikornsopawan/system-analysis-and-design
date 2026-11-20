@@ -35,7 +35,7 @@ box "Web API" #F8FAFC
 end box
 box "Database" #F8FAFC
     database "t_user_access_token" as t_user_access_token
-    database "t_consent" as t_consent
+    database "v_applicable_consent" as v_applicable_consent
     database "t_user_consent" as t_user_consent
     database "m_consent_type" as m_consent_type
 end box
@@ -101,9 +101,9 @@ else Valid ordinary headers
             infra -> app: Return ACTIVE matching token/user or no row
             alt Credential/user ACTIVE and stored/JWT expiry valid at now
                 app -> infra: QUERY - Get pending consents
-                infra -> t_consent: QUERY - Get pending consents
-                activate t_consent
-                    note right of t_consent
+                infra -> v_applicable_consent: QUERY - Get pending consents
+                activate v_applicable_consent
+                    note right of v_applicable_consent
                         SELECT
                             c.id as consent_id,
                             c.code,
@@ -115,16 +115,10 @@ else Valid ordinary headers
                             c.expired_at,
                             c.is_required,
                             c.body
-                        FROM consent.t_consent c
-                        WHERE c.row_status = 'ACTIVE'
-                        AND c.effective_at <= '<sequence.now>'
-                        AND (c.expired_at IS NULL OR c.expired_at > '<sequence.now>')
-                        AND EXISTS (
-                            SELECT 1
-                            FROM consent.m_consent_type ct
-                            WHERE ct.id = c.consent_type_id
-                            AND ct.row_status = 'ACTIVE'
-                        )
+                        FROM consent.v_applicable_consent ac
+                        JOIN consent.t_consent c ON c.id = ac.id
+                        WHERE ac.effective_at <= '<sequence.now>'
+                        AND (ac.expired_at IS NULL OR ac.expired_at > '<sequence.now>')
                         AND NOT COALESCE((
                             SELECT uc.is_read AND (NOT c.is_required OR uc.result)
                             FROM authen.t_user_consent uc
@@ -137,8 +131,8 @@ else Valid ordinary headers
                         ), FALSE)
                         ORDER BY c.effective_at, c.id
                     end note
-                    t_consent -> infra: Return ordered pendingConsents (all current fields, type ids)
-                deactivate t_consent
+                    v_applicable_consent -> infra: Return ordered pendingConsents (all current fields, type ids)
+                deactivate v_applicable_consent
                 infra -> app: Return ordered pendingConsents (all current fields, type ids)
                 alt pendingConsents is empty
                     app -> app: data.consents = []; skip history/type lookups
