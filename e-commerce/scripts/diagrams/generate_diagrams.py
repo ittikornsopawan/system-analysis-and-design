@@ -3,7 +3,6 @@
 
 from __future__ import annotations
 
-import argparse
 import html
 import math
 from pathlib import Path
@@ -11,7 +10,6 @@ import sys
 import textwrap
 import xml.etree.ElementTree as ET
 
-from diagram_content import DIAGRAMS
 from diagram_paths import DIAGRAM_ROOT, artifact_dir, resource_link
 
 # Shared deterministic helpers belong to the repository skill; content stays here.
@@ -21,7 +19,6 @@ from drawio_core import (add_cell, finalize_png, overlap, png_chunks,
 
 
 OUT = DIAGRAM_ROOT
-PROJECT = OUT.parent
 W, H = 1584, 1120
 PAPER, INK, MUTED = "#f5f5f5", "#2d3142", "#4f5d75"
 SOFT, ACCENT, LINK = "#5a6580", "#bf4520", "#2e5aa8"
@@ -275,27 +272,6 @@ def verify(d):
     print(f'PASS {d["slug"]}: {d["type"]}, {len(d["nodes"])} detail nodes / {len(d["edges"])} connectors; routes, text capacity, masks and grid')
 
 
-def verify_evidence():
-    actual={}
-    for p in (PROJECT/'repository/src').glob('*/*.csproj'):
-        key=p.stem.removeprefix('Ecommerce.').lower()
-        actual[key]={r.attrib['Include'].replace('\\','/').split('/')[-1].removesuffix('.csproj').removeprefix('Ecommerce.').lower() for r in ET.parse(p).getroot().iter('ProjectReference')}
-    drawn={n['id']:set(n['refs']) for n in DIAGRAMS[1]['nodes'] if n['refs'] is not None}
-    assert actual==drawn,(actual,drawn)
-    tests={}
-    for p in (PROJECT/'repository/tests').glob('*/*.csproj'):
-        tests[p.stem]={r.attrib['Include'].replace('\\','/').split('/')[-1].removesuffix('.csproj').removeprefix('Ecommerce.') for r in ET.parse(p).getroot().iter('ProjectReference')}
-    assert tests=={'Ecommerce.Domain.Tests':{'Domain','Shared'},'Ecommerce.Application.Tests':{'Application','Domain','Shared'}}
-    for relative in ['repository/Directory.Build.props','repository/src/Ecommerce.Api/Program.cs','repository/src/Ecommerce.Shared/Cqrs/Dispatcher.cs','doc/api/sales/02-create-order/spec.md','doc/api/sales/05-cancel-order/spec.md','doc/api/payment/02-stripe-webhook/spec.md','doc/api/payment/05-refund-payment/spec.md','doc/api/shipping/01-create-shipping/spec.md','doc/api/shipping/02-update-shipping-status/spec.md','doc/api/shipping/06-confirm-delivery/spec.md']:
-        assert (PROJECT/relative).is_file(),relative
-    sales=(PROJECT/'db/migrations/up/06-sales.schema.up.sql').read_text()
-    assert all(status in sales for status in ['WAIT_PAYMENT','PAYMENT_CONFIRMED','PROCESSING','COMPLETED','CANCELLED','REFUNDED'])
-    shipping=(PROJECT/'doc/api/shipping/06-confirm-delivery/spec.md').read_text()
-    assert '### Automatic Completion Rules' in shipping and '`completion_days` (7)' in shipping,'Shipping baseline lacks merged seven-day completion rules'
-    print('PASS evidence: all 9 production / 5 test project references and 6 displayed order statuses match current source files')
-    print('PASS shipping baseline: merged seven-day automatic completion rules present')
-
-
 def finalise_png(d, output_dir=None):
     destination = Path(output_dir) if output_dir is not None else artifact_dir(d['slug'])
     path = destination / f'{d["slug"]}.drawio.png'
@@ -307,15 +283,6 @@ def main():
     # Keep previous entrypoints safe: the owner-requested hierarchy renderer is authoritative.
     from generate_layered_diagrams import main as layered_main
     return layered_main()
-    parser=argparse.ArgumentParser(description=__doc__);parser.add_argument('--finalize-pngs',action='store_true');args=parser.parse_args()
-    verify_evidence()
-    for d in DIAGRAMS:
-        verify(d)
-        if args.finalize_pngs:finalise_png(d)
-        else:
-            (OUT/f'{d["slug"]}.html').write_text(make_html(d),encoding='utf-8')
-            (OUT/f'{d["slug"]}.drawio').write_text(make_drawio(d),encoding='utf-8')
-    if not args.finalize_pngs:print('Generated three distinct, detailed HTML and editable draw.io sources')
 
 
 if __name__=='__main__':
