@@ -242,7 +242,7 @@ activate page
                         alt Another non-DELETED scope holds this scope code
                             break Reject this whole request
                                 app -> infra: ROLLBACK
-                                app -> api: HTTP 409 E10003 scopes[i]: Scope scope already exists.
+                                app -> api: HTTP 409 E10003 scopes[i]: Scope code already exists.
                                 api -> page: Reject the whole batch; no partial results
                                 page -> user: Display failure; no scope action is reported as successful
                             end break
@@ -292,7 +292,7 @@ activate page
                         alt Another non-DELETED scope holds this scope code
                             break Reject this whole request
                                 app -> infra: ROLLBACK
-                                app -> api: HTTP 409 E10003 scopes[i]: Scope scope already exists.
+                                app -> api: HTTP 409 E10003 scopes[i]: Scope code already exists.
                                 api -> page: Reject the whole batch; no partial results
                                 page -> user: Display failure; no scope action is reported as successful
                             end break
@@ -394,7 +394,7 @@ activate page
                     mapping before one COMMIT after the loop, then HTTP 200 S10000 Batch Upsert Scope Success; batch never sends
                     per-item 201/204 or partial success.
                     uq_m_scope_scope is the final concurrent duplicate guard. SQLSTATE 23505 from that constraint rolls back all
-                    items and returns 409 E10003 scopes[i]: Scope scope already exists.; other SQL/result/mapping failures roll
+                    items and returns 409 E10003 scopes[i]: Scope code already exists.; other SQL/result/mapping failures roll
                     back and return generic 500 without bizCode. Timeout before COMMIT rolls back and returns 408 E90001. These
                     request-level failures have no invented item position. No success or partial result escapes a failed
                     transaction; no retry is promised after an unknown commit result.
@@ -404,7 +404,7 @@ activate page
                 page -> user: Display the entire saved batch
             else SQLSTATE 23505 from uq_m_scope_scope at currentIndex (concurrent collision)
                 app -> infra: ROLLBACK
-                app -> api: HTTP 409 E10003 scopes[i]: Scope scope already exists. (i = currentIndex)
+                app -> api: HTTP 409 E10003 scopes[i]: Scope code already exists. (i = currentIndex)
                 api -> page: Reject the whole batch; no partial results
                 page -> user: Display failure; no scope action is reported as successful
             else Timeout before COMMIT

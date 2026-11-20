@@ -2,8 +2,8 @@
 name: Scope Batch Upsert API Specification
 description: Defines whole-request validation, verified JWT authorization, sorted target locks, ordered atomic scope mutations and indexed result mapping; read when reviewing or implementing scope batch upsert.
 status: approved
-approved_by: Ittikorn
-approved_at: 2026-11-16T09:24:57+07:00
+approved_by: Josh (SA Lead, delegated by Ittikorn 2026-11-17)
+approved_at: 2026-11-20T15:26:03+07:00
 ---
 
 # [POST]: v1/author/scope/upsert/batch
@@ -388,7 +388,7 @@ curl --location --request POST 'https://www.domain.com/api-dev/v1/author/scope/u
         "code": 409,
         "message": "Conflict",
         "bizCode": "E10003",
-        "bizMessage": "scopes[0]: Scope scope already exists.",
+        "bizMessage": "scopes[0]: Scope code already exists.",
         "requestId": "req-490a1b2c-3d4e-5f6a-7b8c-9d0e1f2a3b4c",
         "timestamp": "2026-11-06T09:49:43.123Z",
         "status": "ERROR"
