@@ -13,7 +13,7 @@ Run `python3 .agents/skills/commit-and-pr/scripts/preflight.py --base main [--ru
 | 2 | The files you are about to commit are the task's files (the script lists changed and untracked files by top-level area) | yes, until you chose | stage by name; list the rest as excluded |
 | 3 | No secret-looking content (private key headers, `AKIA...` keys, `password=`/`secret=`/`token=` with a value, bearer tokens) in a file you will commit | yes | remove it, or confirm with the user that it is a harmless example |
 | 4 | No build output or junk (`bin/`, `obj/`, `node_modules/`, `__pycache__/`, `*.pyc`, `.DS_Store`, `*.log`) | yes | leave it out or add it to `.gitignore` after asking |
-| 5 | No file over 1 MB | yes, unless the user confirms | ask, or leave it out |
+| 5 | No file over 1 MB (except `e-commerce/api/api-contract.json`, generated and indented, owner decision 2026-11-20) | yes, unless the user confirms | ask, or leave it out |
 | 6 | `git diff --check` is clean (no trailing whitespace, conflict markers or extra blank lines at EOF) in what you will commit | yes | fix whitespace; after scripted text edits, normalize each file to one final newline before preflight |
 | 7 | Project checkers pass when the change touches specs, schema, migrations, SQL tests or the ER diagram | yes | fix the cause; never edit a checker to make it pass |
 | 8 | In a managed named-agent workspace, active assignment metadata authorizes `open-pr` and every changed path is inside its recorded scope | yes | resume through `agent-workspace` with the original assignment or remove out-of-scope changes; never edit local metadata to bypass the check |

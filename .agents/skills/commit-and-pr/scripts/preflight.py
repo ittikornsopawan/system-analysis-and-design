@@ -22,6 +22,8 @@ import subprocess
 import sys
 
 MAX_BYTES = 1024 * 1024
+# Generated files that are allowed to be over the limit (owner decision 2026-11-20: the API contract is indented, about 1.6 MB).
+SIZE_EXEMPT = {"e-commerce/api/api-contract.json"}
 JUNK = re.compile(r"(^|/)(bin|obj|node_modules|__pycache__|\.venv|dist|\.idea)/|\.pyc$|(^|/)\.DS_Store$|\.log$")
 SECRETS = [
     ("private key block", re.compile(r"-----BEGIN [A-Z ]*PRIVATE KEY-----")),
@@ -130,7 +132,7 @@ def main():
     for f in present:
         if JUNK.search(f):
             blockers.append(f"build output or junk: {f}")
-        elif os.path.getsize(f) > MAX_BYTES:
+        elif os.path.getsize(f) > MAX_BYTES and f not in SIZE_EXEMPT:
             blockers.append(f"over 1 MB ({os.path.getsize(f) // 1024} KB): {f}")
         elif is_text(f):
             with open(f, encoding="utf-8", errors="replace") as fh:
