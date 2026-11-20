@@ -654,3 +654,11 @@ description: Repository-wide and project-specific lessons captured from user cor
 - **Corrected behavior**: After any scripted edit, rewrite the file as `text.rstrip('\n') + '\n'` and run `git diff --check` before preflight.
 - **Preventive skill change**: none; `.agents/skills/commit-and-pr/references/checklist.md` row 6 already says to normalize each file to one final newline after scripted edits, and the preflight caught it as designed.
 - **Verification**: `git diff --check` clean; preflight "no blockers found".
+
+### 2026-11-20 — Check the PR is still open right before pushing a review fix
+
+- **Correction**: Josh asked Jinny to also delete `SYSTEM`/`DIAGRAMS` in #272. `prepare --resume-pr 272` succeeded at 08:50:43Z, the owner merged #272 at its first head `15d992b` at 08:51:05Z, and Jinny pushed the fix `60ab945` at 08:51:21Z, after the merge. The fix was not in `main`, and Jinny edited the merged PR's description to describe it.
+- **Root cause**: The PR state was checked only when the review fix started; nothing checked it again before the push or before the description edit.
+- **Corrected behavior**: Run `gh pr view <n> --json state` right before every push of a review fix and before editing a PR description. If it is `MERGED`, open a new PR for the commits that are not in the base, name them in its description, and restore the old description to what actually merged.
+- **Preventive skill change**: `.agents/skills/commit-and-pr/SKILL.md`, "After the PR exists": a state check before each review-fix push.
+- **Verification**: `git merge-base --is-ancestor 60ab945 origin/main` failed (not in main); the commit is carried in a new PR, and #272's description was restored to the merged content.
