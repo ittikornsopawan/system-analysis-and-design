@@ -76,6 +76,11 @@ else Valid input
     else Verified JWT
         app -> app: userId = verified sub; accessTokenHash = SHA-256 exact JWT
         app -> infra: BEGIN REPEATABLE READ READ ONLY
+        note right of infra
+            LINQ (EF Core):
+            transactions.RunAsync(IsolationLevel.RepeatableRead, work, readOnly: true)
+            // after BEGIN: db.Database.ExecuteSqlRawAsync("SET TRANSACTION READ ONLY")
+        end note
         note over app, infra
             Missing/malformed/invalid JWT gets generic 401 E10002 `Invalid or expired access token.` without SQL. Derive
             accessTokenHash as SHA-256 of the exact presented JWT; never read target identity from the request or trust
@@ -97,6 +102,15 @@ else Valid input
             app -> app: Capture fresh server UTC now immediately before joined read; recheck JWT exp
             alt JWT still unexpired at fresh now
                 app -> infra: QUERY - Get user
+                note right of infra
+                    LINQ (EF Core):
+                    db.Users
+                        .Join(db.AccessTokens, u => u.Id, t => t.UserId, (u, t) => new { u, t })
+                        .Where(x => x.u.Id == userId && x.u.RowStatus == "ACTIVE"
+                                    && x.t.Token == accessTokenHash && x.t.UserId == userId && x.t.RowStatus == "ACTIVE" && x.t.ExpiredAt > nowUtc)
+                        .Select(x => new { x.u.EmailAddress, x.u.FirstName, x.u.LastName, x.u.DisplayName, x.u.ProfilePicturePath })
+                        .FirstOrDefaultAsync()
+                end note
                 infra -> m_user: QUERY - Get user
                 activate m_user
                     note right of m_user
@@ -121,6 +135,13 @@ else Valid input
                 infra -> app: Return six own-user fields gated by ACTIVE matching stored token/user, or no row
                 alt Exactly one eligible user profile returned
                     app -> infra: QUERY - Get information
+                    note right of infra
+                        LINQ (EF Core):
+                        db.UserInformation
+                            .Where(i => i.UserId == userId && i.RowStatus != "DELETED")
+                            .Select(i => new { i.PhoneNumber, i.Address, i.DateOfBirth, i.Gender })
+                            .FirstOrDefaultAsync()
+                    end note
                     infra -> m_user_information: QUERY - Get information
                     activate m_user_information
                         note right of m_user_information
