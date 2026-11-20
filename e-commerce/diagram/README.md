@@ -56,7 +56,7 @@ Checkout สร้าง `WAIT_PAYMENT`, จอง stock/budget, บันทึ
 
 ทุกภาพมี `.drawio` และ self-contained `.html` ชื่อเดียวกัน PNGฝังmodelที่เปิดแก้ไขได้ HTMLมีinlineSVG, accessible title/description และlocal horizontal scrollingเมื่อหน้าจอแคบ
 
-เพิ่มตาม convention ของเจ้าของงาน: Domain Layer มีกล่องย่อย **`Domain`** สำหรับ business logic ที่ใช้ซ้ำ และ repository view แสดง **`src/Ecommerce.Domain/Authen/Domain/`** ใต้ Domain project กล่องใหม่เป็น `PROPOSED · OWNER REQUEST` เพราะยังไม่อยู่ใน pinned code ตัวอย่างคำนวณภาษีอธิบายชนิดงาน ไม่ใช่ความสามารถ Authen ที่ implement แล้ว อ่านหน้าที่และเหตุผลใน [Architecture](main/architecture-design.md) และ [Repository](reference/repository/repository-architecture.md)
+เพิ่มตาม convention ของเจ้าของงาน: Domain Layer มีกล่องย่อย **`Domain`** สำหรับ business logic ที่ใช้ซ้ำ และ repository view แสดง **`src/Ecommerce.Domain/Authen/Domain/`** ใต้ Domain project ตั้งแต่ภาพวาดใหม่จาก backend `4a8e680` กล่องนี้เป็น `CODE` (`AddressDefaultPolicy`, `AuthorizationClaims`, `RefreshTokenReuse` ฯลฯ) อ่านหน้าที่และเหตุผลใน [Architecture](main/architecture-design.md) และ [Repository](reference/repository/repository-architecture.md)
 
 ## Domain model จากฐานข้อมูล
 

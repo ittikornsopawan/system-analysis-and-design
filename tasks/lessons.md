@@ -639,3 +639,11 @@ description: Repository-wide and project-specific lessons captured from user cor
 - **Preventive skill change**: none; CLAUDE.md "Skill First" already requires it. The lead enforces it in reviews (team order of 2026-11-20 to Drake and Janny).
 - **Verification**: Drake's #262 and Janny's #261 and backend #21 name their skills in Verification.
 - **Addendum (same day)**: registering an agent also changes `.agents/skills/agent-workspace/tests/test_agent_workspace.py`, which lists the agents by name. Put it in scope with `agents.yaml`. The owner approved a second removal of `josh.json` to re-prepare.
+
+### 2026-11-20 — Normalize the final newline after a scripted append to a task file
+
+- **Correction**: Preflight blocked Jinny's diagram-redraw PR: `git diff --check` reported a new blank line at the end of `tasks/jinny/todo.md`.
+- **Root cause**: A Python replacement inserted a text block ending in `\n` before the file's existing final newline, leaving two.
+- **Corrected behavior**: After any scripted edit, rewrite the file as `text.rstrip('\n') + '\n'` and run `git diff --check` before preflight.
+- **Preventive skill change**: none; `.agents/skills/commit-and-pr/references/checklist.md` row 6 already says to normalize each file to one final newline after scripted edits, and the preflight caught it as designed.
+- **Verification**: `git diff --check` clean; preflight "no blockers found".
