@@ -6,10 +6,10 @@ repositories:
     remote: https://github.com/ittikornsopawan/e-commerce-backend.git
     path: repository/e-commerce-backend
     default_branch: main
-    revision: 61bedeb28cd1ad389f7a4e4cec7ef9123be20453
+    revision: 4a8e6808e1887f324aea9e987369e28faf76ec51
     release_tag: null
     required: true
-    purpose: Reproducible legacy Authen backend baseline on .NET 11 / C# 15 with source, tests and coding guides; known gaps against newer API specifications remain documented in the component code guide.
+    purpose: Backend on .NET 11 / C# 15 with EF Core; authen-and-author APIs 01–10 implemented against the approved specs, including field-transport encryption of 01–04, with tests and coding guides (code.md, project-structure.md).
 ---
 
 # E-commerce Component Repositories
