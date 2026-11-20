@@ -125,6 +125,24 @@ Tell the flow from caller action to the final displayed outcome, making each dec
 - Put SQL where it actually executes, even when the spec groups its SQL differently. Repeat a whole block in each branch that needs it. Show lock order, transaction boundaries and which writes survive an error response. For transactional writes, BEGIN precedes locks and writes, and each exit closes the transaction with COMMIT or ROLLBACK as specified; routing reads may precede BEGIN when the spec requires them. Use the spec's isolation level. A plain inquiry gains no transaction merely to resemble a write flow.
 - Include every success and failure path, with its exact HTTP status and bizCode where defined, then propagate the response through API and frontend to the caller. Cover validation, authentication, authorization, missing data, conflicts, timeout and unexpected failure wherever applicable. Preserve public/external caller differences. Adapt the scaffold when it lacks a required path.
 
+### EF Core LINQ beside the SQL
+
+Owner order 2026-11-20: each sequence also shows the EF Core LINQ the backend runs for a database operation, one domain at a time (authen-and-author first). The SQL stays the reference for meaning and for parity; the LINQ shows how the code expresses it.
+
+- **Where:** a note on `infra` between `app -> infra: <heading>` and `infra -> <table>: <heading>`, with the SQL note of the table unchanged:
+
+  ```
+  app -> infra: QUERY - Check existing user
+  note right of infra
+      LINQ (EF Core):
+      db.Users.AnyAsync(u => u.Username == usernameBytes || u.EmailAddress == emailBytes)
+  end note
+  infra -> m_user: QUERY - Check existing user
+  ```
+
+- **Content:** the first line is exactly `LINQ (EF Core):`, then the expression as in the backend repository on `main`, with variable names, not values. It shows every predicate, the order, `.ForUpdate()` for a row lock, `ExecuteUpdateAsync` with its condition for a guarded update and `ToListAsync`/`AnyAsync`/`CountAsync` for the result shape. A fixed raw statement the backend allows (the advisory lock, `SET TRANSACTION READ ONLY`) is written as the helper call. Isolation and READ ONLY stay in the transaction notes.
+- **Who and when:** the backend developer writes the LINQ from merged code and the SA lead reviews it against the SQL; a LINQ that changes the meaning of the SQL is a bug in the code or a spec question, never a reason to edit the SQL silently. Update the LINQ note in the same PR that changes the backend query.
+
 ### Exact database SQL parity
 
 Identify each block by its table, operation heading and SQL. Every spec block must appear at least once, and every sequence block must correspond to a spec block. Execution order and repeated use across branches may differ; block contents must match.

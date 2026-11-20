@@ -4613,9 +4613,15 @@ def sequence_heading_errors(text: str) -> list[str]:
         request = re.match(r"^\s*app -> infra: ((?:QUERY|INSERT|UPDATE|DELETE) - .*)$", line)
         if not request:
             continue
-        following = re.match(r"^\s*infra -> \w+: (.*)$", lines[number + 1]) if number + 1 < len(lines) else None
+        nxt = number + 1
+        # api-conventions "EF Core LINQ beside the SQL": one LINQ note on infra may sit between the two lines
+        if nxt + 1 < len(lines) and lines[nxt].strip() == "note right of infra" and lines[nxt + 1].strip() == "LINQ (EF Core):":
+            while nxt < len(lines) and lines[nxt].strip() != "end note":
+                nxt += 1
+            nxt += 1
+        following = re.match(r"^\s*infra -> \w+: (.*)$", lines[nxt]) if nxt < len(lines) else None
         if not following or following.group(1) != request.group(1):
-            found = following.group(1) if following else (lines[number + 1].strip() if number + 1 < len(lines) else "end of file")
+            found = following.group(1) if following else (lines[nxt].strip() if nxt < len(lines) else "end of file")
             errors.append(f"line {number + 1}: 'app -> infra: {request.group(1)}' must be followed by 'infra -> <table>: {request.group(1)}', found {found!r}")
     return errors
 
