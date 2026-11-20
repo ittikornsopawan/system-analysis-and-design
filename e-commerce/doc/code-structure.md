@@ -1,9 +1,9 @@
 ---
 name: E-commerce Layer and Sub-layer Code Structure Guide
 description: Explains every backend layer and sub-layer, including responsibilities, inputs/outputs, boundaries, collaboration, source examples and existing diagrams. Use before placing code, developing a use case or reviewing architecture.
-status: draft
-approved_by: null
-approved_at: null
+status: approved
+approved_by: Josh (SA Lead, delegated by Ittikorn 2026-11-17)
+approved_at: 2026-11-20T08:02:10+07:00
 observed_on: 2026-11-20
 source_component_revision: 23fab92ca6936aa905ec3470174f78c179ac6b8a
 source_showcase_revision: 7e1315637e797e384859a346b250914226d59591
@@ -406,4 +406,4 @@ When developing a business operation under an approved specification, check at l
 | Diagrams | The three bundles are unchanged; sections 2 and 3 say which labels are outdated |
 | Component tests | `dotnet test` at `23fab92`: Api 278, Application 43, Domain 73, Infrastructure 47, 0 failed |
 
-This revision replaces the 2026-11-09 review of the first scaffold. It changes no backend code, specification, schema or diagram, and needs the lead's review before it is approved again.
+This revision replaces the 2026-11-09 review of the first scaffold. It changes no backend code, specification, schema or diagram, and was re-approved by the SA lead on 2026-11-20 (re-review of #262).
