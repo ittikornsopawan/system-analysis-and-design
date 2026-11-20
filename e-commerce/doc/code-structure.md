@@ -55,7 +55,7 @@ This document covers every layer/sub-layer, its responsibilities, inputs/outputs
 
 [Full-size image](../diagram/main/architecture-design.drawio.png) · [Edit in draw.io](../diagram/main/architecture-design.drawio) · [Diagram companion](../diagram/main/architecture-design.md) · [HTML preview](../diagram/main/architecture-design.html)
 
-This diagram explains logical layers and runtime collaboration within one ASP.NET Core application. Nested boxes identify responsibility ownership; arrows show selected calls. **The diagram was drawn from the first scaffold** and still shows `GetCurrentUser`, Dapper, `DbSession` and `UnitOfWork`, which no longer exist (its `AuthenController` box held the legacy `api/authen` routes; the class of that name now serves `v1/auth`); read its layer boxes, and take the sub-layer names from the tables below until the diagram is redrawn.
+This diagram explains logical layers and runtime collaboration within one ASP.NET Core application. Nested boxes identify responsibility ownership; arrows show selected calls. The diagram is drawn from component `4a8e680`; its boxes use the sub-layer names of the tables below.
 
 | Diagram label | Interpretation |
 | --- | --- |
@@ -196,7 +196,7 @@ Handler loads the facts the rule needs (inside the transaction, under the spec's
 
 [Full-size image](../diagram/reference/repository/repository-architecture.drawio.png) · [draw.io source](../diagram/reference/repository/repository-architecture.drawio) · [Diagram companion](../diagram/reference/repository/repository-architecture.md) · [HTML preview](../diagram/reference/repository/repository-architecture.html)
 
-This diagram maps source ownership and compile-time dependencies. `REF` indicates a `ProjectReference`. Like section 2's diagram it was drawn from the first scaffold (`IAuthenRepositories`, Dapper, `DbSession`, `UnitOfWork`, two test projects); the project boxes and references are still right, the file names inside them are not.
+This diagram maps source ownership and compile-time dependencies. `REF` indicates a `ProjectReference`. It is drawn from component `4a8e680`: five production projects with 9 references and four test projects with 7.
 
 ### 3.1 Two repository boundaries
 
@@ -369,7 +369,7 @@ This diagram is a conceptual interpretation of the schema. Its association edges
 | `Authen/Domain/` business operations | Present (section 5.3) | Reuse before adding a rule |
 | Product, order, payment, shipping and the other domains | Specified in Showcase; no implementation | Inspect the specs and their approval before development |
 | Redis/MongoDB adapters, outbox/relay | Design approved 2026-11-16; no implementation | Keep separate from CODE until implemented |
-| Diagrams of sections 2 and 3 | Drawn from the first scaffold | Redraw pending; the tables in this guide are current |
+| Diagrams of sections 2 and 3 | Redrawn from component `4a8e680` | Read with the tables of sections 2 and 3 |
 
 ## 10. Tests and checks for business-operation development
 
@@ -402,8 +402,8 @@ When developing a business operation under an approved specification, check at l
 | Check | Result and scope |
 | --- | --- |
 | Source correspondence | Every file, class and route named here exists at component `23fab92`; the project references in 3.2 come from the `.csproj` files |
-| Removed elements | `GetCurrentUser`, Dapper, `DbSession`, `UnitOfWork`, the `User`/`PasswordResetToken` entities and their value objects are named only as removed or as labels of the old diagrams |
-| Diagrams | The three bundles are unchanged; sections 2 and 3 say which labels are outdated |
+| Removed elements | `GetCurrentUser`, Dapper, `DbSession`, `UnitOfWork`, the `User`/`PasswordResetToken` entities and their value objects are named only as removed |
+| Diagrams | The section 2 and 3 bundles were redrawn from component `4a8e680` (Jinny, 2026-11-20); the domain bundle is unchanged |
 | Component tests | `dotnet test` at `23fab92`: Api 278, Application 43, Domain 73, Infrastructure 47, 0 failed |
 
-This revision replaces the 2026-11-09 review of the first scaffold. It changes no backend code, specification, schema or diagram, and was re-approved by the SA lead on 2026-11-20 (re-review of #262).
+This revision replaces the 2026-11-09 review of the first scaffold. It changes no backend code, specification, schema or diagram, and was re-approved by the SA lead on 2026-11-20 (re-review of #262). The diagrams of sections 2 and 3 were redrawn afterwards in a separate change.
