@@ -75,6 +75,8 @@ Skills marked `placeholder` are unavailable until designed. Design each `SKILL.m
 | `skills/diagram-creator/SKILL.md` | ready | Creating, updating or reviewing system diagrams from specs, code or DB evidence, with editable artifacts and rendered review |
 | `skills/dev-like-principal/SKILL.md` | ready | Before writing or changing any code from any skill (code quality standards and Function Book check); making or reviewing technical decisions with principal-engineer judgment: architecture and boundaries, trade-offs, technology selection, compatibility and migration, reliability, security, performance, or code/design review beyond style; supplies judgment and defers to the governing workflow and design skills for process |
 
+Claude Code discovers project skills only in `.claude/skills/`, so each ready skill has a relative symlink there (`.claude/skills/<skill> -> ../../.agents/skills/<skill>`). Add the link when a skill becomes ready and remove it when a skill is retired; `check_docs.py skill-links` fails when the links and this table disagree.
+
 The ready skills carry their own `references/`, `assets/` (templates ending in `.tmpl`), and `scripts/`; load those files only when the skill's procedure points to them.
 
 ## Templates

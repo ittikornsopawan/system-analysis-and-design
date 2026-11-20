@@ -9046,6 +9046,36 @@ def check_md_frontmatter() -> int:
 COMMANDS["md-frontmatter"] = check_md_frontmatter
 
 
+# ---------------------------------------------------------------- Skill links (.agents/README.md "Skills")
+# Claude Code finds project skills only in .claude/skills/, so every ready skill in the registry needs a symlink there.
+def ready_skills() -> set[str]:
+    registry = (ROOT / ".agents/README.md").read_text(encoding="utf-8")
+    return set(re.findall(r"^\| `skills/([^/]+)/SKILL\.md` \| ready \|", registry, re.M))
+
+
+def skill_link_errors(name: str) -> list[str]:
+    link = ROOT / ".claude/skills" / name
+    if not link.is_symlink():
+        return [f".claude/skills/{name}: missing symlink for a ready skill"]
+    if str(link.readlink()) != f"../../.agents/skills/{name}" or not (link / "SKILL.md").is_file():
+        return [f".claude/skills/{name}: must link to ../../.agents/skills/{name} and resolve to its SKILL.md"]
+    return []
+
+
+def check_skill_links() -> int:
+    ready = ready_skills()
+    linked = {path.name for path in (ROOT / ".claude/skills").glob("*")} if (ROOT / ".claude/skills").is_dir() else set()
+    errors = [error for name in sorted(ready) for error in skill_link_errors(name)]
+    errors += [f".claude/skills/{name}: not a ready skill in .agents/README.md, remove it" for name in sorted(linked - ready)]
+    if errors:
+        return fail("; ".join(errors))
+    print(f"OK: skill-links ({len(ready)} ready skills linked in .claude/skills)")
+    return 0
+
+
+COMMANDS["skill-links"] = check_skill_links
+
+
 # ---------------------------------------------------------------- OpenAPI contract against the approved specs
 API_CONTRACT = "e-commerce/api/api-contract.json"
 # Domains published in the contract so far (owner order of 2026-11-17: one PR per domain); add each domain as it lands,
