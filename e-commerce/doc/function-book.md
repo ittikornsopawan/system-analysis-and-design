@@ -1,8 +1,8 @@
 ---
 name: E-commerce Function Book
 description: Central list of the e-commerce backend's shared, reusable functions with purpose, parameters and usage. Read before writing any new function in the e-commerce backend; update it in the same change that adds, changes or removes a shared function.
-source_component_revision: 29fa07a0441a5d380aa8f8775f097ff841dd7ee6
-updated_on: 2026-11-19
+source_component_revision: 07cccc17aeb60ef23ecc66c309dfbde02b80bb4a
+updated_on: 2026-11-20
 ---
 
 # E-commerce Function Book
@@ -15,7 +15,7 @@ Check this book and the code before writing a new function, as required by `.age
 
 The book lists only what other code is meant to call. Handlers, controllers and private methods are not listed; `e-commerce/doc/code-structure.md` explains where those live.
 
-Paths are relative to `e-commerce/repository/e-commerce-backend/src/`. The entries were checked against component revision `29fa07a` (branch `refactor/drake-quality-catch-up`, which includes the open PRs for APIs 07 to 10; an entry for those APIs reaches `main` when they merge). Every authen API runs on EF Core through `ITransactionRunner`; the older Dapper path (`IUnitOfWork`, `DbSession`) is kept only for the legacy `api/authen/me` endpoint.
+Paths are relative to `e-commerce/repository/e-commerce-backend/src/`. The entries were checked against component revision `07cccc1` (branch `fix/drake-strict-email-rule`, which includes the open PRs for APIs 07 to 10 and the 01–08 catch-up; an entry for those APIs reaches `main` when they merge). Every authen API runs on EF Core through `ITransactionRunner`; the older Dapper path (`IUnitOfWork`, `DbSession`) is kept only for the legacy `api/authen/me` endpoint.
 
 ## Shared — Results and errors
 
@@ -36,7 +36,7 @@ Paths are relative to `e-commerce/repository/e-commerce-backend/src/`. The entri
 | `ValidationMessages.Field(requestField)` | `Ecommerce.Shared/Validation/ValidationMessages.cs` | Turns a JSON field name into display words | `emailAddress` → `Email Address` | Used by the other message builders |
 | `ValidationMessages.Required/MaxLength/Uuid/Date/OneOf/Email/JsonType/Duplicated/UnknownField(...)` | same | The 400 E10001 message forms of `api-conventions.md` "Validation messages" | Field name (+ limit/values) → message text | Always use these instead of writing message text by hand; API filters and validators share them |
 | `ValidationMessages.At(position, message)` / `Combine(messages)` | same | Prefixes a message with its position; joins messages | Position + message → text; messages → one text | For batch items and multiple failures |
-| `EmailAddressFormat.IsValid(string value)` | `Ecommerce.Domain/Common/EmailAddressFormat.cs` | Email format check (today: exactly one `@`, non-empty local part and domain; to become the api-conventions rule) | Text → bool | Validators of register and request-password-reset use it. **Pending change (owner decision 2026-11-18), still open at `29fa07a`:** the governing rule is now the stricter one in api-conventions "Email address" (plain address, ≤ 254, dot required in the domain). This function still applies the old "non-empty parts" rule until Drake makes it the single shared rule and `EmailAddress.Create` uses it. Do not add a third rule |
+| `EmailAddressFormat.IsValid(string value)` | `Ecommerce.Domain/Common/EmailAddressFormat.cs` | The one email rule of api-conventions "Email address" (owner decision 2026-11-18): ≤ 254 characters, exactly one `@` after a non-empty local part, a dot in the domain, a plain address only (no space, display name or angle brackets) | Text → bool | Register and request-password-reset validators, and `EmailAddress.Create`. Validity only: callers store and compare the value as sent. Do not add another rule |
 
 ## Shared — Optional values and paging
 
@@ -68,11 +68,11 @@ Paths are relative to `e-commerce/repository/e-commerce-backend/src/`. The entri
 
 Each value object validates and normalises its input in `Create` and returns a failure `Result` for bad input. `Restore` rebuilds an already-stored value without re-validating; use it only when loading from the database.
 
-At `29fa07a` only `PlainPassword.Create` has callers (register and create-new-password validators). The other factories have none: the validators apply the spec rules directly with `ValidationMessages`, `EmailAddressFormat` and `ProfileFieldRules`. Do not start using an unused factory without checking that its rule matches the spec (for example, `EmailAddress.Create` trims and lower-cases).
+At `07cccc1` only `PlainPassword.Create` has callers (register and create-new-password validators). The other factories have none: the validators apply the spec rules directly with `ValidationMessages`, `EmailAddressFormat` and `ProfileFieldRules`. Do not start using an unused factory without checking that its rule matches the spec (for example, `EmailAddress.Create` trims and lower-cases).
 
 | Function | Location | Purpose | Parameters / returns | Use when / notes |
 | --- | --- | --- | --- | --- |
-| `EmailAddress.Create(string? raw)` / `Restore(string)` | `Ecommerce.Domain/Authen/ValueObjects/EmailAddress.cs` | Valid, normalised email address | Raw text → `Result<EmailAddress>` | Not called on `main` yet. Trims and lower-cases, which register and reset do not do: they store and compare the email as sent. Its dot check is anywhere in the value; the decided rule needs the dot in the domain (see above) |
+| `EmailAddress.Create(string? raw)` / `Restore(string)` | `Ecommerce.Domain/Authen/ValueObjects/EmailAddress.cs` | Trimmed, lower-cased address that passes `EmailAddressFormat` | Raw text → `Result<EmailAddress>` | No caller yet. Trims and lower-cases, which register and reset do not do: they store and compare the email as sent |
 | `Username.Create(string? raw)` / `Restore(string)` | `.../ValueObjects/Username.cs` | Valid username | Raw text → `Result<Username>` | No caller yet |
 | `LoginIdentifier.Create(string? raw)` | `.../ValueObjects/LoginIdentifier.cs` | Login input that is a username or an email | Raw text → `Result<LoginIdentifier>` | No caller (login matches username or email exactly) |
 | `PersonName.Create(string? first, string? last)` / `Restore(first, last)` | `.../ValueObjects/PersonName.cs` | Valid first and last name | Two texts → `Result<PersonName>` | No caller yet |
