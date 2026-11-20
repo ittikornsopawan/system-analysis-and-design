@@ -53,7 +53,7 @@ description: "Documented scenarios and expected results for POST v1/auth/reset-p
 
 - Source: P02. Design readiness: Ready (message per G1). Execution status: Pass (automated).
 
-**Request:** `emailAddress` omitted, `""`, `"abc"`, `"a@b@c"`, and (added 2026-11-18 for the owner's stricter rule, Not run until the backend change lands) `"a.b@c"`, `"a b@shop.co"`, `"A <a@shop.co>"` → 400 E10001 "Email Address is required and must be a valid email address."; 255 characters → 400 E10001 "Email Address must be at most 254 characters."; no reset row and no email.
+**Request:** `emailAddress` omitted, `""`, `"abc"`, `"a@b@c"`, and (added 2026-11-18 for the owner's stricter rule) `"a.b@c"`, `"a b@shop.co"`, `"A <a@shop.co>"` → 400 E10001 "Email Address is required and must be a valid email address."; 255 characters → 400 E10001 "Email Address must be at most 254 characters."; no reset row and no email.
 
 ### TC-RESET-003 — A new issuance replaces the ACTIVE one
 
@@ -132,3 +132,4 @@ description: "Documented scenarios and expected results for POST v1/auth/reset-p
 
 - 2026-11-18: first version (Drake), Not run.
 - 2026-11-18: executed by the automated tests of e-commerce-backend on branch `feat/drake-03-reset-password` (stacked on the 02-login branch): `ResetPasswordApiTests` (HTTP + real PostgreSQL 17, 17 tests), `RequestPasswordResetCommandHandlerTests` (6), `PasswordResetRequestRepositoryTests` (3, real database), `LoggingEmailSenderTests` (1). Result: every case passes (`dotnet test`: Api 133, Application 21, Domain 48, Infrastructure 33, 0 failed). Mutation checks: removing `ForUpdate()` fails TC-RESET-008 and the repository TC-RESET-009; removing the UTC read converter fails the repository TC-RESET-003; logging the link fails TC-RESET-011.
+- 2026-11-20: the strict email rule (owner decision 2026-11-18) is applied by e-commerce-backend commit `07cccc1` (branch `fix/drake-strict-email-rule`): `EmailAddressFormat` is the one rule. The three TC-RESET-002 rows `"a.b@c"`, `"a b@shop.co"` and `"A <a@shop.co>"` are automated and pass (`dotnet test`: Api 278, Application 42, Domain 96, Infrastructure 46, 0 failed). Mutation check: accepting a dot anywhere instead of in the domain fails the `"a.b@c"` row.
