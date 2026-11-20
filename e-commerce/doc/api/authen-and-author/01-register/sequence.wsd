@@ -35,8 +35,7 @@ participant "Infrastructure" as infra
 end box
 box "Database" #F8FAFC
 database "m_user" as m_user
-database "t_consent" as t_consent
-database "m_consent_type" as m_consent_type
+database "v_applicable_consent" as v_applicable_consent
 database "m_user_password" as m_user_password
 database "m_user_information" as m_user_information
 database "t_user_address" as t_user_address
@@ -102,56 +101,31 @@ else Valid input
             app -> api: HTTP 409 E10003 Username or email address already exists.
             api -> page: Duplicate identifier
         else No existing identifier
-            app -> infra: QUERY - Get effective consents
+            app -> infra: QUERY - Get applicable consents
             note right of infra
                 LINQ (EF Core):
-                db.Consents
-                    .Where(c => c.RowStatus == "ACTIVE" && c.EffectiveAt <= nowUtc && (c.ExpiredAt == null || c.ExpiredAt > nowUtc))
+                db.ApplicableConsents
+                    .Where(c => c.EffectiveAt <= nowUtc && (c.ExpiredAt == null || c.ExpiredAt > nowUtc))
                     .OrderBy(c => c.Id)
                     .Select(c => new { c.Id, c.ConsentTypeId, c.ConsentVersion, c.IsRequired })
                     .ToListAsync()
             end note
-            infra -> t_consent: QUERY - Get effective consents
-            activate t_consent
-                note right of t_consent
+            infra -> v_applicable_consent: QUERY - Get applicable consents
+            activate v_applicable_consent
+                note right of v_applicable_consent
                     SELECT
                         c.id as consent_id,
                         c.consent_type_id,
                         c.consent_version,
                         c.is_required
-                    FROM consent.t_consent c
-                    WHERE c.row_status = 'ACTIVE'
-                    AND c.effective_at <= '<sequence.now>'
+                    FROM consent.v_applicable_consent c
+                    WHERE c.effective_at <= '<sequence.now>'
                     AND (c.expired_at IS NULL OR c.expired_at > '<sequence.now>')
                     ORDER BY c.id
                 end note
-                t_consent -> infra: Return effectiveConsents (consentId, typeId, version, isRequired)
-            deactivate t_consent
-            infra -> app: Return effectiveConsents (consentId, typeId, version, isRequired)
-            app -> app: consentTypeIds = distinct effectiveConsents.consent_type_id
-            app -> infra: QUERY - Get active consent types
-            note right of infra
-                LINQ (EF Core):
-                db.ConsentTypes
-                    .Where(t => typeIds.Contains(t.Id) && t.RowStatus == "ACTIVE")
-                    .OrderBy(t => t.Id)
-                    .Select(t => t.Id)
-                    .ToListAsync()
-            end note
-            infra -> m_consent_type: QUERY - Get active consent types
-            activate m_consent_type
-                note right of m_consent_type
-                    SELECT
-                        ct.id as consent_type_id
-                    FROM consent.m_consent_type ct
-                    WHERE ct.id = ANY ('<sequence.consentTypeIds>'::UUID[])
-                    AND ct.row_status = 'ACTIVE'
-                    ORDER BY ct.id
-                end note
-                m_consent_type -> infra: Return activeTypeIds
-            deactivate m_consent_type
-            infra -> app: Return activeTypeIds
-            app -> app: applicableConsents = effectiveConsents with typeId in activeTypeIds
+                v_applicable_consent -> infra: Return applicableConsents (consentId, typeId, version, isRequired)
+            deactivate v_applicable_consent
+            infra -> app: Return applicableConsents (consentId, typeId, version, isRequired)
             alt referrerId is specified
                 app -> infra: QUERY - Check referrer
                 note right of infra
@@ -401,9 +375,10 @@ else Valid input
                     result if present must be boolean. Reject duplicate consentIds before SQL (400 E10001), rather than picking
                     one answer. Do not default the version to 1.0.0 or the latest version. Required consent needs explicit
                     result=true; false or omission is not acceptance.
-                    Read all currently effective ACTIVE consents (effective_at <= now and expired_at IS NULL or expired_at >
-                    now), then only their ACTIVE consent types. Keep consent rows whose consent_type_id belongs to that
-                    activeTypeIds set. Required means `t_consent.is_required`, not the type's is_required flag. Do not require
+                    Read all currently effective ACTIVE consents of ACTIVE consent types in one query on the view
+                    consent.v_applicable_consent (effective_at <= now and expired_at IS NULL or expired_at > now); the view
+                    holds the ACTIVE consent and ACTIVE type rule. Required means `t_consent.is_required` (the view's
+                    is_required), not the type's is_required flag. Do not require
                     or accept an expired, future, inactive or inactive-type consent. Empty id lists bind as empty UUID arrays,
                     never IN ().
                     Display/read semantics (Q16): every supplied valid consent object represents the displayed version, even

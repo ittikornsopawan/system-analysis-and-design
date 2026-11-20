@@ -36,7 +36,7 @@ end box
 box "Database" #F8FAFC
     database "m_user" as m_user
     database "t_user_access_token" as t_user_access_token
-    database "t_consent" as t_consent
+    database "v_applicable_consent" as v_applicable_consent
     database "t_user_consent" as t_user_consent
 end box
 user -> page: Display consent; optionally answer later
@@ -132,27 +132,20 @@ else Valid body
                 infra -> app: Return ACTIVE matching token or no row
                 alt Stored token valid and JWT still unexpired
                     app -> infra: QUERY - Get active consents
-                    infra -> t_consent: QUERY - Get active consents
-                    activate t_consent
-                        note right of t_consent
+                    infra -> v_applicable_consent: QUERY - Get active consents
+                    activate v_applicable_consent
+                        note right of v_applicable_consent
                             SELECT
                                 c.id as consent_id,
                                 c.consent_version
-                            FROM consent.t_consent c
+                            FROM consent.v_applicable_consent c
                             WHERE c.id = ANY ('<sequence.consentIds>'::UUID[])
-                            AND c.row_status = 'ACTIVE'
                             AND c.effective_at <= '<sequence.now>'
                             AND (c.expired_at IS NULL OR c.expired_at > '<sequence.now>')
-                            AND EXISTS (
-                                SELECT 1
-                                FROM consent.m_consent_type ct
-                                WHERE ct.id = c.consent_type_id
-                                AND ct.row_status = 'ACTIVE'
-                            )
                             ORDER BY c.id
                         end note
-                        t_consent -> infra: Return eligibleConsentIds and current versions (ACTIVE type included)
-                    deactivate t_consent
+                        v_applicable_consent -> infra: Return eligibleConsentIds and current versions (ACTIVE type included)
+                    deactivate v_applicable_consent
                     infra -> app: Return eligibleConsentIds and current versions (ACTIVE type included)
                     app -> domain: Compare complete eligible id set and all displayed versions before writes
                     domain -> app: Return eligibility/version validation
