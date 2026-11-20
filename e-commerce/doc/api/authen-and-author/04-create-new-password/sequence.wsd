@@ -62,6 +62,7 @@ activate app
         refresh tokens -> COMMIT -> status-only 200. Every database result returns to Application before branching or
         deriving parameters.
     end note
+app -> app: Decrypt encrypted sensitive fields (unwrap encryptedKey, AES-256-GCM per field); any failure 400 E10001 Encrypted fields could not be decrypted.
 app -> app: Generate requestId if omitted; validate UTC timestamp, body strings and password policy
 note over app, infra
     The reset token is the proof. Validate timestamp as UTC and body strings resetToken/newPassword before SQL;

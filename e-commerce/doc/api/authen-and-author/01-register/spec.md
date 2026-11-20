@@ -2,8 +2,8 @@
 name: Register API Specification
 description: Defines atomic registration, required current consent acceptance, displayed-consent read evidence, optional address and referral, validation and exact SQL for POST v1/auth/register.
 status: approved
-approved_by: Ittikorn (owner) — email rule change 2026-11-18; earlier text approved by Josh (SA Lead, delegated)
-approved_at: 2026-11-18T20:30:00+07:00
+approved_by: Josh (SA Lead, delegated by Ittikorn 2026-11-17)
+approved_at: 2026-11-20T07:35:25+07:00
 ---
 
 # [POST]: v1/auth/register
@@ -28,13 +28,14 @@ approved_at: 2026-11-18T20:30:00+07:00
 
 - Governing decisions: owner-confirmed API review Q3/Q5/Q6/Q8/Q16/Q17 (approved by the product owner).
 - Validate mandatory headers, JSON and object shapes before SQL.
-- Sensitive fields (`username`, `emailAddress`, `firstName`, `lastName`, `phoneNumber`, `address` and address fields except title) are sent as Plain text over TLS and encrypted on the server before storage.
+- Sensitive fields (`username`, `emailAddress`, `firstName`, `lastName`, `phoneNumber`, `address` and address fields except title) are sent as Encrypted on the wire (see Encrypted sensitive fields), plain text after decryption and encrypted on the server before storage.
 - `emailAddress` must be a valid email address as defined in the section Validation messages of `api-conventions.md`: at most 254 characters, exactly one `@` with a non-empty local part, a domain that contains at least one `.`, and no spaces, display name or angle brackets; otherwise 400 E10001 `Email Address must be a valid email address.` (owner decision 2026-11-18, replacing the earlier "non-empty parts" rule; the value is still stored as sent).
 - Every 400 message follows the section Validation messages of `api-conventions.md`, including header failures and the `consents[<i>]: ` / `addresses: ` prefixes.
 - `addresses` is one optional object, never an array.
 - `consents` may be omitted/empty only when there are no applicable required consents.
 - Use one REPEATABLE READ transaction for validation reads and every write.
 - The order of the checks, the locks and every outcome is in the sequence diagram.
+- **Encrypted sensitive fields:** `username`, `emailAddress`, `password`, `firstName`, `lastName`, `phoneNumber`, `address`, `addresses.address`, `addresses.city`, `addresses.state`, `addresses.postalCode`, `addresses.country` are sent as AES-256-GCM ciphertext under a per-request key wrapped with the backend public key (headers `encryptionKeyId`, `encryptedKey`), inside TLS. They are decrypted before validation; any decryption failure answers 400 (E10001) `Encrypted fields could not be decrypted.` The rule is in the section Encrypted sensitive fields of `api-conventions.md` (owner decision 2026-11-20). The examples show the values before encryption.
 - Rate limit: this API, which needs no access token, answers 429 (E90002) with a `Retry-After` header when a client IP sends more than 10 requests per minute (configurable); the limiter answers before the handler runs, so the 429 is not drawn in the sequence diagram. The rule is in the section Limits and rate limiting of `api-conventions.md`.
 
 ---
@@ -43,30 +44,32 @@ approved_at: 2026-11-18T20:30:00+07:00
 
 ### Header Parameters
 
-|     | Parameter Name | Data Type | M/O       | Description                 | Example                                  |
-| --- | -------------- | --------- | --------- | --------------------------- | ---------------------------------------- |
-| 1   | content-type   | String    | MANDATORY | Content type of the request | application/json                         |
-| 2   | timestamp      | DateTime  | MANDATORY | Request timestamp           | 2026-11-05T12:42:00.123Z                 |
-| 3   | requestId      | String    | OPTIONAL  | API Request Id              | req-9b1deb4d-3b7d-4bad-9bdd-2b0d7b3dcb6d |
+|     | Parameter Name  | Data Type | M/O       | Description                                                     | Example                                  |
+| --- | --------------- | --------- | --------- | --------------------------------------------------------------- | ---------------------------------------- |
+| 1   | content-type    | String    | MANDATORY | Content type of the request                                     | application/json                         |
+| 2   | timestamp       | DateTime  | MANDATORY | Request timestamp                                               | 2026-11-05T12:42:00.123Z                 |
+| 3   | requestId       | String    | OPTIONAL  | API Request Id                                                  | req-9b1deb4d-3b7d-4bad-9bdd-2b0d7b3dcb6d |
+| 4   | encryptionKeyId | String    | MANDATORY | Id of the backend public key used                               | fe-2026-11                               |
+| 5   | encryptedKey    | String    | MANDATORY | Base64 of the AES-256 request key wrapped with RSA-OAEP-SHA-256 | (base64)                                 |
 
 ### Body Parameters
 
-|     | Parameter Name     | Data Type                            | M/O       | Description                                                                                                                                               | Example                              |
-| --- | ------------------ | ------------------------------------ | --------- | --------------------------------------------------------------------------------------------------------------------------------------------------------- | ------------------------------------ |
-| 1   | username           | String                               | MANDATORY | Username (max 128 characters), Plain text over TLS, The system encrypts it before it is stored, It can be the email address                               | john.doe                             |
-| 2   | emailAddress       | String                               | MANDATORY | Email address (max 254 characters), Plain text over TLS, The system encrypts it before it is stored                                                       | john.doe@example.com                 |
-| 3   | password           | String                               | MANDATORY | Password, Plain text over TLS, 8 to 128 characters with an upper-case letter, a lower-case letter and a digit, Stored as a salted PBKDF2-HMAC-SHA256 hash | Passw0rd-Example                     |
-| 4   | firstName          | String                               | OPTIONAL  | First name (max 100 characters), Plain text over TLS, The system encrypts it before it is stored                                                          | John                                 |
-| 5   | lastName           | String                               | OPTIONAL  | Last name (max 100 characters), Plain text over TLS, The system encrypts it before it is stored                                                           | Doe                                  |
-| 6   | displayName        | String                               | OPTIONAL  | Display name (max 128 characters)                                                                                                                         | John Doe                             |
-| 7   | profilePicturePath | String                               | OPTIONAL  | Profile picture path                                                                                                                                      | /profiles/john-doe.png               |
-| 8   | phoneNumber        | String                               | OPTIONAL  | Phone number                                                                                                                                              | 0812345678                           |
-| 9   | address            | String                               | OPTIONAL  | Address                                                                                                                                                   | 123 Sukhumvit Road                   |
-| 10  | dateOfBirth        | Date                                 | OPTIONAL  | Date of birth (YYYY-MM-DD)                                                                                                                                | 1990-01-31                           |
-| 11  | gender             | String                               | OPTIONAL  | Gender (MALE, FEMALE, OTHER)                                                                                                                              | MALE                                 |
-| 12  | referrerId         | String: UUID                         | OPTIONAL  | User Id of the referrer                                                                                                                                   | 8d7c6b5a-4f3e-2d1c-0b9a-876543210fed |
-| 13  | addresses          | [Object of Address](#address-object) | OPTIONAL  | User address                                                                                                                                              |                                      |
-| 14  | consents           | [Array of Consent](#consent-object)  | OPTIONAL  | Displayed consents; required current consents must all be included and accepted                                                                           |                                      |
+|     | Parameter Name     | Data Type                            | M/O       | Description                                                                                                                                                                                                               | Example                              |
+| --- | ------------------ | ------------------------------------ | --------- | ------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------- | ------------------------------------ |
+| 1   | username           | String                               | MANDATORY | Username (max 128 characters), Encrypted on the wire (see Encrypted sensitive fields), plain text after decryption, The system encrypts it before it is stored, It can be the email address                               | john.doe                             |
+| 2   | emailAddress       | String                               | MANDATORY | Email address (max 254 characters), Encrypted on the wire (see Encrypted sensitive fields), plain text after decryption, The system encrypts it before it is stored                                                       | john.doe@example.com                 |
+| 3   | password           | String                               | MANDATORY | Password, Encrypted on the wire (see Encrypted sensitive fields), plain text after decryption, 8 to 128 characters with an upper-case letter, a lower-case letter and a digit, Stored as a salted PBKDF2-HMAC-SHA256 hash | Passw0rd-Example                     |
+| 4   | firstName          | String                               | OPTIONAL  | First name (max 100 characters), Encrypted on the wire (see Encrypted sensitive fields), plain text after decryption, The system encrypts it before it is stored                                                          | John                                 |
+| 5   | lastName           | String                               | OPTIONAL  | Last name (max 100 characters), Encrypted on the wire (see Encrypted sensitive fields), plain text after decryption, The system encrypts it before it is stored                                                           | Doe                                  |
+| 6   | displayName        | String                               | OPTIONAL  | Display name (max 128 characters)                                                                                                                                                                                         | John Doe                             |
+| 7   | profilePicturePath | String                               | OPTIONAL  | Profile picture path                                                                                                                                                                                                      | /profiles/john-doe.png               |
+| 8   | phoneNumber        | String                               | OPTIONAL  | Phone number                                                                                                                                                                                                              | 0812345678                           |
+| 9   | address            | String                               | OPTIONAL  | Address                                                                                                                                                                                                                   | 123 Sukhumvit Road                   |
+| 10  | dateOfBirth        | Date                                 | OPTIONAL  | Date of birth (YYYY-MM-DD)                                                                                                                                                                                                | 1990-01-31                           |
+| 11  | gender             | String                               | OPTIONAL  | Gender (MALE, FEMALE, OTHER)                                                                                                                                                                                              | MALE                                 |
+| 12  | referrerId         | String: UUID                         | OPTIONAL  | User Id of the referrer                                                                                                                                                                                                   | 8d7c6b5a-4f3e-2d1c-0b9a-876543210fed |
+| 13  | addresses          | [Object of Address](#address-object) | OPTIONAL  | User address                                                                                                                                                                                                              |                                      |
+| 14  | consents           | [Array of Consent](#consent-object)  | OPTIONAL  | Displayed consents; required current consents must all be included and accepted                                                                                                                                           |                                      |
 
 #### Address Object
 
@@ -264,6 +267,22 @@ curl --location --request POST 'https://www.domain.com/api-dev/v1/auth/register'
         "bizMessage": "Username, Email Address and Password are required fields.",
         "requestId": "req-400a1b2c-3d4e-5f6a-7b8c-9d0e1f2a3b4c",
         "timestamp": "2026-11-05T12:43:45.123Z",
+        "status": "ERROR"
+    }
+}
+```
+
+#### Fail - Bad Request Encryption
+
+```JSON
+{
+    "status": {
+        "code": 400,
+        "message": "Bad Request",
+        "bizCode": "E10001",
+        "bizMessage": "Encrypted fields could not be decrypted.",
+        "requestId": "req-400e1c2d-3e4f-5a6b-7c8d-9e0f1a2b3c4d",
+        "timestamp": "2026-11-20T09:00:00.123Z",
         "status": "ERROR"
     }
 }

@@ -2,8 +2,8 @@
 name: Reset Password Request API Specification
 description: Defines public uniform reset-request outcomes, user-first serialized issuance, fresh rolling-hour throttle and timestamps, atomic reset replacement and post-commit email handoff for POST v1/auth/reset-password.
 status: approved
-approved_by: Ittikorn
-approved_at: 2026-11-16T09:24:57+07:00
+approved_by: Josh (SA Lead, delegated by Ittikorn 2026-11-17)
+approved_at: 2026-11-20T07:35:25+07:00
 ---
 
 # [POST]: v1/auth/reset-password
@@ -33,6 +33,7 @@ approved_at: 2026-11-16T09:24:57+07:00
 - A reset token is created only for an ACTIVE user.
 - Throttle: a user can ask at most 3 times per hour (configurable), measured by successful reset issuance rows created in the rolling window, whatever their status.
 - The order of the checks, the locks and every outcome is in the sequence diagram.
+- **Encrypted sensitive fields:** `emailAddress` are sent as AES-256-GCM ciphertext under a per-request key wrapped with the backend public key (headers `encryptionKeyId`, `encryptedKey`), inside TLS. They are decrypted before validation; any decryption failure answers 400 (E10001) `Encrypted fields could not be decrypted.` The rule is in the section Encrypted sensitive fields of `api-conventions.md` (owner decision 2026-11-20). The examples show the values before encryption.
 - Rate limit: this API, which needs no access token, answers 429 (E90002) with a `Retry-After` header when a client IP sends more than 10 requests per minute (configurable); the limiter answers before the handler runs, so the 429 is not drawn in the sequence diagram. The rule is in the section Limits and rate limiting of `api-conventions.md`.
 
 ---
@@ -41,17 +42,19 @@ approved_at: 2026-11-16T09:24:57+07:00
 
 ### Header Parameters
 
-|     | Parameter Name | Data Type | M/O       | Description                 | Example                                  |
-| --- | -------------- | --------- | --------- | --------------------------- | ---------------------------------------- |
-| 1   | content-type   | String    | MANDATORY | Content type of the request | application/json                         |
-| 2   | timestamp      | DateTime  | MANDATORY | Request timestamp           | 2026-11-06T09:00:00.123Z                 |
-| 3   | requestId      | String    | OPTIONAL  | API Request Id              | req-9b1deb4d-3b7d-4bad-9bdd-2b0d7b3dcb6d |
+|     | Parameter Name  | Data Type | M/O       | Description                                                     | Example                                  |
+| --- | --------------- | --------- | --------- | --------------------------------------------------------------- | ---------------------------------------- |
+| 1   | content-type    | String    | MANDATORY | Content type of the request                                     | application/json                         |
+| 2   | timestamp       | DateTime  | MANDATORY | Request timestamp                                               | 2026-11-06T09:00:00.123Z                 |
+| 3   | requestId       | String    | OPTIONAL  | API Request Id                                                  | req-9b1deb4d-3b7d-4bad-9bdd-2b0d7b3dcb6d |
+| 4   | encryptionKeyId | String    | MANDATORY | Id of the backend public key used                               | fe-2026-11                               |
+| 5   | encryptedKey    | String    | MANDATORY | Base64 of the AES-256 request key wrapped with RSA-OAEP-SHA-256 | (base64)                                 |
 
 ### Body Parameters
 
-|     | Parameter Name | Data Type | M/O       | Description                                                                                                          | Example              |
-| --- | -------------- | --------- | --------- | -------------------------------------------------------------------------------------------------------------------- | -------------------- |
-| 1   | emailAddress   | String    | MANDATORY | Email address of the account, Plain text over TLS, The system encrypts it before it is compared (max 254 characters) | john.doe@example.com |
+|     | Parameter Name | Data Type | M/O       | Description                                                                                                                                                                          | Example              |
+| --- | -------------- | --------- | --------- | ------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------ | -------------------- |
+| 1   | emailAddress   | String    | MANDATORY | Email address of the account, Encrypted on the wire (see Encrypted sensitive fields), plain text after decryption, The system encrypts it before it is compared (max 254 characters) | john.doe@example.com |
 
 #### Example Body Parameters
 
@@ -143,6 +146,22 @@ No `data`. Only the status object is returned.
         "bizMessage": "Email Address is required and must be a valid email address.",
         "requestId": "req-400a1b2c-3d4e-5f6a-7b8c-9d0e1f2a3b4c",
         "timestamp": "2026-11-06T09:40:40.123Z",
+        "status": "ERROR"
+    }
+}
+```
+
+#### Fail - Bad Request Encryption
+
+```JSON
+{
+    "status": {
+        "code": 400,
+        "message": "Bad Request",
+        "bizCode": "E10001",
+        "bizMessage": "Encrypted fields could not be decrypted.",
+        "requestId": "req-400e1c2d-3e4f-5a6b-7c8d-9e0f1a2b3c4d",
+        "timestamp": "2026-11-20T09:00:00.123Z",
         "status": "ERROR"
     }
 }
