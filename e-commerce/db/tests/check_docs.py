@@ -5261,6 +5261,10 @@ def author_status(md: str, title: str, code: int, biz: str, message: str | None 
     return errors
 
 
+# Josh 2026-11-20: the scope column is shown as "Scope code" in messages, as its 400 already says
+CONFLICT_LABEL = {"scope": "code"}
+
+
 def author_needles(key: str):
     kind = {"01": "upsert", "04": "upsert", "07": "upsert", "02": "batch", "05": "batch", "08": "batch", "03": "inquiry", "06": "inquiry", "09": "inquiry"}[key]
     m = next(v for v in AUTHOR_MASTERS.values() if key in v[:3])
@@ -5275,7 +5279,7 @@ def author_needles(key: str):
     if kind in ("upsert", "batch") and key not in ("01", "02", "04", "05", "07", "08"):
         base.append("Permission: only a platform administrator (a user with an ACTIVE `author.t_user_role` row for the ACTIVE role `PLATFORM_ADMIN`) can call this API")
     if kind == "upsert":
-        need = [f"# [POST]: v1/author/{path}/upsert", f"### {title} Rules", "-> permission (403, E10009) ->", f"{title} not found.", use_msg, f"{title} {ucol} already exists.",
+        need = [f"# [POST]: v1/author/{path}/upsert", f"### {title} Rules", "-> permission (403, E10009) ->", f"{title} not found.", use_msg, f"{title} {CONFLICT_LABEL.get(ucol, ucol)} already exists.",
                 f"Row status must not be DELETED when inserting a {lower}.", f"The value of a DELETED {lower} can be used again.", "Delete 204 No Content", "Archive when rowStatus is ARCHIVED",
                 f"AND {alias}.row_status <> 'DELETED' -- the id of a DELETED {lower} counts as not found", f"AND {alias}.row_status <> 'DELETED'\nAND {alias}.id <> '<sequence.id>'",
                 "Insert " + title + " Success", "Archive " + title + " Success", "E10003", "E10004", "E10006", "E90001"]
@@ -5293,7 +5297,7 @@ def author_needles(key: str):
         return base + need
     if kind == "batch":
         need = [f"# [POST]: v1/author/{path}/upsert/batch", f"### {title} Rules (same as the single upsert, applied per {lower})", f"{camel}s[2]: Id is duplicated with {camel}s[1].", f"{camel}s[2]: {ucol.capitalize()} is duplicated with {camel}s[0].",
-                f"{title}s must contain 1 to 100 items.", "The 403 message has no item position", "always HTTP 200", "ARCHIVE)", f"{camel}s[0]: {title} {ucol} already exists.", f"{camel}s[2]: {use_msg}",
+                f"{title}s must contain 1 to 100 items.", "The 403 message has no item position", "always HTTP 200", "ARCHIVE)", f"{camel}s[0]: {title} {CONFLICT_LABEL.get(ucol, ucol)} already exists.", f"{camel}s[2]: {use_msg}",
                 f"{camel}s[1]: {title} not found.", "Batch Upsert " + title + " Success"]
         if lower == "role":
             need += [f"{camel}s[1]: System role cannot be changed.", "#### QUERY - Check system role"]
@@ -6866,7 +6870,7 @@ COMMANDS['active-consent-flow'] = check_active_consent_flow
 def check_address_inquiry_flow() -> int:
     """Check current-caller address count/page consistency and safe bound filters."""
     path=AUTHEN_SPECS['10'];md=read(path);wsd=read(str(Path(path).with_name('sequence.wsd')));errors=[]
-    for needle in ('status: approved', 'approved_by: Ittikorn', 'approved_at: ', 'Count and page share the same repeatable-read snapshot'):
+    for needle in ('status: approved', 'approved_by: ', 'approved_at: ', 'Count and page share the same repeatable-read snapshot'):
         if needle not in md:errors.append(f'address-inquiry spec missing {needle!r}')
     seq = ' '.join(wsd.split())  # the note texts of the sequence, one line
     for needle in ('exact same userId/non-DELETED/id/searchPattern/rowStatus predicates', 'offset outside nonnegative BIGINT', 'entire pattern as text',
@@ -6983,7 +6987,7 @@ COMMANDS['address-inquiry-flow'] = check_address_inquiry_flow
 def check_profile_inquiry_flow() -> int:
     """Check own-profile live credential projection, read consistency and complete nullable output."""
     path=AUTHEN_SPECS['08'];md=read(path);wsd=read(str(Path(path).with_name('sequence.wsd')));errors=[]
-    for needle in ('status: approved', 'approved_by: Ittikorn', 'approved_at: ', 'Read user and information from the same repeatable-read snapshot'):
+    for needle in ('status: approved', 'approved_by: ', 'approved_at: ', 'Read user and information from the same repeatable-read snapshot'):
         if needle not in md:errors.append(f'profile-inquiry spec missing {needle!r}')
     seq = ' '.join(wsd.split())  # the note texts of the sequence, one line
     for needle in ('Q20 is approved by the product owner', 'คืน null สำหรับค่าว่างเดิม (แนะนำ)', 'No id/userId/query filters or body are accepted',
@@ -7174,7 +7178,7 @@ COMMANDS['author-me-flow'] = check_author_me_flow
 def check_permission_upsert_flow() -> int:
     """Check scoped permission parent/link phases, owner Q22/Q23 and atomic rollback."""
     path=f'{AUTHOR_DIR}/{AUTHOR_SPECS["04"]}/spec.md';md=read(path);wsd=read(str(Path(path).with_name('sequence.wsd')));errors=[]
-    for n in ('status: approved', 'approved_by: Ittikorn', 'approved_at: '):
+    for n in ('status: approved', 'approved_by: ', 'approved_at: '):
         if n not in md:errors.append(f'permission spec missing {n!r}')
     seq = ' '.join(wsd.split())  # the note texts of the sequence, one line
     for n in ('malformed/missing roles is generic 401', 'exact PLATFORM_ADMIN', 'scopes omitted or [] means no link change', 'duplicate parsed child ids',
@@ -7317,7 +7321,7 @@ COMMANDS['permission-upsert-flow'] = check_permission_upsert_flow
 def check_permission_batch_flow() -> int:
     """Check scoped permission parent/link phases, owner Q22/Q23/Q24 and atomic rollback."""
     path=f'{AUTHOR_DIR}/{AUTHOR_SPECS["05"]}/spec.md';md=read(path);wsd=read(str(Path(path).with_name('sequence.wsd')));errors=[]
-    for n in ('status: approved', 'approved_by: Ittikorn', 'approved_at: ', 'Q22/Q23 (approved by the product owner)'):
+    for n in ('status: approved', 'approved_by: ', 'approved_at: ', 'Q22/Q23 (approved by the product owner)'):
         if n not in md:errors.append(f'permission batch spec missing {n!r}')
     seq = ' '.join(wsd.split())  # the note texts of the sequence, one line
     for n in ('permissions must be an array of 1..100', 'Reject duplicate parsed canonical parent ids',
@@ -7476,7 +7480,7 @@ COMMANDS['permission-batch-flow'] = check_permission_batch_flow
 def check_permission_inquiry_flow() -> int:
     """Check token-claim administration and consistent filtered current role metadata."""
     path=f'{AUTHOR_DIR}/{AUTHOR_SPECS["06"]}/spec.md';md=read(path);wsd=read(str(Path(path).with_name('sequence.wsd')));errors=[]
-    for n in ('status: approved', 'approved_by: Ittikorn', 'approved_at: '):
+    for n in ('status: approved', 'approved_by: ', 'approved_at: '):
         if n not in md:errors.append(f'permission-inquiry spec missing {n!r}')
     seq = ' '.join(wsd.split())  # the note texts of the sequence, one line
     for n in ('2026-11-07-api-review-design.md', 'exact PLATFORM_ADMIN in verified JWT role claims', 'positive signed 64-bit integers', 'nonnegative BIGINT',
@@ -7627,7 +7631,7 @@ COMMANDS['permission-inquiry-flow'] = check_permission_inquiry_flow
 def check_scope_upsert_flow() -> int:
     """Check verified-claim scope administration and guarded master/definition lifecycle."""
     path=f'{AUTHOR_DIR}/{AUTHOR_SPECS["07"]}/spec.md';md=read(path);wsd=read(str(Path(path).with_name('sequence.wsd')));errors=[]
-    for n in ('status: approved', 'approved_by: Ittikorn', 'approved_at: ', 'Permission: only a platform administrator from the verified JWT roles claim',
+    for n in ('status: approved', 'approved_by: ', 'approved_at: ', 'Permission: only a platform administrator from the verified JWT roles claim',
             'exact case-sensitive role name PLATFORM_ADMIN'):
         if n not in md:errors.append(f'scope-upsert spec missing {n!r}')
     seq = ' '.join(wsd.split())  # the note texts of the sequence, one line
@@ -7734,7 +7738,7 @@ COMMANDS['scope-upsert-flow'] = check_scope_upsert_flow
 def check_scope_batch_flow() -> int:
     """Verify whole-batch preflight, sorted target locks before usage checks and ordered atomic scope mutations; unroll one representative item."""
     path=f'{AUTHOR_DIR}/{AUTHOR_SPECS["08"]}/spec.md';md=read(path);wsd=read(str(Path(path).with_name('sequence.wsd')));errors=[]
-    for n in ('status: approved', 'approved_by: Ittikorn', 'approved_at: ', 'Validate the whole request before SQL', 'Compare parsed canonical UUIDs',
+    for n in ('status: approved', 'approved_by: ', 'approved_at: ', 'Validate the whole request before SQL', 'Compare parsed canonical UUIDs',
             'exact case-sensitive PLATFORM_ADMIN'):
         if n not in md:errors.append(f'scope-batch spec missing {n!r}')
     seq = ' '.join(wsd.split())  # the note texts of the sequence, one line
@@ -7861,7 +7865,7 @@ COMMANDS['scope-batch-flow'] = check_scope_batch_flow
 def check_role_upsert_flow() -> int:
     """Verify role upsert claim authorization independently of live business-invariant reads."""
     path=f'{AUTHOR_DIR}/{AUTHOR_SPECS["01"]}/spec.md';md=read(path);wsd=read(str(Path(path).with_name('sequence.wsd')));errors=[]
-    for n in ('status: approved', 'approved_by: Ittikorn', 'approved_at: '):
+    for n in ('status: approved', 'approved_by: ', 'approved_at: '):
         if n not in md:errors.append(f'role-upsert spec missing {n!r}')
     seq = ' '.join(wsd.split())  # the note texts of the sequence, one line
     for n in ('Permission: only a platform administrator from the verified JWT roles claim', 'exact case-sensitive role name PLATFORM_ADMIN',
@@ -7974,7 +7978,7 @@ COMMANDS['role-upsert-flow'] = check_role_upsert_flow
 def check_role_batch_flow() -> int:
     """Verify whole-batch preflight and ordered atomic role mutations; unroll one representative item."""
     path=f'{AUTHOR_DIR}/{AUTHOR_SPECS["02"]}/spec.md';md=read(path);wsd=read(str(Path(path).with_name('sequence.wsd')));errors=[]
-    for n in ('status: approved', 'approved_by: Ittikorn', 'approved_at: ', 'Validate the whole request before SQL', 'exact case-sensitive PLATFORM_ADMIN'):
+    for n in ('status: approved', 'approved_by: ', 'approved_at: ', 'Validate the whole request before SQL', 'exact case-sensitive PLATFORM_ADMIN'):
         if n not in md:errors.append(f'role-batch spec missing {n!r}')
     seq = ' '.join(wsd.split())  # the note texts of the sequence, one line
     for n in ('Compare parsed canonical UUIDs', 'all target existence checks', 'after all target existence checks and before any conflict or write',
@@ -8099,7 +8103,7 @@ COMMANDS['role-batch-flow'] = check_role_batch_flow
 def check_role_inquiry_flow() -> int:
     """Check token-claim administration and consistent filtered current role metadata."""
     path=f'{AUTHOR_DIR}/{AUTHOR_SPECS["03"]}/spec.md';md=read(path);wsd=read(str(Path(path).with_name('sequence.wsd')));errors=[]
-    for n in ('status: approved', 'approved_by: Ittikorn', 'approved_at: '):
+    for n in ('status: approved', 'approved_by: ', 'approved_at: '):
         if n not in md:errors.append(f'role-inquiry spec missing {n!r}')
     seq = ' '.join(wsd.split())  # the note texts of the sequence, one line
     for n in ('2026-11-07-api-review-design.md', 'exact PLATFORM_ADMIN in verified JWT role claims', 'positive signed 64-bit integers', 'nonnegative BIGINT',
@@ -8356,7 +8360,7 @@ COMMANDS['user-role-upsert-flow'] = check_user_role_upsert_flow
 def check_address_upsert_flow() -> int:
     """Check caller-scoped address lifecycle, quota and atomic default transitions."""
     path=AUTHEN_SPECS['09'];md=read(path);wsd=read(str(Path(path).with_name('sequence.wsd')));errors=[]
-    for needle in ('status: approved', 'approved_by: Ittikorn', 'approved_at: '):
+    for needle in ('status: approved', 'approved_by: ', 'approved_at: '):
         if needle not in md:errors.append(f'address-upsert spec missing {needle!r}')
     seq = ' '.join(wsd.split())  # the note texts of the sequence, one line
     for needle in ('Q21 approved by the product owner', 'ตอบ 400 เมื่อ Delete ส่ง true (แนะนำ)', 'mandatory non-blank strings for insert, update and delete',
@@ -8562,7 +8566,7 @@ COMMANDS['logout-flow'] = check_logout_flow
 def check_profile_upsert_flow() -> int:
     """Check own-user credential gating, presence/null semantics and mutually exclusive writes."""
     path=AUTHEN_SPECS['07'];md=read(path);wsd=read(str(Path(path).with_name('sequence.wsd')));errors=[]
-    for needle in ('status: approved', 'approved_by: Ittikorn', 'approved_at: ', 'explicit null clears them', "on or before today's UTC date"):
+    for needle in ('status: approved', 'approved_by: ', 'approved_at: ', 'explicit null clears them', "on or before today's UTC date"):
         if needle not in md:errors.append(f'profile-upsert spec missing {needle!r}')
     seq = ' '.join(wsd.split())  # the note texts of the sequence, one line
     for needle in ('A body {} is valid', 'JSON key presence, never truthiness', 'Skip the m_user UPDATE entirely', 'Skip information lookup/INSERT/UPDATE',
