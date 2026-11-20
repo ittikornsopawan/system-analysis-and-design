@@ -647,3 +647,10 @@ description: Repository-wide and project-specific lessons captured from user cor
 - **Corrected behavior**: Before each review fix, read `gh pr view --json state`; a merged PR gets a new PR from `origin/main` with the fix cherry-picked (backend#22, showcase#262 and #265 were done this way). Report a merge only from `state` or the ancestor check. Take every hash, revision and time from `git rev-parse`, `gh pr view` or `date`. Run the final checks before `suspend` or in a worktree at the PR head (done for #264). Use `${var}` and explicit word lists in zsh.
 - **Preventive skill change**: `.agents/skills/commit-and-pr/SKILL.md` "After the PR exists" (merged-state check, revisions from commands); `.agents/skills/agent-workspace/SKILL.md` after `suspend` (final checks before suspend or in a worktree; zsh `${var}` and word lists).
 - **Verification**: #264's checks reran in a worktree at `d102418` (73/73); the corrected `#17` state was sent to Josh; backend#22 carried the AuthenController fix alone after #20 merged.
+### 2026-11-20 — Normalize the final newline after a scripted append to a task file
+
+- **Correction**: Preflight blocked Jinny's diagram-redraw PR: `git diff --check` reported a new blank line at the end of `tasks/jinny/todo.md`.
+- **Root cause**: A Python replacement inserted a text block ending in `\n` before the file's existing final newline, leaving two.
+- **Corrected behavior**: After any scripted edit, rewrite the file as `text.rstrip('\n') + '\n'` and run `git diff --check` before preflight.
+- **Preventive skill change**: none; `.agents/skills/commit-and-pr/references/checklist.md` row 6 already says to normalize each file to one final newline after scripted edits, and the preflight caught it as designed.
+- **Verification**: `git diff --check` clean; preflight "no blockers found".
