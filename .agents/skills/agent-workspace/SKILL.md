@@ -64,6 +64,8 @@ python3 .agents/skills/agent-workspace/scripts/agent_workspace.py suspend \
 
 `suspend` moves the assignment to `.workspace/.state/<name>-prs/<branch-slug>.json`, switches to `main` and releases the lock; `status` lists the suspended records. `prepare` then accepts the open pull request because it is suspended. To fix a review, run `prepare --resume-pr <number-or-url>` with the original assignment fields while no other task is active. `park --pr` also closes a suspended record, after the merge is verified.
 
+Because `suspend` switches the clone to `main`, run the final checks of a delivered branch before suspending, or check the pull-request head in a temporary worktree (`git worktree add --detach <dir> <headRefOid>`, then `git worktree remove`). The command shell is zsh: write `${var}` when a `:` follows a variable (`$M:src` is a zsh modifier) and pass lists as separate words, because zsh does not split an unquoted `$list`.
+
 After the user or an authorized lead reports that the pull request merged, verify and park it:
 
 ```bash

@@ -50,6 +50,8 @@ Do not merge the PR and do not enable auto-merge. Those actions are outside this
 
 After every push to the PR branch, and before telling anyone the PR is ready, prove `gh pr view <n> --json headRefOid` equals the local `HEAD`; a fix pushed after the reader starts merging is lost. When told a PR merged, prove the last pushed commit is an ancestor of the base (`git merge-base --is-ancestor <sha> origin/<base>`); if it is not, carry that commit alone in a new PR and name it in the description.
 
+Before pushing a review fix, read `gh pr view <n> --json state`: a MERGED pull request takes no more commits, so branch from `origin/<base>`, cherry-pick the fix and open a new PR that names the merged one. Never tell anyone a PR merged, or was merged, without that state or the ancestor check. Copy every commit hash, revision or timestamp you write into a file or PR from the command that produced it (`git rev-parse`, `gh pr view`, `date`), never from memory or by typing it.
+
 ## Done when
 
 - The authored task commit contains exactly the chosen files and its message follows the template; integration commits contain only the verified base merge and its resolutions.
