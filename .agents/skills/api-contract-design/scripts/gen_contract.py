@@ -614,7 +614,8 @@ def main():
         "info": {**old["info"], "description": "Machine-readable contract of the approved e-commerce API specs. The "
                  "human-readable specs under e-commerce/doc/api are the source of behaviour; every operation names its "
                  "spec in x-spec. Regenerate with .agents/skills/api-contract-design/scripts/gen_contract.py."},
-        "servers": [{"url": "https://www.domain.com/api-dev", "description": "DEV"},
+        "servers": [{"url": "http://localhost:5056", "description": "LOCAL"},
+                    {"url": "https://www.domain.com/api-dev", "description": "DEV"},
                     {"url": "https://www.domain.com/api-qa", "description": "QA"},
                     {"url": "https://www.domain.com/api-uat", "description": "UAT"},
                     {"url": "https://www.domain.com/api-pre-prod", "description": "PRE-PRODUCTION"},

@@ -1,4 +1,6 @@
--- Rollback of 00-common.schema.up.sql (tables dropped in reverse dependency order)
+-- Rollback of 00-common.schema.up.sql (the view first, then the tables in reverse dependency order)
+
+DROP VIEW IF EXISTS consent.v_applicable_consent;
 
 DROP TABLE IF EXISTS consent.t_consent;
 

@@ -6415,6 +6415,22 @@ def check_refresh_flow() -> int:
 COMMANDS['refresh-flow'] = check_refresh_flow
 
 
+APPLICABLE_CONSENT_VIEW = (
+    "CREATE OR REPLACE VIEW consent.v_applicable_consent AS SELECT c.id, c.consent_type_id, c.consent_version, c.is_required, "
+    "c.effective_at, c.expired_at FROM consent.t_consent c JOIN consent.m_consent_type ct ON ct.id = c.consent_type_id "
+    "WHERE c.row_status = 'ACTIVE' AND ct.row_status = 'ACTIVE';")
+
+
+def applicable_consent_view_errors() -> list[str]:
+    """The four consent reads leave the ACTIVE consent / ACTIVE type rule to the view, so the view must keep it exactly."""
+    errors = []
+    if APPLICABLE_CONSENT_VIEW not in normalize(read("e-commerce/db/migrations/up/00-common.schema.up.sql")):
+        errors.append("migration 00: consent.v_applicable_consent must be exactly the ACTIVE consent of an ACTIVE type view, with no now()")
+    if APPLICABLE_CONSENT_VIEW not in normalize(" ".join(SQL_BLOCK.findall(read("e-commerce/doc/schema/consent/v_applicable_consent.md")))):
+        errors.append("doc/schema/consent/v_applicable_consent.md: SQL block differs from the migration")
+    return errors
+
+
 def check_register_flow() -> int:
     """Guard the owner-approved registration policy and atomic execution paths."""
     path = AUTHEN_SPECS['01']
@@ -6446,31 +6462,31 @@ def check_register_flow() -> int:
     if not version_row or 'MANDATORY' not in version_row[0] or 'never defaulted' not in version_row[0]:
         errors.append('displayed consentVersion must be mandatory, not silently defaulted')
     operations = spec_database_operations(md)
-    expected = ('QUERY - Check existing user', 'QUERY - Get effective consents', 'QUERY - Get active consent types',
+    expected = ('QUERY - Check existing user', 'QUERY - Get applicable consents',
                 'QUERY - Check referrer', 'INSERT - Create user', 'INSERT - Create password',
                 'INSERT - Create user information', 'INSERT - Create user address',
                 'INSERT - Create user consent', 'INSERT - Create user referral')
     if tuple(h for _, h, _ in operations) != expected:
-        errors.append('registration must declare all ten validation/write operations in execution order')
+        errors.append('registration must declare all nine validation/write operations in execution order')
     sql = {h: re.sub(r'--[^\n]*', '', s) for _, h, s in operations}
     required = {
         expected[0]: ["u.username = '<sequence.usernameBytes>' OR u.email_address = '<sequence.emailAddressBytes>'"],
         expected[1]: ['c.id as consent_id', 'c.consent_type_id', 'c.consent_version', 'c.is_required',
-                      "c.row_status = 'ACTIVE'", "c.effective_at <= '<sequence.now>'",
+                      'FROM consent.v_applicable_consent c', "c.effective_at <= '<sequence.now>'",
                       "c.expired_at IS NULL OR c.expired_at > '<sequence.now>'", 'ORDER BY c.id'],
-        expected[2]: ['ct.id as consent_type_id', "ct.id = ANY ('<sequence.consentTypeIds>'::UUID[])", "ct.row_status = 'ACTIVE'"],
-        expected[3]: ["u.id = '<sequence.referrerId>'"],
-        expected[4]: ['username,', 'email_address,', '<sequence.createdBy>', '<sequence.usernameBytes>', '<sequence.emailAddressBytes>', 'RETURNING id as user_id'],
-        expected[5]: ['user_id,', 'password,', 'password_salt', "'PASSWORD'", '<sequence.userId>', '<sequence.passwordBytes>', '<sequence.passwordSaltBytes>'],
-        expected[6]: ['user_id,', '<sequence.userId>', '<sequence.phoneNumberBytes>', '<sequence.addressBytes>', '<sequence.dateOfBirth>', '<sequence.gender>'],
-        expected[7]: ['is_default,', 'TRUE,', '<sequence.userId>', '<sequence.addresses.title>', '<sequence.addresses.addressBytes>', '<sequence.addresses.cityBytes>', '<sequence.addresses.stateBytes>', '<sequence.addresses.postalCodeBytes>', '<sequence.addresses.countryBytes>'],
-        expected[8]: ['consent_id,', 'consent_version,', 'result,', 'is_read,', 'read_at', '<sequence.userId>', '<sequence.consents.consentId>', '<sequence.consents.consentVersion>', '<sequence.consents.result>', 'TRUE,', '<sequence.now>'],
-        expected[9]: ['user_id,', 'referrer_id', '<sequence.userId>', '<sequence.referrerId>'],
+        expected[2]: ["u.id = '<sequence.referrerId>'"],
+        expected[3]: ['username,', 'email_address,', '<sequence.createdBy>', '<sequence.usernameBytes>', '<sequence.emailAddressBytes>', 'RETURNING id as user_id'],
+        expected[4]: ['user_id,', 'password,', 'password_salt', "'PASSWORD'", '<sequence.userId>', '<sequence.passwordBytes>', '<sequence.passwordSaltBytes>'],
+        expected[5]: ['user_id,', '<sequence.userId>', '<sequence.phoneNumberBytes>', '<sequence.addressBytes>', '<sequence.dateOfBirth>', '<sequence.gender>'],
+        expected[6]: ['is_default,', 'TRUE,', '<sequence.userId>', '<sequence.addresses.title>', '<sequence.addresses.addressBytes>', '<sequence.addresses.cityBytes>', '<sequence.addresses.stateBytes>', '<sequence.addresses.postalCodeBytes>', '<sequence.addresses.countryBytes>'],
+        expected[7]: ['consent_id,', 'consent_version,', 'result,', 'is_read,', 'read_at', '<sequence.userId>', '<sequence.consents.consentId>', '<sequence.consents.consentVersion>', '<sequence.consents.result>', 'TRUE,', '<sequence.now>'],
+        expected[8]: ['user_id,', 'referrer_id', '<sequence.userId>', '<sequence.referrerId>'],
     }
     for heading, needles in required.items():
         for needle in needles:
             if needle not in sql.get(heading, ''):
                 errors.append(f'{heading} missing {needle}')
+    errors += applicable_consent_view_errors()
     if 'row_status' in sql.get(expected[0], ''):
         errors.append('duplicate check must include identifiers in all lifecycle states')
     if any(t.startswith('author.') or '_token' in t for t, _, _ in operations):
@@ -6485,8 +6501,7 @@ def check_register_flow() -> int:
         match = re.search(rf'infra -> (\w+): {re.escape(heading)}\n.*?deactivate \1\n([^\n]+)', wsd, re.S)
         if not match or not match[2].strip().startswith('infra -> app: Return '):
             errors.append(f'{heading} requires Infrastructure result to Application')
-    for needle in ('consentTypeIds = distinct effectiveConsents.consent_type_id',
-                   'applicableConsents = effectiveConsents with typeId in activeTypeIds',
+    for needle in ('infra -> app: Return applicableConsents (consentId, typeId, version, isRequired)',
                    'userId = returned user_id', 'result = explicit result or false; isRead = true; readAt = now',
                    'alt addresses object supplied', 'alt Validated consents list is non-empty',
                    'loop Each supplied consent ordered by consentId', 'alt Validated referrerId supplied',
@@ -6516,9 +6531,9 @@ def check_register_flow() -> int:
         code = int(responses[0].split('HTTP ')[1].split()[0]);outcomes.append(code)
         begun = any('BEGIN' in e for e in trace)
         if code == 201:
-            if not ordered('BEGIN REPEATABLE READ', 'Capture UTC now', expected[0], expected[1], expected[2],
-                           'applicableConsents =', 'Validate submitted ids/versions', expected[4],
-                           'userId = returned user_id', expected[5], expected[6], 'COMMIT', 'HTTP 201'):
+            if not ordered('BEGIN REPEATABLE READ', 'Capture UTC now', expected[0], expected[1],
+                           'Validate submitted ids/versions', expected[3],
+                           'userId = returned user_id', expected[4], expected[5], 'COMMIT', 'HTTP 201'):
                 errors.append('success must validate one snapshot, map new user id and atomically commit required children')
             if 'data.userId = userId' not in responses[0]:
                 errors.append('success returns the newly created userId')
@@ -6584,7 +6599,7 @@ def check_consent_submit_flow() -> int:
     required={
         expected[0]: ["u.id = '<sequence.userId>'", "u.row_status = 'ACTIVE'", 'FOR UPDATE'],
         expected[1]: ["at.token = '<sequence.accessTokenHash>'", "at.user_id = '<sequence.userId>'", "at.row_status = 'ACTIVE'", "at.expired_at > '<sequence.now>'"],
-        expected[2]: ["c.id = ANY ('<sequence.consentIds>'::UUID[])", "c.row_status = 'ACTIVE'", "c.effective_at <= '<sequence.now>'", "c.expired_at IS NULL OR c.expired_at > '<sequence.now>'", 'AND EXISTS (', 'FROM consent.m_consent_type ct', 'ct.id = c.consent_type_id', "ct.row_status = 'ACTIVE'", 'ORDER BY c.id'],
+        expected[2]: ["c.id = ANY ('<sequence.consentIds>'::UUID[])", 'FROM consent.v_applicable_consent c', "c.effective_at <= '<sequence.now>'", "c.expired_at IS NULL OR c.expired_at > '<sequence.now>'", 'ORDER BY c.id'],
         expected[3]: ['uc.result,', 'uc.is_read,', 'uc.read_at', "uc.user_id = '<sequence.userId>'", "uc.consent_id = '<sequence.consents.consentId>'", "uc.consent_version = '<sequence.consents.consentVersion>'", "uc.row_status = 'ACTIVE'", 'ORDER BY uc.created_at DESC, uc.id DESC', 'LIMIT 1'],
         expected[4]: ['created_by,', 'user_id,', 'consent_id,', 'consent_version,', 'result,', 'is_read,', 'read_at', '<sequence.userId>', '<sequence.consents.consentId>', '<sequence.consents.consentVersion>', '<sequence.consents.result>', 'TRUE,', '<sequence.now>'],
         expected[5]: ["updated_by = '<sequence.userId>'", "updated_at = '<sequence.now>'", "result = CASE WHEN '<sequence.consents.resultSpecified>'::BOOLEAN THEN '<sequence.consents.result>'::BOOLEAN ELSE result END", "read_at = CASE WHEN is_read THEN read_at ELSE '<sequence.now>'::TIMESTAMP END", 'is_read = TRUE', "WHERE id = '<sequence.userConsentId>'", "AND user_id = '<sequence.userId>'", "AND consent_id = '<sequence.consents.consentId>'", "AND consent_version = '<sequence.consents.consentVersion>'", "AND row_status = 'ACTIVE'", "AND (NOT is_read OR ('<sequence.consents.resultSpecified>'::BOOLEAN AND result IS DISTINCT FROM '<sequence.consents.result>'::BOOLEAN))"],
@@ -6595,6 +6610,7 @@ def check_consent_submit_flow() -> int:
     for h in expected[-2:]:
         if 'RETURNING id as user_consent_id, consent_id, consent_version, result, is_read, read_at' not in sql.get(h,''):
             errors.append(f'{h} must return actual persisted response values')
+    errors+=applicable_consent_view_errors()
     if 'NOW()' in '\n'.join(sql.values()):errors.append('submit must use fresh post-lock now')
     if any(h.startswith('DELETE') or t.startswith('author.') for t,h,_ in operations):errors.append('submit must preserve history and require no role-assignment query')
     actual,lifecycle=sequence_database_operations(wsd);errors+=lifecycle
@@ -6693,14 +6709,15 @@ def check_pending_consent_flow() -> int:
     sql={h:re.sub(r'--[^\n]*','',s) for _,h,s in operations}
     required={
         expected[0]: ["at.token = '<sequence.accessTokenHash>'", "at.user_id = '<sequence.userId>'", "at.row_status = 'ACTIVE'", "at.expired_at > '<sequence.now>'", 'AND EXISTS (', 'u.id = at.user_id', "u.row_status = 'ACTIVE'"],
-        expected[1]: ["c.row_status = 'ACTIVE'", "c.effective_at <= '<sequence.now>'", "c.expired_at IS NULL OR c.expired_at > '<sequence.now>'", 'AND EXISTS (', 'ct.id = c.consent_type_id', "ct.row_status = 'ACTIVE'", 'AND NOT COALESCE((', 'SELECT uc.is_read AND (NOT c.is_required OR uc.result)', "uc.user_id = '<sequence.userId>'", 'uc.consent_id = c.id', 'uc.consent_version = c.consent_version', "uc.row_status = 'ACTIVE'", 'ORDER BY uc.created_at DESC, uc.id DESC', 'LIMIT 1', '), FALSE)', 'ORDER BY c.effective_at, c.id'],
+        expected[1]: ['FROM consent.v_applicable_consent ac', 'JOIN consent.t_consent c ON c.id = ac.id', "ac.effective_at <= '<sequence.now>'", "ac.expired_at IS NULL OR ac.expired_at > '<sequence.now>'", 'AND NOT COALESCE((', 'SELECT uc.is_read AND (NOT c.is_required OR uc.result)', "uc.user_id = '<sequence.userId>'", 'uc.consent_id = c.id', 'uc.consent_version = c.consent_version', "uc.row_status = 'ACTIVE'", 'ORDER BY uc.created_at DESC, uc.id DESC', 'LIMIT 1', '), FALSE)', 'ORDER BY c.effective_at, c.id'],
         expected[2]: ['SELECT DISTINCT ON (uc.consent_id)', 'uc.consent_version as submitted_version', "uc.user_id = '<sequence.userId>'", "uc.consent_id = ANY ('<sequence.consentIds>'::UUID[])", "uc.row_status = 'ACTIVE'", 'ORDER BY uc.consent_id, uc.created_at DESC, uc.id DESC'],
         expected[3]: ['ct.id as consent_type_id', 'ct.name as consent_type_name', "ct.id = ANY ('<sequence.consentTypeIds>'::UUID[])", "ct.row_status = 'ACTIVE'"],
     }
     for h,needles in required.items():
         for needle in needles:
             if needle not in sql.get(h,''):errors.append(f'{h} missing {needle}')
-    projection=sql.get(expected[1],'').split('FROM consent.t_consent',1)[0]
+    errors+=applicable_consent_view_errors()
+    projection=sql.get(expected[1],'').split('FROM consent.v_applicable_consent',1)[0]
     for field in ('id as consent_id','code','consent_type_id','consent_version','consent_name','consent_description','effective_at','expired_at','is_required','body'):
         if not re.search(r'^\s*'+re.escape('c.'+field)+r'\s*,?\s*$',projection,re.M):errors.append(f'pending projection missing exact c.{field}')
     for table,heading,statement in operations:
@@ -6794,16 +6811,17 @@ def check_active_consent_flow() -> int:
     expected=('QUERY - Get active consents','QUERY - Get consent type')
     if tuple(h for _,h,_ in operations)!=expected:errors.append('active consent must declare exactly definition and type-name queries')
     sql={h:re.sub(r'--[^\n]*','',s) for _,h,s in operations}
-    required={expected[0]:["c.row_status = 'ACTIVE'", "c.effective_at <= '<sequence.now>'", "c.expired_at IS NULL OR c.expired_at > '<sequence.now>'", 'AND EXISTS (', 'FROM consent.m_consent_type ct', 'ct.id = c.consent_type_id', "ct.row_status = 'ACTIVE'", 'ORDER BY c.effective_at, c.id'],
+    required={expected[0]:['FROM consent.v_applicable_consent ac', 'JOIN consent.t_consent c ON c.id = ac.id', "ac.effective_at <= '<sequence.now>'", "ac.expired_at IS NULL OR ac.expired_at > '<sequence.now>'", 'ORDER BY c.effective_at, c.id'],
               expected[1]:['ct.id as consent_type_id','ct.name as consent_type_name',"ct.id = ANY ('<sequence.consentTypeIds>'::UUID[])","ct.row_status = 'ACTIVE'"]}
     for h,needles in required.items():
         for needle in needles:
             if needle not in sql.get(h,''):errors.append(f'{h} missing {needle}')
-    projection=sql.get(expected[0],'').split('FROM consent.t_consent',1)[0]
+    errors+=applicable_consent_view_errors()
+    projection=sql.get(expected[0],'').split('FROM consent.v_applicable_consent',1)[0]
     for field in ('id as consent_id','code','consent_type_id','consent_version','consent_name','consent_description','effective_at','expired_at','is_required','body'):
         if not re.search(r'^\s*'+re.escape('c.'+field)+r'\s*,?\s*$',projection,re.M):errors.append(f'active projection missing exact c.{field}')
     for table,heading,statement in operations:
-        if table not in ('consent.t_consent','consent.m_consent_type') or 'authen.' in statement or 'author.' in statement:errors.append('public inquiry must not read user/credential/assignment data')
+        if table not in ('consent.v_applicable_consent','consent.m_consent_type') or 'authen.' in statement or 'author.' in statement:errors.append('public inquiry must not read user/credential/assignment data')
         if not heading.startswith('QUERY') or not statement.startswith('SELECT') or re.search(r'\b(?:INSERT|UPDATE|DELETE|pg_advisory_xact_lock)\b|\bNOW\s*\(',statement,re.I):errors.append('active inquiry requires read-only SQL with server now parameter')
     actual,lifecycle=sequence_database_operations(wsd);errors+=lifecycle
     if [(t.split('.')[-1],h,normalize(s)) for t,h,s in operations]!=[(t,h,normalize(s)) for t,h,s in actual]:errors.append('active spec/sequence SQL differs')

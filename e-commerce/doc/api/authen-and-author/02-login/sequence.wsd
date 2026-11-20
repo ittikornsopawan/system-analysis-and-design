@@ -69,7 +69,7 @@ activate page
                 -> answer 200.
             end note
             app -> app: Create request context; generate requestId when omitted
-            app -> app: Decrypt encrypted sensitive fields (unwrap encryptedKey, AES-256-GCM per field); any failure 400 E10001 Encrypted fields could not be decrypted.
+            app -> app: Decrypt each encrypted sensitive field with the backend private key (RSA-OAEP-SHA-256); any failure 400 E10001 Encrypted fields could not be decrypted.
             app -> app: Validate headers and body
             note over app, infra
                 `username` is a non-empty string of at most 254 characters and `password` is a non-empty string of at most

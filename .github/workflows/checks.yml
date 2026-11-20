@@ -1,11 +1,8 @@
 name: checks
 
-# Runs every documentation checker and the tests of the tooling on each pull request and on each push to main. The
-# database tests (run_db_tests.sh) are left out of CI by owner order of 2026-11-15; run them locally until the API work.
+# Only the checks that protect something real (owner order of 2026-11-20). The other check_docs.py sub-commands pin
+# wording of single specs; authors may run them locally, CI does not. run_db_tests.sh stays local (owner order 2026-11-15).
 # Nothing here uses a secret: the job only reads the repository (permissions: contents: read).
-#
-# The repository owner sets up the branch protection of main in GitHub (Settings > Branches): require the status check
-# "checks" and require branches to be up to date before merging. A workflow cannot set that for itself.
 
 on:
   pull_request:
@@ -23,62 +20,22 @@ jobs:
   checks:
     name: checks
     runs-on: ubuntu-24.04
-    timeout-minutes: 30
+    timeout-minutes: 15
     steps:
-      - name: Check out the repository
-        uses: actions/checkout@v4
+      - uses: actions/checkout@v4
 
-      - name: Set up Python 3
-        uses: actions/setup-python@v5
+      - uses: actions/setup-python@v5
         with:
           python-version: "3.12"
 
-      - name: Show the versions
+      # The contract is what the backend and the frontend build against: it must be valid OpenAPI 3.1.
+      - name: Contract is valid OpenAPI
         run: |
-          python3 --version
-          git --version
+          python3 -m pip install --quiet openapi-spec-validator==0.9.0
+          python3 -m openapi_spec_validator e-commerce/api/api-contract.json
 
-      # Pinned so a new release cannot turn CI red without a change here. check_docs.py api-contract also uses it when installed.
-      - name: Install the OpenAPI validator
-        run: python3 -m pip install openapi-spec-validator==0.9.0
-
-      - name: Validate the OpenAPI 3.1 contract
-        run: python3 -m openapi_spec_validator e-commerce/api/api-contract.json
-
-      - name: Prove the validator fails on an invalid contract
-        run: |
-          # Deliberate fault: break a copy (never the real file); the validator must reject it.
-          bad="$(mktemp -d)/bad.json"
-          python3 - "$bad" <<'PY'
-          import json, sys
-          doc = json.load(open("e-commerce/api/api-contract.json"))
-          del doc["info"]  # info is required by OpenAPI 3.1
-          json.dump(doc, open(sys.argv[1], "w"))
-          PY
-          if python3 -m openapi_spec_validator "$bad"; then echo "validator accepted an invalid contract"; exit 1; fi
-          echo "validator rejected the invalid copy, as expected"
-
-      - name: check_docs.py (every sub-command)
-        run: |
-          # The list comes from check_docs.py itself, so a new sub-command is run without a change here.
-          list=$(python3 e-commerce/db/tests/check_docs.py | sed -n 's/^subcommands: //p' | tr -d ',')
-          if [ -z "$list" ]; then echo "no sub-command found in check_docs.py"; exit 1; fi
-          count=0
-          failed=0
-          for command in $list; do
-            count=$((count + 1))
-            if output=$(python3 e-commerce/db/tests/check_docs.py "$command" 2>&1); then
-              echo "OK   $command"
-            else
-              failed=$((failed + 1))
-              echo "FAIL $command: $output"
-              echo "::error title=check_docs.py $command::$output"
-            fi
-          done
-          echo "$count sub-commands, $failed failed"
-          [ "$failed" -eq 0 ]
-
-      - name: audit_all.py
+      # Every spec SQL names real tables and columns.
+      - name: Spec SQL matches the schema
         if: ${{ !cancelled() }}
         run: python3 e-commerce/db/tests/audit_all.py
 
@@ -91,8 +48,13 @@ jobs:
 
       - name: test_sequence_skeleton.py
         if: ${{ !cancelled() }}
-        run: python3 .agents/skills/api-contract-design/scripts/test_sequence_skeleton.py
+        run: |
+          for c in biz-codes status-codes api-sequence-spec schema er md-frontmatter; do
+            python3 e-commerce/db/tests/check_docs.py "$c"
+          done
 
-      - name: test_agent_workspace.py
+      - name: Tooling tests
         if: ${{ !cancelled() }}
-        run: python3 .agents/skills/agent-workspace/tests/test_agent_workspace.py
+        run: |
+          python3 .agents/skills/api-contract-design/scripts/test_sequence_skeleton.py
+          python3 .agents/skills/agent-workspace/tests/test_agent_workspace.py
