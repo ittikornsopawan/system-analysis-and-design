@@ -603,9 +603,11 @@ def check_examples(contract, mark_null):
 
 
 def pretty_target(argv):
-    """The OUT path of `--pretty OUT`, or None. Stops before any write when OUT is missing or is the committed contract."""
+    """The OUT path of `--pretty OUT`, or None. Stops before any write when OUT is missing, is the committed contract, or --check is also given."""
     if "--pretty" not in argv:
         return None
+    if "--check" in argv:
+        sys.exit("use one of --check or --pretty")
     at = argv.index("--pretty") + 1
     if at >= len(argv):
         sys.exit("--pretty needs an output path")
