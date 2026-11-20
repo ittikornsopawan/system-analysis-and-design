@@ -2,8 +2,8 @@
 name: Author Me API Specification
 description: Defines the calling JWT role snapshot and platform-administrator flag, current credential/user validation, deterministic mapping, read-only SQL and complete outcomes for GET v1/author/me.
 status: approved
-approved_by: Ittikorn
-approved_at: 2026-11-16T09:24:57+07:00
+approved_by: Josh (SA Lead, delegated by Ittikorn 2026-11-17)
+approved_at: 2026-11-20T15:26:03+07:00
 ---
 
 # [GET]: v1/author/me
@@ -210,7 +210,7 @@ curl --location --request GET 'https://www.domain.com/api-dev/v1/author/me' \
         "code": 400,
         "message": "Bad Request",
         "bizCode": "E10001",
-        "bizMessage": "Timestamp is a required header and must be a valid UTC timestamp.",
+        "bizMessage": "Timestamp is a required header.",
         "requestId": "req-me-review",
         "timestamp": "2026-11-07T12:00:00.123Z",
         "status": "ERROR"
