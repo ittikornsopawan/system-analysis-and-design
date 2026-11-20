@@ -5,7 +5,7 @@ status: draft
 approved_by: null
 approved_at: null
 observed_on: 2026-11-20
-source_component_revision: 5287221c8cf92eec606fd80c455b0ad186a2bf47
+source_component_revision: 23fab92ca6936aa905ec3470174f78c179ac6b8a
 source_showcase_revision: 7e1315637e797e384859a346b250914226d59591
 ---
 
@@ -43,7 +43,7 @@ These layers do not prescribe an API → Application → Domain → Infrastructu
 
 Within the Domain layer, this project uses **Service = Domain**: reusable business operations live in `src/Ecommerce.Domain/<Feature>/Domain/`, such as `Authen/Domain/`. Infrastructure services such as `TokenService` keep their technical responsibilities under their ports.
 
-**Baseline:** the inspected code is [e-commerce-backend at `5287221`](https://github.com/ittikornsopawan/e-commerce-backend/tree/5287221c8cf92eec606fd80c455b0ad186a2bf47), which includes the APIs 01–10 of authen-and-author, the removal of the legacy `api/authen/me` path (#18) and the removal of the unused first-scaffold domain model. [REPOS.md](../REPOS.md) still pins `61bedeb`; advancing the pin is a separate manifest change. The guide describes `main` once the cleanup PR that contains `5287221` merges.
+**Baseline:** the inspected code is [e-commerce-backend at `23fab92`](https://github.com/ittikornsopawan/e-commerce-backend/tree/23fab92ca6936aa905ec3470174f78c179ac6b8a), the `main` branch after the APIs 01–10 of authen-and-author, the removal of the legacy `api/authen/me` path (#18), the merge of the two auth controllers into `AuthenController` (#19) and the removal of the unused first-scaffold domain model (#20). [REPOS.md](../REPOS.md) still pins `61bedeb`; advancing the pin is a separate manifest change.
 
 **Data access (owner decision 2026-11-18):** persistence uses EF Core + LINQ only, with no raw SQL in handlers or repositories. The specification SQL stays the reference for meaning: row locks, lock order, isolation and guarded updates are kept through `ForUpdate()`, the transaction runner and `ExecuteUpdateAsync`. The only raw statements are constant and input-free: the advisory lock and `SET TRANSACTION READ ONLY` (lead decision 2026-11-20). Dapper, `DbSession` and `UnitOfWork` were removed on 2026-11-20.
 
@@ -55,7 +55,7 @@ This document covers every layer/sub-layer, its responsibilities, inputs/outputs
 
 [Full-size image](../diagram/main/architecture-design.drawio.png) · [Edit in draw.io](../diagram/main/architecture-design.drawio) · [Diagram companion](../diagram/main/architecture-design.md) · [HTML preview](../diagram/main/architecture-design.html)
 
-This diagram explains logical layers and runtime collaboration within one ASP.NET Core application. Nested boxes identify responsibility ownership; arrows show selected calls. **The diagram was drawn from the first scaffold** and still shows `AuthenController`, `GetCurrentUser`, Dapper, `DbSession` and `UnitOfWork`, which no longer exist; read its layer boxes, and take the sub-layer names from the tables below until the diagram is redrawn.
+This diagram explains logical layers and runtime collaboration within one ASP.NET Core application. Nested boxes identify responsibility ownership; arrows show selected calls. **The diagram was drawn from the first scaffold** and still shows `GetCurrentUser`, Dapper, `DbSession` and `UnitOfWork`, which no longer exist (its `AuthenController` box held the legacy `api/authen` routes; the class of that name now serves `v1/auth`); read its layer boxes, and take the sub-layer names from the tables below until the diagram is redrawn.
 
 | Diagram label | Interpretation |
 | --- | --- |
@@ -70,7 +70,7 @@ API connects the caller to Application. It owns HTTP semantics, the request's sh
 
 | Sub-layer | Responsibilities and owned work | Input → Output / collaboration | Source / status |
 | --- | --- | --- | --- |
-| Controllers | Define the `v1` routes, check the request's shape, build the Command/Query with the verified caller, dispatch it and choose the success status | HTTP action input → Application request → `Result` → envelope | `Controllers/AuthController.cs` (`v1/auth`, specs 01–06), `Controllers/UserController.cs` (`v1/user`, 07–10) — CODE |
+| Controllers | Define the `v1` routes, check the request's shape, build the Command/Query with the verified caller, dispatch it and choose the success status | HTTP action input → Application request → `Result` → envelope | `Controllers/AuthenController.cs` (`v1/auth`, specs 01–06), `Controllers/UserController.cs` (`v1/user`, 07–10) — CODE |
 | Contracts | Request records for model binding; key-presence readers for partial updates and GET queries; the response envelope | JSON/query → records or present values; result → `{status, data}` | `Contracts/Authen/*`, `Contracts/JsonBody.cs`, `Contracts/QueryParameters.cs`, `Contracts/ApiEnvelope.cs` — CODE |
 | Filters / envelope | Answer every API in the spec envelope around the controller: required headers (400 E10001), a body that cannot bind, unexpected exceptions (500 without bizCode) | Request/exception → 400/500 envelope | `Filters/RequiredHeadersFilter.cs`, `Filters/InvalidBody.cs`, `Filters/EnvelopeExceptionHandler.cs`, `Extensions/HttpEnvelope.cs`, `Extensions/ResultExtensions.cs` — CODE |
 | Security | Read the verified JWT in the action (`VerifiedCaller`) instead of `[Authorize]`, so a 400 answers before a 401; per-IP rate limits of the public APIs (429 E90002) | Principal + Bearer header → `Caller?`; IP → permit or 429 | `Security/VerifiedCaller.cs`, `CallerClaims.cs`, `RateLimiting.cs` — CODE |
@@ -80,7 +80,7 @@ API connects the caller to Application. It owns HTTP semantics, the request's sh
 
 **Boundary to preserve:** a valid JWT only proves the token's form and expiry. Whether its session is still open is checked inside the use case's transaction (section 2.8). Controllers never decide a business outcome.
 
-Source: [UserController](https://github.com/ittikornsopawan/e-commerce-backend/blob/5287221c8cf92eec606fd80c455b0ad186a2bf47/src/Ecommerce.Api/Controllers/UserController.cs), [VerifiedCaller](https://github.com/ittikornsopawan/e-commerce-backend/blob/5287221c8cf92eec606fd80c455b0ad186a2bf47/src/Ecommerce.Api/Security/VerifiedCaller.cs), [RequiredHeadersFilter](https://github.com/ittikornsopawan/e-commerce-backend/blob/5287221c8cf92eec606fd80c455b0ad186a2bf47/src/Ecommerce.Api/Filters/RequiredHeadersFilter.cs), [Program](https://github.com/ittikornsopawan/e-commerce-backend/blob/5287221c8cf92eec606fd80c455b0ad186a2bf47/src/Ecommerce.Api/Program.cs)
+Source: [UserController](https://github.com/ittikornsopawan/e-commerce-backend/blob/23fab92ca6936aa905ec3470174f78c179ac6b8a/src/Ecommerce.Api/Controllers/UserController.cs), [VerifiedCaller](https://github.com/ittikornsopawan/e-commerce-backend/blob/23fab92ca6936aa905ec3470174f78c179ac6b8a/src/Ecommerce.Api/Security/VerifiedCaller.cs), [RequiredHeadersFilter](https://github.com/ittikornsopawan/e-commerce-backend/blob/23fab92ca6936aa905ec3470174f78c179ac6b8a/src/Ecommerce.Api/Filters/RequiredHeadersFilter.cs), [Program](https://github.com/ittikornsopawan/e-commerce-backend/blob/23fab92ca6936aa905ec3470174f78c179ac6b8a/src/Ecommerce.Api/Program.cs)
 
 ### 2.2 Application layer — Use cases and orchestration sub-layers
 
@@ -98,7 +98,7 @@ Application accepts caller intent and completes a use case through Domain rules 
 
 **Boundary to preserve:** a handler coordinates; it does not copy a rule that Domain owns. Validators are synchronous and never read the database. Isolation and READ ONLY come from the spec, never from convenience.
 
-Source: [UpsertUserAddressCommandHandler](https://github.com/ittikornsopawan/e-commerce-backend/blob/5287221c8cf92eec606fd80c455b0ad186a2bf47/src/Ecommerce.Application/Features/Authen/UpsertUserAddress/UpsertUserAddressCommandHandler.cs), [CallerCredential](https://github.com/ittikornsopawan/e-commerce-backend/blob/5287221c8cf92eec606fd80c455b0ad186a2bf47/src/Ecommerce.Application/Features/Authen/Common/Caller.cs), [ITransactionRunner](https://github.com/ittikornsopawan/e-commerce-backend/blob/5287221c8cf92eec606fd80c455b0ad186a2bf47/src/Ecommerce.Application/Abstractions/ITransactionRunner.cs)
+Source: [UpsertUserAddressCommandHandler](https://github.com/ittikornsopawan/e-commerce-backend/blob/23fab92ca6936aa905ec3470174f78c179ac6b8a/src/Ecommerce.Application/Features/Authen/UpsertUserAddress/UpsertUserAddressCommandHandler.cs), [CallerCredential](https://github.com/ittikornsopawan/e-commerce-backend/blob/23fab92ca6936aa905ec3470174f78c179ac6b8a/src/Ecommerce.Application/Features/Authen/Common/Caller.cs), [ITransactionRunner](https://github.com/ittikornsopawan/e-commerce-backend/blob/23fab92ca6936aa905ec3470174f78c179ac6b8a/src/Ecommerce.Application/Abstractions/ITransactionRunner.cs)
 
 ### 2.3 Domain layer — Business rules and values
 
@@ -115,7 +115,7 @@ Domain expresses accepted business meaning: valid values and business decisions,
 
 **Boundary to preserve:** there are no entities. Rows are read into records and decisions are pure functions over them; invariants that span requests are kept by the database (locks, guarded updates, unique indexes). Add an entity only when a spec needs behaviour that belongs to one object's state.
 
-Source: [AddressDefaultPolicy](https://github.com/ittikornsopawan/e-commerce-backend/blob/5287221c8cf92eec606fd80c455b0ad186a2bf47/src/Ecommerce.Domain/Authen/Domain/AddressDefaultPolicy.cs), [AuthorizationClaims](https://github.com/ittikornsopawan/e-commerce-backend/blob/5287221c8cf92eec606fd80c455b0ad186a2bf47/src/Ecommerce.Domain/Authen/Domain/AuthorizationClaims.cs), [AuthenErrors](https://github.com/ittikornsopawan/e-commerce-backend/blob/5287221c8cf92eec606fd80c455b0ad186a2bf47/src/Ecommerce.Domain/Authen/AuthenErrors.cs)
+Source: [AddressDefaultPolicy](https://github.com/ittikornsopawan/e-commerce-backend/blob/23fab92ca6936aa905ec3470174f78c179ac6b8a/src/Ecommerce.Domain/Authen/Domain/AddressDefaultPolicy.cs), [AuthorizationClaims](https://github.com/ittikornsopawan/e-commerce-backend/blob/23fab92ca6936aa905ec3470174f78c179ac6b8a/src/Ecommerce.Domain/Authen/Domain/AuthorizationClaims.cs), [AuthenErrors](https://github.com/ittikornsopawan/e-commerce-backend/blob/23fab92ca6936aa905ec3470174f78c179ac6b8a/src/Ecommerce.Domain/Authen/AuthenErrors.cs)
 
 ### 2.4 Infrastructure layer — Adapters and technology details
 
@@ -136,7 +136,7 @@ Infrastructure performs the work behind the ports: EF Core persistence, transact
 
 **Boundary to preserve:** repositories and the DbContext are scoped; security and email services are singletons and never capture a scoped context. No repository opens its own transaction.
 
-Source: [EfTransactionRunner](https://github.com/ittikornsopawan/e-commerce-backend/blob/5287221c8cf92eec606fd80c455b0ad186a2bf47/src/Ecommerce.Infrastructure/Persistence/EfTransactionRunner.cs), [UserAddressRepository](https://github.com/ittikornsopawan/e-commerce-backend/blob/5287221c8cf92eec606fd80c455b0ad186a2bf47/src/Ecommerce.Infrastructure/Persistence/Authen/UserAddressRepository.cs), [ForUpdate](https://github.com/ittikornsopawan/e-commerce-backend/blob/5287221c8cf92eec606fd80c455b0ad186a2bf47/src/Ecommerce.Infrastructure/Persistence/Ef/ForUpdate.cs), [DependencyInjection](https://github.com/ittikornsopawan/e-commerce-backend/blob/5287221c8cf92eec606fd80c455b0ad186a2bf47/src/Ecommerce.Infrastructure/DependencyInjection.cs)
+Source: [EfTransactionRunner](https://github.com/ittikornsopawan/e-commerce-backend/blob/23fab92ca6936aa905ec3470174f78c179ac6b8a/src/Ecommerce.Infrastructure/Persistence/EfTransactionRunner.cs), [UserAddressRepository](https://github.com/ittikornsopawan/e-commerce-backend/blob/23fab92ca6936aa905ec3470174f78c179ac6b8a/src/Ecommerce.Infrastructure/Persistence/Authen/UserAddressRepository.cs), [ForUpdate](https://github.com/ittikornsopawan/e-commerce-backend/blob/23fab92ca6936aa905ec3470174f78c179ac6b8a/src/Ecommerce.Infrastructure/Persistence/Ef/ForUpdate.cs), [DependencyInjection](https://github.com/ittikornsopawan/e-commerce-backend/blob/23fab92ca6936aa905ec3470174f78c179ac6b8a/src/Ecommerce.Infrastructure/DependencyInjection.cs)
 
 ### 2.5 Shared layer — Common request and result mechanisms
 
@@ -152,7 +152,7 @@ Shared supplies types used across features and has no project references.
 
 **Boundary to preserve:** Shared does not map HTTP, open transactions or authorize requests. Additions must keep it free of project references.
 
-Source: [Dispatcher](https://github.com/ittikornsopawan/e-commerce-backend/blob/5287221c8cf92eec606fd80c455b0ad186a2bf47/src/Ecommerce.Shared/Cqrs/Dispatcher.cs), [Error](https://github.com/ittikornsopawan/e-commerce-backend/blob/5287221c8cf92eec606fd80c455b0ad186a2bf47/src/Ecommerce.Shared/Results/Error.cs), [ValidationMessages](https://github.com/ittikornsopawan/e-commerce-backend/blob/5287221c8cf92eec606fd80c455b0ad186a2bf47/src/Ecommerce.Shared/Validation/ValidationMessages.cs)
+Source: [Dispatcher](https://github.com/ittikornsopawan/e-commerce-backend/blob/23fab92ca6936aa905ec3470174f78c179ac6b8a/src/Ecommerce.Shared/Cqrs/Dispatcher.cs), [Error](https://github.com/ittikornsopawan/e-commerce-backend/blob/23fab92ca6936aa905ec3470174f78c179ac6b8a/src/Ecommerce.Shared/Results/Error.cs), [ValidationMessages](https://github.com/ittikornsopawan/e-commerce-backend/blob/23fab92ca6936aa905ec3470174f78c179ac6b8a/src/Ecommerce.Shared/Validation/ValidationMessages.cs)
 
 ### 2.6 Existing request flow
 
@@ -196,7 +196,7 @@ Handler loads the facts the rule needs (inside the transaction, under the spec's
 
 [Full-size image](../diagram/reference/repository/repository-architecture.drawio.png) · [draw.io source](../diagram/reference/repository/repository-architecture.drawio) · [Diagram companion](../diagram/reference/repository/repository-architecture.md) · [HTML preview](../diagram/reference/repository/repository-architecture.html)
 
-This diagram maps source ownership and compile-time dependencies. `REF` indicates a `ProjectReference`. Like section 2's diagram it was drawn from the first scaffold (`AuthenController`, `IAuthenRepositories`, Dapper, `DbSession`, `UnitOfWork`, two test projects); the project boxes and references are still right, the file names inside them are not.
+This diagram maps source ownership and compile-time dependencies. `REF` indicates a `ProjectReference`. Like section 2's diagram it was drawn from the first scaffold (`IAuthenRepositories`, Dapper, `DbSession`, `UnitOfWork`, two test projects); the project boxes and references are still right, the file names inside them are not.
 
 ### 3.1 Two repository boundaries
 
@@ -319,7 +319,7 @@ Domain does not accept EF Core contexts, HTTP DTOs or SDK clients, and does not 
 | Email, phone, date-of-birth and gender formats | `EmailAddressFormat`, `ProfileFieldRules` | 01, 03, 07 |
 | Single use across requests (reset token, refresh token) | Guarded `ExecuteUpdateAsync` under the user lock | 04, 05 |
 
-Source: [Authen/Domain](https://github.com/ittikornsopawan/e-commerce-backend/tree/5287221c8cf92eec606fd80c455b0ad186a2bf47/src/Ecommerce.Domain/Authen/Domain)
+Source: [Authen/Domain](https://github.com/ittikornsopawan/e-commerce-backend/tree/23fab92ca6936aa905ec3470174f78c179ac6b8a/src/Ecommerce.Domain/Authen/Domain)
 
 ## 6. CQRS and Business Domain calls
 
@@ -392,8 +392,8 @@ When developing a business operation under an approved specification, check at l
 ## 11. References and guide verification
 
 - [Function Book](function-book.md) lists the shared functions with their signatures and use.
-- [Component project-structure.md](https://github.com/ittikornsopawan/e-commerce-backend/blob/5287221c8cf92eec606fd80c455b0ad186a2bf47/project-structure.md) lists the files and the steps to add a use case.
-- [Component code.md](https://github.com/ittikornsopawan/e-commerce-backend/blob/5287221c8cf92eec606fd80c455b0ad186a2bf47/code.md) (Thai) explains the request flow, transactions, errors and tests.
+- [Component project-structure.md](https://github.com/ittikornsopawan/e-commerce-backend/blob/23fab92ca6936aa905ec3470174f78c179ac6b8a/project-structure.md) lists the files and the steps to add a use case.
+- [Component code.md](https://github.com/ittikornsopawan/e-commerce-backend/blob/23fab92ca6936aa905ec3470174f78c179ac6b8a/code.md) (Thai) explains the request flow, transactions, errors and tests.
 - [Diagram index](../diagram/README.md) covers other views such as order lifecycle and checkout/payment sequences.
 - [Manifest](../REPOS.md) and [component-repositories rule](../../.agents/rules/component-repositories.md) define Git ownership and baseline pinning.
 
@@ -401,9 +401,9 @@ When developing a business operation under an approved specification, check at l
 
 | Check | Result and scope |
 | --- | --- |
-| Source correspondence | Every file, class and route named here exists at component `5287221`; the project references in 3.2 come from the `.csproj` files |
-| Removed elements | `AuthenController`, `GetCurrentUser`, Dapper, `DbSession`, `UnitOfWork`, the `User`/`PasswordResetToken` entities and their value objects are named only as removed or as labels of the old diagrams |
+| Source correspondence | Every file, class and route named here exists at component `23fab92`; the project references in 3.2 come from the `.csproj` files |
+| Removed elements | `GetCurrentUser`, Dapper, `DbSession`, `UnitOfWork`, the `User`/`PasswordResetToken` entities and their value objects are named only as removed or as labels of the old diagrams |
 | Diagrams | The three bundles are unchanged; sections 2 and 3 say which labels are outdated |
-| Component tests | `dotnet test` at `5287221`: Api 278, Application 43, Domain 73, Infrastructure 47, 0 failed |
+| Component tests | `dotnet test` at `23fab92`: Api 278, Application 43, Domain 73, Infrastructure 47, 0 failed |
 
 This revision replaces the 2026-11-09 review of the first scaffold. It changes no backend code, specification, schema or diagram, and needs the lead's review before it is approved again.
