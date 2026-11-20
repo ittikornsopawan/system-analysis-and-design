@@ -4,3 +4,7 @@
 
 /e-commerce/repository/e-commerce-backend/
 /*/repository/.bootstrap-*/
+
+# Component Repositories and their worktrees live here; only .gitkeep is tracked (a stray `git add` once recorded a worktree as a gitlink)
+/*/repository/*
+!/*/repository/.gitkeep
