@@ -1,13 +1,12 @@
 ---
 name: E-commerce Layer and Sub-layer Code Structure Guide
 description: Explains every backend layer and sub-layer, including responsibilities, inputs/outputs, boundaries, collaboration, source examples and existing diagrams. Use before placing code, developing a use case or reviewing architecture.
-status: approved
-approved_by: Josh (SA Lead, delegated by Ittikorn 2026-11-17)
-approved_at: 2026-11-18T07:33:34+07:00
-observed_on: 2026-11-08
-reviewed_on: 2026-11-09
-source_component_revision: d8255183cba54d0c2b218607456b895a70df32f0
-source_showcase_revision: f5580ed087c8ffcc6a740b256fcb6aacd36ec5ae
+status: draft
+approved_by: null
+approved_at: null
+observed_on: 2026-11-20
+source_component_revision: 5287221c8cf92eec606fd80c455b0ad186a2bf47
+source_showcase_revision: 7e1315637e797e384859a346b250914226d59591
 ---
 
 # E-commerce Code Structure: Every Layer and Sub-layer
@@ -19,37 +18,36 @@ This guide explains the e-commerce backend across **Presentation, Application, D
 ### 1.1 Terms used across all layers
 
 | Term | Meaning in this guide | Example |
-| ------------------ | ----------------------------------------------------------------------------------------------- | -------------------------------------------------------------------------- |
-| Layer | A major responsibility and dependency boundary, currently separated into five production `.csproj` files | API handles HTTP; Domain owns business meaning and rules |
-| Sub-layer | A responsibility group inside a layer, represented by folders, files or diagram elements; it does not automatically introduce another project or process | Controllers and Contracts belong to API; DbSession and UnitOfWork belong to Persistence |
-| Feature | A business capability grouping related models and use cases | Authen |
-| Use case / Handler | A use case is an operation requested by a caller; a handler is the Application class that coordinates its execution | Register, Login, RequestPasswordReset, ResetPassword, GetCurrentUser |
-| Contract / DTO | A data shape used across a boundary, separate from a domain entity's state | HTTP requests, Command/Query inputs and response records |
-| Port | An inner-layer interface describing a required capability independently of concrete technology | `IUserRepository`, `IUnitOfWork`, `IPasswordHasher` |
-| Adapter | A technology-specific implementation of a port | EF Core repositories (Dapper ones until replaced), `UnitOfWork`, password hasher |
+| --- | --- | --- |
+| Layer | A major responsibility and dependency boundary, separated into five production `.csproj` files | API handles HTTP; Domain owns business meaning and rules |
+| Sub-layer | A responsibility group inside a layer, represented by folders or files; it does not introduce another project or process | Controllers and Contracts belong to API; the transaction runner and LINQ repositories belong to Persistence |
+| Feature | A business capability grouping related rules and use cases | Authen |
+| Use case / Handler | A use case is an operation requested by a caller and governed by one API spec; a handler is the Application class that coordinates it | Register (01) … InquiryUserAddress (10) |
+| Contract / DTO | A data shape used across a boundary | HTTP request records, Command/Query inputs, response records |
+| Port | An inner-layer interface describing a required capability without technology | `IUserAddressRepository`, `ITransactionRunner`, `IPasswordHasher` |
+| Adapter | A technology-specific implementation of a port | `UserAddressRepository` (EF Core LINQ), `EfTransactionRunner`, `Pbkdf2PasswordHasher` |
 
 ### 1.2 Overview of all five layers
 
 | Layer / project | Question it owns | Inputs and outputs | Sub-layers covered |
-| ------------------------------------------- | ------------------------------------------------------------ | ----------------------------------------------------------------------------------- | ---------------------------------------------------------------------------------------------- |
-| Presentation — `Ecommerce.Api` | How is an HTTP request accepted and its outcome communicated? | HTTP/contracts/principal → Application request → HTTP status/payload | Controllers, Contracts/model binding, HTTP results, Composition/security pipeline |
-| Application — `Ecommerce.Application` | Which steps and collaborators complete this use case? | Command/Query → loaded facts, rule/port calls → Result/response DTO | Commands/Queries, Validators, Handlers, Mapping/Responses, Ports/Common |
-| Domain — `Ecommerce.Domain` | Which values, states and decisions does the business accept? | Business values/state/facts → business result or state transition through behavior | Entities/Aggregates, ValueObjects, Business Domain, Repository contracts, Common/Errors/Status |
-| Infrastructure — `Ecommerce.Infrastructure` | How do databases, cryptography and external systems perform the work? | Port calls and required values → I/O data/outcomes or infrastructure failures | Repositories, DbSession, UnitOfWork, Security, Email, Options/DI and proposed adapters |
-| Shared — `Ecommerce.Shared` | Which common mechanisms are shared across features? | Request/result types → handler dispatch and shared success/failure contracts | Messaging contracts, Dispatcher/Registration, Results/Errors |
+| --- | --- | --- | --- |
+| Presentation — `Ecommerce.Api` | How is an HTTP request accepted and its outcome communicated? | HTTP request/principal → Application request → envelope with status and data | Controllers, Contracts, Filters/envelope, Security, Composition |
+| Application — `Ecommerce.Application` | Which steps and collaborators complete this use case? | Command/Query → rule and port calls inside one transaction → `Result` | Commands/Queries, Validators, Handlers, Shared use-case steps, Ports/Common |
+| Domain — `Ecommerce.Domain` | Which values and decisions does the business accept? | Business facts → decision or validity | Business Domain, ValueObjects, Repository contracts, Common/Errors |
+| Infrastructure — `Ecommerce.Infrastructure` | How do the database, cryptography and external systems do the work? | Port calls → rows, hashes, tokens or translated failures | Repositories, Transaction runner, EF Core model, Locks, Security, Email, Options/DI |
+| Shared — `Ecommerce.Shared` | Which mechanisms are common to every feature? | Request/result types → dispatch, results, messages, paging | Messaging, Dispatcher, Results/Errors, Validation messages, Optional/Paging |
 
-These layers do not prescribe an API → Application → Domain → Infrastructure → Shared sequence for every request. Shared supplies building blocks referenced by several layers; runtime calls follow interfaces and DI for each use case. Section 2 explains sub-layer responsibilities and boundaries. Section 3 distinguishes project references from runtime calls.
+These layers do not prescribe an API → Application → Domain → Infrastructure → Shared sequence for every request. Shared supplies building blocks referenced by several layers; runtime calls follow interfaces and DI. Section 3 distinguishes project references from runtime calls.
 
 ### 1.3 Convention, source baseline and evidence status
 
-Within the Domain layer, this project uses **Service = Domain** to mean reusable business operations, with the owner-selected path `src/Ecommerce.Domain/<Feature>/Domain/`, such as `Authen/Domain/`. Entities and ValueObjects retain their own invariants. Sections 2.3 and 5 explain this convention. Infrastructure services such as `TokenService` retain their technical responsibilities under their respective ports.
+Within the Domain layer, this project uses **Service = Domain**: reusable business operations live in `src/Ecommerce.Domain/<Feature>/Domain/`, such as `Authen/Domain/`. Infrastructure services such as `TokenService` keep their technical responsibilities under their ports.
 
-**Baseline:** The inspected code is the [e-commerce-backend](https://github.com/ittikornsopawan/e-commerce-backend/tree/d8255183cba54d0c2b218607456b895a70df32f0) Component Repository pinned by [REPOS.md](../REPOS.md). It contains five production projects, two test projects and five Authen use cases. `Authen/Domain/` is an owner-directed design without an implementation at this commit. The domain model diagram describes data concepts rather than an inventory of existing business service classes.
+**Baseline:** the inspected code is [e-commerce-backend at `5287221`](https://github.com/ittikornsopawan/e-commerce-backend/tree/5287221c8cf92eec606fd80c455b0ad186a2bf47), which includes the APIs 01–10 of authen-and-author, the removal of the legacy `api/authen/me` path (#18) and the removal of the unused first-scaffold domain model. [REPOS.md](../REPOS.md) still pins `61bedeb`; advancing the pin is a separate manifest change. The guide describes `main` once the cleanup PR that contains `5287221` merges.
 
-**Data access (owner decision 2026-11-18):** persistence moves from Dapper to EF Core + LINQ, with no raw SQL in handlers or repositories. The specification SQL stays the reference for meaning: row locks, lock order, REPEATABLE READ and guarded updates (`RETURNING`) are kept through `ForUpdate()`, the transaction and `ExecuteUpdate`. EF Core runs as 10.x (Npgsql provider 10.0.3) on net11.0. The DbContext and `ForUpdate()` exist since [e-commerce-backend#3](https://github.com/ittikornsopawan/e-commerce-backend/pull/3) (merge `22807d3b`). Since [e-commerce-backend#5](https://github.com/ittikornsopawan/e-commerce-backend/pull/5) (merge `4970dde7`), 01 register runs fully on EF Core through `RegistrationRepository` and `EfTransactionRunner`. The Dapper repositories, `DbSession` and `UnitOfWork` still serve login, reset password and `/me` until those slices are rebuilt; the rows marked Dapper in sections 2.4 and 7 describe that remaining code.
+**Data access (owner decision 2026-11-18):** persistence uses EF Core + LINQ only, with no raw SQL in handlers or repositories. The specification SQL stays the reference for meaning: row locks, lock order, isolation and guarded updates are kept through `ForUpdate()`, the transaction runner and `ExecuteUpdateAsync`. The only raw statements are constant and input-free: the advisory lock and `SET TRANSACTION READ ONLY` (lead decision 2026-11-20). Dapper, `DbSession` and `UnitOfWork` were removed on 2026-11-20.
 
-This document covers every layer/sub-layer, its responsibilities, inputs/outputs, collaboration, limitations and observed source examples, distinguishing CODE, SPEC and PROPOSED as the diagrams do. The guide is approved as the layer and placement guide for development (2026-11-18). Describing a design does not approve new business behavior; inspect the governing specification and its approval before implementation, following the [SDD workflow](../../.agents/workflows/spec-driven-development.md).
-
+This document covers every layer/sub-layer, its responsibilities, inputs/outputs, collaboration and source examples. Describing a design does not approve new business behaviour; inspect the governing specification and its approval before implementation, following the [SDD workflow](../../.agents/workflows/spec-driven-development.md). The shared functions themselves are listed in the [Function Book](function-book.md).
 
 ## 2. Architecture: Responsibilities during request execution
 
@@ -57,149 +55,140 @@ This document covers every layer/sub-layer, its responsibilities, inputs/outputs
 
 [Full-size image](../diagram/main/architecture-design.drawio.png) · [Edit in draw.io](../diagram/main/architecture-design.drawio) · [Diagram companion](../diagram/main/architecture-design.md) · [HTML preview](../diagram/main/architecture-design.html)
 
-This diagram explains logical layers and runtime collaboration within one ASP.NET Core backend application. Nested boxes identify responsibility ownership; arrows show selected calls. They do not represent compile-time project references or require every request to pass through every box.
+This diagram explains logical layers and runtime collaboration within one ASP.NET Core application. Nested boxes identify responsibility ownership; arrows show selected calls. **The diagram was drawn from the first scaffold** and still shows `AuthenController`, `GetCurrentUser`, Dapper, `DbSession` and `UnitOfWork`, which no longer exist; read its layer boxes, and take the sub-layer names from the tables below until the diagram is redrawn.
 
 | Diagram label | Interpretation |
-| -------------------------- | --------------------------------------------------------------------------------- |
-| `CODE` | Source exists for the indicated element in the pinned backend; behavioral completeness still requires comparison with its specification |
-| `SPEC` | A document defines the behavior; inspect its approval status. This label does not establish backend implementation |
+| --- | --- |
+| `CODE` | Source exists for the element; behavioural completeness still requires comparison with its specification |
+| `SPEC` | A document defines the behaviour; this label does not establish implementation |
 | `PROPOSED` | An addition without implementation, such as Redis/MongoDB adapters and an outbox |
-| `PROPOSED · OWNER REQUEST` | The owner selected the Business Domain position in the diagram; the pinned source does not yet contain that folder or its classes |
+| `PROPOSED · OWNER REQUEST` | The owner-selected Business Domain position; it is now implemented (section 5) |
 
 ### 2.1 Presentation / API layer — HTTP boundary and system composition
 
-API connects the caller to Application. It owns HTTP semantics, the authenticated principal and construction of the dependency graph. Request handling, business decisions and concrete I/O have separate owners even when one request invokes all three.
+API connects the caller to Application. It owns HTTP semantics, the request's shape, the verified caller and the dependency graph. Business decisions and I/O have other owners.
 
 | Sub-layer | Responsibilities and owned work | Input → Output / collaboration | Source / status |
-| ------------------------------- | ---------------------------------------------------------------------------------------------------------------------------------------------------------- | --------------------------------------------------------------------------------------------------------- | ------------------------------------------- |
-| Controllers | Define routes, accept action arguments, construct Command/Query inputs, invoke the dispatcher and select success responses | HTTP action input → Application request → Result → HTTP response | `Controllers/AuthController.cs` (`v1/auth`, register) and `Controllers/AuthenController.cs` (legacy routes until rebuilt) — CODE |
-| Filters / envelope | Answer every API in the spec envelope before or around the controller: required headers (400 E10001), a body that is not a JSON object, unexpected exceptions (500 without bizCode) | HTTP request/exception → 400/500 envelope; success and Result failures go through `HttpEnvelope` | `Filters/RequiredHeadersFilter.cs`, `Filters/InvalidBody.cs`, `Filters/EnvelopeExceptionHandler.cs`, `Extensions/HttpEnvelope.cs` — CODE |
-| Contracts / model binding | Define accepted body shapes for ASP.NET Core to bind/deserialize into request records before constructing use-case inputs | JSON/body → `RegisterRequest`, `LoginRequest` and reset request records; use-case validation remains a separate responsibility | `Contracts/Authen/AuthenRequests.cs` — CODE |
-| HTTP results / extensions | Translate expected errors into status codes and ProblemDetails, retaining the error list and selecting status from the first ErrorType | `Result`/`Error` → `ObjectResult`/ProblemDetails; controllers map successful outcomes per action | `Extensions/ResultExtensions.cs` — CODE |
-| Composition / security pipeline | Register controllers, CQRS, Infrastructure, options and JWT Bearer/authorization; compose exception/authentication/authorization middleware and map controllers | Configuration and service registrations → backend host, resolved adapters and request principal | `Program.cs` — CODE |
+| --- | --- | --- | --- |
+| Controllers | Define the `v1` routes, check the request's shape, build the Command/Query with the verified caller, dispatch it and choose the success status | HTTP action input → Application request → `Result` → envelope | `Controllers/AuthController.cs` (`v1/auth`, specs 01–06), `Controllers/UserController.cs` (`v1/user`, 07–10) — CODE |
+| Contracts | Request records for model binding; key-presence readers for partial updates and GET queries; the response envelope | JSON/query → records or present values; result → `{status, data}` | `Contracts/Authen/*`, `Contracts/JsonBody.cs`, `Contracts/QueryParameters.cs`, `Contracts/ApiEnvelope.cs` — CODE |
+| Filters / envelope | Answer every API in the spec envelope around the controller: required headers (400 E10001), a body that cannot bind, unexpected exceptions (500 without bizCode) | Request/exception → 400/500 envelope | `Filters/RequiredHeadersFilter.cs`, `Filters/InvalidBody.cs`, `Filters/EnvelopeExceptionHandler.cs`, `Extensions/HttpEnvelope.cs`, `Extensions/ResultExtensions.cs` — CODE |
+| Security | Read the verified JWT in the action (`VerifiedCaller`) instead of `[Authorize]`, so a 400 answers before a 401; per-IP rate limits of the public APIs (429 E90002) | Principal + Bearer header → `Caller?`; IP → permit or 429 | `Security/VerifiedCaller.cs`, `CallerClaims.cs`, `RateLimiting.cs` — CODE |
+| Composition | Register controllers, filters, CQRS, Infrastructure and JWT Bearer (issuer, audience, key, UUID `sub`, 401 envelope on challenge); order rate limiter → authentication → controllers | Configuration → host and resolved services | `Program.cs` — CODE |
 
-**Working example:** The `me` action has `[Authorize]`, reads `sub` from the principal and constructs `GetCurrentUserQuery`. Register accepts `RegisterRequest` and constructs `RegisterCommand`. Controllers therefore know the HTTP boundary and Application inputs; they contain no SQL or password-hashing algorithm.
+**Working example:** `UserController.UpsertAddress` reads the body with `JsonBody` (known keys, JSON kinds, which keys are present), passes `VerifiedCaller.Of(this)` and the present values into `UpsertUserAddressCommand`, then answers 201, 200 or 204 from the use case's outcome. It contains no SQL and no business rule.
 
-**Boundary to preserve:** Business formulas belong to Domain/model behavior, use-case steps to handlers, and request serialization/status mapping to API. Enabling JWT authentication does not prove live database token-revocation checks or complete permission resolution. This baseline has no callback checking an ACTIVE token row. Proposed Redis admission middleware still requires placement and failure-contract design.
+**Boundary to preserve:** a valid JWT only proves the token's form and expiry. Whether its session is still open is checked inside the use case's transaction (section 2.8). Controllers never decide a business outcome.
 
-Source: [AuthenController](https://github.com/ittikornsopawan/e-commerce-backend/blob/d8255183cba54d0c2b218607456b895a70df32f0/src/Ecommerce.Api/Controllers/AuthenController.cs), [AuthenRequests](https://github.com/ittikornsopawan/e-commerce-backend/blob/d8255183cba54d0c2b218607456b895a70df32f0/src/Ecommerce.Api/Contracts/Authen/AuthenRequests.cs), [ResultExtensions](https://github.com/ittikornsopawan/e-commerce-backend/blob/d8255183cba54d0c2b218607456b895a70df32f0/src/Ecommerce.Api/Extensions/ResultExtensions.cs), [Program](https://github.com/ittikornsopawan/e-commerce-backend/blob/d8255183cba54d0c2b218607456b895a70df32f0/src/Ecommerce.Api/Program.cs)
+Source: [UserController](https://github.com/ittikornsopawan/e-commerce-backend/blob/5287221c8cf92eec606fd80c455b0ad186a2bf47/src/Ecommerce.Api/Controllers/UserController.cs), [VerifiedCaller](https://github.com/ittikornsopawan/e-commerce-backend/blob/5287221c8cf92eec606fd80c455b0ad186a2bf47/src/Ecommerce.Api/Security/VerifiedCaller.cs), [RequiredHeadersFilter](https://github.com/ittikornsopawan/e-commerce-backend/blob/5287221c8cf92eec606fd80c455b0ad186a2bf47/src/Ecommerce.Api/Filters/RequiredHeadersFilter.cs), [Program](https://github.com/ittikornsopawan/e-commerce-backend/blob/5287221c8cf92eec606fd80c455b0ad186a2bf47/src/Ecommerce.Api/Program.cs)
 
 ### 2.2 Application layer — Use cases and orchestration sub-layers
 
-Application accepts caller intent and completes a use case through models and ports. It owns step ordering, transaction boundaries and the outcome returned to the use-case caller, referencing Domain/Shared rather than concrete Infrastructure.
+Application accepts caller intent and completes a use case through Domain rules and ports. It owns step ordering, the transaction boundary and the outcome returned to API.
 
 | Sub-layer | Responsibilities and owned work | Input → Output / collaboration | Source / status |
-| ------------------- | ------------------------------------------------------------------------------------------------------------------------------ | --------------------------------------------------------------------------------------------------- | ---------------------------------------------------------------------------- |
-| Commands / Queries | Describe operation input and intent; commands change state and queries read data | Request record → handler contract returning `Result` or `Result<T>`; records do not invoke SQL or validators themselves | `Features/Authen/<UseCase>/*Command.cs`, `GetCurrentUserQuery.cs` — CODE |
-| Validators | Check use-case input before a handler executes and invoke value-object factories for value rules | Request → error list; Dispatcher combines errors and stops before the handler on failure | Four command validators — CODE; query `/me` has no validator |
-| Handlers | Load facts, invoke entity/business behavior and ports, coordinate ordering and transactions, and select expected outcomes | Command/Query → repository/security calls and Result/response; dependencies exclude concrete DB/SDK clients | Five Authen handlers — CODE |
-| Mapping / Responses | Select use-case output and translate models into data the caller can consume | `User`/issued tokens → register/login/current-user response records; some commands return Result without a DTO | `Features/Authen/Mapping/AuthenMappings.cs` and response records — CODE |
-| Ports / Common | Define required transaction, password, token and email capabilities; collect validation results and identify the assembly for DI scanning | Interface calls → adapters bound by API; validation results → error list | `Abstractions/` (`ITransactionRunner` runs one use case in one transaction at a chosen isolation level; `IUnitOfWork` for the Dapper handlers), `Common/ValidationErrors.cs`, `AssemblyReference.cs` — CODE |
+| --- | --- | --- | --- |
+| Commands / Queries | Describe operation input; commands change state, queries read. Raw strings and `Optional<T>` keep "omitted" apart from "null" or "invalid" | Request record → handler contract returning `Result` or `Result<T>` | `Features/Authen/<UseCase>/*Command.cs`, `*Query.cs` — CODE (10 use cases) |
+| Validators | Every 400 of the spec, before the JWT check and before SQL, with the message forms of `ValidationMessages` | Request → error list; the dispatcher stops before the handler | `*Validator.cs` — CODE (all use cases with input) |
+| Handlers | Run the work in one transaction at the spec's isolation level, call Domain rules and repositories, map exceptions (409, 408) | Command/Query → `ITransactionRunner` → `Result` | `*Handler.cs` — CODE; each transaction body is a named private method |
+| Shared use-case steps | The current-credential check (`CallerCredential.VerifyAsync` with the user lock for writes, `CheckAsync` without a lock for reads) and the token-pair issue (`SessionTokens`) | Caller → post-lock now or 401; user + session → token pair | `Features/Authen/Common/` — CODE |
+| Ports / Common | Transaction, password, token and email capabilities; the shared timeout error | Interface calls → adapters bound in Infrastructure | `Abstractions/`, `Common/CommonErrors.cs`, `AssemblyReference.cs` — CODE |
 
-**Working example:** `RegisterCommandHandler` checks username/email duplication through a repository, creates a `User` and credential, then uses `IUnitOfWork` to persist user/password in one transaction. `LoginCommandHandler` loads user/credential, verifies the password, calls `EnsureCanSignIn()` and persists tokens. Calls into `Authen/Domain/` would be introduced when its designed business operations are implemented.
+**Working example:** `UpsertUserAddressCommandHandler` runs `ITransactionRunner.RunAsync(ReadCommitted, …)`. Inside it, `CallerCredential.VerifyAsync` locks the user and checks the stored token, the repository finds the owned address, `AddressQuota` and `AddressDefaultPolicy` decide the limit and the default, and the repository writes. A failure result rolls the transaction back.
 
-**Boundary to preserve:** A handler coordinates a feature operation without copying reusable formulas or model invariants across use cases. Current validator contracts are synchronous, so they must not hide database I/O. Authorization and use-case response policy require coordination with relevant identity/business rules; `ICommand` and DI do not supply them automatically.
+**Boundary to preserve:** a handler coordinates; it does not copy a rule that Domain owns. Validators are synchronous and never read the database. Isolation and READ ONLY come from the spec, never from convenience.
 
-Source: [Register handler](https://github.com/ittikornsopawan/e-commerce-backend/blob/d8255183cba54d0c2b218607456b895a70df32f0/src/Ecommerce.Application/Features/Authen/Register/RegisterCommandHandler.cs), [Register validator](https://github.com/ittikornsopawan/e-commerce-backend/blob/d8255183cba54d0c2b218607456b895a70df32f0/src/Ecommerce.Application/Features/Authen/Register/RegisterCommandValidator.cs), [IUnitOfWork](https://github.com/ittikornsopawan/e-commerce-backend/blob/d8255183cba54d0c2b218607456b895a70df32f0/src/Ecommerce.Application/Abstractions/IUnitOfWork.cs), [ValidationErrors](https://github.com/ittikornsopawan/e-commerce-backend/blob/d8255183cba54d0c2b218607456b895a70df32f0/src/Ecommerce.Application/Common/ValidationErrors.cs)
+Source: [UpsertUserAddressCommandHandler](https://github.com/ittikornsopawan/e-commerce-backend/blob/5287221c8cf92eec606fd80c455b0ad186a2bf47/src/Ecommerce.Application/Features/Authen/UpsertUserAddress/UpsertUserAddressCommandHandler.cs), [CallerCredential](https://github.com/ittikornsopawan/e-commerce-backend/blob/5287221c8cf92eec606fd80c455b0ad186a2bf47/src/Ecommerce.Application/Features/Authen/Common/Caller.cs), [ITransactionRunner](https://github.com/ittikornsopawan/e-commerce-backend/blob/5287221c8cf92eec606fd80c455b0ad186a2bf47/src/Ecommerce.Application/Abstractions/ITransactionRunner.cs)
 
-### 2.3 Domain layer — Models, business rules and Business Domain
+### 2.3 Domain layer — Business rules and values
 
-Domain expresses accepted business meaning: valid values, permitted states/transitions and business-operation outcomes. It separates rule decisions from HTTP and concrete storage. This layer contains several responsibilities beyond business service classes.
+Domain expresses accepted business meaning: valid values and business decisions, separated from HTTP and storage.
 
 | Sub-layer | Responsibilities and owned work | Input → Output / collaboration | Source / status |
-| ---------------------------------- | ------------------------------------------------------------------------------------------------------------ | ------------------------------------------------------------------------------------------------------------------------------ | --------------------------------------------------------------------------------------- |
-| Entities / Aggregates | Hold identity/state and control their own behavior/transitions; an aggregate root marks an invariant boundary that requires explicit design | Typed identity/values and current state → entity or transition success/failure | `Authen/Entities/User.cs`, `PasswordResetToken.cs` — CODE; User has an aggregate-root marker |
-| ValueObjects | Define business values, validity, normalization and value equality | Raw values → typed values or validation errors, such as `Username.Create` and `PlainPassword.Create` | `Authen/ValueObjects/` — CODE |
-| Business Domain — Service = Domain | Group reusable business operations or operations without a single owning entity, following the project convention | Business facts/values/models/policy → business results consumed by handlers | `Authen/Domain/` — OWNER-DIRECTED DESIGN; no implementation yet |
-| Repository contracts | Define model read/write interfaces needed by inner layers without EF Core/Dapper/Npgsql/SQL syntax | Typed IDs/values/entities → asynchronous results; Application can use these interfaces directly | `Authen/Repositories/IAuthenRepositories.cs` — CODE |
-| Common / Errors / Status | Supply entity/value equality, the aggregate-root marker, domain statuses and expected-failure vocabulary | Identity/value components/state → primitives, `UserStatus`, `AuthenErrors`; `DuplicateKeyException` communicates unique-write failures | `Common/`, `AuthenErrors.cs`, `UserStatus.cs`, `DuplicateKeyException.cs` — CODE |
+| --- | --- | --- | --- |
+| Business Domain — Service = Domain | Reusable decisions of the specs: effective grants, refresh-token reuse, the address default and quota, the registration consent rules, the reset-request and login throttles | Facts loaded by the handler → decision or `Result` | `Authen/Domain/` — CODE |
+| ValueObjects | Values with their own rule (`PlainPassword`, `PasswordCredential`) and the records repositories exchange (registration, login, profile, address, refresh row, authorization facts) | Raw values → typed values or errors; records carry data only | `Authen/ValueObjects/` — CODE |
+| Repository contracts | One interface per use case or shared step, named after the spec's queries | Typed values → asynchronous results; no EF Core types | `Authen/Repositories/` — CODE (11 interfaces) |
+| Common / Errors | Rules shared by several features (`EmailAddressFormat`, `ProfileFieldRules`), the `ValueObject` base, the feature's errors and the persistence exceptions | Values → bool; failures → `Error` with the spec's status and bizCode | `Common/`, `Authen/AuthenErrors.cs`, `DuplicateKeyException.cs`, `MissingReferenceException.cs` — CODE |
 
-**Working example:** `User.Register()` creates an Active user, `EnsureCanSignIn()` rejects an inactive account, `PasswordResetToken.Consume(now)` changes state when the token is usable, and `PlainPassword.Create()` checks new-password strength. Future Business Domain operations can compose these behaviors while preserving each model's invariant ownership.
+**Working example:** `AddressDefaultPolicy.Resolve(rowStatus, requestedTrue, wasDefault, otherActiveExists)` returns whether the address is the default and whether the default must move to another address. The handler supplies the facts from the repository and applies the decision.
 
-**Boundary to preserve:** User has an aggregate-root marker, but password/token operations use separate repositories; this does not establish that the User aggregate controls every credential/session lifecycle. Rules spanning requests need persistence guards too. `Restore()` reconstructs stored models by convention; its public factory does not restrict callers through the compiler. Arrays exposed by `PasswordCredential` also require a separate immutability assessment.
+**Boundary to preserve:** there are no entities. Rows are read into records and decisions are pure functions over them; invariants that span requests are kept by the database (locks, guarded updates, unique indexes). Add an entity only when a spec needs behaviour that belongs to one object's state.
 
-Source: [Entity](https://github.com/ittikornsopawan/e-commerce-backend/blob/d8255183cba54d0c2b218607456b895a70df32f0/src/Ecommerce.Domain/Common/Entity.cs), [ValueObject](https://github.com/ittikornsopawan/e-commerce-backend/blob/d8255183cba54d0c2b218607456b895a70df32f0/src/Ecommerce.Domain/Common/ValueObject.cs), [repository contracts](https://github.com/ittikornsopawan/e-commerce-backend/blob/d8255183cba54d0c2b218607456b895a70df32f0/src/Ecommerce.Domain/Authen/Repositories/IAuthenRepositories.cs), [AuthenErrors](https://github.com/ittikornsopawan/e-commerce-backend/blob/d8255183cba54d0c2b218607456b895a70df32f0/src/Ecommerce.Domain/Authen/AuthenErrors.cs)
+Source: [AddressDefaultPolicy](https://github.com/ittikornsopawan/e-commerce-backend/blob/5287221c8cf92eec606fd80c455b0ad186a2bf47/src/Ecommerce.Domain/Authen/Domain/AddressDefaultPolicy.cs), [AuthorizationClaims](https://github.com/ittikornsopawan/e-commerce-backend/blob/5287221c8cf92eec606fd80c455b0ad186a2bf47/src/Ecommerce.Domain/Authen/Domain/AuthorizationClaims.cs), [AuthenErrors](https://github.com/ittikornsopawan/e-commerce-backend/blob/5287221c8cf92eec606fd80c455b0ad186a2bf47/src/Ecommerce.Domain/Authen/AuthenErrors.cs)
 
 ### 2.4 Infrastructure layer — Adapters and technology details
 
-Infrastructure interacts with external systems through ports declared by Domain/Application. It owns persistence mappings, connection lifecycle, SQL/cryptography and provider-specific failures, translating results into types usable by inner layers.
+Infrastructure performs the work behind the ports: EF Core persistence, transactions, cryptography and email.
 
 | Sub-layer | Responsibilities and owned work | Input → Output / collaboration | Source / status |
-| -------------------------------- | ------------------------------------------------------------------------------------------------------------------ | ----------------------------------------------------------------------------------------------- | ------------------------------------------------------------------------------------- |
-| Repository adapters | Execute parameterized SQL, map rows, encrypt/decrypt stored fields and hydrate domain models | Repository calls/typed values → DB commands/rows → User/credential/token or translated failure | `Persistence/Authen/RegistrationRepository.cs` — CODE (EF Core, 01 register); `{User,Password,Token}Repository.cs` — CODE (Dapper, until their slices) |
-| DbSession / connection | Share a lazy-opened connection and transaction within a DI scope, pass transaction/cancellation to Dapper and dispose resources | SQL, parameters and cancellation → affected rows/scalars/mapped rows | `Persistence/DbSession.cs` — CODE (Dapper, replaced from 01 register) |
-| UnitOfWork / transaction adapter | Implement the transaction port using begin/commit/rollback, reusing an existing transaction | Asynchronous delegate → committed writes or rollback on exception | `Persistence/UnitOfWork.cs` — CODE (Dapper, until its slices); handlers select the work boundary |
-| EF transaction runner | Implement `ITransactionRunner`: begin at the requested isolation, commit only a success Result, roll back otherwise; rerun the whole work on 40001 (3 attempts, then timeout 408); translate 23505 on `authen.m_user` to the duplicate outcome, 23503 to a missing reference, a timeout to 408 | Isolation + work delegate → committed Result, rollback, or a translated domain exception | `Persistence/EfTransactionRunner.cs` — CODE; the 408 on exhausted retries and the `authen.m_user`-only 23505 mapping come with Drake's register review-fix PR (until then main answers 500 for both) |
-| EF Core model (DbContext) | Map tables owned by the Showcase migrations to record classes; the migrations stay the schema source of truth, so EF never creates or alters tables | LINQ queries and tracked records → SQL commands, rows and affected counts | `Persistence/Ef/EcommerceDbContext.cs` (eight tables of register; every connection runs `Timezone=UTC` through `UtcSession`), `UserRecord.cs` — CODE |
-| Row lock (`ForUpdate()`) | Give LINQ the specs' pessimistic lock: `query.ForUpdate()` tags the query and `ForUpdateInterceptor` appends `FOR UPDATE`; valid only inside a transaction, never on a split query or an aggregate | Tagged query → `SELECT ... FOR UPDATE` that holds the rows until commit | `Persistence/Ef/ForUpdate.cs` — CODE |
-| Security adapters | Implement password derivation/verification, JWT/opaque-token generation, token hashing and field protection | Credential/plain input/configuration/time → verification flag, hashes, issued tokens or protected values | `Security/Pbkdf2PasswordHasher.cs`, `TokenService.cs`, `FieldProtector.cs` — CODE |
-| Email adapter | Implement the email port; currently a development logging stand-in | Reset-email arguments → completed task/logs; no actual email delivery | `Email/LoggingEmailSender.cs` — CODE, development-only |
-| Options / DI registration | Read settings, perform implemented startup validation, construct clients and bind interfaces with their lifetimes | Configuration → options and singleton/scoped services consumed by the composition root | `Options/InfrastructureOptions.cs`, `DependencyInjection.cs` — CODE |
-| Proposed data adapters | Separate the proposed roles of caching, shared admission, configuration snapshots and event/projection stores | Ports requiring design → Redis/MongoDB operations and failure contracts | Caching/RateLimiting/Configuration/Documents in the diagram — PROPOSED; absent from baseline source |
+| --- | --- | --- | --- |
+| Repository adapters | Implement each Domain interface with EF Core LINQ; encrypt/decrypt personal fields; guarded updates with `ExecuteUpdateAsync` and row counts | Typed values → rows, counts or records | `Persistence/Authen/*Repository.cs`, `SessionRevocation.cs` — CODE |
+| Transaction runner | Implement `ITransactionRunner`: begin at the requested isolation, optionally `SET TRANSACTION READ ONLY`, commit only a success `Result`, roll back otherwise; rerun the work on 40001 (3 attempts, then timeout); translate 23505, 23503 and timeouts | Isolation + work → committed `Result`, rollback, or a translated exception | `Persistence/EfTransactionRunner.cs` — CODE |
+| EF Core model | Map the tables of the Showcase migrations to record classes with snake_case names; the migrations stay the schema source, EF never creates tables; every connection runs `Timezone=UTC` | LINQ → SQL commands and rows | `Persistence/Ef/EcommerceDbContext.cs`, `UserRecord.cs` — CODE |
+| Locks | `query.ForUpdate()` appends `FOR UPDATE` through a query tag and interceptor; `AcquireTransactionLockAsync` takes a transaction advisory lock when no row exists to lock | Tagged query → locking SQL; key → held lock | `Persistence/Ef/ForUpdate.cs`, `AdvisoryLock.cs` — CODE |
+| Security adapters | PBKDF2 password hashing, JWT and opaque tokens with SHA-256 hashes for storage, deterministic field encryption | Plain values → hashes, tokens, protected bytes | `Security/Pbkdf2PasswordHasher.cs`, `TokenService.cs`, `FieldProtector.cs` — CODE |
+| Email adapter | Implement the email port; a development stub that logs a hand-off without the link | Reset email → log line | `Email/LoggingEmailSender.cs` — CODE, development-only |
+| Options / DI | Read settings, validate keys at startup, bind ports with their lifetimes | Configuration → services | `Options/InfrastructureOptions.cs`, `DependencyInjection.cs` — CODE |
+| Proposed data adapters | Caching, shared admission, configuration snapshots, event/projection stores | Ports to design → Redis/MongoDB | PROPOSED; absent from the source |
 
-**Working example:** `UserRepository` encrypts values for lookup/insertion, then decrypts and calls `Restore()` to reconstruct a User. `PasswordRepository.SetAsync()` deactivates the previous password and inserts its replacement. `TokenRepository` persists hashes and revokes rows. `UnitOfWork` uses the same DbSession to enlist repositories in the use-case transaction.
+**Working example:** `UserAddressRepository.PromoteDefaultAsync` selects the most recently changed ACTIVE address and updates it with a guard on its status. The user row lock that `CallerCredential` took makes the select and the update atomic for that user.
 
-**Boundary to preserve:** The transaction adapter commits when its delegate completes normally and rolls back on an exception; it does not inspect `Result.Failure` to choose rollback. Read-before-write operations still require concurrency and zero-row outcome design. DbSession/repositories are scoped; the data source/security/email services are singleton in current DI. A singleton must not capture a request's scoped connection.
+**Boundary to preserve:** repositories and the DbContext are scoped; security and email services are singletons and never capture a scoped context. No repository opens its own transaction.
 
-Source: [RegistrationRepository](https://github.com/ittikornsopawan/e-commerce-backend/blob/4970dde7/src/Ecommerce.Infrastructure/Persistence/Authen/RegistrationRepository.cs), [EfTransactionRunner](https://github.com/ittikornsopawan/e-commerce-backend/blob/4970dde7/src/Ecommerce.Infrastructure/Persistence/EfTransactionRunner.cs), [EcommerceDbContext](https://github.com/ittikornsopawan/e-commerce-backend/blob/22807d3b8f08b55e5494701820490cb1fd9f8ee8/src/Ecommerce.Infrastructure/Persistence/Ef/EcommerceDbContext.cs), [ForUpdate](https://github.com/ittikornsopawan/e-commerce-backend/blob/22807d3b8f08b55e5494701820490cb1fd9f8ee8/src/Ecommerce.Infrastructure/Persistence/Ef/ForUpdate.cs), [DbSession](https://github.com/ittikornsopawan/e-commerce-backend/blob/d8255183cba54d0c2b218607456b895a70df32f0/src/Ecommerce.Infrastructure/Persistence/DbSession.cs), [UnitOfWork](https://github.com/ittikornsopawan/e-commerce-backend/blob/d8255183cba54d0c2b218607456b895a70df32f0/src/Ecommerce.Infrastructure/Persistence/UnitOfWork.cs), [security options](https://github.com/ittikornsopawan/e-commerce-backend/blob/d8255183cba54d0c2b218607456b895a70df32f0/src/Ecommerce.Infrastructure/Options/InfrastructureOptions.cs), [LoggingEmailSender](https://github.com/ittikornsopawan/e-commerce-backend/blob/d8255183cba54d0c2b218607456b895a70df32f0/src/Ecommerce.Infrastructure/Email/LoggingEmailSender.cs)
+Source: [EfTransactionRunner](https://github.com/ittikornsopawan/e-commerce-backend/blob/5287221c8cf92eec606fd80c455b0ad186a2bf47/src/Ecommerce.Infrastructure/Persistence/EfTransactionRunner.cs), [UserAddressRepository](https://github.com/ittikornsopawan/e-commerce-backend/blob/5287221c8cf92eec606fd80c455b0ad186a2bf47/src/Ecommerce.Infrastructure/Persistence/Authen/UserAddressRepository.cs), [ForUpdate](https://github.com/ittikornsopawan/e-commerce-backend/blob/5287221c8cf92eec606fd80c455b0ad186a2bf47/src/Ecommerce.Infrastructure/Persistence/Ef/ForUpdate.cs), [DependencyInjection](https://github.com/ittikornsopawan/e-commerce-backend/blob/5287221c8cf92eec606fd80c455b0ad186a2bf47/src/Ecommerce.Infrastructure/DependencyInjection.cs)
 
 ### 2.5 Shared layer — Common request and result mechanisms
 
-Shared supplies types and mechanisms used across features without project references to other layers. This baseline includes CQRS and Results; handler/validator implementations still belong to Application, and business rules retain their feature owners.
+Shared supplies types used across features and has no project references.
 
 | Sub-layer | Responsibilities and owned work | Input → Output / collaboration | Source / status |
-| ------------------------- | ------------------------------------------------------------------------------------------------------------------ | -------------------------------------------------------------------------------------- | ----------------------------------------------------------------- |
-| Messaging contracts | Declare request, command/query, handler, validator and dispatcher interfaces, including generic response constraints | Command/Query type → handler/validator contracts resolved by registration and dispatcher | `Cqrs/Messaging.cs` — CODE |
-| Dispatcher / registration | Scan Application assemblies to register scoped handlers/validators, cache executors and invoke validators before the handler | Request → validation failure or delegated `HandleAsync()` result | `Cqrs/Dispatcher.cs`, `CqrsServiceCollectionExtensions.cs` — CODE |
-| Results / Errors | Supply success/failure, typed values and expected-error vocabulary independently of ASP.NET Core responses | Value/error list → `Result`, `Result<T>`, `Error`; API subsequently maps status | `Results/Result.cs`, `Error.cs` — CODE |
-| Validation messages | Build the 400 texts of api-conventions "Validation messages" once for every API (field names, forms, item prefixes, joined failures) | Field/rule/position → `bizMessage` text | `Validation/ValidationMessages.cs` — CODE |
+| --- | --- | --- | --- |
+| Messaging contracts | Request, command/query, handler, validator and dispatcher interfaces | Command/Query type → handler/validator contracts | `Cqrs/Messaging.cs` — CODE |
+| Dispatcher / registration | Scan Application for handlers and validators; run validators before the handler | Request → validation failure or the handler's result | `Cqrs/Dispatcher.cs`, `CqrsServiceCollectionExtensions.cs` — CODE |
+| Results / Errors | Success/failure and the error vocabulary; `Error.Of` guards which bizCodes a type may carry | Value/error → `Result`, `Error` | `Results/Result.cs`, `Error.cs` — CODE |
+| Validation messages | The 400 texts of api-conventions, built once for every API | Field/rule/position → `bizMessage` | `Validation/ValidationMessages.cs` — CODE |
+| Optional / paging | `Optional<T>` (omitted vs null) and checked offset pagination (`PageRequest`, `Page<T>`) | Raw input → typed values and totals | `Optional.cs`, `Paging/PageRequest.cs` — CODE |
 
-**Working example:** A controller calls `IDispatcher.SendAsync()`. Dispatcher combines validator error lists; a nonempty list uses the response type's failure factory. Otherwise it resolves and awaits the handler. Scanning through `AddCqrs(AssemblyReference.Assembly)` allows use cases to follow conventions without individual handler registration.
+**Boundary to preserve:** Shared does not map HTTP, open transactions or authorize requests. Additions must keep it free of project references.
 
-**Boundary to preserve:** `Result<T>.Value` is available on success; accessing it on failure throws. Shared does not automatically map HTTP, open transactions, authorize requests or enforce read-only queries. It has a DI abstractions package dependency despite having no project references. Shared additions must preserve this dependency direction.
-
-Source: [Messaging contracts](https://github.com/ittikornsopawan/e-commerce-backend/blob/d8255183cba54d0c2b218607456b895a70df32f0/src/Ecommerce.Shared/Cqrs/Messaging.cs), [CQRS registration](https://github.com/ittikornsopawan/e-commerce-backend/blob/d8255183cba54d0c2b218607456b895a70df32f0/src/Ecommerce.Shared/Cqrs/CqrsServiceCollectionExtensions.cs), [Result](https://github.com/ittikornsopawan/e-commerce-backend/blob/d8255183cba54d0c2b218607456b895a70df32f0/src/Ecommerce.Shared/Results/Result.cs), [Error](https://github.com/ittikornsopawan/e-commerce-backend/blob/d8255183cba54d0c2b218607456b895a70df32f0/src/Ecommerce.Shared/Results/Error.cs)
-
+Source: [Dispatcher](https://github.com/ittikornsopawan/e-commerce-backend/blob/5287221c8cf92eec606fd80c455b0ad186a2bf47/src/Ecommerce.Shared/Cqrs/Dispatcher.cs), [Error](https://github.com/ittikornsopawan/e-commerce-backend/blob/5287221c8cf92eec606fd80c455b0ad186a2bf47/src/Ecommerce.Shared/Results/Error.cs), [ValidationMessages](https://github.com/ittikornsopawan/e-commerce-backend/blob/5287221c8cf92eec606fd80c455b0ad186a2bf47/src/Ecommerce.Shared/Validation/ValidationMessages.cs)
 
 ### 2.6 Existing request flow
 
 ```text
 HTTP request
-  -> Controller constructs a Command / Query
-  -> Dispatcher invokes registered validators
-       -> Validation errors: return failure without invoking the Handler
-       -> Valid input: invoke the Handler
-  -> Handler uses Entity / ValueObject and repository/security ports
-  -> Infrastructure performs I/O and SQL
-  -> Handler maps the response
-  -> Controller returns the HTTP response
+  -> rate limiter (public APIs) -> JWT middleware (form and expiry only)
+  -> RequiredHeadersFilter -> model binding (InvalidBody)
+  -> Controller checks the shape, builds the Command / Query with VerifiedCaller
+  -> Dispatcher runs the validator
+       -> errors: 400 without invoking the Handler
+       -> valid: invoke the Handler
+  -> Handler: ITransactionRunner.RunAsync(isolation, readOnly)
+       -> CallerCredential (protected APIs) -> Domain rules -> repositories (EF Core LINQ)
+       -> success commits, failure rolls back
+  -> Controller: ToSuccess / ToFailure envelope; unexpected exception -> 500 envelope
 ```
-
-Four commands have validators; `GetCurrentUserQuery` has none in this baseline. Dispatcher does not automatically open transactions or apply authorization/retry policies.
 
 ### 2.7 Business Domain flow under the selected convention
 
 ```text
-Handler loads facts required by the use case
-  -> Invoke a business operation in <Feature>/Domain/
-  -> Domain applies rules with Entity / ValueObject and returns a business result
-  -> Handler coordinates persistence through ports / transaction boundary
-  -> Infrastructure handles SQL / external systems
+Handler loads the facts the rule needs (inside the transaction, under the spec's locks)
+  -> calls a business operation in <Feature>/Domain/
+  -> Domain returns a decision or a Result
+  -> Handler applies it through repository ports
+  -> Infrastructure writes with guarded LINQ updates
 ```
-
-`Handler -> Authen/Domain/` remains an owner-directed design, as its diagram labels and edges indicate; it is not an observed call in the pinned source. Handler remains the Application use case, while Domain supplies reusable business logic within the backend application.
 
 ### 2.8 Responsibilities spanning layers
 
 | Concern | Responsibility split across sub-layers | What to verify together |
-| ------------------------------ | ---------------------------------------------------------------------------------------------------------------------------------------------------------------------------- | ----------------------------------------------------------------------------------------------------------------------- |
-| Validation | API binds/deserializes HTTP contracts; Application validators invoke Domain value factories; Shared dispatcher controls whether the handler runs | HTTP format, use-case constraints and model invariants have distinct owners; baseline validators do not read the database |
-| Authentication / authorization | API middleware creates the principal and actions read identity; handlers coordinate use-case permission/credential checks; Domain checks model conditions; Infrastructure verifies hashes/issues JWTs | A valid JWT signature does not establish that user/token rows remain Active or that every business permission is satisfied; inspect actual implementation |
-| Transaction / concurrency | Handler selects writes; `IUnitOfWork` is an Application port; Infrastructure UnitOfWork/DbSession executes SQL in a transaction; Domain expresses invariants | Rollback, lock order, conditional updates and zero-row outcomes must agree; a Result failure does not automatically trigger exception-based rollback |
-| Expected failure / HTTP | Domain/Application provide reasons; Shared supplies Result/Error; Application selects public use-case outcomes under policy; API maps HTTP | Baseline login exposes AccountNotActive directly; compare this with the specification's generic authentication-failure requirement |
-| Dependency composition | API Program invokes DI registrations; Application/Domain use inner contracts; Infrastructure implements ports; Shared supplies common types | A runtime call to an adapter does not create an inner-layer project reference to Infrastructure |
-
-Register connects the sub-layers as follows: HTTP Contracts/Controller → Shared Dispatcher → Application Validator using Domain ValueObjects → Application Handler invoking the User factory and repository/hasher ports → Infrastructure repositories/UnitOfWork → Application Mapping → API success 201. Query `/me` has no command validator or write transaction and therefore does not follow every step of that write flow.
+| --- | --- | --- |
+| Validation | API checks the request's shape and headers; Application validators check every value rule of the spec; Domain supplies shared value rules | Every 400 answers before SQL and before the 401 |
+| Authentication | API middleware verifies the JWT; `VerifiedCaller` hands it to the use case; `CallerCredential` checks inside the transaction that the user is ACTIVE and the stored token is current | Logout and a password reset end a session at once; no endpoint trusts the JWT alone |
+| Transaction / concurrency | The handler chooses the spec's isolation and read-only flag; repositories lock with `ForUpdate()` or an advisory lock; the runner retries 40001 | Lock order, guarded updates and zero-row outcomes agree with the sequence diagram |
+| Expected failure / HTTP | Domain declares the errors; Application chooses the outcome; Shared carries it; API maps type → status and bizCode | A 500 never leaks its description |
+| Dependency composition | `Program` calls `AddCqrs` and `AddInfrastructure`; inner layers use only interfaces | A runtime call to an adapter does not create a project reference |
 
 ## 3. Repository: Source ownership and allowed project references
 
@@ -207,7 +196,7 @@ Register connects the sub-layers as follows: HTTP Contracts/Controller → Share
 
 [Full-size image](../diagram/reference/repository/repository-architecture.drawio.png) · [draw.io source](../diagram/reference/repository/repository-architecture.drawio) · [Diagram companion](../diagram/reference/repository/repository-architecture.md) · [HTML preview](../diagram/reference/repository/repository-architecture.html)
 
-This diagram maps source ownership and compile-time dependencies, providing a different viewpoint from runtime architecture. `REF` indicates a `ProjectReference` in a `.csproj`. A runtime call through an interface does not require an inner project to reference concrete Infrastructure.
+This diagram maps source ownership and compile-time dependencies. `REF` indicates a `ProjectReference`. Like section 2's diagram it was drawn from the first scaffold (`AuthenController`, `IAuthenRepositories`, Dapper, `DbSession`, `UnitOfWork`, two test projects); the project boxes and references are still right, the file names inside them are not.
 
 ### 3.1 Two repository boundaries
 
@@ -217,7 +206,7 @@ Showcase: system-analysis-and-design/
     ├── REPOS.md                 # identity / remote / pinned revision
     ├── api/                     # API contract
     ├── db/                      # migrations and database tests
-    ├── doc/                     # specifications and this guide
+    ├── doc/                     # specifications, this guide, the Function Book
     ├── diagram/                 # diagram bundles
     └── repository/
         ├── .gitkeep
@@ -237,141 +226,125 @@ Change backend code and deliver its commits/PRs to the component remote. The man
 ### 3.2 Observed project references
 
 | Project | Referenced projects |
-| ----------------------------- | ----------------------------------- |
-| `Ecommerce.Api`               | Application, Infrastructure, Shared |
-| `Ecommerce.Application`       | Domain, Shared                      |
-| `Ecommerce.Domain`            | Shared                              |
-| `Ecommerce.Infrastructure`    | Application, Domain, Shared         |
+| --- | --- |
+| `Ecommerce.Api` | Application, Infrastructure, Shared |
+| `Ecommerce.Application` | Domain, Shared |
+| `Ecommerce.Domain` | Shared |
+| `Ecommerce.Infrastructure` | Application, Domain, Shared |
 | `Ecommerce.Shared` | No project references |
-| `Ecommerce.Domain.Tests`      | Domain, Shared                      |
-| `Ecommerce.Application.Tests` | Application, Domain, Shared         |
+| `Ecommerce.Domain.Tests` | Domain, Shared |
+| `Ecommerce.Application.Tests` | Application, Domain, Shared |
+| `Ecommerce.Infrastructure.Tests` | Infrastructure |
+| `Ecommerce.Api.Tests` | Api (and the Infrastructure test fixtures as linked files) |
 
-The pinned source contains 9 production references and 5 test references. Domain and Application do not reference Infrastructure. Shared already depends on the DI abstractions package, so having no project references does not imply having no external-package dependencies.
-
-`Authen/Domain/` belongs inside the existing `Ecommerce.Domain.csproj`. Adding this folder alone introduces neither another project nor a dependency-graph change.
+The source contains 9 production references and 7 test references. Domain and Application do not reference Infrastructure. Infrastructure exposes its internals only to the two database test projects (`InternalsVisibleTo`).
 
 ## 4. Organizing code by feature and use case
 
-Application groups code under `Features/<Feature>/<UseCase>/`, placing use-case input, validator, handler and output together. The current Authen layout is:
+Application groups code under `Features/<Feature>/<UseCase>/`, placing use-case input, validator, handler and output together:
 
 ```text
 Ecommerce.Application/
 ├── Abstractions/
-│   ├── IUnitOfWork.cs
+│   ├── ITransactionRunner.cs
 │   ├── IPasswordHasher.cs
 │   ├── ITokenService.cs
-│   └── IEmailSender.cs
+│   └── IEmailSender.cs          # + the settings records the handlers read
+├── Common/CommonErrors.cs
 └── Features/Authen/
-    ├── Register/
-    │   ├── RegisterCommand.cs
-    │   ├── RegisterCommandValidator.cs
-    │   ├── RegisterCommandHandler.cs
-    │   └── RegisterResponse.cs
-    ├── Login/
-    ├── ResetPassword/       # requesting a link and confirming it use separate commands/handlers
-    ├── GetCurrentUser/
-    └── Mapping/AuthenMappings.cs
+    ├── Common/                  # Caller, CallerCredential, SessionTokens, TokenPairResponse
+    ├── Register/                # 01: command, validator, handler, response
+    ├── Login/                   # 02
+    ├── ResetPassword/           # 03: request a reset link
+    ├── CreateNewPassword/       # 04
+    ├── RefreshToken/            # 05
+    ├── Logout/                  # 06
+    ├── UpsertUserProfile/       # 07
+    ├── GetUserProfile/          # 08
+    ├── UpsertUserAddress/       # 09
+    └── InquiryUserAddress/      # 10
 ```
 
-| Part | Responsibility and example |
-| ------------------------ | --------------------------------------------------------------------------------------- |
-| Command / Query | Input record expressing operation intent, without ownership of HTTP or SQL |
-| Validator | Check request constraints; invoke existing value-object factories for value rules |
-| Handler | Coordinate steps, load data, invoke business/model behavior and ports, and define the use-case transaction |
-| Response / Mapping | Translate outcomes into caller-facing DTOs rather than returning domain entities directly |
-| Application abstractions | Ports for transactions, hashing, token issuing and email, without concrete adapter imports |
+| Part | Responsibility |
+| --- | --- |
+| Command / Query | Input record expressing the operation, without HTTP or SQL |
+| Validator | Every 400 of the spec, with the shared message forms |
+| Handler | Coordinate steps inside one transaction; call Domain rules and ports; map expected exceptions |
+| Response | The spec's `data` object, never a Domain record directly |
+| Abstractions | Ports for transactions, hashing, tokens and email |
 
-Use cases do not all require identical files. `Register` and `Login` return typed responses; reset request/confirmation commands return `Result` without dedicated response DTOs. Query `/me` returns `CurrentUserResponse` without a dedicated validator.
-
-Source: [RegisterCommandHandler](https://github.com/ittikornsopawan/e-commerce-backend/blob/d8255183cba54d0c2b218607456b895a70df32f0/src/Ecommerce.Application/Features/Authen/Register/RegisterCommandHandler.cs), [LoginCommandHandler](https://github.com/ittikornsopawan/e-commerce-backend/blob/d8255183cba54d0c2b218607456b895a70df32f0/src/Ecommerce.Application/Features/Authen/Login/LoginCommandHandler.cs), [AuthenMappings](https://github.com/ittikornsopawan/e-commerce-backend/blob/d8255183cba54d0c2b218607456b895a70df32f0/src/Ecommerce.Application/Features/Authen/Mapping/AuthenMappings.cs)
+Use cases do not all need the same files: logout and reset return a `Result` without data; 08 has no validator because it accepts no input.
 
 ## 5. Service = Domain: Reusable business operations
 
-Read a Domain feature's layout as follows. The `Domain/` entry is the owner-selected location and does not exist in the source baseline:
-
 ```text
 Ecommerce.Domain/
-├── Common/                  # Entity, ValueObject, IAggregateRoot
+├── Common/                  # ValueObject, EmailAddressFormat, ProfileFieldRules
+├── DuplicateKeyException.cs, MissingReferenceException.cs
 └── Authen/
-    ├── Entities/            # CODE: User, PasswordResetToken
-    ├── ValueObjects/        # CODE: business values and value rules
-    ├── Repositories/        # CODE: IUser/IPassword/ITokenRepository
-    ├── Domain/              # OWNER CONVENTION: reusable Authen business operations
-    │                        # not implemented at the pinned revision
-    ├── AuthenErrors.cs
-    └── UserStatus.cs
+    ├── Domain/              # CODE: reusable Authen business operations
+    ├── ValueObjects/        # CODE: PlainPassword, PasswordCredential and data records
+    ├── Repositories/        # CODE: one interface per use case or shared step
+    └── AuthenErrors.cs
 ```
 
 ### 5.1 What Domain should own
 
-- Apply rules and make business decisions from required facts, such as evaluating a business condition or calculating an outcome from business values/policy.
+- Make business decisions from facts the handler supplies: grants from authorization facts, the reuse class of a refresh token, the address default.
 - Group operations reused across use cases so handlers apply one rule set.
-- Collaborate with entities/value objects while preserving explicit invariant ownership.
-- Return business results or failures that Application can use in subsequent steps.
+- Return decisions or failures that Application uses in its next step.
 
-The handler loads external facts needed by a rule and passes them to Domain through a designed contract, or Domain uses an approved inner abstraction. Domain does not accept concrete SQL connections, Redis/MongoDB clients or HTTP request DTOs, and does not own SQL commits.
-
-“Tax calculation” illustrates a kind of reusable business operation. It belongs to the feature that actually owns the financial rules. This document introduces no tax class in Authen and defines no rates, formulas or rounding rules.
+Domain does not accept EF Core contexts, HTTP DTOs or SDK clients, and does not commit.
 
 ### 5.2 Dividing work between Handler and Domain
 
 | Question | Primary owner |
-| ------------------------------------------------------- | -------------------------------------------------------------------- |
-| Which steps and ports complete this request, and what should the caller receive? | Application Handler |
-| What do these facts permit, or what business value should be calculated? | Feature `Domain/` under this convention, or behavior on the model owning the rule |
-| Does the entity's current state permit this transition? | Entity / Aggregate behavior |
-| Is this value valid, and what does it mean? | ValueObject |
-| Which rows are read/written, how is hashing performed, or which provider SDK is called? | Infrastructure through ports |
-| How is the result translated into an HTTP status/payload? | API boundary under the public contract |
+| --- | --- |
+| Which steps, locks and ports complete this request, and what does the caller receive? | Application handler |
+| What do these facts permit, or what should be decided? | Feature `Domain/` |
+| Is this value valid? | ValueObject or a Common rule |
+| Which rows are read/written, under which lock? | Infrastructure through ports |
+| How is the result translated into HTTP? | API |
 
-Adding `Domain/` does not require moving every invariant out of entities/value objects. Its purpose is to establish an explicit, reusable owner for business operations according to the owner's convention.
+### 5.3 Observed rules
 
-### 5.3 Observed rules and remaining design work
+| Rule | Location | Spec |
+| --- | --- | --- |
+| Effective grants and claim names | `AuthorizationClaims` | 02 login |
+| Brute-force limit | `LoginThrottle` (with an advisory lock per identifier) | 02 login |
+| Reset-request limit | `PasswordResetThrottle` | 03 reset password |
+| Refresh-token rotate / replay / invalid | `RefreshTokenReuse` | 05 refresh token |
+| Consent and referrer checks of a registration | `RegistrationConsentPolicy` | 01 register |
+| One ACTIVE default address, at most 10 addresses | `AddressDefaultPolicy`, `AddressQuota` | 09 upsert user address |
+| Email, phone, date-of-birth and gender formats | `EmailAddressFormat`, `ProfileFieldRules` | 01, 03, 07 |
+| Single use across requests (reset token, refresh token) | Guarded `ExecuteUpdateAsync` under the user lock | 04, 05 |
 
-| Rule | Current location | Relationship to Business Domain |
-| -------------------------------------------------- | --------------------------------------------------------- | -------------------------------------------------------------------------------------------------------------------- |
-| A new user starts Active | `User.Register()` | Existing entity factory behavior |
-| Only an Active user can sign in | `User.EnsureCanSignIn()` | Invoked by the handler; reusable operations can compose this behavior |
-| A reset token must be unused and unexpired | `PasswordResetToken.Consume(now)` | The model guard exists; persistence must also guarantee concurrency correctness |
-| New username/email/password values must be valid | Value-object factories | Validators/handlers share these rules without copying regex/policy across handlers |
-| Username/email must be unique | Register handler checks the repository and handles duplicate exceptions | The database must prevent races; SQL remains outside business classes |
-| Login throttle, reset-request limit, refresh reuse | Complete flows are absent from the baseline | Design business operations, input facts, persistence guards and failure outcomes under governing specifications before implementation |
-
-Source: [User](https://github.com/ittikornsopawan/e-commerce-backend/blob/d8255183cba54d0c2b218607456b895a70df32f0/src/Ecommerce.Domain/Authen/Entities/User.cs), [PasswordResetToken](https://github.com/ittikornsopawan/e-commerce-backend/blob/d8255183cba54d0c2b218607456b895a70df32f0/src/Ecommerce.Domain/Authen/Entities/PasswordResetToken.cs), [PlainPassword](https://github.com/ittikornsopawan/e-commerce-backend/blob/d8255183cba54d0c2b218607456b895a70df32f0/src/Ecommerce.Domain/Authen/ValueObjects/PlainPassword.cs)
+Source: [Authen/Domain](https://github.com/ittikornsopawan/e-commerce-backend/tree/5287221c8cf92eec606fd80c455b0ad186a2bf47/src/Ecommerce.Domain/Authen/Domain)
 
 ## 6. CQRS and Business Domain calls
 
-Commands own state-changing operations; queries own reads. Each has separate input/handler contracts in Shared. Names and folders alone do not establish correct behavioral separation.
+| Side | Current use cases | Relationship to Business Domain |
+| --- | --- | --- |
+| Command | Register, Login, RequestPasswordReset, CreateNewPassword, RefreshToken, Logout, UpsertUserProfile, UpsertUserAddress | Handlers call `Domain/` operations under the spec's locks |
+| Query | GetUserProfile, InquiryUserAddress | Read in a REPEATABLE READ READ ONLY transaction with their own read repositories |
 
-| Side | Current examples | Relationship to Business Domain |
-| ------- | ---------------------------------------------------- | ----------------------------------------------------------------------------------------------------------- |
-| Command | Register, Login, RequestPasswordReset, ResetPassword | Handlers use existing model behavior and can invoke `Domain/` operations when implemented under their specifications |
-| Query | GetCurrentUser | Return the requested data; a state-changing business operation is unnecessary |
+Login and refresh are commands even though they return tokens, because they write token rows. The two queries use read-only repository ports (`IUserProfileQueryRepository`, `IUserAddressQueryRepository`) separate from the write ports.
 
-Login is a command even though it returns tokens, because it writes token rows. The current query loads `User` through the `IUserRepository` shared with commands and maps it into a DTO. There is no query-specific read port or separate read projection in the source. Introducing those requires evidence from read/write model requirements.
-
-Dispatcher invokes validators before handlers and skips the handler when errors exist. Transactions and business orchestration remain use-case responsibilities; `ICommand` and `IQuery` markers do not provide them automatically.
-
-Source: [Messaging](https://github.com/ittikornsopawan/e-commerce-backend/blob/d8255183cba54d0c2b218607456b895a70df32f0/src/Ecommerce.Shared/Cqrs/Messaging.cs), [Dispatcher](https://github.com/ittikornsopawan/e-commerce-backend/blob/d8255183cba54d0c2b218607456b895a70df32f0/src/Ecommerce.Shared/Cqrs/Dispatcher.cs), [GetCurrentUserQueryHandler](https://github.com/ittikornsopawan/e-commerce-backend/blob/d8255183cba54d0c2b218607456b895a70df32f0/src/Ecommerce.Application/Features/Authen/GetCurrentUser/GetCurrentUserQueryHandler.cs)
+Dispatcher invokes validators before handlers and skips the handler when errors exist. Transactions remain the handler's responsibility; the `ICommand` and `IQuery` markers do not provide them.
 
 ## 7. Infrastructure and correctness across requests
 
-Application calls interfaces; Infrastructure implements them with concrete technology:
-
-| Port / responsibility                 | Implementation                                                 |
-| ------------------------------------- | -------------------------------------------------------------- |
-| User, password and token repositories | Dapper/Npgsql repositories in `Persistence/Authen/`, replaced by EF Core repositories over `EcommerceDbContext` from 01 register |
-| Transaction coordination | EF slices (01 register): handler calls `ITransactionRunner` (`EfTransactionRunner`); Dapper slices: handler invokes `IUnitOfWork` over scoped `DbSession`; row locks use `ForUpdate()` |
-| Password hashing                      | `Pbkdf2PasswordHasher`                                         |
+| Port / responsibility | Implementation |
+| --- | --- |
+| Repositories | EF Core LINQ repositories in `Persistence/Authen/` over `EcommerceDbContext` |
+| Transaction coordination | `ITransactionRunner` → `EfTransactionRunner` (isolation, READ ONLY, 40001 retry, exception translation) |
+| Row and key locks | `ForUpdate()`; `AcquireTransactionLockAsync` |
+| Password hashing | `Pbkdf2PasswordHasher` |
 | JWT and opaque tokens | `TokenService` |
-| Stored personal-field protection      | `FieldProtector`                                               |
-| Reset email | `LoggingEmailSender` is a development stub |
+| Personal-field protection | `FieldProtector` |
+| Reset email | `LoggingEmailSender` (development stub) |
 
-Some business rules require both code-level rules and database guards. `Consume()` prevents repeated token use on a loaded object, but two requests can load different objects before either writes. Single use across requests therefore also needs locks/conditional updates and zero-row outcomes that Application can handle.
-
-The baseline reset-consumption SQL uses only `WHERE id = @id` and does not return a business outcome identifying which competing request won. The proposed `Authen/Domain/` design therefore also needs an I/O contract and transaction boundary; its folder alone cannot complete cross-request invariants.
-
-Source: [TokenRepository](https://github.com/ittikornsopawan/e-commerce-backend/blob/d8255183cba54d0c2b218607456b895a70df32f0/src/Ecommerce.Infrastructure/Persistence/Authen/TokenRepository.cs), [UnitOfWork](https://github.com/ittikornsopawan/e-commerce-backend/blob/d8255183cba54d0c2b218607456b895a70df32f0/src/Ecommerce.Infrastructure/Persistence/UnitOfWork.cs), [DependencyInjection](https://github.com/ittikornsopawan/e-commerce-backend/blob/d8255183cba54d0c2b218607456b895a70df32f0/src/Ecommerce.Infrastructure/DependencyInjection.cs)
+Rules that must hold across requests are enforced by the database, not by an object in memory: the user row lock serialises one user's changes, guarded updates (`WHERE row_status = 'ACTIVE'` and a row count) make a token single-use, and unique indexes reject duplicates that the runner translates into the spec's 409.
 
 ## 8. Identity domain model: Data concepts used by business code
 
@@ -379,78 +352,58 @@ Source: [TokenRepository](https://github.com/ittikornsopawan/e-commerce-backend/
 
 [Full-size image](../diagram/domain/domain-identity-model.drawio.png) · [draw.io source](../diagram/domain/domain-identity-model.drawio) · [Explanation and SQL traceability](../diagram/domain/domain-identity-model.md) · [HTML preview](../diagram/domain/domain-identity-model.html)
 
-This diagram is a conceptual interpretation of the schema and remains in review according to its companion document. Its association/cardinality edges have different meanings from the runtime arrows and project references in the previous diagrams.
+This diagram is a conceptual interpretation of the schema. Its association edges have different meanings from the runtime arrows and project references of the earlier diagrams.
 
-- User, Credential, Reset request, Profile, Address, Token and Login attempt boxes represent data concepts; they do not establish that all corresponding C# classes exist.
-- The `authen` box groups concepts by schema. It does not define one aggregate containing every entity or require all data to load for every operation.
-- Role, Permission, Scope and grant associations describe schema-based permissions; they do not prove an implemented JWT claims resolver.
-- Session correlation uses `session_id` in token tables. It does not establish a Session table or an `AuthSession` aggregate in code.
-- Cardinality includes historical rows. Determine permitted ACTIVE-row counts from the relevant partial constraints as well.
-
-Use this view to understand the facts Business Domain needs. Operation names, aggregate boundaries, transactions and `Authen/Domain/` contracts still require design from the relevant business rules.
+- User, Credential, Reset request, Profile, Address, Token and Login attempt are data concepts. The code has no entity classes for them; repositories read rows into records.
+- The `authen` box groups concepts by schema; it does not define one aggregate.
+- Role, Permission, Scope and grant associations are what `AuthorizationClaims` resolves into JWT claims at login.
+- Session correlation uses `session_id` in the token tables; there is no session table.
+- Cardinality includes historical rows; use the partial unique constraints for permitted ACTIVE-row counts.
 
 ## 9. Implemented elements and remaining designs
 
-| Area | Status in the pinned component | How to use the guide and diagrams |
-| ----------------------------------------------- | -------------------------------------------------------- | ----------------------------------------------------------- |
-| Five production projects / two test projects | Present in source | Reference project layout and dependencies |
-| Authen four commands / one query | Present in source | Trace code flow without assuming compliance with every latest specification |
-| Entity / ValueObject / repository interfaces | Present in source | Existing model behavior and contracts that Business Domain can reuse |
-| `Authen/Domain/` business operations | Owner-selected convention; no implementation yet | Design direction pending complete class/method/specification definitions |
-| Product, order, payment and shipping operations | Documented in Showcase; no implementation found in this component | Inspect relevant specifications and approvals before development |
-| Redis/MongoDB adapters, outbox/relay | Design approved 2026-11-16 (diagram companions); no implementation yet | Build from the approved design documents; keep separate from CODE until implemented |
+| Area | Status in the component | How to use the guide and diagrams |
+| --- | --- | --- |
+| Five production projects / four test projects | Present | Reference layout and dependencies |
+| authen-and-author APIs 01–10 | Present, every test case of each spec automated | Trace code flow; the spec stays the authority |
+| `Authen/Domain/` business operations | Present (section 5.3) | Reuse before adding a rule |
+| Product, order, payment, shipping and the other domains | Specified in Showcase; no implementation | Inspect the specs and their approval before development |
+| Redis/MongoDB adapters, outbox/relay | Design approved 2026-11-16; no implementation | Keep separate from CODE until implemented |
+| Diagrams of sections 2 and 3 | Drawn from the first scaffold | Redraw pending; the tables in this guide are current |
 
 ## 10. Tests and checks for business-operation development
 
-Test projects verify production layers; they are not additional runtime layers. All test projects use xUnit and introduce no request-flow steps.
-
-| Test project / sub-layer | Tested behavior and inputs/outputs | Dependencies / limitations |
-| ---------------------------------------------------------- | ----------------------------------------------------------------------------------------------------------- | ---------------------------------------------------------------------------------------------------------------------------- |
-| `Ecommerce.Domain.Tests/Authen/EntityTests.cs` | Create/restore entities and exercise behavior; check identity, Active-user conditions and reset-token expiry/consumption | References Domain/Shared; establishes object behavior rather than database concurrency |
-| `Ecommerce.Domain.Tests/Authen/ValueObjectTests.cs` | Pass normal/out-of-range inputs to factories and check typed values/errors, normalization and equality | No HTTP/DB; persistence mappings and request contracts need separate verification |
-| `Ecommerce.Application.Tests/Authen/AuthenHandlerTests.cs` | Dispatch commands to real handlers backed by fakes, checking results and side effects | References Application/Domain/Shared; does not use concrete Infrastructure |
-| `Ecommerce.Application.Tests/Authen/Fakes.cs` | Replace repositories, hasher, token service, email and unit of work with controlled implementations | `InlineUnitOfWork` performs no real transaction; fake password verification/token revocation does not prove JWT middleware or rollback |
-| `Ecommerce.Infrastructure.Tests/PersistenceTests.cs`, `PostgresFixture.cs` | Run EF Core against a throwaway PostgreSQL 17 loaded with the Showcase migrations; prove the row lock, the guarded update and REPEATABLE READ | Needs a local PostgreSQL 17; proves the persistence mechanics, not a use case |
-
-Source: [Domain entity tests](https://github.com/ittikornsopawan/e-commerce-backend/blob/d8255183cba54d0c2b218607456b895a70df32f0/tests/Ecommerce.Domain.Tests/Authen/EntityTests.cs), [Domain value tests](https://github.com/ittikornsopawan/e-commerce-backend/blob/d8255183cba54d0c2b218607456b895a70df32f0/tests/Ecommerce.Domain.Tests/Authen/ValueObjectTests.cs), [Application handler tests](https://github.com/ittikornsopawan/e-commerce-backend/blob/d8255183cba54d0c2b218607456b895a70df32f0/tests/Ecommerce.Application.Tests/Authen/AuthenHandlerTests.cs), [test fakes](https://github.com/ittikornsopawan/e-commerce-backend/blob/d8255183cba54d0c2b218607456b895a70df32f0/tests/Ecommerce.Application.Tests/Authen/Fakes.cs)
-
-Neither suite contains integration tests establishing real SQL, transaction rollback, HTTP serialization or JWT middleware behavior. Requirements at those boundaries need additional tests exercising their concrete implementations.
+| Test project | Tested behaviour | Dependencies / limitations |
+| --- | --- | --- |
+| `Ecommerce.Domain.Tests` | Business rules (`AuthorizationClaims`, `RefreshTokenReuse`, `AddressDefaultPolicy`, consent policy, field rules) and value objects | No database |
+| `Ecommerce.Application.Tests` | Handlers with fakes: step order, isolation, read-only flag, exception mapping | No database; does not prove locks |
+| `Ecommerce.Infrastructure.Tests` | Repositories and the transaction runner on a throw-away PostgreSQL 17 loaded with every Showcase migration | Needs `initdb`/`pg_ctl` |
+| `Ecommerce.Api.Tests` | Every case of each API's `test-cases.md` through the HTTP pipeline and the real database; test names start with the case ID | Needs PostgreSQL 17 like above |
 
 When developing a business operation under an approved specification, check at least:
 
-1. Assign each rule explicitly to `Domain/`, an entity or a value object, using the feature's business language.
-2. Keep handlers responsible for use-case coordination and correct use of business results; avoid duplicating rules across handlers.
-3. Express Domain inputs/outputs as business values, independent of HTTP and vendor SDKs.
-4. Give state-changing operations a transaction/concurrency contract that can be verified with persistence.
-5. Ensure read queries have no hidden write side effects.
-6. Trace tests to rules and failure boundaries; use database/API tests when the evidence spans processes or connections.
-7. Update the code guide, relevant specifications and diagrams to match actual status; mark an element CODE only after implementation exists.
+1. Write the API's `test-cases.md` with api-test-case-creator and automate every case.
+2. Assign each rule to `Domain/` or a value object; keep the handler to coordination.
+3. Give every state change a lock or guard that a database test proves, and check it with a mutation (remove the guard, see the test fail).
+4. Keep queries free of writes (READ ONLY when the spec says so).
+5. Pass the dev-like-principal code gate: Function Book first, methods ≤ 30 lines, `dotnet format`, the quality report in the PR.
+6. Update this guide, the Function Book and the relevant diagrams to the actual status.
 
 ## 11. References and guide verification
 
-- [Diagram index](../diagram/README.md) covers additional views such as order lifecycle, checkout/payment sequences, outbox and operations; this guide embeds the views relevant to code structure.
-- [Component project-structure.md](https://github.com/ittikornsopawan/e-commerce-backend/blob/d8255183cba54d0c2b218607456b895a70df32f0/project-structure.md) describes baseline file conventions.
-- [Component code.md](https://github.com/ittikornsopawan/e-commerce-backend/blob/d8255183cba54d0c2b218607456b895a70df32f0/code.md) details current flows and known gaps; read it alongside the Service = Domain convention clarified here.
+- [Function Book](function-book.md) lists the shared functions with their signatures and use.
+- [Component project-structure.md](https://github.com/ittikornsopawan/e-commerce-backend/blob/5287221c8cf92eec606fd80c455b0ad186a2bf47/project-structure.md) lists the files and the steps to add a use case.
+- [Component code.md](https://github.com/ittikornsopawan/e-commerce-backend/blob/5287221c8cf92eec606fd80c455b0ad186a2bf47/code.md) (Thai) explains the request flow, transactions, errors and tests.
+- [Diagram index](../diagram/README.md) covers other views such as order lifecycle and checkout/payment sequences.
 - [Manifest](../REPOS.md) and [component-repositories rule](../../.agents/rules/component-repositories.md) define Git ownership and baseline pinning.
 
-The guide embeds three existing diagrams without copying, renaming or generating image files. Their PNGs were inspected at a readable size; editable `.drawio`/PNG metadata parity and native nesting passed for all three bundles. Each image is 2378 × 1682 pixels.
-
-Verification covers frontmatter, references, source/model correspondence and preservation of component/diagram assets. This documentation change modifies no backend, API specification, schema or diagram, and does not rerun builds/runtime tests.
-
-### 11.1 Review verification — 9 November 2026
+### 11.1 Verification — 20 November 2026
 
 | Check | Result and scope |
-| ---------------------------- | ---------------------------------------------------------------------------------------------------------------------------------------------------- |
-| Markdown/frontmatter | YAML parsing passed; the guide remains draft with null approval fields; headings, tables and code fences are valid |
-| Source references | Local references resolve, and every component reference identifies an existing pinned commit/blob |
-| Illustrations | Three existing PNGs, each 2378 × 1682 pixels, with editable-source and companion-document links |
-| Editable model/PNG integrity | Architecture 72 cells, repository 47 cells, identity 99 cells; metadata parity and native nesting passed for all three bundles |
-| Diagram preservation | Hashes of all 12 files across three bundles match before/after authoring; no redraw or export |
-| Component evidence | Clean component at the pinned SHA; 9 production and 5 test project references; `Authen/Domain/` remains owner-directed design as confirmed by source |
-| Visual review | Embedded PNGs were inspected during the preceding guide review; no native-editor box movement or re-export was performed because models were unchanged |
+| --- | --- |
+| Source correspondence | Every file, class and route named here exists at component `5287221`; the project references in 3.2 come from the `.csproj` files |
+| Removed elements | `AuthenController`, `GetCurrentUser`, Dapper, `DbSession`, `UnitOfWork`, the `User`/`PasswordResetToken` entities and their value objects are named only as removed or as labels of the old diagrams |
+| Diagrams | The three bundles are unchanged; sections 2 and 3 say which labels are outdated |
+| Component tests | `dotnet test` at `5287221`: Api 278, Application 43, Domain 73, Infrastructure 47, 0 failed |
 
-These results verify the guide and its diagram references. They do not replace runtime/database/API integration tests or approve Business Domain implementation.
-
-The expanded-scope review covers all five layer introductions and 24 sub-layer responsibility groups in sections 2.1–2.5. Each explains owned work, inputs/outputs, collaborators, source/status and boundaries. Section 2.8 covers cross-layer validation/security/transactions/errors, and section 10 explains test-project responsibilities. Coverage was checked against actual source; the earlier guide failed this expanded coverage gate.
-
-The English revision also passed a whole-document language check and preserves the original numbered headings, table row/column structure, code fences and all 59 reference targets. The three diagram bundles and pinned component remain unchanged.
+This revision replaces the 2026-11-09 review of the first scaffold. It changes no backend code, specification, schema or diagram, and needs the lead's review before it is approved again.

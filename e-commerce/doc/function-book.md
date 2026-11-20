@@ -1,7 +1,7 @@
 ---
 name: E-commerce Function Book
 description: Central list of the e-commerce backend's shared, reusable functions with purpose, parameters and usage. Read before writing any new function in the e-commerce backend; update it in the same change that adds, changes or removes a shared function.
-source_component_revision: 4b336eb57c25ed00077541df18deedeb2eee7856
+source_component_revision: 5287221c8cf92eec606fd80c455b0ad186a2bf47
 updated_on: 2026-11-20
 ---
 
@@ -15,7 +15,7 @@ Check this book and the code before writing a new function, as required by `.age
 
 The book lists only what other code is meant to call. Handlers, controllers and private methods are not listed; `e-commerce/doc/code-structure.md` explains where those live.
 
-Paths are relative to `e-commerce/repository/e-commerce-backend/src/`. The entries were checked against component revision `4b336eb` (branch `chore/drake-legacy-me-and-read-only`; an entry reaches `main` when that PR merges). Every API runs on EF Core through `ITransactionRunner`; the Dapper path and the legacy `api/authen/me` endpoint were removed on 2026-11-20.
+Paths are relative to `e-commerce/repository/e-commerce-backend/src/`. The entries were checked against component revision `5287221` (branch `chore/drake-remove-unused-domain`; an entry reaches `main` when that PR merges). Every API runs on EF Core through `ITransactionRunner`; the Dapper path, the legacy `api/authen/me` endpoint and the unused first-scaffold domain model were removed on 2026-11-20.
 
 ## Shared — Results and errors
 
@@ -27,7 +27,6 @@ Paths are relative to `e-commerce/repository/e-commerce-backend/src/`. The entri
 | `Error.Failure/Validation/NotFound/Conflict/Unauthorized/Forbidden(code, description)` | `Ecommerce.Shared/Results/Error.cs` | Typed errors without a custom bizCode | Code, text → `Error` of that type | The `ErrorType` decides the HTTP status in `ResultExtensions.ToFailure` |
 | `AuthenErrors.*` (for example `AccessTokenInvalid`, `IdentifierTaken`, `AddressNotFound`, `AddressLimit(int max)`) | `Ecommerce.Domain/Authen/AuthenErrors.cs` | The authen specs' errors, each declared once with its spec status, bizCode and text | — / `max` → `Error` | Reuse the declared error; add a new one here, never inline the text in a handler |
 | `CommonErrors.Timeout` | `Ecommerce.Application/Common/CommonErrors.cs` | The shared timeout error (bizCode E90001) | — | Return when `ITransactionRunner` throws `TimeoutException` |
-| `ValidationErrors.From(params Result[] results)` | `Ecommerce.Application/Common/ValidationErrors.cs` | Collects the errors of every failed result | Results → all their errors | In validators, to report all problems at once instead of the first only (internal). No caller yet: the authen validators collect message texts and call `ValidationMessages.Combine` |
 
 ## Shared — Validation messages and formats
 
@@ -36,7 +35,7 @@ Paths are relative to `e-commerce/repository/e-commerce-backend/src/`. The entri
 | `ValidationMessages.Field(requestField)` | `Ecommerce.Shared/Validation/ValidationMessages.cs` | Turns a JSON field name into display words | `emailAddress` → `Email Address` | Used by the other message builders |
 | `ValidationMessages.Required/MaxLength/Uuid/Date/OneOf/Email/JsonType/Duplicated/UnknownField(...)` | same | The 400 E10001 message forms of `api-conventions.md` "Validation messages" | Field name (+ limit/values) → message text | Always use these instead of writing message text by hand; API filters and validators share them |
 | `ValidationMessages.At(position, message)` / `Combine(messages)` | same | Prefixes a message with its position; joins messages | Position + message → text; messages → one text | For batch items and multiple failures |
-| `EmailAddressFormat.IsValid(string value)` | `Ecommerce.Domain/Common/EmailAddressFormat.cs` | The one email rule of api-conventions "Email address" (owner decision 2026-11-18): ≤ 254 characters, exactly one `@` after a non-empty local part, a dot in the domain, a plain address only (no space, display name or angle brackets) | Text → bool | Register and request-password-reset validators, and `EmailAddress.Create`. Validity only: callers store and compare the value as sent. Do not add another rule |
+| `EmailAddressFormat.IsValid(string value)` | `Ecommerce.Domain/Common/EmailAddressFormat.cs` | The one email rule of api-conventions "Email address" (owner decision 2026-11-18): ≤ 254 characters, exactly one `@` after a non-empty local part, a dot in the domain, a plain address only (no space, display name or angle brackets) | Text → bool | Register and request-password-reset validators. Validity only: callers store and compare the value as sent. Do not add another rule |
 
 ## Shared — Optional values and paging
 
@@ -59,26 +58,19 @@ Paths are relative to `e-commerce/repository/e-commerce-backend/src/`. The entri
 
 | Function | Location | Purpose | Parameters / returns | Use when / notes |
 | --- | --- | --- | --- | --- |
-| `Entity<TId>` | `Ecommerce.Domain/Common/Entity.cs` | Identity-based equality for entities | — | Base class for entities |
 | `ValueObject` | `Ecommerce.Domain/Common/ValueObject.cs` | Value-based equality for value objects | — | Base class for value objects |
 | `DuplicateKeyException(constraintName, table)` | `Ecommerce.Domain/DuplicateKeyException.cs` | A unique constraint was violated (PostgreSQL 23505) | Constraint and table names | Thrown by the persistence layer; handlers map the constraint name to the spec's 409 error |
 | `MissingReferenceException(constraintName)` | `Ecommerce.Domain/MissingReferenceException.cs` | A foreign key target is missing (23503) | Constraint name | Handlers map it to the spec's not-found error |
 
 ## Domain — Authen value objects
 
-Each value object validates and normalises its input in `Create` and returns a failure `Result` for bad input. `Restore` rebuilds an already-stored value without re-validating; use it only when loading from the database.
+A value object validates its input in `Create` and returns a failure `Result` for bad input.
 
-At `07cccc1` only `PlainPassword.Create` has callers (register and create-new-password validators). The other factories have none: the validators apply the spec rules directly with `ValidationMessages`, `EmailAddressFormat` and `ProfileFieldRules`. Do not start using an unused factory without checking that its rule matches the spec (for example, `EmailAddress.Create` trims and lower-cases).
+Only `PlainPassword` and `PasswordCredential` remain: the unused value objects, the `User`/`PasswordResetToken` entities, `Entity` and `ValidationErrors` were removed on 2026-11-20. The validators apply the spec rules with `ValidationMessages`, `EmailAddressFormat` and `ProfileFieldRules`.
 
 | Function | Location | Purpose | Parameters / returns | Use when / notes |
 | --- | --- | --- | --- | --- |
-| `EmailAddress.Create(string? raw)` / `Restore(string)` | `Ecommerce.Domain/Authen/ValueObjects/EmailAddress.cs` | Trimmed, lower-cased address that passes `EmailAddressFormat` | Raw text → `Result<EmailAddress>` | No caller yet. Trims and lower-cases, which register and reset do not do: they store and compare the email as sent |
-| `Username.Create(string? raw)` / `Restore(string)` | `.../ValueObjects/Username.cs` | Valid username | Raw text → `Result<Username>` | No caller yet |
-| `LoginIdentifier.Create(string? raw)` | `.../ValueObjects/LoginIdentifier.cs` | Login input that is a username or an email | Raw text → `Result<LoginIdentifier>` | No caller (login matches username or email exactly) |
-| `PersonName.Create(string? first, string? last)` / `Restore(first, last)` | `.../ValueObjects/PersonName.cs` | Valid first and last name | Two texts → `Result<PersonName>` | No caller yet |
-| `DisplayName.Create(string? raw, PersonName fallback)` / `Restore(string)` | `.../ValueObjects/DisplayName.cs` | Display name, defaulting from the person name | Raw text + fallback → `Result<DisplayName>` | No caller yet |
-| `PlainPassword.Create(string? raw)` | `.../ValueObjects/PlainPassword.cs` | Password that meets the password rules | Raw text → `Result<PlainPassword>` | Before hashing; never store or log it |
-| `UserId.New()` | `.../ValueObjects/UserId.cs` | New time-ordered user id (UUID v7) | — → `UserId` | No caller: the database generates user ids (`gen_random_uuid()` default) |
+| `PlainPassword.Create(string? raw)` | `Ecommerce.Domain/Authen/ValueObjects/PlainPassword.cs` | Password that meets the password rules | Raw text → `Result<PlainPassword>` | Before hashing; never store or log it |
 
 ## Domain — Authen business operations (Service = Domain)
 
