@@ -1,7 +1,7 @@
 ---
 name: E-commerce Function Book
 description: Central list of the e-commerce backend's shared, reusable functions with purpose, parameters and usage. Read before writing any new function in the e-commerce backend; update it in the same change that adds, changes or removes a shared function.
-source_component_revision: 07cccc17aeb60ef23ecc66c309dfbde02b80bb4a
+source_component_revision: 4b336eb57c25ed00077541df18deedeb2eee7856
 updated_on: 2026-11-20
 ---
 
@@ -15,7 +15,7 @@ Check this book and the code before writing a new function, as required by `.age
 
 The book lists only what other code is meant to call. Handlers, controllers and private methods are not listed; `e-commerce/doc/code-structure.md` explains where those live.
 
-Paths are relative to `e-commerce/repository/e-commerce-backend/src/`. The entries were checked against component revision `07cccc1` (branch `fix/drake-strict-email-rule`, which includes the open PRs for APIs 07 to 10 and the 01–08 catch-up; an entry for those APIs reaches `main` when they merge). Every authen API runs on EF Core through `ITransactionRunner`; the older Dapper path (`IUnitOfWork`, `DbSession`) is kept only for the legacy `api/authen/me` endpoint.
+Paths are relative to `e-commerce/repository/e-commerce-backend/src/`. The entries were checked against component revision `4b336eb` (branch `chore/drake-legacy-me-and-read-only`; an entry reaches `main` when that PR merges). Every API runs on EF Core through `ITransactionRunner`; the Dapper path and the legacy `api/authen/me` endpoint were removed on 2026-11-20.
 
 ## Shared — Results and errors
 
@@ -108,8 +108,7 @@ At `07cccc1` only `PlainPassword.Create` has callers (register and create-new-pa
 
 | Function | Location | Purpose | Parameters / returns | Use when / notes |
 | --- | --- | --- | --- | --- |
-| `ITransactionRunner.RunAsync<T>(isolation, work, ct)` | `Ecommerce.Application/Abstractions/ITransactionRunner.cs` | Runs one use case in one transaction at the spec's isolation level. Success commits; failure rolls back; a serialization conflict reruns the work (bounded) | Isolation, work returning `Result<T>` → that result | The EF Core path; the work must read and write only through the transaction. Throws `TimeoutException` → return `CommonErrors.Timeout` |
-| `IUnitOfWork.ExecuteInTransactionAsync(work, ct)` | `.../Abstractions/IUnitOfWork.cs` | One transaction: commit on success, roll back on exception | Work → completes | The older Dapper path; prefer `ITransactionRunner` for EF Core slices |
+| `ITransactionRunner.RunAsync<T>(isolation, work, ct, readOnly = false)` | `Ecommerce.Application/Abstractions/ITransactionRunner.cs` | Runs one use case in one transaction at the spec's isolation level. Success commits; failure rolls back; a serialization conflict reruns the work (bounded); `readOnly` makes it the spec's READ ONLY transaction | Isolation, work returning `Result<T>`, read-only flag → that result | Every handler; pass `readOnly: true` for an inquiry whose spec says READ ONLY (08, 10). The work must read and write only through the transaction. Throws `TimeoutException` → return `CommonErrors.Timeout` |
 | `IPasswordHasher.Hash(password)` / `Verify(password, credential)` | `.../Abstractions/IPasswordHasher.cs` | Hash and verify passwords (PBKDF2 implementation) | Password → `PasswordCredential`; password + credential → bool | Never compare hashes by hand |
 | `ITokenService.IssueAccessToken/IssueRefreshToken/IssuePasswordResetToken`, `Hash(token)` | `.../Abstractions/ITokenService.cs` | Issue tokens; hash an opaque token for storage | Claims → `IssuedToken`; token → SHA-256 bytes | Store only the hash of refresh and reset tokens |
 | `IEmailSender` | `.../Abstractions/IEmailSender.cs` | Send email (logging implementation today) | — | Send after the transaction commits, not inside it. The same file holds the settings records (`PasswordResetSettings`, `RefreshSettings`, `AddressSettings`) |
@@ -122,7 +121,7 @@ At `07cccc1` only `PlainPassword.Create` has callers (register and create-new-pa
 | `database.AcquireTransactionLockAsync(long key, ct)` | `.../Persistence/Ef/AdvisoryLock.cs` | PostgreSQL transaction advisory lock | Lock key → completes when held | When a rule needs serialisation that no row lock covers; released at transaction end |
 | `EcommerceDbContext.UtcSession(connectionString)` | `.../Persistence/Ef/EcommerceDbContext.cs` | Adds `Timezone=UTC` so `TIMESTAMP WITHOUT TIME ZONE` columns hold UTC | Connection string → connection string | Every connection: the EF context, the `NpgsqlDataSource` and test fixtures |
 | `EcommerceDbContext.Create(connectionString, commandTimeoutSeconds)` / `Configure(builder, connectionString, commandTimeoutSeconds)` | same | A context with the UTC session, snake_case names, the `ForUpdate` interceptor and the command timeout | Connection string (+ timeout) → context or options | `Configure` in DI; `Create` in tests and tools |
-| `EfTransactionRunner` (implements `ITransactionRunner`) | `.../Persistence/EfTransactionRunner.cs` | Translates PostgreSQL failures: 23505 → `DuplicateKeyException`, 23503 → `MissingReferenceException`, timeout → `TimeoutException`; reruns 40001 up to 3 attempts, then `TimeoutException` | — | Registered for `ITransactionRunner`; do not open transactions elsewhere (internal) |
+| `EfTransactionRunner` (implements `ITransactionRunner`) | `.../Persistence/EfTransactionRunner.cs` | Translates PostgreSQL failures: 23505 → `DuplicateKeyException`, 23503 → `MissingReferenceException`, timeout → `TimeoutException`; reruns 40001 up to 3 attempts, then `TimeoutException` | — | With `readOnly` it runs the constant `SET TRANSACTION READ ONLY` right after BEGIN (a write then fails with 25006). Registered for `ITransactionRunner`; do not open transactions elsewhere (internal) |
 | `SessionRevocation.CloseAccessTokensAsync/CloseRefreshTokensAsync(db, sessionId, userId, nowUtc, ct)` | `.../Persistence/Authen/SessionRevocation.cs` | Closes the ACTIVE token rows of one session of one user | Session + user + now → rows changed | Logout and refresh replay; both guard `user_id`, so another user's rows with the same session id are never touched (internal) |
 | `FieldProtector.Protect(string)` / `Unprotect(byte[])` | `Ecommerce.Infrastructure/Security/FieldProtector.cs` | Deterministic, authenticated encryption of personal data in `bytea` columns | Text ↔ bytes | Unique personal columns (username, email) can still be matched by equality (internal) |
 
@@ -139,7 +138,7 @@ At `07cccc1` only `PlainPassword.Create` has callers (register and create-new-pa
 | `RequiredHeadersFilter` | `Ecommerce.Api/Filters/RequiredHeadersFilter.cs` | 400 E10001 for a missing or non-UTC `timestamp`, and a non-JSON content-type when a body is sent | — | Registered globally; do not repeat the header checks in actions |
 | `EnvelopeExceptionHandler` | `Ecommerce.Api/Filters/EnvelopeExceptionHandler.cs` | An unhandled exception → 500 envelope "An unexpected error occurred." without bizCode | — | Registered globally; throw for defects, never return a 500 by hand |
 | `ApiEnvelope.Success/Failure(...)` | `Ecommerce.Api/Contracts/ApiEnvelope.cs` | Builds the status envelope; `data` and `bizCode` are omitted when null | — | Used by `ResultExtensions` and `HttpEnvelope`; call those instead |
-| `user.TryGetUserId(out Guid userId)` | `Ecommerce.Api/Security/CallerClaims.cs` | The caller's user id from the verified JWT | Principal → bool + id | Every endpoint that acts as the caller |
+| `user.TryGetUserId(out Guid userId)` | `Ecommerce.Api/Security/CallerClaims.cs` | The caller's user id from the verified JWT | Principal → bool + id | Used by `VerifiedCaller.Of`; actions take the caller from there |
 | `user.TryGetExpiresAt(out DateTime expiresAtUtc)` | same | The verified JWT `exp` in UTC | Principal → bool + time | Used by `VerifiedCaller` for the fresh-now expiry recheck |
 | `user.IsPlatformAdmin()` | same | Whether the JWT `roles` claim holds `PLATFORM_ADMIN` | Principal → bool | Roles come only from the token, never from the database. No caller yet |
 | `InvalidBody.Response(context)` | `Ecommerce.Api/Filters/InvalidBody.cs` | 400 envelope for a body that cannot be bound | Action context → result | Registered once as the invalid-model response |

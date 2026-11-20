@@ -11,7 +11,7 @@ description: "Documented scenarios and expected results for POST v1/user/profile
 - Governing sources: [spec.md](spec.md) (body fields, rules, response examples, Database Relations), [sequence.wsd](sequence.wsd) (validation, presence flags, lock and credential notes), [api-conventions.md](../../../../../.agents/skills/api-contract-design/references/api-conventions.md)
 - Source revision: Showcase `main` at the commit that adds this file; `spec.md` and `sequence.wsd` last changed in `8023e47`
 - Source approval: approved (`approved_by: Ittikorn`, `approved_at: 2026-11-16T09:24:57+07:00`)
-- Test design baseline: approved-source, except gap G1 (message choices, pending the lead's review)
+- Test design baseline: approved-source, except gap G1 (message choices, approved by Josh 2026-11-20)
 - Scope and exclusions: the own profile only; TLS excluded. The spec has no rate limit for this API.
 - Execution summary: every case automated in e-commerce-backend (test names start with the case ID) and passing; see [Revision and execution history](#revision-and-execution-history).
 
@@ -117,7 +117,7 @@ description: "Documented scenarios and expected results for POST v1/user/profile
 
 | Gap ID | Conflicting/missing sources | Affected obligations/cases | Missing decision or prerequisite | Status / decision reference |
 | --- | --- | --- | --- | --- |
-| G1 | the spec and api-conventions give no message for an invalid phone number or an unknown key | U06, U08 | the two messages | implementation choice, pending the lead's review: "Phone Number must be 8 to 15 digits with an optional leading +." and "<Field> is not a known field."; every other message comes from the spec example or the convention forms |
+| G1 | the spec and api-conventions give no message for an invalid phone number or an unknown key | U06, U08 | the two messages | implementation choice, approved by Josh 2026-11-20: "Phone Number must be 8 to 15 digits with an optional leading +." and "<Field> is not a known field."; every other message comes from the spec example or the convention forms |
 
 ## Document verification and limitations
 
@@ -128,3 +128,4 @@ description: "Documented scenarios and expected results for POST v1/user/profile
 
 - 2026-11-19: first version (Drake), Not run.
 - 2026-11-19: executed by the automated tests of e-commerce-backend on branch `feat/drake-07-upsert-user-profile` (stacked on 06): `UpsertUserProfileApiTests` (HTTP + real PostgreSQL 17, 22 tests), `UpsertUserProfileCommandHandlerTests` (4), `UserProfileRepositoryTests` (2) and `CallerCredentialRepositoryTests` (1, real database), `ProfileFieldRulesTests` (11). Result: every case passes (`dotnet test`: Api 196, Application 40, Domain 69, Infrastructure 46, 0 failed). Mutation checks: making any of firstName, lastName, profilePicturePath, phoneNumber or gender always written fails TC-PROFILE-003 or 005 (an assertion was added to TC-PROFILE-005 after the firstName mutation first survived); writing the information group always fails TC-PROFILE-004 and 005; removing `ForUpdate()` fails the credential repository test.
+- 2026-11-20: Josh (SA Lead) approved every gap choice above as written; the status column now says so.

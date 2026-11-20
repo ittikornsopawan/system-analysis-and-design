@@ -11,7 +11,7 @@ description: "Documented scenarios and expected results for POST v1/auth/reset-p
 - Governing sources: [spec.md](spec.md) (rules, response examples, Database Relations), [sequence.wsd](sequence.wsd) (order, lock, throttle and email notes), [api-conventions.md](../../../../../.agents/skills/api-contract-design/references/api-conventions.md) (Error codes, Validation messages, Limits and rate limiting)
 - Source revision: Showcase `main` at the commit that adds this file; `spec.md` and `sequence.wsd` last changed in `8023e47`
 - Source approval: approved (`approved_by: Ittikorn`, `approved_at: 2026-11-16T09:24:57+07:00`)
-- Test design baseline: approved-source, except gaps G1 and G2 below (implementation choices recorded, waiting for the lead's review)
+- Test design baseline: approved-source, except gaps G1 and G2 below (implementation choices recorded, approved by Josh 2026-11-20)
 - Scope and exclusions: the reset request only (create-new-password is 04). Excluded: real email delivery (outside the spec); response-time equality (the spec says runtime verification is needed; covered by "the same preparation runs for every valid request").
 - Execution summary: every case automated in e-commerce-backend (test names start with the case ID) and passing; see [Revision and execution history](#revision-and-execution-history).
 
@@ -119,8 +119,8 @@ description: "Documented scenarios and expected results for POST v1/auth/reset-p
 
 | Gap ID | Conflicting/missing sources | Affected obligations/cases | Missing decision or prerequisite | Status / decision reference |
 | --- | --- | --- | --- | --- |
-| G1 | spec example "Email Address is required and must be a valid email address." vs api-conventions forms ("is a required field." / "must be a valid email address.") | P02, TC-RESET-002 | which message a missing, invalid or too long email gets | implementation choice, pending the lead's review: a spec example keeps its text (api-conventions "A spec example that already shows a message keeps it"), so missing and invalid share the example message; too long uses the convention form |
-| G2 | "apply the same configured response-latency policy" names no setting or value | P13 | the latency policy (minimum duration) | implementation choice, pending the lead's review: no extra delay is configured; every valid request does the same encryption and token/hash preparation before the lookup; timing is not measured |
+| G1 | spec example "Email Address is required and must be a valid email address." vs api-conventions forms ("is a required field." / "must be a valid email address.") | P02, TC-RESET-002 | which message a missing, invalid or too long email gets | implementation choice, approved by Josh 2026-11-20: a spec example keeps its text (api-conventions "A spec example that already shows a message keeps it"), so missing and invalid share the example message; too long uses the convention form |
+| G2 | "apply the same configured response-latency policy" names no setting or value | P13 | the latency policy (minimum duration) | implementation choice, approved by Josh 2026-11-20 (the policy is "the same work on every valid request, no added delay" until a spec sets a value): no extra delay is configured; every valid request does the same encryption and token/hash preparation before the lookup; timing is not measured |
 
 ## Document verification and limitations
 
@@ -133,3 +133,4 @@ description: "Documented scenarios and expected results for POST v1/auth/reset-p
 - 2026-11-18: first version (Drake), Not run.
 - 2026-11-18: executed by the automated tests of e-commerce-backend on branch `feat/drake-03-reset-password` (stacked on the 02-login branch): `ResetPasswordApiTests` (HTTP + real PostgreSQL 17, 17 tests), `RequestPasswordResetCommandHandlerTests` (6), `PasswordResetRequestRepositoryTests` (3, real database), `LoggingEmailSenderTests` (1). Result: every case passes (`dotnet test`: Api 133, Application 21, Domain 48, Infrastructure 33, 0 failed). Mutation checks: removing `ForUpdate()` fails TC-RESET-008 and the repository TC-RESET-009; removing the UTC read converter fails the repository TC-RESET-003; logging the link fails TC-RESET-011.
 - 2026-11-20: the strict email rule (owner decision 2026-11-18) is applied by e-commerce-backend commit `07cccc1` (branch `fix/drake-strict-email-rule`): `EmailAddressFormat` is the one rule. The three TC-RESET-002 rows `"a.b@c"`, `"a b@shop.co"` and `"A <a@shop.co>"` are automated and pass (`dotnet test`: Api 278, Application 42, Domain 96, Infrastructure 46, 0 failed). Mutation check: accepting a dot anywhere instead of in the domain fails the `"a.b@c"` row.
+- 2026-11-20: Josh (SA Lead) approved every gap choice above as written; G2 records the latency policy he set.

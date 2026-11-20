@@ -11,8 +11,8 @@ description: "Documented scenarios and expected results for GET v1/user/address;
 - Governing sources: [spec.md](spec.md) (query parameters, response examples, Database Relations), [sequence.wsd](sequence.wsd) (validation, credential, count/page and mapping notes), [api-conventions.md](../../../../../.agents/skills/api-contract-design/references/api-conventions.md)
 - Source revision: Showcase `main` at the commit that adds this file; `spec.md` and `sequence.wsd` last changed in `8023e47`
 - Source approval: approved (`approved_by: Ittikorn`, `approved_at: 2026-11-16T09:24:57+07:00`)
-- Test design baseline: approved-source, except gap G1 (message choices, pending the lead's review)
-- Scope and exclusions: the caller's own addresses only; TLS excluded. The spec has no rate limit for this API. READ ONLY is not testable through EF Core (see the 08 limitation); the snapshot is REPEATABLE READ.
+- Test design baseline: approved-source, except gap G1 (message choices, approved by Josh 2026-11-20)
+- Scope and exclusions: the caller's own addresses only; TLS excluded. The spec has no rate limit for this API. The snapshot is REPEATABLE READ READ ONLY.
 - Execution summary: every case automated in e-commerce-backend (test names start with the case ID) and passing; see [Revision and execution history](#revision-and-execution-history).
 
 ## Shared fixtures and observation prerequisites
@@ -106,7 +106,7 @@ description: "Documented scenarios and expected results for GET v1/user/address;
 
 - Source: A12. Design readiness: Ready. Execution status: Pass (automated).
 
-**Steps:** a test-only wrapper commits a new ACTIVE address for U_OK from another connection right after the count. **Expected:** 200 with totalItems 3 and the same 3 items (the new row is in neither); the next request sees 4.
+**Steps:** a test-only wrapper commits a new ACTIVE address for U_OK from another connection right after the count. **Expected:** 200 with totalItems 3 and the same 3 items (the new row is in neither); the next request sees 4. The handler runs REPEATABLE READ READ ONLY (handler test).
 
 ### TC-ADDRESSQ-012 — Unexpected failure
 
@@ -118,7 +118,7 @@ description: "Documented scenarios and expected results for GET v1/user/address;
 
 | Gap ID | Conflicting/missing sources | Affected obligations/cases | Missing decision or prerequisite | Status / decision reference |
 | --- | --- | --- | --- | --- |
-| G1 | the spec gives examples only for the pagination range and the row status; api-conventions has no message for an offset overflow, an unknown or repeated query key or a body on a GET | A07, A08 | the messages | implementation choice, pending the lead's review: "Page Index is too large for Page Size.", "Id must be a valid UUID.", "<Field> is not a known field.", "<Field> must not be duplicated.", "Request Body must be empty."; every pagination range failure (non-numeric, empty, zero, over 100) uses the spec example |
+| G1 | the spec gives examples only for the pagination range and the row status; api-conventions has no message for an offset overflow, an unknown or repeated query key or a body on a GET | A07, A08 | the messages | implementation choice, approved by Josh 2026-11-20: "Page Index is too large for Page Size.", "Id must be a valid UUID.", "<Field> is not a known field.", "<Field> must not be duplicated.", "Request Body must be empty."; every pagination range failure (non-numeric, empty, zero, over 100) uses the spec example |
 
 ## Document verification and limitations
 
@@ -129,3 +129,4 @@ description: "Documented scenarios and expected results for GET v1/user/address;
 
 - 2026-11-19: first version (Drake), Not run.
 - 2026-11-19: executed by the automated tests of e-commerce-backend on branch `feat/drake-10-inquiry-user-address` (stacked on 09): `InquiryUserAddressApiTests` (HTTP + real PostgreSQL 17, 28 tests including the 17 validation rows), `PageRequestTests` (21). Result: every case passes (`dotnet test`: Api 277, Application 42, Domain 79, Infrastructure 46, 0 failed). Mutation checks: READ COMMITTED instead of REPEATABLE READ fails TC-ADDRESSQ-011; removing the row-count check fails TC-ADDRESSQ-012; removing the ACTIVE-user join fails TC-ADDRESSQ-008; removing the created_at order fails TC-ADDRESSQ-001; removing the DELETED filter fails eight cases; dropping the % wrap of search fails TC-ADDRESSQ-004.
+- 2026-11-20: Josh (SA Lead) approved every gap choice above as written; the status column now says so. READ ONLY is now applied (e-commerce-backend `4b336eb`, branch `chore/drake-legacy-me-and-read-only`) and checked by `InquiryUserAddressQueryHandlerTests` (TC-ADDRESSQ-011); every case passes (Api 277, Application 43, Domain 79, Infrastructure 47, 0 failed). Mutation check: passing `readOnly: false` fails that test.

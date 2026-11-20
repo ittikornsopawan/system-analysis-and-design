@@ -11,7 +11,7 @@ description: "Documented scenarios and expected results for POST v1/auth/logout;
 - Governing sources: [spec.md](spec.md) (rules, response examples, Database Relations), [sequence.wsd](sequence.wsd) (validation order, lock, session revocation notes), [api-conventions.md](../../../../../.agents/skills/api-contract-design/references/api-conventions.md)
 - Source revision: Showcase `main` at the commit that adds this file; `spec.md` and `sequence.wsd` last changed in `8023e47`
 - Source approval: approved (`approved_by: Ittikorn`, `approved_at: 2026-11-16T09:24:57+07:00`)
-- Test design baseline: approved-source, except gap G1 (implementation choice recorded, pending the lead's review)
+- Test design baseline: approved-source, except gap G1 (implementation choice recorded, approved by Josh 2026-11-20)
 - Scope and exclusions: logout only; TLS excluded. Logout has no rate limit in its spec.
 - Execution summary: every case automated in e-commerce-backend (test names start with the case ID) and passing; see [Revision and execution history](#revision-and-execution-history).
 
@@ -90,7 +90,7 @@ description: "Documented scenarios and expected results for POST v1/auth/logout;
 
 | Gap ID | Conflicting/missing sources | Affected obligations/cases | Missing decision or prerequisite | Status / decision reference |
 | --- | --- | --- | --- | --- |
-| G1 | the spec example "Timestamp must be a valid UTC timestamp and the request body must be empty." covers both checks in one sentence; api-conventions has separate header messages | O03, TC-LOGOUT-002 | which message a non-empty body gets | implementation choice, pending the lead's review: header failures use the shared header messages; a non-empty body uses the spec example text |
+| G1 | the spec example "Timestamp must be a valid UTC timestamp and the request body must be empty." covers both checks in one sentence; api-conventions has separate header messages | O03, TC-LOGOUT-002 | which message a non-empty body gets | implementation choice, approved by Josh 2026-11-20: header failures use the shared header messages; a non-empty body uses the spec example text |
 
 ## Document verification and limitations
 
@@ -101,3 +101,4 @@ description: "Documented scenarios and expected results for POST v1/auth/logout;
 
 - 2026-11-19: first version (Drake), Not run.
 - 2026-11-19: executed by the automated tests of e-commerce-backend on branch `feat/drake-06-logout`: `LogoutApiTests` (HTTP + real PostgreSQL 17, 8 tests), `LogoutCommandHandlerTests` (5), `LogoutRepositoryTests` (2, real database). Result: every case passes (`dotnet test`: Api 170, Application 36, Domain 58, Infrastructure 43, 0 failed). Mutation checks: removing `ForUpdate()` fails TC-LOGOUT-006 and 007; removing the `user_id` guard of the session closure fails both TC-LOGOUT-001 tests.
+- 2026-11-20: Josh (SA Lead) approved every gap choice above as written; the status column now says so.
