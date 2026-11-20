@@ -21,7 +21,7 @@ description: "Documented scenarios and expected results for POST v1/auth/login; 
 - **Database:** throw-away PostgreSQL 17 with every Showcase migration (backend `PostgresFixture`), sessions in UTC.
 - **Users (created per case with unique identifiers):** `U_OK` ACTIVE with an ACTIVE PASSWORD row for `Passw0rd-Example`; variants with row_status INACTIVE, LOCKED and DELETED; `U_NOPW` ACTIVE with no ACTIVE PASSWORD row.
 - **Authorization fixtures:** roles, permissions, scopes, permission-scope definitions and their assignments created per case with unique names.
-- **Valid request (VR):** headers `content-type: application/json`, `timestamp: <now UTC>`, `requestId: req-<case>`; body `{"username": <U_OK username>, "password": "Passw0rd-Example"}`.
+- **Valid request (VR):** headers `content-type: application/json`, `timestamp: <now UTC>`, `requestId: req-<case>`; body `{"username": <U_OK username>, "password": "Passw0rd-Example"}`. Since 2026-11-20 VR also carries the headers `encryptionKeyId` and `encryptedKey`, and its sensitive body fields are sent encrypted (api-conventions "Encrypted sensitive fields"); the test client does this for every request.
 - **Observation:** HTTP response through the real pipeline; the access token decoded with the test signing key; committed rows of `authen.t_user_access_token`, `authen.t_user_refresh_token` and `authen.l_user_login_attempt` read by test queries. `identifier_hash` is SHA-256 of the exact UTF-8 username sent.
 - **Failure injection:** a second connection holding the user row lock with a short command timeout (timeout), and a test-only repository wrapper that throws after the writes (unexpected failure).
 
@@ -49,6 +49,9 @@ description: "Documented scenarios and expected results for POST v1/auth/login; 
 | L18 | sequence "Unexpected failure before COMMIT" | 500 without bizCode; nothing committed | [TC-LOGIN-020](#tc-login-020--unexpected-failure) | designed |
 | L19 | spec Rate limit | 11th request in a minute from one IP → 429 E90002 with Retry-After | [TC-LOGIN-021](#tc-login-021--rate-limit) | designed |
 | L20 | sequence dummy verification note | an unknown or ambiguous user or a missing password row still costs one password verification | [TC-LOGIN-005](#tc-login-005--unknown-username), [TC-LOGIN-009](#tc-login-009--no-active-password-row) | designed (call count, not timing) |
+| L21 | api-conventions "Encrypted sensitive fields"; spec Headers | `encryptionKeyId` and `encryptedKey` are mandatory; a missing or empty one → 400 E10001 `Encryption Key Id is a required header.` / `Encrypted Key is a required header.` before the body is read | [TC-LOGIN-022](#tc-login-022--missing-encryption-headers) | designed |
+| L22 | api-conventions "Encrypted sensitive fields"; spec Fail - Bad Request Encryption | unknown key id, key not base64, key of the wrong size, field under another key, plain text in an encrypted field, wrong JSON path, short value and wrong tag all answer one 400 E10001 `Encrypted fields could not be decrypted.` with the same body | [TC-LOGIN-023](#tc-login-023--every-decrypt-failure-is-the-same-400) | designed |
+| L23 | api-conventions "Encrypted sensitive fields" "Order" | fields are decrypted before validation: a valid ciphertext reaches the spec validation; the same plain value unencrypted is the decrypt 400 | [TC-LOGIN-024](#tc-login-024--decrypt-comes-before-validation) | designed |
 
 ## Detailed test cases
 
@@ -198,6 +201,24 @@ description: "Documented scenarios and expected results for POST v1/auth/login; 
 
 **Steps:** with the limit at 10, send 11 requests from one IP. **Expected:** the 11th is 429 E90002 "Too many requests. Try again later." with `Retry-After` 1–60, and writes no attempt row.
 
+### TC-LOGIN-022 — Missing encryption headers
+
+- Source: L21. Design readiness: Ready. Execution status: Pass (automated).
+
+**Request:** VR with `encryptionKeyId` removed; then `encryptedKey` removed; then both removed; then `encryptionKeyId` empty. **Expected:** 400 E10001 with bizMessage `Encryption Key Id is a required header.`, then `Encrypted Key is a required header.`, then `Encryption Key Id is a required header, Encrypted Key is a required header.`, then `Encryption Key Id is a required header.`; the body is not decrypted and no attempt row is written.
+
+### TC-LOGIN-023 — Every decrypt failure is the same 400
+
+- Source: L22. Design readiness: Ready. Execution status: Pass (automated).
+
+**Request:** VR with the encryption headers changed in eight ways: (1) unknown `encryptionKeyId`; (2) `encryptedKey` that is not base64; (3) `encryptedKey` wrapping a 16-byte key; (4) fields encrypted under a key other than the wrapped one; (5) plain text in the encrypted fields; (6) fields encrypted with another JSON path as additional authenticated data; (7) a value shorter than IV plus tag (`AAAA`); (8) a value whose last tag byte is changed. **Expected:** every request answers 400 E10001 `Encrypted fields could not be decrypted.`; the eight bodies are identical except `requestId` and `timestamp`; the body never contains a plain value; no attempt row is written.
+
+### TC-LOGIN-024 — Decrypt comes before validation
+
+- Source: L23. Design readiness: Ready. Execution status: Pass (automated).
+
+**Request:** VR with `password` set to "": first sent as plain text, then encrypted correctly. **Expected:** the plain-text request is 400 E10001 `Encrypted fields could not be decrypted.`; the encrypted request is 400 E10001 `Password is a required field.` (validation sees the plain value).
+
 ## Open gaps and decisions
 
 | Gap ID | Conflicting/missing sources | Affected obligations/cases | Missing decision or prerequisite | Status / decision reference |
@@ -214,3 +235,4 @@ description: "Documented scenarios and expected results for POST v1/auth/login; 
 
 - 2026-11-18: first version (Drake), Not run.
 - 2026-11-18: executed by the automated tests of e-commerce-backend on branch `feat/drake-02-login`: `LoginApiTests` (HTTP + real PostgreSQL 17, 25 tests), `LoginCommandHandlerTests` (6), `LoginRepositoryTests` (9, real database), `AuthorizationClaimsTests` (9). Result: every case passes (`dotnet test`: Api 116, Application 16, Domain 48, Infrastructure 29, 0 failed). Mutation checks: removing the advisory lock fails both TC-LOGIN-016 tests; removing `ForUpdate()` fails the repository TC-LOGIN-019 test (the HTTP TC-LOGIN-019 still times out, because the token insert also waits for the user row).
+- 2026-11-20: field-transport cases TC-LOGIN-022, TC-LOGIN-023, TC-LOGIN-024 added (Janny) and every existing request now sent encrypted; automated by `FieldTransportApiTests`, `FieldTransportTests` and the encrypted `Send` of the endpoint tests, on e-commerce-backend branch `feat/janny-field-transport` at `338f74c` (Api 289, Application 43, Domain 96, Infrastructure 51, 0 failed). Not yet merged into `main` (e-commerce-backend#21).

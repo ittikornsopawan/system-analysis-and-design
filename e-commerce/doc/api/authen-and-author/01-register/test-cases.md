@@ -25,7 +25,7 @@ description: "Documented scenarios and expected results for POST v1/auth/registe
   - `C_FUTURE` ACTIVE, required, `effective_at = now + 1 day`. `C_EXPIRED` ACTIVE, required, `expired_at = now - 1 minute`. `C_INACTIVE` row_status `INACTIVE`, required. `C_TYPE_OFF` ACTIVE, required, type `TYPE_B` with row_status `INACTIVE`.
   - Cases that need "no applicable required consent" run with only `C_OPT`, `C_FUTURE`, `C_EXPIRED`, `C_INACTIVE` and `C_TYPE_OFF` present.
 - **Referrer:** `U_REF`, an existing user (any status).
-- **Valid request (VR):** headers `content-type: application/json`, `timestamp: <now ISO-8601 UTC>`, `requestId: req-<case>`; body `username`, `emailAddress`, `password = Passw0rd-Example` (unique per case), and `consents = [{consentId: C_REQ, consentVersion: "1.0.0", result: true}]`. Each case lists only its overrides.
+- **Valid request (VR):** headers `content-type: application/json`, `timestamp: <now ISO-8601 UTC>`, `requestId: req-<case>`; body `username`, `emailAddress`, `password = Passw0rd-Example` (unique per case), and `consents = [{consentId: C_REQ, consentVersion: "1.0.0", result: true}]`. Each case lists only its overrides. Since 2026-11-20 VR also carries the headers `encryptionKeyId` and `encryptedKey`, and its sensitive body fields are sent encrypted (api-conventions "Encrypted sensitive fields"); the test client does this for every request.
 - **Observation:** HTTP response through the real ASP.NET pipeline; committed rows read by authorized read-only queries on the test database. The field key of the test configuration decrypts byte columns.
 - **Failure injection:** a test-only interceptor or connection that fails one insert, a held lock for timeout, and two concurrent requests for duplicates. These exist only in the test project.
 
@@ -62,6 +62,9 @@ description: "Documented scenarios and expected results for POST v1/auth/registe
 | R27 | spec rule "Rate limit" | more than 10 requests per minute per IP → 429 E90002 + Retry-After, before the handler | [TC-REG-026](#tc-reg-026--rate-limit) | designed |
 | R28 | sequence "preserve input identifier representation" | username and email are stored as sent (no lower-casing or trimming) | [TC-REG-027](#tc-reg-027--identifier-stored-as-sent) | designed |
 | R29 | sequence note | register never grants PLATFORM_ADMIN | [TC-REG-001](#tc-reg-001--full-registration-succeeds) | designed (no author rows written) |
+| R30 | api-conventions "Encrypted sensitive fields"; spec Headers | `encryptionKeyId` and `encryptedKey` are mandatory; a missing or empty one → 400 E10001 `Encryption Key Id is a required header.` / `Encrypted Key is a required header.` before the body is read | [TC-REG-028](#tc-reg-028--missing-encryption-headers) | designed |
+| R31 | api-conventions "Encrypted sensitive fields"; spec Fail - Bad Request Encryption | unknown key id, key not base64, key of the wrong size, field under another key, plain text in an encrypted field, wrong JSON path, short value and wrong tag all answer one 400 E10001 `Encrypted fields could not be decrypted.` with the same body | [TC-REG-029](#tc-reg-029--every-decrypt-failure-is-the-same-400) | designed |
+| R32 | api-conventions "Encrypted sensitive fields" "Order" | fields are decrypted before validation: a valid ciphertext reaches the spec validation; the same plain value unencrypted is the decrypt 400 | [TC-REG-030](#tc-reg-030--decrypt-comes-before-validation) | designed |
 
 ## Detailed test cases
 
@@ -301,6 +304,24 @@ description: "Documented scenarios and expected results for POST v1/auth/registe
 
 **Request/input:** username `John.Doe`, email `John.Doe@Example.test`. **Expected:** 201; decrypted username and email equal the input exactly. A second registration with `john.doe` and `john.doe@example.test` is not a duplicate (201), because comparison is on the stored bytes.
 
+### TC-REG-028 — Missing encryption headers
+
+- Source: R30. Design readiness: Ready. Execution status: Pass (automated).
+
+**Request:** VR with `encryptionKeyId` removed; then `encryptedKey` removed; then both removed; then `encryptionKeyId` empty. **Expected:** 400 E10001 with bizMessage `Encryption Key Id is a required header.`, then `Encrypted Key is a required header.`, then `Encryption Key Id is a required header, Encrypted Key is a required header.`, then `Encryption Key Id is a required header.`; the body is not decrypted and nothing is written.
+
+### TC-REG-029 — Every decrypt failure is the same 400
+
+- Source: R31. Design readiness: Ready. Execution status: Pass (automated).
+
+**Request:** VR with the encryption headers changed in eight ways: (1) unknown `encryptionKeyId`; (2) `encryptedKey` that is not base64; (3) `encryptedKey` wrapping a 16-byte key; (4) fields encrypted under a key other than the wrapped one; (5) plain text in the encrypted fields; (6) fields encrypted with another JSON path as additional authenticated data; (7) a value shorter than IV plus tag (`AAAA`); (8) a value whose last tag byte is changed. **Expected:** every request answers 400 E10001 `Encrypted fields could not be decrypted.`; the eight bodies are identical except `requestId` and `timestamp`; the body never contains a plain value; nothing is written.
+
+### TC-REG-030 — Decrypt comes before validation
+
+- Source: R32. Design readiness: Ready. Execution status: Pass (automated).
+
+**Request:** VR with `password` set to `short`: first sent as plain text, then encrypted correctly. **Expected:** the plain-text request is 400 E10001 `Encrypted fields could not be decrypted.`; the encrypted request is 400 E10001 `Password must be 8 to 128 characters and contain an upper-case letter, a lower-case letter and a digit.` (validation sees the plain value).
+
 ## Open gaps and decisions
 
 | Gap ID | Conflicting/missing sources | Affected obligations/cases | Missing decision or prerequisite | Status / decision reference |
@@ -324,3 +345,4 @@ description: "Documented scenarios and expected results for POST v1/auth/registe
 - 2026-11-18: executed by the automated tests of e-commerce-backend at commit `5dc828a` (branch `feat/drake-01-register`): `RegisterApiTests` (HTTP + real PostgreSQL 17, 48 tests), `RegisterCommandHandlerTests` (6), `RegistrationRepositoryTests` (12), `RegistrationConsentPolicyTests` (9). Result: every case passes (`dotnet test`: Api 90, Application 12, Domain 39, Infrastructure 17, 0 failed). TC-REG-012, 022, 023, 024 and 025 are proven at the repository and handler level (real-database exceptions and their HTTP mapping) because the race or failure cannot be timed through HTTP alone; TC-REG-019 consentId insert order is enforced in code but not observable in the stored rows.
 - 2026-11-18: G4 resolved (PR #238); three body cases added to TC-REG-007 and passing at backend commit `353075c` (Api 93, Application 12, Domain 39, Infrastructure 17, 0 failed).
 - 2026-11-20: the strict email rule (owner decision 2026-11-18) is applied by e-commerce-backend commit `07cccc1` (branch `fix/drake-strict-email-rule`): `EmailAddressFormat` is the one rule. The four TC-REG-006 email rows `"a.b@c"`, `"a b@shop.co"`, `"A <a@shop.co>"` and `" a.b@shop.co"` are automated and pass (`dotnet test`: Api 278, Application 42, Domain 96, Infrastructure 46, 0 failed). Mutation check: accepting a dot anywhere instead of in the domain fails the `"a.b@c"` row.
+- 2026-11-20: field-transport cases TC-REG-028, TC-REG-029, TC-REG-030 added (Janny) and every existing request now sent encrypted; automated by `FieldTransportApiTests`, `FieldTransportTests` and the encrypted `Send` of the endpoint tests, on e-commerce-backend branch `feat/janny-field-transport` at `338f74c` (Api 289, Application 43, Domain 96, Infrastructure 51, 0 failed). Not yet merged into `main` (e-commerce-backend#21).
