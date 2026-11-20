@@ -5,6 +5,20 @@ description: Verified completed task records of the Diagram Designer Jinny, move
 
 # Jinny Completed Tasks
 
+## e-commerce: remove the dead first-scaffold diagram content
+
+Owner: jinny
+Status: Complete
+Created at: 2026-11-20T15:48:12+07:00
+Started at: 2026-11-20T15:48:12+07:00
+Completed at: 2026-11-20T15:55:13+07:00
+
+Authority: Josh (SA Lead) review of #269, option (b); `authorized_by: ittikorn`, delivery `open-pr`. Scope: `diagram_content.py`, `generate_diagrams.py`, `tasks/jinny`.
+
+- [x] Delete the unused `ARCHITECTURE`/`REPOSITORY`/`SYSTEM` content and `DIAGRAMS` (Josh approved the last two in review), `verify_evidence()` (pinned 2 test projects / 5 refs) and the unreachable tail of `generate_diagrams.main`, with the imports only they used. Evidence: `git grep` finds no other user of `verify_evidence`, `PROJECT` or `DIAGRAMS` outside the deleted code.
+- [x] Run the generators and every `check_docs.py` sub-command. Evidence: layered `--check` PASS, `generate_diagrams.py --check` PASS, check_docs 73/73. `generate_domain_diagrams.py --check` fails with "DB evidence drift" on `origin/main` `ed93259` too (pre-existing, reported to Josh).
+- [x] Open the PR and send it to Josh; close after review and merge. Evidence: #272 merged at its first head `15d992b` (08:51:05Z) before the `SYSTEM`/`DIAGRAMS` fix was pushed; that fix was carried in #274 (`1766e46`, CI passed), approved by Josh and merged 2026-11-20T08:55:13Z as `0b2f6ad`.
+
 ## e-commerce: redraw the architecture-design and repository-architecture diagrams from backend `4a8e680`
 
 Owner: jinny

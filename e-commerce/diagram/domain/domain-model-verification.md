@@ -81,3 +81,17 @@ PASS domain source coverage: 54/54 tables; 76/76 FK columns; schema documentatio
 All 4 views were re-exported with draw.io Desktop and finalized (2378×1682, editable source embedded), because the source footer of every view now reads 54/76. The 4 PNGs were viewed: the identity view shows the new group with no overlap and readable cardinalities; the overview shows "Shared reference & keys" and 54/76; merchandising and commerce changed only in the footer.
 
 Approval: `domain-model.md` and `domain-identity-model.md` changed in body, so they went back to `in-review`. `domain-merchandising-model.md` and `domain-commerce-model.md` keep their approval (only the baseline-commit line changed).
+
+## Evidence refresh: `ix_m_parameter_parent_id` — 2026-11-20
+
+`--check` failed on `main` at `ed93259` with "DB evidence drift". Comparing the stored inventory with fresh evidence found one cause: `3c740fa` ("index parent_id", reached `main` through #252) added `CREATE INDEX IF NOT EXISTS ix_m_parameter_parent_id ON public.m_parameter (parent_id);` to `00-common.schema.up.sql` and to `doc/schema/public/m_parameter.md`. No other table, column, FK or file changed.
+
+A non-unique index on an existing FK adds no concept, field, association or cardinality, and the views list only partial unique indexes. So the model is unchanged: HTML, draw.io and PNG of all 4 views are byte-identical and were not re-exported. The inventory was refreshed (`source_commit` `a8ade98f0fc658a98ec9ede346fea5cd26bd8579`, 65 source files). The 4 companions changed only in their baseline-commit line, so they keep their approval.
+
+```text
+python3 -B e-commerce/scripts/diagrams/generate_domain_diagrams.py --check
+PASS domain-identity-model: 22 source tables; 12 verified associations; 24 cardinalities
+PASS domain source coverage: 54/54 tables; 76/76 FK columns; schema documentation comparison 0 findings
+```
+
+The drift went unnoticed for two days because CI (`.github/workflows/checks.yml`) runs `check_docs.py` and `audit_all.py` but no diagram generator `--check`.
