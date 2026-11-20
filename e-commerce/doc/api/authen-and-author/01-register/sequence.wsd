@@ -57,7 +57,7 @@ activate app
         E10005. Retry serialization conflicts as a whole; never bypass constraints or update existing consent history.
     end note
 app -> app: Create request context; generate requestId if omitted
-app -> app: Decrypt encrypted sensitive fields (unwrap encryptedKey, AES-256-GCM per field); any failure 400 E10001 Encrypted fields could not be decrypted.
+app -> app: Decrypt each encrypted sensitive field with the backend private key (RSA-OAEP-SHA-256); any failure 400 E10001 Encrypted fields could not be decrypted.
 app -> domain: Validate headers, JSON, scalar/object types, password policy, unique consentIds
 domain -> app: Return input validation
 alt Invalid input
