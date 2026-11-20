@@ -77,7 +77,7 @@ class RegistryTests(unittest.TestCase):
         self.assertEqual(".agents/agents/head-of-technology.md", barry["role"])
         self.assertTrue((repository_root / barry["role"]).is_file())
         self.assertEqual([], barry["capabilities"])
-        self.assertEqual(["barry", "josh", "tommy", "marry", "peter", "jinny", "drake"], [item["name"] for item in registry["agents"]])
+        self.assertEqual(["barry", "josh", "tommy", "marry", "peter", "jinny", "drake", "janny"], [item["name"] for item in registry["agents"]])
         self.assertEqual("ittikorn", agent_workspace.agent_record(registry, "barry")["reports_to"])
         self.assertEqual("barry", agent_workspace.agent_record(registry, "josh")["reports_to"])
         with self.assertRaisesRegex(agent_workspace.Blocked, "cannot delegate"):
