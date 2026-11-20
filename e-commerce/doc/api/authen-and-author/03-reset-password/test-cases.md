@@ -19,7 +19,7 @@ description: "Documented scenarios and expected results for POST v1/auth/reset-p
 
 - **Database:** throw-away PostgreSQL 17 with every Showcase migration (backend `PostgresFixture`), sessions in UTC.
 - **Users:** `U_OK` ACTIVE with a unique email; variants INACTIVE, LOCKED and DELETED.
-- **Valid request (VR):** headers `content-type: application/json`, `timestamp: <now UTC>`, `requestId: req-<case>`; body `{"emailAddress": <U_OK email>}`.
+- **Valid request (VR):** headers `content-type: application/json`, `timestamp: <now UTC>`, `requestId: req-<case>`; body `{"emailAddress": <U_OK email>}`. Since 2026-11-20 VR also carries the headers `encryptionKeyId` and `encryptedKey`, and its sensitive body fields are sent encrypted (api-conventions "Encrypted sensitive fields"); the test client does this for every request.
 - **Generic answer (GA):** 200, message "Ok", bizCode S10000, bizMessage "If the email address is registered, a reset link has been sent.", status SUCCESS, no `data`.
 - **Observation:** HTTP response; rows of `authen.t_user_reset_password` for the user; a test email sender that records each hand-off (recipient and link); the configured reset URL `https://reset.test/reset-password?token=`.
 
@@ -40,6 +40,8 @@ description: "Documented scenarios and expected results for POST v1/auth/reset-p
 | P11 | sequence note "Do not change password, access/refresh tokens ..." | a reset request changes nothing else | [TC-RESET-001](#tc-reset-001--issuance-for-an-active-user) | designed |
 | P12 | spec Rate limit | 11th request in a minute from one IP → 429 E90002 + Retry-After | [TC-RESET-012](#tc-reset-012--rate-limit) | designed |
 | P13 | sequence "apply the same configured response-latency policy" | every 200 business outcome follows the same latency policy | — | gap G2 |
+| P14 | api-conventions "Encrypted sensitive fields"; spec Headers | `encryptionKeyId` and `encryptedKey` are mandatory; a missing or empty one → 400 E10001 `Encryption Key Id is a required header.` / `Encrypted Key is a required header.` before the body is read | [TC-RESET-013](#tc-reset-013--missing-encryption-headers) | designed |
+| P15 | api-conventions "Encrypted sensitive fields"; spec Fail - Bad Request Encryption | unknown key id, key not base64, key of the wrong size, field under another key, plain text in an encrypted field, wrong JSON path, short value and wrong tag all answer one 400 E10001 `Encrypted fields could not be decrypted.` with the same body | [TC-RESET-014](#tc-reset-014--every-decrypt-failure-is-the-same-400) | designed |
 
 ## Detailed test cases
 
@@ -115,6 +117,18 @@ description: "Documented scenarios and expected results for POST v1/auth/reset-p
 
 **Steps:** with the limit at 10, send 11 requests from one IP. **Expected:** the 11th is 429 E90002 "Too many requests. Try again later." with `Retry-After` 1–60.
 
+### TC-RESET-013 — Missing encryption headers
+
+- Source: P14. Design readiness: Ready. Execution status: Pass (automated).
+
+**Request:** VR with `encryptionKeyId` removed; then `encryptedKey` removed; then both removed; then `encryptionKeyId` empty. **Expected:** 400 E10001 with bizMessage `Encryption Key Id is a required header.`, then `Encrypted Key is a required header.`, then `Encryption Key Id is a required header, Encrypted Key is a required header.`, then `Encryption Key Id is a required header.`; the body is not decrypted and nothing is written.
+
+### TC-RESET-014 — Every decrypt failure is the same 400
+
+- Source: P15. Design readiness: Ready. Execution status: Pass (automated).
+
+**Request:** VR with the encryption headers changed in eight ways: (1) unknown `encryptionKeyId`; (2) `encryptedKey` that is not base64; (3) `encryptedKey` wrapping a 16-byte key; (4) fields encrypted under a key other than the wrapped one; (5) plain text in the encrypted fields; (6) fields encrypted with another JSON path as additional authenticated data; (7) a value shorter than IV plus tag (`AAAA`); (8) a value whose last tag byte is changed. **Expected:** every request answers 400 E10001 `Encrypted fields could not be decrypted.`; the eight bodies are identical except `requestId` and `timestamp`; the body never contains a plain value; nothing is written.
+
 ## Open gaps and decisions
 
 | Gap ID | Conflicting/missing sources | Affected obligations/cases | Missing decision or prerequisite | Status / decision reference |
@@ -134,3 +148,4 @@ description: "Documented scenarios and expected results for POST v1/auth/reset-p
 - 2026-11-18: executed by the automated tests of e-commerce-backend on branch `feat/drake-03-reset-password` (stacked on the 02-login branch): `ResetPasswordApiTests` (HTTP + real PostgreSQL 17, 17 tests), `RequestPasswordResetCommandHandlerTests` (6), `PasswordResetRequestRepositoryTests` (3, real database), `LoggingEmailSenderTests` (1). Result: every case passes (`dotnet test`: Api 133, Application 21, Domain 48, Infrastructure 33, 0 failed). Mutation checks: removing `ForUpdate()` fails TC-RESET-008 and the repository TC-RESET-009; removing the UTC read converter fails the repository TC-RESET-003; logging the link fails TC-RESET-011.
 - 2026-11-20: the strict email rule (owner decision 2026-11-18) is applied by e-commerce-backend commit `07cccc1` (branch `fix/drake-strict-email-rule`): `EmailAddressFormat` is the one rule. The three TC-RESET-002 rows `"a.b@c"`, `"a b@shop.co"` and `"A <a@shop.co>"` are automated and pass (`dotnet test`: Api 278, Application 42, Domain 96, Infrastructure 46, 0 failed). Mutation check: accepting a dot anywhere instead of in the domain fails the `"a.b@c"` row.
 - 2026-11-20: Josh (SA Lead) approved every gap choice above as written; G2 records the latency policy he set.
+- 2026-11-20: field-transport cases TC-RESET-013, TC-RESET-014 added (Janny) and every existing request now sent encrypted; automated by `FieldTransportApiTests`, `FieldTransportTests` and the encrypted `Send` of the endpoint tests, on e-commerce-backend branch `feat/janny-field-transport` at `338f74c` (Api 289, Application 43, Domain 96, Infrastructure 51, 0 failed). Not yet merged into `main` (e-commerce-backend#21).

@@ -20,7 +20,7 @@ description: "Documented scenarios and expected results for POST v1/auth/create-
 - **Database:** throw-away PostgreSQL 17 with every Showcase migration (backend `PostgresFixture`), sessions in UTC.
 - **User:** `U_OK` ACTIVE with an ACTIVE PASSWORD row for `Passw0rd-Example`, 2 ACTIVE access and 2 ACTIVE refresh rows in two sessions (one expired but still ACTIVE), and one INACTIVE access row.
 - **Reset token:** `T_OK` raw token whose SHA-256 is stored in an ACTIVE `t_user_reset_password` row of U_OK, expiring in 30 minutes.
-- **Valid request (VR):** headers `content-type: application/json`, `timestamp: <now UTC>`; body `{"resetToken": T_OK, "newPassword": "NewSecret1x"}`.
+- **Valid request (VR):** headers `content-type: application/json`, `timestamp: <now UTC>`; body `{"resetToken": T_OK, "newPassword": "NewSecret1x"}`. Since 2026-11-20 VR also carries the headers `encryptionKeyId` and `encryptedKey`, and its sensitive body fields are sent encrypted (api-conventions "Encrypted sensitive fields"); the test client does this for every request.
 - **Observation:** HTTP response; rows of `t_user_reset_password`, `m_user_password`, `t_user_access_token`, `t_user_refresh_token` of U_OK and of another user `U_OTHER`; the new password verified with PBKDF2 against the stored row.
 
 ## Coverage matrix
@@ -42,6 +42,9 @@ description: "Documented scenarios and expected results for POST v1/auth/create-
 | N13 | sequence "never log or return either secret" | the response never contains the token or a password | [TC-NEWPW-001](#tc-newpw-001--the-password-is-replaced-and-every-session-is-closed) | designed |
 | N14 | spec Rate limit | 11th request in a minute → 429 E90002 + Retry-After | [TC-NEWPW-012](#tc-newpw-012--rate-limit) | designed |
 | N15 | sequence expiry note | expiry is strict `expired_at > now` | [TC-NEWPW-006](#tc-newpw-006--an-expired-token) | designed |
+| N16 | api-conventions "Encrypted sensitive fields"; spec Headers | `encryptionKeyId` and `encryptedKey` are mandatory; a missing or empty one → 400 E10001 `Encryption Key Id is a required header.` / `Encrypted Key is a required header.` before the body is read | [TC-NEWPW-013](#tc-newpw-013--missing-encryption-headers) | designed |
+| N17 | api-conventions "Encrypted sensitive fields"; spec Fail - Bad Request Encryption | unknown key id, key not base64, key of the wrong size, field under another key, plain text in an encrypted field, wrong JSON path, short value and wrong tag all answer one 400 E10001 `Encrypted fields could not be decrypted.` with the same body | [TC-NEWPW-014](#tc-newpw-014--every-decrypt-failure-is-the-same-400) | designed |
+| N18 | api-conventions "Encrypted sensitive fields" "Order" | fields are decrypted before validation: a valid ciphertext reaches the spec validation; the same plain value unencrypted is the decrypt 400 | [TC-NEWPW-015](#tc-newpw-015--decrypt-comes-before-validation) | designed |
 
 ## Detailed test cases
 
@@ -117,6 +120,24 @@ description: "Documented scenarios and expected results for POST v1/auth/create-
 
 **Steps:** with the limit at 10, send 11 requests from one IP. **Expected:** the 11th is 429 E90002 "Too many requests. Try again later." with `Retry-After` 1–60.
 
+### TC-NEWPW-013 — Missing encryption headers
+
+- Source: N16. Design readiness: Ready. Execution status: Pass (automated).
+
+**Request:** VR with `encryptionKeyId` removed; then `encryptedKey` removed; then both removed; then `encryptionKeyId` empty. **Expected:** 400 E10001 with bizMessage `Encryption Key Id is a required header.`, then `Encrypted Key is a required header.`, then `Encryption Key Id is a required header, Encrypted Key is a required header.`, then `Encryption Key Id is a required header.`; the body is not decrypted and nothing is written.
+
+### TC-NEWPW-014 — Every decrypt failure is the same 400
+
+- Source: N17. Design readiness: Ready. Execution status: Pass (automated).
+
+**Request:** VR with the encryption headers changed in eight ways: (1) unknown `encryptionKeyId`; (2) `encryptedKey` that is not base64; (3) `encryptedKey` wrapping a 16-byte key; (4) fields encrypted under a key other than the wrapped one; (5) plain text in the encrypted fields; (6) fields encrypted with another JSON path as additional authenticated data; (7) a value shorter than IV plus tag (`AAAA`); (8) a value whose last tag byte is changed. **Expected:** every request answers 400 E10001 `Encrypted fields could not be decrypted.`; the eight bodies are identical except `requestId` and `timestamp`; the body never contains a plain value; nothing is written.
+
+### TC-NEWPW-015 — Decrypt comes before validation
+
+- Source: N18. Design readiness: Ready. Execution status: Pass (automated).
+
+**Request:** VR with `newPassword` set to `short`: first sent as plain text, then encrypted correctly. **Expected:** the plain-text request is 400 E10001 `Encrypted fields could not be decrypted.`; the encrypted request is 400 E10001 `Password must be 8 to 128 characters and contain an upper-case letter, a lower-case letter and a digit.` (validation sees the plain value).
+
 ## Open gaps and decisions
 
 | Gap ID | Conflicting/missing sources | Affected obligations/cases | Missing decision or prerequisite | Status / decision reference |
@@ -133,3 +154,4 @@ description: "Documented scenarios and expected results for POST v1/auth/create-
 
 - 2026-11-18: first version (Drake), Not run.
 - 2026-11-18: executed by the automated tests of e-commerce-backend on branch `feat/drake-04-create-new-password` (stacked on 03): `CreateNewPasswordApiTests` (HTTP + real PostgreSQL 17, 16 tests), `CreateNewPasswordCommandHandlerTests` (6), `CreateNewPasswordRepositoryTests` (4, real database). Result: every case passes (`dotnet test`: Api 150, Application 25, Domain 48, Infrastructure 37, 0 failed). Mutation checks: removing the single-use guard fails TC-NEWPW-005, 006 and 009; removing `ForUpdate()` fails the repository TC-NEWPW-010 (the guarded consumption alone already keeps TC-NEWPW-009 correct).
+- 2026-11-20: field-transport cases TC-NEWPW-013, TC-NEWPW-014, TC-NEWPW-015 added (Janny) and every existing request now sent encrypted; automated by `FieldTransportApiTests`, `FieldTransportTests` and the encrypted `Send` of the endpoint tests, on e-commerce-backend branch `feat/janny-field-transport` at `338f74c` (Api 289, Application 43, Domain 96, Infrastructure 51, 0 failed). Not yet merged into `main` (e-commerce-backend#21).
