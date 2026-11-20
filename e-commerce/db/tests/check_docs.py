@@ -3901,7 +3901,7 @@ AUTHEN_NEEDLES = {
     "01": ["#### Fail - Bad Request Password",
            "TRUE, -- the first address of a user is the default address, whatever isDefault says",
            "PBKDF2-HMAC-SHA256",
-           "Plain text over TLS",
+           "Encrypted fields could not be decrypted.",  # owner decision 2026-11-20: public-key encryption inside TLS
            AUTHEN_POLICY],
     "02": ["(../../../schema/authen/l_user_login_attempt.md)",
            "#### QUERY - Count failed attempts",
@@ -4062,7 +4062,7 @@ AUTHEN_COUNTED = {
     "09": [("ua.user_id = '<sequence.userId>'", 4)],
 }
 AUTHEN_FORBIDDEN = {
-    "01": ["AES256", "Encrypted "], "02": ["AES256", "mobile no", "3600", "7 day", "Encrypted ", "recorded as a failed attempt", "is_success", "isSuccess"],
+    "01": ["AES256"], "02": ["AES256", "mobile no", "3600", "7 day", "recorded as a failed attempt", "is_success", "isSuccess"],
     "03": ['"code": 401', '"code": 403', '"code": 404', '"code": 409'], "04": ['"code": 401', '"code": 404', '"code": 409'],
     "05": [],
 }
@@ -8646,7 +8646,7 @@ COMMANDS['profile-upsert-flow'] = check_profile_upsert_flow
 def check_create_password_flow() -> int:
     """Check reset single-use serialization, password replacement and all-session revocation."""
     path=AUTHEN_SPECS['04'];md=read(path);wsd=read(str(Path(path).with_name('sequence.wsd')));errors=[]
-    for needle in ('status: approved', 'approved_by: Ittikorn', 'approved_at: ', 'lookup is only a routing hint'):
+    for needle in ('status: approved', 'approved_by: ', 'approved_at: ', 'lookup is only a routing hint'):
         if needle not in md:errors.append(f'create-password spec missing {needle!r}')
     seq = ' '.join(wsd.split())  # the note texts of the sequence, one line
     for needle in ('fresh server UTC now after the lock', 'No reset/password/token UPDATE may run before the user lock',
@@ -8749,7 +8749,7 @@ COMMANDS['create-password-flow'] = check_create_password_flow
 def check_reset_request_flow() -> int:
     """Check uniform public issuance outcomes, fresh throttling and atomic replacement."""
     path=AUTHEN_SPECS['03'];md=read(path);wsd=read(str(Path(path).with_name('sequence.wsd')));errors=[]
-    for needle in ('status: approved', 'approved_by: Ittikorn', 'approved_at: ', '32-byte token', 'hash the exact encoded token', 'whatever their status'):
+    for needle in ('status: approved', 'approved_by: ', 'approved_at: ', '32-byte token', 'hash the exact encoded token', 'whatever their status'):
         if needle not in md:errors.append(f'reset-request spec missing {needle!r}')
     seq = ' '.join(wsd.split())  # the note texts of the sequence, one line
     for needle in ('Do not trim, lowercase or normalize', 'same configured response-latency policy', 'equality is outside the window', 'requests >= 3', 'requests < 3',

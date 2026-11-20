@@ -59,6 +59,7 @@ activate app
         branch -> close old ACTIVE reset -> insert new reset with created_at = now -> COMMIT -> email handoff ->
         generic 200. Each SQL result returns to Application before branching or deriving userId/resetId.
     end note
+app -> app: Decrypt encrypted sensitive fields (unwrap encryptedKey, AES-256-GCM per field); any failure 400 E10001 Encrypted fields could not be decrypted.
 app -> app: Generate requestId if omitted; validate UTC timestamp and email string/format/max 254
 note over app, infra
     Validate mandatory timestamp as UTC and emailAddress as a non-empty, syntactically valid string of at most

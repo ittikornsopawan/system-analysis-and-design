@@ -2,8 +2,8 @@
 name: Login API Specification
 description: Defines the login request, authentication controls, authorization claims, token session, responses, and database operations for POST v1/auth/login.
 status: approved
-approved_by: Ittikorn
-approved_at: 2026-11-16T09:24:57+07:00
+approved_by: Josh (SA Lead, delegated by Ittikorn 2026-11-17)
+approved_at: 2026-11-20T07:35:25+07:00
 ---
 
 # [POST]: v1/auth/login
@@ -33,6 +33,7 @@ approved_at: 2026-11-16T09:24:57+07:00
 - **One answer for every failure:** an unknown or ambiguous username, a wrong password, a missing ACTIVE PASSWORD row, a user that is not ACTIVE and a username that is temporarily refused all get 401 (E10002) `Invalid username or password.` ...
 - **Brute force limit:** every syntactically valid login attempt is written to `authen.l_user_login_attempt` with the SHA-256 of the exact supplied username and a `result`: `SUCCESS`, `FAILED` or `REFUSED`.
 - The order of the checks, the locks and every outcome is in the sequence diagram.
+- **Encrypted sensitive fields:** `username`, `password` are sent as AES-256-GCM ciphertext under a per-request key wrapped with the backend public key (headers `encryptionKeyId`, `encryptedKey`), inside TLS. They are decrypted before validation; any decryption failure answers 400 (E10001) `Encrypted fields could not be decrypted.` The rule is in the section Encrypted sensitive fields of `api-conventions.md` (owner decision 2026-11-20). The examples show the values before encryption.
 - Rate limit: this API, which needs no access token, answers 429 (E90002) with a `Retry-After` header when a client IP sends more than 10 requests per minute (configurable); the limiter answers before the handler runs, so the 429 is not drawn in the sequence diagram. The rule is in the section Limits and rate limiting of `api-conventions.md`.
 
 ---
@@ -41,18 +42,20 @@ approved_at: 2026-11-16T09:24:57+07:00
 
 ### Header Parameters
 
-|     | Parameter Name | Data Type | M/O       | Description                 | Example                                  |
-| --- | -------------- | --------- | --------- | --------------------------- | ---------------------------------------- |
-| 1   | content-type   | String    | MANDATORY | Content type of the request | application/json                         |
-| 2   | timestamp      | DateTime  | MANDATORY | Request timestamp           | 2026-11-05T12:42:00.123Z                 |
-| 3   | requestId      | String    | OPTIONAL  | API Request Id              | req-9b1deb4d-3b7d-4bad-9bdd-2b0d7b3dcb6d |
+|     | Parameter Name  | Data Type | M/O       | Description                                                     | Example                                  |
+| --- | --------------- | --------- | --------- | --------------------------------------------------------------- | ---------------------------------------- |
+| 1   | content-type    | String    | MANDATORY | Content type of the request                                     | application/json                         |
+| 2   | timestamp       | DateTime  | MANDATORY | Request timestamp                                               | 2026-11-05T12:42:00.123Z                 |
+| 3   | requestId       | String    | OPTIONAL  | API Request Id                                                  | req-9b1deb4d-3b7d-4bad-9bdd-2b0d7b3dcb6d |
+| 4   | encryptionKeyId | String    | MANDATORY | Id of the backend public key used                               | fe-2026-11                               |
+| 5   | encryptedKey    | String    | MANDATORY | Base64 of the AES-256 request key wrapped with RSA-OAEP-SHA-256 | (base64)                                 |
 
 ### Body Parameters
 
-|     | Parameter Name | Data Type | M/O       | Description                                                                                  | Example          |
-| --- | -------------- | --------- | --------- | -------------------------------------------------------------------------------------------- | ---------------- |
-| 1   | username       | String    | MANDATORY | Username or email address, Plain text over TLS, The system encrypts it before it is compared | john.doe         |
-| 2   | password       | String    | MANDATORY | Password, Plain text over TLS                                                                | Passw0rd-Example |
+|     | Parameter Name | Data Type | M/O       | Description                                                                                                                                                  | Example          |
+| --- | -------------- | --------- | --------- | ------------------------------------------------------------------------------------------------------------------------------------------------------------ | ---------------- |
+| 1   | username       | String    | MANDATORY | Username or email address, Encrypted on the wire (see Encrypted sensitive fields), plain text after decryption, The system encrypts it before it is compared | john.doe         |
+| 2   | password       | String    | MANDATORY | Password, Encrypted on the wire (see Encrypted sensitive fields), plain text after decryption                                                                | Passw0rd-Example |
 
 #### Example Body Parameters
 
@@ -190,6 +193,22 @@ The example is a decoded illustrative payload, not a usable signed token. The pa
         "bizMessage": "Username and Password are required fields.",
         "requestId": "req-400a1b2c-3d4e-5f6a-7b8c-9d0e1f2a3b4c",
         "timestamp": "2026-11-05T12:43:45.123Z",
+        "status": "ERROR"
+    }
+}
+```
+
+#### Fail - Bad Request Encryption
+
+```JSON
+{
+    "status": {
+        "code": 400,
+        "message": "Bad Request",
+        "bizCode": "E10001",
+        "bizMessage": "Encrypted fields could not be decrypted.",
+        "requestId": "req-400e1c2d-3e4f-5a6b-7c8d-9e0f1a2b3c4d",
+        "timestamp": "2026-11-20T09:00:00.123Z",
         "status": "ERROR"
     }
 }
