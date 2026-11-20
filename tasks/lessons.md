@@ -630,3 +630,12 @@ description: Repository-wide and project-specific lessons captured from user cor
 - **Corrected behavior**: Before `prepare` for any spec change, grep `check_docs.py` for the text being removed or the approver being replaced (`grep -n "<old text>\|approved_by: Ittikorn" e-commerce/db/tests/check_docs.py`) and put the checker in scope when it matches. A needle that pins a specific approver becomes `approved_by: ` (populated), since approval is delegated since 2026-11-17.
 - **Preventive skill change**: none; this extends the 2026-11-17 scope checklist above (new specs need `check_docs.py` and the skeleton test).
 - **Verification**: re-prepared with `check_docs.py` and this file in scope; every check_docs sub-command (73) passes, `gen_contract.py --check` exits 0, `audit_all.py` 0 findings, skeleton test OK.
+
+### 2026-11-20 — Load the skill before the work, and say which skills ran
+
+- **Correction**: The owner asked why no session called `commit-and-pr` or `dev-like-principal`. Josh had followed `commit-and-pr` from memory (running preflight and copying templates by hand), and Janny wrote the encryption code before reading `dev-like-principal`.
+- **Root cause**: The repo skills live in `.agents/skills/`, and Claude Code lists only `.claude/skills/`, so older sessions get "Unknown skill". The owner closed #260 (links into `.claude/skills`), so the skills stay where they are and are loaded by reading them.
+- **Corrected behavior**: Before writing or changing code, read `.agents/skills/dev-like-principal/SKILL.md` and its code-quality reference first, then the domain skill. Before delivery, read `.agents/skills/commit-and-pr/SKILL.md`, or call the Skill tool where the session lists it. Every PR's Verification names the skills used, and reviewers check that line.
+- **Preventive skill change**: none; CLAUDE.md "Skill First" already requires it. The lead enforces it in reviews (team order of 2026-11-20 to Drake and Janny).
+- **Verification**: Drake's #262 and Janny's #261 and backend #21 name their skills in Verification.
+- **Addendum (same day)**: registering an agent also changes `.agents/skills/agent-workspace/tests/test_agent_workspace.py`, which lists the agents by name. Put it in scope with `agents.yaml`. The owner approved a second removal of `josh.json` to re-prepare.
