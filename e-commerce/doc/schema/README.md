@@ -1,11 +1,11 @@
 ---
 name: "Database schema index"
-description: "Index of the 54 tables in 11 schemas of the e-commerce database with links to every schema doc, the ER diagram and the seed data; read it to find the schema doc of a table or to see how the schema docs are generated."
+description: "Index of the 54 tables in 11 schemas and the 1 view of the e-commerce database with links to every schema doc, the ER diagram and the seed data; read it to find the schema doc of a table or to see how the schema docs are generated."
 ---
 
 # Database schema
 
-54 tables in 11 schemas, generated from `db/migrations/up/*.sql` using [`template.md`](template.md). ER diagram: [`er-diagram.drawio`](../../db/er-diagram.drawio).
+54 tables in 11 schemas and 1 view (type View: read only, no key), generated from `db/migrations/up/*.sql` using [`template.md`](template.md). ER diagram: [`er-diagram.drawio`](../../db/er-diagram.drawio).
 
 Reference data that the system needs to run (the role `PLATFORM_ADMIN`, the scopes and the permission list of `author`) is in [`db/seed/`](../../db/seed/author.seed.sql), run after the migrations. The first platform administrator is made by hand with [`grant-platform-admin.sql`](../../db/seed/grant-platform-admin.sql).
 
@@ -23,6 +23,7 @@ Reference data that the system needs to run (the role `PLATFORM_ADMIN`, the scop
 | ----- | ---- | ------: | --: |
 | [m_consent_type](consent/m_consent_type.md) | Master | 9 | 0 |
 | [t_consent](consent/t_consent.md) | Transaction | 15 | 1 |
+| [v_applicable_consent](consent/v_applicable_consent.md) | View | 6 | 0 |
 
 ## authen
 

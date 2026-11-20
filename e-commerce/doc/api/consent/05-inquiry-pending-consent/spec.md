@@ -2,8 +2,8 @@
 name: Pending Consent API Specification
 description: Defines authenticated pending-consent inquiry using canonical current-version read/acceptance evidence, active types, a coherent read-only snapshot, response mapping and exact SQL for GET v1/consent/pending.
 status: approved
-approved_by: Ittikorn
-approved_at: 2026-11-16T09:24:57+07:00
+approved_by: Josh (SA Lead, delegated by Ittikorn 2026-11-17)
+approved_at: 2026-11-20T15:58:25+07:00
 ---
 
 # [GET]: v1/consent/pending
@@ -253,7 +253,7 @@ curl --location --request GET 'https://www.domain.com/api-dev/v1/consent/pending
 
 ## Database Relations
 
-All SELECTs share one read-only REPEATABLE READ snapshot. The pending statement tests type and canonical evidence in the same SQL; later history/name lookups use its pending id sets. Every parameter is bound with its real UUID/array/byte/timestamp type.
+All SELECTs share one read-only REPEATABLE READ snapshot. The pending statement tests type (through the view `consent.v_applicable_consent`) and canonical evidence in the same SQL; later history/name lookups use its pending id sets. Every parameter is bound with its real UUID/array/byte/timestamp type.
 
 ### Table: [authen.t_user_access_token](../../../schema/authen/t_user_access_token.md)
 
@@ -275,7 +275,7 @@ AND EXISTS (
 )
 ```
 
-### Table: [consent.t_consent](../../../schema/consent/t_consent.md)
+### Table: [consent.v_applicable_consent](../../../schema/consent/v_applicable_consent.md)
 
 #### QUERY - Get pending consents
 
@@ -291,16 +291,10 @@ SELECT
     c.expired_at,
     c.is_required,
     c.body
-FROM consent.t_consent c
-WHERE c.row_status = 'ACTIVE'
-AND c.effective_at <= '<sequence.now>'
-AND (c.expired_at IS NULL OR c.expired_at > '<sequence.now>')
-AND EXISTS (
-    SELECT 1
-    FROM consent.m_consent_type ct
-    WHERE ct.id = c.consent_type_id
-    AND ct.row_status = 'ACTIVE'
-)
+FROM consent.v_applicable_consent ac
+JOIN consent.t_consent c ON c.id = ac.id
+WHERE ac.effective_at <= '<sequence.now>'
+AND (ac.expired_at IS NULL OR ac.expired_at > '<sequence.now>')
 AND NOT COALESCE((
     SELECT uc.is_read AND (NOT c.is_required OR uc.result)
     FROM authen.t_user_consent uc

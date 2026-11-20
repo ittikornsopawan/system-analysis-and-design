@@ -2,8 +2,8 @@
 name: Active Consent API Specification
 description: Defines public current consent visibility, ACTIVE type filtering, mandatory type-name mapping, read-only response consistency, empty/error outcomes and exact SQL for GET v1/consent/active.
 status: approved
-approved_by: Ittikorn
-approved_at: 2026-11-16T09:24:57+07:00
+approved_by: Josh (SA Lead, delegated by Ittikorn 2026-11-17)
+approved_at: 2026-11-20T15:58:25+07:00
 ---
 
 # [GET]: v1/consent/active
@@ -232,9 +232,9 @@ curl --location --request GET 'https://www.domain.com/api-dev/v1/consent/active'
 
 ## Database Relations
 
-Both SELECTs use one read-only REPEATABLE READ snapshot and server eligibility time. The first statement also tests the referenced type; the second enriches only returned visible rows. All placeholders represent typed bound values.
+Both SELECTs use one read-only REPEATABLE READ snapshot and server eligibility time. The first statement reads the view `consent.v_applicable_consent`, which also tests the referenced type (ACTIVE consent of an ACTIVE type); the second enriches only returned visible rows. All placeholders represent typed bound values.
 
-### Table: [consent.t_consent](../../../schema/consent/t_consent.md)
+### Table: [consent.v_applicable_consent](../../../schema/consent/v_applicable_consent.md)
 
 #### QUERY - Get active consents
 
@@ -250,16 +250,10 @@ SELECT
     c.expired_at,
     c.is_required,
     c.body
-FROM consent.t_consent c
-WHERE c.row_status = 'ACTIVE'
-AND c.effective_at <= '<sequence.now>'
-AND (c.expired_at IS NULL OR c.expired_at > '<sequence.now>')
-AND EXISTS (
-    SELECT 1
-    FROM consent.m_consent_type ct
-    WHERE ct.id = c.consent_type_id
-    AND ct.row_status = 'ACTIVE'
-)
+FROM consent.v_applicable_consent ac
+JOIN consent.t_consent c ON c.id = ac.id
+WHERE ac.effective_at <= '<sequence.now>'
+AND (ac.expired_at IS NULL OR ac.expired_at > '<sequence.now>')
 ORDER BY c.effective_at, c.id
 ```
 

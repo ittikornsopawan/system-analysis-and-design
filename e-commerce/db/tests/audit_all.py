@@ -1,5 +1,5 @@
 #!/usr/bin/env python3
-"""Audit of every table: migrations against schema docs, README, ER diagram and the SQL inside the API specs.
+"""Audit of every table and view: migrations against schema docs, README, ER diagram and the SQL inside the API specs.
 
 Usage: python3 e-commerce/db/tests/audit_all.py
 Prints one line per finding and exits 1 when there is any finding, 0 when everything agrees.
@@ -70,6 +70,38 @@ def parse_migrations():
             tables[f"{schema}.{table}"] = {"schema": schema, "table": table, "cols": cols, "file": path.name,
                                            "sql": normalize(m.group(0)), "table_constraints": uniques}
     return tables
+
+
+def parse_views():
+    """CREATE OR REPLACE VIEW statements: the column names are the last word of each item of the select list."""
+    views = {}
+    for path in sorted((E / "db/migrations/up").glob("*.sql")):
+        text = path.read_text(encoding="utf-8")
+        for m in re.finditer(r"CREATE OR REPLACE VIEW\s+(\w+)\.(\w+)\s+AS\s+SELECT\s+(.*?)\s+FROM\b.*?;", text, re.DOTALL):
+            cols = [re.split(r"[\s.]+", item.strip())[-1] for item in split_top(m.group(3))]
+            views[f"{m.group(1)}.{m.group(2)}"] = {"schema": m.group(1), "table": m.group(2), "cols": cols,
+                                                    "file": path.name, "sql": normalize(m.group(0))}
+    return views
+
+
+def audit_view_docs(views):
+    for full, v in views.items():
+        path = E / "doc/schema" / v["schema"] / f"{v['table']}.md"
+        if not path.exists():
+            finding("doc", f"{full}: missing {path.relative_to(ROOT)}")
+            continue
+        md = path.read_text(encoding="utf-8")
+        body = md.split("\n---\n", 1)[1].lstrip("\n") if md.startswith("---\n") and "\n---\n" in md else md
+        if not body.startswith(f"# View: {full}\n"):
+            finding("doc", f"{path.name}: heading is not '# View: {full}'")
+        names = [r["name"] for r in parse_doc_columns(md)]
+        if names != v["cols"]:
+            finding("doc", f"{full}: Columns table {names} differs from the view {v['cols']}")
+        if normalize(" ".join(re.findall(r"```SQL[ \t]*\n(.*?)```", md, re.DOTALL))) != v["sql"]:
+            finding("doc", f"{full}: SQL block differs from {v['file']}")
+        for target in re.findall(r"\]\(([^)#]+\.md)\)", md):
+            if not (path.parent / target).exists():
+                finding("doc", f"{path.name}: broken link {target}")
 
 
 def indexes_of(tables):
@@ -159,8 +191,11 @@ def audit_docs(tables, indexes):
                 finding("doc", f"{path.name}: broken link {target}")
 
 
-def audit_readme(tables):
+def audit_readme(tables, views):
     md = (E / "doc/schema/README.md").read_text(encoding="utf-8")
+    nv = re.search(r"tables in \d+ schemas and (\d+) views?\b", md)
+    if (int(nv.group(1)) if nv else 0) != len(views):
+        finding("readme", f"header says {nv.group(1) if nv else 0} views but there are {len(views)}")
     m = re.search(r"(\d+) tables in (\d+) schemas", md)
     schemas = {t["schema"] for t in tables.values()}
     if not m or int(m.group(1)) != len(tables) or int(m.group(2)) != len(schemas):
@@ -189,13 +224,16 @@ def audit_readme(tables):
             finding("readme", f"{full}: README type {kind}, name implies {expected_kind}")
         if not (E / "doc/schema" / link).exists():
             finding("readme", f"{full}: broken link {link}")
+    for full, v in views.items():
+        if listed.get(full) != (f"{v['schema']}/{v['table']}.md", "View", len(v["cols"]), 0):
+            finding("readme", f"{full}: expected the row | [{v['table']}]({v['schema']}/{v['table']}.md) | View | {len(v['cols'])} | 0 |")
     for full in listed:
-        if full not in tables:
+        if full not in tables and full not in views:
             finding("readme", f"{full} is listed but not in the migrations")
 
 
 # ------------------------------------------------------------------ ER diagram
-def audit_er(tables):
+def audit_er(tables, views):
     root = ET.fromstring((E / "db/er-diagram.drawio").read_text(encoding="utf-8"))
     pages = {d.get("name"): d for d in root.iter("diagram")}
     page = pages.get("7 All Tables")
@@ -214,8 +252,16 @@ def audit_er(tables):
     for full in tables:
         if full not in diagram_tables:
             finding("er", f"{full} is missing on page '7 All Tables'")
-    for full in diagram_tables - set(tables):
+    for full in diagram_tables - set(tables) - set(views):
         finding("er", f"{full} is on the diagram but not in the migrations")
+    for full, v in views.items():
+        if full not in swim:
+            finding("er", f"{full} is missing on page '7 All Tables'")
+            continue
+        rows = [(r.get("value") or "").strip() for r in rows_of.get(swim[full].get("id"), [])]
+        drawn = [x.split(" :")[0] for x in rows]
+        if drawn != v["cols"] or any(re.match(r"(PK|FK|UK)\b", x) for x in rows):
+            finding("er", f"{full}: the view must be drawn with its columns {v['cols']} and no key tags, found {rows}")
     edge_pairs = set()
     row_table = {}
     for tid, rows in rows_of.items():
@@ -267,8 +313,10 @@ def audit_er_pages(tables):
 
 
 # ------------------------------------------------------------------ SQL inside the specs
-def audit_specs(tables):
+def audit_specs(tables, views):
     cols_of = {full: {c["name"] for c in t["cols"]} for full, t in tables.items()}
+    cols_of.update({full: set(v["cols"]) for full, v in views.items()})
+    tables = {**tables, **views}
     for path in sorted((E / "doc/api").rglob("spec.md")):
         md = path.read_text(encoding="utf-8")
         rel = path.relative_to(ROOT)
@@ -317,15 +365,17 @@ def audit_specs(tables):
 
 def main() -> int:
     tables = parse_migrations()
+    views = parse_views()
     indexes = indexes_of(tables)
     audit_docs(tables, indexes)
-    audit_readme(tables)
-    audit_er(tables)
+    audit_view_docs(views)
+    audit_readme(tables, views)
+    audit_er(tables, views)
     audit_er_pages(tables)
-    audit_specs(tables)
+    audit_specs(tables, views)
     for f in FINDINGS:
         print(f)
-    print(f"{len(tables)} tables audited, {len(FINDINGS)} findings")
+    print(f"{len(tables)} tables and {len(views)} views audited, {len(FINDINGS)} findings")
     return 1 if FINDINGS else 0
 
 

@@ -34,7 +34,7 @@ box "Web API" #F8FAFC
     participant "Infrastructure" as infra
 end box
 box "Database" #F8FAFC
-    database "t_consent" as t_consent
+    database "v_applicable_consent" as v_applicable_consent
     database "m_consent_type" as m_consent_type
 end box
 user -> page: Request current public consents
@@ -65,9 +65,9 @@ else Valid request
     alt Read-only work completes
         app -> app: Capture server UTC now immediately before first query; establish snapshot
         app -> infra: QUERY - Get active consents
-        infra -> t_consent: QUERY - Get active consents
-        activate t_consent
-            note right of t_consent
+        infra -> v_applicable_consent: QUERY - Get active consents
+        activate v_applicable_consent
+            note right of v_applicable_consent
                 SELECT
                     c.id as consent_id,
                     c.code,
@@ -79,20 +79,14 @@ else Valid request
                     c.expired_at,
                     c.is_required,
                     c.body
-                FROM consent.t_consent c
-                WHERE c.row_status = 'ACTIVE'
-                AND c.effective_at <= '<sequence.now>'
-                AND (c.expired_at IS NULL OR c.expired_at > '<sequence.now>')
-                AND EXISTS (
-                    SELECT 1
-                    FROM consent.m_consent_type ct
-                    WHERE ct.id = c.consent_type_id
-                    AND ct.row_status = 'ACTIVE'
-                )
+                FROM consent.v_applicable_consent ac
+                JOIN consent.t_consent c ON c.id = ac.id
+                WHERE ac.effective_at <= '<sequence.now>'
+                AND (ac.expired_at IS NULL OR ac.expired_at > '<sequence.now>')
                 ORDER BY c.effective_at, c.id
             end note
-            t_consent -> infra: Return ordered visibleConsents (current fields and type ids)
-        deactivate t_consent
+            v_applicable_consent -> infra: Return ordered visibleConsents (current fields and type ids)
+        deactivate v_applicable_consent
         infra -> app: Return ordered visibleConsents (current fields and type ids)
         alt visibleConsents is empty
             app -> app: data.consents = []; skip type-name lookup
