@@ -11,7 +11,7 @@ description: "Documented scenarios and expected results for GET v1/user/profile;
 - Governing sources: [spec.md](spec.md) (rules, Data Object, response examples, Database Relations), [sequence.wsd](sequence.wsd), [api-conventions.md](../../../../../.agents/skills/api-contract-design/references/api-conventions.md)
 - Source revision: Showcase `main` at the commit that adds this file; `spec.md` and `sequence.wsd` last changed in `8023e47`
 - Source approval: approved (`approved_by: Ittikorn`, `approved_at: 2026-11-16T09:24:57+07:00`)
-- Test design baseline: approved-source, except gap G1 (implementation choice, pending the lead's review)
+- Test design baseline: approved-source, except gap G1 (implementation choice, approved by Josh 2026-11-20)
 - Scope and exclusions: the caller's own profile only; TLS excluded. The spec has no rate limit for this API.
 - Execution summary: every case automated in e-commerce-backend (test names start with the case ID) and passing; see [Revision and execution history](#revision-and-execution-history).
 
@@ -30,7 +30,7 @@ description: "Documented scenarios and expected results for GET v1/user/profile;
 | I03 | spec rule | the profile is the caller's: userId only from the JWT sub | [TC-PROFILEQ-001](#tc-profileq-001--the-full-profile) | designed |
 | I04 | spec Fail - Bad Request | a query parameter or a body → 400; missing or invalid timestamp → 400; all before the credential | [TC-PROFILEQ-003](#tc-profileq-003--no-query-and-no-body) | designed; message G1 |
 | I05 | spec rule; Fail - Unauthorized | bad JWT, stored token missing, INACTIVE or expired, user not ACTIVE → 401 "Invalid or expired access token." | [TC-PROFILEQ-004](#tc-profileq-004--credential-failures) | designed |
-| I06 | spec "Read user and information from the same repeatable-read snapshot" | one REPEATABLE READ snapshot; no lock, so a held user-row lock does not block the read | [TC-PROFILEQ-005](#tc-profileq-005--no-lock-one-snapshot) | designed |
+| I06 | spec "Read user and information from the same repeatable-read snapshot" | one REPEATABLE READ READ ONLY snapshot; no lock, so a held user-row lock does not block the read | [TC-PROFILEQ-005](#tc-profileq-005--no-lock-one-snapshot) | designed |
 | I07 | sequence failure branches | unexpected failure → 500 without bizCode | [TC-PROFILEQ-006](#tc-profileq-006--unexpected-failure) | designed |
 
 ## Detailed test cases
@@ -63,7 +63,7 @@ description: "Documented scenarios and expected results for GET v1/user/profile;
 
 - Source: I06. Design readiness: Ready. Execution status: Pass (automated).
 
-**Steps:** a second connection holds U_OK's row `FOR UPDATE`; VR with a 1-second command timeout. **Expected:** 200 (the read takes no lock). The single-snapshot property is a code property (one REPEATABLE READ transaction around both queries), covered by a handler test of the isolation level.
+**Steps:** a second connection holds U_OK's row `FOR UPDATE`; VR with a 1-second command timeout. **Expected:** 200 (the read takes no lock). The single-snapshot property is a code property (one REPEATABLE READ READ ONLY transaction around both queries), covered by a handler test of the isolation level and the read-only flag; `EfTransactionRunnerTests` proves that a write inside a read-only run fails with 25006.
 
 ### TC-PROFILEQ-006 — Unexpected failure
 
@@ -75,15 +75,15 @@ description: "Documented scenarios and expected results for GET v1/user/profile;
 
 | Gap ID | Conflicting/missing sources | Affected obligations/cases | Missing decision or prerequisite | Status / decision reference |
 | --- | --- | --- | --- | --- |
-| G1 | the spec example "Timestamp must be valid UTC and this endpoint accepts no query parameters or body." covers several checks in one sentence; api-conventions has separate header messages | I04 | which message each 400 gets | implementation choice, pending the lead's review: header failures use the shared header messages; a query parameter or a body uses the spec example text |
+| G1 | the spec example "Timestamp must be valid UTC and this endpoint accepts no query parameters or body." covers several checks in one sentence; api-conventions has separate header messages | I04 | which message each 400 gets | implementation choice, approved by Josh 2026-11-20: header failures use the shared header messages; a query parameter or a body uses the spec example text |
 
 ## Document verification and limitations
 
 - Every obligation I01–I07 maps to a case, and every case cites its obligation.
-- The spec asks for a READ ONLY transaction; the backend opens REPEATABLE READ and issues no write (EF Core has no read-only transaction option); recorded as a limitation, not a behavior difference.
 - Every case runs automatically; see the execution history.
 
 ## Revision and execution history
 
 - 2026-11-19: first version (Drake), Not run.
 - 2026-11-19: executed by the automated tests of e-commerce-backend on branch `feat/drake-08-inquiry-user-profile` (stacked on 07): `GetUserProfileApiTests` (HTTP + real PostgreSQL 17, 6 tests), `GetUserProfileQueryHandlerTests` (2). Result: every case passes (`dotnet test`: Api 202, Application 42, Domain 69, Infrastructure 46, 0 failed). Mutation checks: removing the token status and expiry filters fails TC-PROFILEQ-004; keeping an empty gender fails TC-PROFILEQ-002.
+- 2026-11-20: Josh (SA Lead) approved every gap choice above as written; the status column now says so. READ ONLY is now applied (Josh's decision: `SET TRANSACTION READ ONLY` in `EfTransactionRunner`, e-commerce-backend `4b336eb`, branch `chore/drake-legacy-me-and-read-only`); the limitation note is removed. Result: every case passes (`dotnet test`: Api 277, Application 43, Domain 79, Infrastructure 47, 0 failed). Mutation check: passing `readOnly: false` from the handler fails the TC-PROFILEQ-005 handler test.

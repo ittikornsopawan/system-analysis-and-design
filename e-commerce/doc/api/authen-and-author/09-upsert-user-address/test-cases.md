@@ -11,7 +11,7 @@ description: "Documented scenarios and expected results for POST v1/user/address
 - Governing sources: [spec.md](spec.md) (body, rules, response examples, Database Relations), [sequence.wsd](sequence.wsd) (validation, Q21, default and quota notes), [api-conventions.md](../../../../../.agents/skills/api-contract-design/references/api-conventions.md)
 - Source revision: Showcase `main` at the commit that adds this file; `spec.md` and `sequence.wsd` last changed in `8023e47`
 - Source approval: approved (`approved_by: Ittikorn`, `approved_at: 2026-11-16T09:24:57+07:00`); Q21 approved by the product owner on 2026-11-08
-- Test design baseline: approved-source, except gap G1 (message choices, pending the lead's review)
+- Test design baseline: approved-source, except gap G1 (message choices, approved by Josh 2026-11-20)
 - Scope and exclusions: the caller's own addresses; no batch and no archive (per spec); TLS excluded. No rate limit in the spec.
 - Execution summary: every case automated in e-commerce-backend (test names start with the case ID) and passing; see [Revision and execution history](#revision-and-execution-history).
 
@@ -126,7 +126,7 @@ description: "Documented scenarios and expected results for POST v1/user/address
 
 | Gap ID | Conflicting/missing sources | Affected obligations/cases | Missing decision or prerequisite | Status / decision reference |
 | --- | --- | --- | --- | --- |
-| G1 | no message in the spec or the conventions for a null id, an invalid or null rowStatus, a null isDefault and an unknown key | A10 | the messages | implementation choice, pending the lead's review: "Id must be a valid UUID.", "Row Status must be ACTIVE, INACTIVE or DELETED.", "Is Default must be a boolean.", "<Field> is not a known field." (the convention forms) |
+| G1 | no message in the spec or the conventions for a null id, an invalid or null rowStatus, a null isDefault and an unknown key | A10 | the messages | implementation choice, approved by Josh 2026-11-20: "Id must be a valid UUID.", "Row Status must be ACTIVE, INACTIVE or DELETED.", "Is Default must be a boolean.", "<Field> is not a known field." (the convention forms) |
 
 ## Document verification and limitations
 
@@ -137,3 +137,4 @@ description: "Documented scenarios and expected results for POST v1/user/address
 
 - 2026-11-19: first version (Drake), Not run.
 - 2026-11-19: executed by the automated tests of e-commerce-backend on branch `feat/drake-09-upsert-user-address` (stacked on 08): `UpsertUserAddressApiTests` (HTTP + real PostgreSQL 17, 26 tests including the 12 validation rows), `AddressDefaultPolicyTests` (10). Result: every case passes (`dotnet test`: Api 228, Application 42, Domain 79, Infrastructure 46, 0 failed). Mutation checks: removing the promotion fails TC-ADDRESS-006; removing the default clear on insert fails TC-ADDRESS-003; removing the user lock fails TC-ADDRESS-012.
+- 2026-11-20: Josh (SA Lead) approved every gap choice above as written; the status column now says so.
