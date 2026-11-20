@@ -3,7 +3,7 @@ name: Login API Specification
 description: Defines the login request, authentication controls, authorization claims, token session, responses, and database operations for POST v1/auth/login.
 status: approved
 approved_by: Josh (SA Lead, delegated by Ittikorn 2026-11-17)
-approved_at: 2026-11-20T07:35:25+07:00
+approved_at: 2026-11-20T21:20:16+07:00
 ---
 
 # [POST]: v1/auth/login
@@ -33,7 +33,7 @@ approved_at: 2026-11-20T07:35:25+07:00
 - **One answer for every failure:** an unknown or ambiguous username, a wrong password, a missing ACTIVE PASSWORD row, a user that is not ACTIVE and a username that is temporarily refused all get 401 (E10002) `Invalid username or password.` ...
 - **Brute force limit:** every syntactically valid login attempt is written to `authen.l_user_login_attempt` with the SHA-256 of the exact supplied username and a `result`: `SUCCESS`, `FAILED` or `REFUSED`.
 - The order of the checks, the locks and every outcome is in the sequence diagram.
-- **Encrypted sensitive fields:** `username`, `password` are sent as AES-256-GCM ciphertext under a per-request key wrapped with the backend public key (headers `encryptionKeyId`, `encryptedKey`), inside TLS. They are decrypted before validation; any decryption failure answers 400 (E10001) `Encrypted fields could not be decrypted.` The rule is in the section Encrypted sensitive fields of `api-conventions.md` (owner decision 2026-11-20). The examples show the values before encryption.
+- **Encrypted sensitive fields:** `username`, `password` are each sent as RSA-OAEP-SHA-256 ciphertext under the backend public key (4096 bits; no key or key header is sent), inside TLS. They are decrypted before validation; any decryption failure answers 400 (E10001) `Encrypted fields could not be decrypted.` The rule is in the section Encrypted sensitive fields of `api-conventions.md` (owner decision 2026-11-20). The examples show the values before encryption.
 - Rate limit: this API, which needs no access token, answers 429 (E90002) with a `Retry-After` header when a client IP sends more than 10 requests per minute (configurable); the limiter answers before the handler runs, so the 429 is not drawn in the sequence diagram. The rule is in the section Limits and rate limiting of `api-conventions.md`.
 
 ---
@@ -42,13 +42,11 @@ approved_at: 2026-11-20T07:35:25+07:00
 
 ### Header Parameters
 
-|     | Parameter Name  | Data Type | M/O       | Description                                                     | Example                                  |
-| --- | --------------- | --------- | --------- | --------------------------------------------------------------- | ---------------------------------------- |
-| 1   | content-type    | String    | MANDATORY | Content type of the request                                     | application/json                         |
-| 2   | timestamp       | DateTime  | MANDATORY | Request timestamp                                               | 2026-11-05T12:42:00.123Z                 |
-| 3   | requestId       | String    | OPTIONAL  | API Request Id                                                  | req-9b1deb4d-3b7d-4bad-9bdd-2b0d7b3dcb6d |
-| 4   | encryptionKeyId | String    | MANDATORY | Id of the backend public key used                               | fe-2026-11                               |
-| 5   | encryptedKey    | String    | MANDATORY | Base64 of the AES-256 request key wrapped with RSA-OAEP-SHA-256 | (base64)                                 |
+|     | Parameter Name | Data Type | M/O       | Description                 | Example                                  |
+| --- | -------------- | --------- | --------- | --------------------------- | ---------------------------------------- |
+| 1   | content-type   | String    | MANDATORY | Content type of the request | application/json                         |
+| 2   | timestamp      | DateTime  | MANDATORY | Request timestamp           | 2026-11-05T12:42:00.123Z                 |
+| 3   | requestId      | String    | OPTIONAL  | API Request Id              | req-9b1deb4d-3b7d-4bad-9bdd-2b0d7b3dcb6d |
 
 ### Body Parameters
 
