@@ -1,7 +1,7 @@
 ---
 name: E-commerce Function Book
 description: Central list of the e-commerce backend's shared, reusable functions with purpose, parameters and usage. Read before writing any new function in the e-commerce backend; update it in the same change that adds, changes or removes a shared function.
-source_component_revision: 23fab92ca6936aa905ec3470174f78c179ac6b8a
+source_component_revision: f8caefe17f237b2a57ec8bd62a1cd86fda77a1df
 updated_on: 2026-11-20
 ---
 
@@ -15,7 +15,7 @@ Check this book and the code before writing a new function, as required by `.age
 
 The book lists only what other code is meant to call. Handlers, controllers and private methods are not listed; `e-commerce/doc/code-structure.md` explains where those live.
 
-Paths are relative to `e-commerce/repository/e-commerce-backend/src/`. The entries were checked against component revision `23fab92` (`main` after #18, #19 and #20). Every API runs on EF Core through `ITransactionRunner`; the Dapper path, the legacy `api/authen/me` endpoint and the unused first-scaffold domain model were removed on 2026-11-20.
+Paths are relative to `e-commerce/repository/e-commerce-backend/src/`. The entries were checked against component revision `f8caefe` (branch `feat/drake-author-01-upsert-role`: backend `main` plus author 01; its entries reach `main` when that PR merges). Every API runs on EF Core through `ITransactionRunner`.
 
 ## Shared — Results and errors
 
@@ -27,6 +27,8 @@ Paths are relative to `e-commerce/repository/e-commerce-backend/src/`. The entri
 | `Error.Failure/Validation/NotFound/Conflict/Unauthorized/Forbidden(code, description)` | `Ecommerce.Shared/Results/Error.cs` | Typed errors without a custom bizCode | Code, text → `Error` of that type | The `ErrorType` decides the HTTP status in `ResultExtensions.ToFailure` |
 | `AuthenErrors.*` (for example `AccessTokenInvalid`, `IdentifierTaken`, `AddressNotFound`, `AddressLimit(int max)`) | `Ecommerce.Domain/Authen/AuthenErrors.cs` | The authen specs' errors, each declared once with its spec status, bizCode and text | — / `max` → `Error` | Reuse the declared error; add a new one here, never inline the text in a handler |
 | `CommonErrors.Timeout` | `Ecommerce.Application/Common/CommonErrors.cs` | The shared timeout error (bizCode E90001) | — | Return when `ITransactionRunner` throws `TimeoutException` |
+| `AuthorErrors.*` (for example `ManageRolesForbidden`, `RoleNotFound`, `RoleNameTaken`, `RoleInUse`, `SystemRoleLocked`) | `Ecommerce.Domain/Author/AuthorErrors.cs` | The author specs' errors with their spec status, bizCode and text | — | Add each author spec's errors here as it is built |
+| `UpsertAction` (`Insert`, `Update`, `Archive`, `Delete`) | `Ecommerce.Application/Common/UpsertAction.cs` | What an upsert did; decides the HTTP answer through `ToUpsert` | — | Every upsert handler result |
 
 ## Shared — Validation messages and formats
 
@@ -87,11 +89,18 @@ Only `PlainPassword` and `PasswordCredential` remain: the unused value objects, 
 | `ProfileFieldRules.IsPhoneNumber(value)` / `IsDateOfBirth(value, todayUtc)` / `Genders` | `Ecommerce.Domain/Common/ProfileFieldRules.cs` | Spec 07 value rules: 8 to 15 digits with an optional +; a real date not after today UTC; MALE/FEMALE/OTHER | Text (+ today) → bool | Profile validators; register keeps its own gender list (`RegisterCommandValidator.Genders`) |
 | `RegistrationConsentPolicy.Check(...)` | `.../Domain/RegistrationConsentPolicy.cs` | Whether submitted consents may be stored (spec 01-register), in the spec's error order | Submitted and current consents → `Result` | Registration only |
 
+## Domain — Author business operations (Service = Domain)
+
+| Function | Location | Purpose | Parameters / returns | Use when / notes |
+| --- | --- | --- | --- | --- |
+| `MasterLifecycle.Statuses` / `TakesOutOfUse(rowStatus)` / `Active`, `Deleted`, `Archived` | `Ecommerce.Domain/Author/Domain/MasterLifecycle.cs` | Row statuses of the author masters (role, permission, scope): DELETED is final, DELETED or ARCHIVED needs the "not in use" check | Status → bool | Validators (allowed statuses) and handlers (in-use check) of specs 01, 04, 07 and their batches |
+| `RoleCode.IsValid(name)` / `RoleCode.PlatformAdmin` | same | The role code `^[A-Z][A-Z0-9_]{0,63}$`, never trimmed; the seeded system role's name | Text → bool | Role validators; the system-role guard and `Caller.IsPlatformAdmin` |
+
 ## Application — Shared use-case steps
 
 | Function | Location | Purpose | Parameters / returns | Use when / notes |
 | --- | --- | --- | --- | --- |
-| `Caller(UserId, AccessToken, TokenExpiresAtUtc)` | `Ecommerce.Application/Features/Authen/Common/Caller.cs` | The verified JWT of a protected call | — | Built by `VerifiedCaller.Of`; null when the JWT did not verify |
+| `Caller(UserId, AccessToken, TokenExpiresAtUtc, Roles)` / `caller.IsPlatformAdmin` | `Ecommerce.Application/Features/Authen/Common/Caller.cs` | The verified JWT of a protected call; `Roles` null when the claim is missing or malformed; `IsPlatformAdmin` is an exact, case-sensitive `PLATFORM_ADMIN` in that snapshot | — | Built by `VerifiedCaller.Of`. Author APIs answer 401 for null `Roles` before SQL and 403 for a non-admin; never query the author tables to authorize |
 | `CallerCredential.VerifyAsync(caller, ct)` | same | Current-credential check for writes (specs 07, 09): lock the ACTIVE user FOR UPDATE, fresh now, JWT expiry recheck, ACTIVE stored access token | Caller (or null) → `Result<DateTime>` with the post-lock now, or 401 | Inside the use case's transaction, before any write; use the returned now for audit columns |
 | `CallerCredential.CheckAsync(caller, ct)` | same | Read-only variant (spec 10): no lock; fresh now, expiry recheck, token joined with the ACTIVE user | Caller → `Result<DateTime>` or 401 | Read-only inquiries; answer 401 for a null caller before the transaction (no SQL) |
 | `SessionTokens.IssueAsync(user, sessionId, ct)` | `.../Authen/Common/SessionTokens.cs` | Issues and stores an access and refresh token pair for one session (specs 02, 05) | User + session id → `TokenPairResponse` | Login and refresh; only token hashes are stored |
@@ -125,9 +134,10 @@ Only `PlainPassword` and `PasswordCredential` remain: the unused value objects, 
 | --- | --- | --- | --- | --- |
 | `result.ToFailure(controller)` | `Ecommerce.Api/Extensions/ResultExtensions.cs` | Failed result → the spec's status envelope; the first error decides status and bizCode | Result + controller → `ObjectResult` | Every controller failure path |
 | `controller.ToSuccess<T>(httpCode, message, bizMessage, data)` | same | Successful payload → the spec's status envelope (bizCode S10000) | Status, messages, data → `ObjectResult` | Every controller success path |
+| `controller.ToUpsert<T>(action, entity, data)` | same | The answer of an upsert from `UpsertAction`: Insert 201 "Insert {entity} Success", Update/Archive 200 "Update/Archive {entity} Success", Delete 204 with no body | Action + entity words + data → result | Spec 09 and every author upsert; the handler returns `UpsertAction` |
 | `HttpEnvelope.RequestId(http)` / `NowUtc(http)` / `Failure(http, error)` / `WriteFailureAsync(http, error, ct)` | `Ecommerce.Api/Extensions/HttpEnvelope.cs` | Envelope for responses written outside a controller action | HttpContext + error → envelope or written response | Middleware and filters only; `RequestId` generates one if the header is missing |
 | `VerifiedCaller.Of(controller)` | `Ecommerce.Api/Security/VerifiedCaller.cs` | The verified JWT of a protected call, read in the action instead of `[Authorize]` so a 400 answers before a 401 | Controller → `Caller?` | Every protected action (specs 06 to 10); pass the result into the command or query |
-| `JsonBody.TryRead(body, fields, out read)` + `read.String(field)` / `Boolean(field)` / `Has(field)` | `Ecommerce.Api/Contracts/JsonBody.cs` | Reads a body by key presence: an object, known keys only, allowed JSON kinds | Body + field map (`JsonBody.StringOrNull`, `BooleanOnly`) → shape message or null | Partial-update bodies (specs 07, 09); `String` gives `Optional<string?>` |
+| `JsonBody.TryRead(body, fields, out read, uniqueKeys)` + `read.String(field)` / `Boolean(field)` / `Has(field)` | `Ecommerce.Api/Contracts/JsonBody.cs` | Reads a body by key presence: an object, known keys only, allowed JSON kinds | Body + field map (`JsonBody.StringOrNull`, `BooleanOnly`) → shape message or null | Partial-update bodies (specs 07, 09) and the author upserts, which pass `uniqueKeys: true` to refuse a repeated key ("<Field> must not be duplicated."); `String` gives `Optional<string?>` |
 | `QueryParameters.TryRead(request, keys, out values)` | `Ecommerce.Api/Contracts/QueryParameters.cs` | Reads a GET query string: known exact-case keys, each once, and no body | Request + key set → shape message or null; absent keys are absent | GET inquiries (spec 10); value rules stay in the Application validator |
 | `RequiredHeadersFilter` | `Ecommerce.Api/Filters/RequiredHeadersFilter.cs` | 400 E10001 for a missing or non-UTC `timestamp`, and a non-JSON content-type when a body is sent; on an `[EncryptedFields]` action also a missing `encryptionKeyId` or `encryptedKey` | — | Registered globally; do not repeat the header checks in actions |
 | `[EncryptedFields]` / `EncryptedFieldsFilter` | `Ecommerce.Api/Filters/EncryptedFieldsFilter.cs` | Decrypts the encrypted sensitive fields of the bound request before validation; every failure is 400 E10001 "Encrypted fields could not be decrypted." | Action argument implementing `IEncryptedRequest` → its decrypted copy | Put on an action whose spec lists encrypted fields (01–04); the request record lists its fields |
@@ -136,6 +146,6 @@ Only `PlainPassword` and `PasswordCredential` remain: the unused value objects, 
 | `ApiEnvelope.Success/Failure(...)` | `Ecommerce.Api/Contracts/ApiEnvelope.cs` | Builds the status envelope; `data` and `bizCode` are omitted when null | — | Used by `ResultExtensions` and `HttpEnvelope`; call those instead |
 | `user.TryGetUserId(out Guid userId)` | `Ecommerce.Api/Security/CallerClaims.cs` | The caller's user id from the verified JWT | Principal → bool + id | Used by `VerifiedCaller.Of`; actions take the caller from there |
 | `user.TryGetExpiresAt(out DateTime expiresAtUtc)` | same | The verified JWT `exp` in UTC | Principal → bool + time | Used by `VerifiedCaller` for the fresh-now expiry recheck |
-| `user.IsPlatformAdmin()` | same | Whether the JWT `roles` claim holds `PLATFORM_ADMIN` | Principal → bool | Roles come only from the token, never from the database. No caller yet |
+| `CallerClaims.TryGetRoles(verifiedJwt, out roles)` | same | The `roles` claim read from the verified JWT payload: an array of unique non-empty strings, possibly empty | JWT → bool + names; false when missing or malformed | Used by `VerifiedCaller`; the claims principal cannot tell a missing claim from `[]`. Roles come only from the token, never from the database |
 | `InvalidBody.Response(context)` | `Ecommerce.Api/Filters/InvalidBody.cs` | 400 envelope for a body that cannot be bound | Action context → result | Registered once as the invalid-model response |
 | `services.AddPublicRateLimits(configuration)` | `Ecommerce.Api/Security/RateLimiting.cs` | Registers the public endpoints' rate limits: `public-strict` 10/min and `public-standard` 60/min per IP, 429 E90002 with `Retry-After` | Services + config → services | Composition root only; put `[EnableRateLimiting]` with the spec's policy on the action |
