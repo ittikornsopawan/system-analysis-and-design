@@ -99,30 +99,6 @@
           },
           {
             "$ref": "#/components/parameters/RequestId"
-          },
-          {
-            "name": "encryptionKeyId",
-            "in": "header",
-            "required": true,
-            "description": "Id of the backend public key used",
-            "schema": {
-              "type": "string",
-              "examples": [
-                "fe-2026-11"
-              ]
-            }
-          },
-          {
-            "name": "encryptedKey",
-            "in": "header",
-            "required": true,
-            "description": "Base64 of the AES-256 request key wrapped with RSA-OAEP-SHA-256",
-            "schema": {
-              "type": "string",
-              "examples": [
-                "(base64)"
-              ]
-            }
           }
         ],
         "requestBody": {
@@ -338,30 +314,6 @@
           },
           {
             "$ref": "#/components/parameters/RequestId"
-          },
-          {
-            "name": "encryptionKeyId",
-            "in": "header",
-            "required": true,
-            "description": "Id of the backend public key used",
-            "schema": {
-              "type": "string",
-              "examples": [
-                "fe-2026-11"
-              ]
-            }
-          },
-          {
-            "name": "encryptedKey",
-            "in": "header",
-            "required": true,
-            "description": "Base64 of the AES-256 request key wrapped with RSA-OAEP-SHA-256",
-            "schema": {
-              "type": "string",
-              "examples": [
-                "(base64)"
-              ]
-            }
           }
         ],
         "requestBody": {
@@ -946,30 +898,6 @@
           },
           {
             "$ref": "#/components/parameters/RequestId"
-          },
-          {
-            "name": "encryptionKeyId",
-            "in": "header",
-            "required": true,
-            "description": "Id of the backend public key used",
-            "schema": {
-              "type": "string",
-              "examples": [
-                "fe-2026-11"
-              ]
-            }
-          },
-          {
-            "name": "encryptedKey",
-            "in": "header",
-            "required": true,
-            "description": "Base64 of the AES-256 request key wrapped with RSA-OAEP-SHA-256",
-            "schema": {
-              "type": "string",
-              "examples": [
-                "(base64)"
-              ]
-            }
           }
         ],
         "requestBody": {
@@ -1278,30 +1206,6 @@
           },
           {
             "$ref": "#/components/parameters/RequestId"
-          },
-          {
-            "name": "encryptionKeyId",
-            "in": "header",
-            "required": true,
-            "description": "Id of the backend public key used",
-            "schema": {
-              "type": "string",
-              "examples": [
-                "fe-2026-11"
-              ]
-            }
-          },
-          {
-            "name": "encryptedKey",
-            "in": "header",
-            "required": true,
-            "description": "Base64 of the AES-256 request key wrapped with RSA-OAEP-SHA-256",
-            "schema": {
-              "type": "string",
-              "examples": [
-                "(base64)"
-              ]
-            }
           }
         ],
         "requestBody": {
