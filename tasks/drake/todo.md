@@ -37,6 +37,15 @@ description: Active plans and task records for Drake, Backend Developer.
 - [ ] 17 check permission
 - [x] Add `no-cut-rules` to the CI document checks once #287 is merged (#287 and #288 merged; added in #289)
 
+## Pending skill improvement
+
+- Owner: drake (accountable: ittikorn)
+- Created at: 2026-11-21T17:50:00+07:00
+- Status: Pending
+
+- [ ] `commit-and-pr` step 9 (both copies): write the Skills line last, from the Skill calls and reads actually made (lesson 2026-11-21)
+- [ ] `api-test-case-creator` `references/case-design.md` Concurrency row (both copies): the held row must be one the request locks (lesson 2026-11-21)
+
 ## Security Auditor review of authen (auth, token, reset)
 
 - Owner: drake (accountable: ittikorn)
