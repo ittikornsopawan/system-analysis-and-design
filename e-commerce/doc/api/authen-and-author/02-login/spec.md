@@ -30,7 +30,7 @@ approved_at: 2026-11-20T21:20:16+07:00
 - Validate headers and the JSON body before opening a transaction.
 - `username` is the username or the email address.
 - Only an ACTIVE user with an ACTIVE PASSWORD row can log in.
-- **One answer for every failure:** an unknown or ambiguous username, a wrong password, a missing ACTIVE PASSWORD row, a user that is not ACTIVE and a username that is temporarily refused all get 401 (E10002) `Invalid username or password.` ...
+- **One answer for every failure:** an unknown or ambiguous username, a wrong password, a missing ACTIVE PASSWORD row, a user that is not ACTIVE and a username that is temporarily refused all get 401 (E10002) `Invalid username or password.` The answer never says which one it is.
 - **Brute force limit:** every syntactically valid login attempt is written to `authen.l_user_login_attempt` with the SHA-256 of the exact supplied username and a `result`: `SUCCESS`, `FAILED` or `REFUSED`.
 - The order of the checks, the locks and every outcome is in the sequence diagram.
 - **Encrypted sensitive fields:** `username`, `password` are each sent as RSA-OAEP-SHA-256 ciphertext under the backend public key (4096 bits; no key or key header is sent), inside TLS. They are decrypted before validation; any decryption failure answers 400 (E10001) `Encrypted fields could not be decrypted.` The rule is in the section Encrypted sensitive fields of `api-conventions.md` (owner decision 2026-11-20). The examples show the values before encryption.

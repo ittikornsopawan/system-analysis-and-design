@@ -31,7 +31,7 @@ approved_at: 2026-11-16T09:24:57+07:00
 - `name` is the role code: capital letters, digits and `_`, starting with a letter (max 64 characters) (400, E10001).
 - DELETED is final: a DELETED role is never reopened and its `id` counts as not found (404, E10004).
 - A role cannot be deleted or archived while a user (`author.t_user_role`) or a permission (`author.t_role_permission`) that is not DELETED still uses it (409, E10006).
-- **`PLATFORM_ADMIN` is the system role.** It cannot be renamed, changed, deleted, archived, locked or set INACTIVE through this API: any request that names it by `id` is rejected with 409 (E10006) `System role cannot be changed.` Giving ...
+- **`PLATFORM_ADMIN` is the system role.** It cannot be renamed, changed, deleted, archived, locked or set INACTIVE through this API: any request that names it by `id` is rejected with 409 (E10006) `System role cannot be changed.` Giving another role the name `PLATFORM_ADMIN` is a duplicate name (409, E10003). The role is created by the seed, see `e-commerce/db/seed/author.seed.sql`.
 - The order of the checks, the locks and every outcome is in the sequence diagram.
 
 ---
