@@ -62,11 +62,12 @@ jobs:
           python3 .agents/skills/agent-workspace/tests/test_agent_workspace.py
 
       # .claude/skills holds copies of the ready skills so Claude Code's Skill tool can load them; .agents/skills is the
-      # source. Every copy must equal its source, and every ready skill must have a copy.
+      # source. Every copy must equal its source, and every ready skill must have a copy. Not copied: evals/ (the
+      # `claude plugin eval` suites stay with the source) and __pycache__ (made by the tooling tests above).
       - name: Claude skill copies equal .agents/skills
         if: ${{ !cancelled() }}
         run: |
-          for d in .claude/skills/*/; do n=$(basename "$d"); diff -r ".agents/skills/$n" ".claude/skills/$n"; done
+          for d in .claude/skills/*/; do n=$(basename "$d"); diff -r -x evals -x __pycache__ ".agents/skills/$n" ".claude/skills/$n"; done
           for n in $(grep -oE '^\| `skills/[a-z-]+/SKILL.md` \| ready' .agents/README.md | cut -d/ -f2); do
             test -f ".claude/skills/$n/SKILL.md" || { echo "missing copy: .claude/skills/$n"; exit 1; }
           done

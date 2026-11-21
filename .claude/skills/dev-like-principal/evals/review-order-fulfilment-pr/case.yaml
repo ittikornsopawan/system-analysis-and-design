@@ -1,8 +1,0 @@
-schema_version: "1.1"
-name: review-order-fulfilment-pr
-context:
-  scaffold_script: place-files.sh
-expected_outcome: |
-  A severity-ordered review that blocks the merge for SQL injection, missing staff authorization, the
-  breaking column rename and the swallowed errors, calls out the email inside the transaction, lists
-  further reliability/performance issues with concrete scenarios and fixes, and says what was not verified.

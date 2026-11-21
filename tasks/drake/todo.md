@@ -73,6 +73,8 @@ description: Active plans and task records for Drake, Backend Developer.
 - [x] Copy the nine `ready` skills (tracked files only, 114 files); placeholders not copied
 - [x] CI step: each copy equals `.agents/skills/<name>`, and every ready skill has a copy (drift and missing copy both caught locally)
 - [x] `.agents/README.md`: edit in `.agents/skills/`, copy in the same change
+- [x] CI fix: the first run failed (eval copies lacked frontmatter, exempted only under `.agents/skills/`; CI's `__pycache__` broke `diff -r`); `evals/` not copied, the diff skips `evals` and `__pycache__`; every CI step rerun locally
+- [ ] Follow-up PR: lesson and commit-and-pr change (run every CI step locally before a PR that adds files outside the spec folders), both copies of the skill
 - [ ] After merge, a new session confirms the Skill tool lists the skills
 
 ## Security Auditor review of authen (auth, token, reset)

@@ -1,9 +1,0 @@
-schema_version: "1.1"
-name: feature-money-and-coupon
-context:
-  scaffold_script: place-files.sh
-expected_outcome: |
-  Implements coupons with an atomic guard on max uses, keeps money in decimal, and does not break
-  older mobile clients when adding currency (adds a field or versions instead of changing `total` in place).
-  Tests cover expiry, max uses and response shape; the note separates facts, assumptions and open
-  questions and states honestly what was not built or run.
