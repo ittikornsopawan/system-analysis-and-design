@@ -732,5 +732,5 @@ description: Repository-wide and project-specific lessons captured from user cor
 - **Correction**: The first run of TC-ROLEQ-005 failed with identical expected and actual values: `Assert.Equal((list, 2L, ...), (list, 2L, ...))` compares the `List` inside the tuple by reference.
 - **Root cause**: A tuple's `Equals` uses each element's `Equals`; `List<T>` does not compare its items.
 - **Corrected behavior**: Assert a collection on its own (`Assert.Equal(expected, actual.Select(...))`) and the scalars in a tuple.
-- **Preventive skill change**: pending, outside this PR's scope: one line on collection assertions in `.agents/skills/backend-development/references/verification.md` (both copies), added to Drake's "Pending skill improvement" record once #293 merges.
+- **Preventive skill change**: `.agents/skills/backend-development/references/verification.md` (both copies), made in #295 (author 04 test cases) because this PR's scope has no skill file.
 - **Verification**: TC-ROLEQ-005 split into a collection assertion and a scalar tuple; 24/24 pass, and its mutations fail as expected.
