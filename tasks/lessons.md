@@ -718,3 +718,11 @@ description: Repository-wide and project-specific lessons captured from user cor
 - **Corrected behavior**: `evals/` is not copied and the copy check skips `evals` and `__pycache__` (fix in #291); every CI step was then run locally, with a `__pycache__` present, before the push.
 - **Preventive skill change**: `.agents/skills/commit-and-pr/SKILL.md` step 3 (and its copy in `.claude/skills/`): a change that adds, copies or moves files outside the spec folders runs every step of `.github/workflows/checks.yml` locally before the PR.
 - **Verification**: #291's second CI run passed and it merged at `7807c5c`; this PR's change was itself checked by running every CI step locally.
+
+### 2026-11-21 — Do not compare a list inside a tuple in an xUnit assertion
+
+- **Correction**: The first run of TC-ROLEQ-005 failed with identical expected and actual values: `Assert.Equal((list, 2L, ...), (list, 2L, ...))` compares the `List` inside the tuple by reference.
+- **Root cause**: A tuple's `Equals` uses each element's `Equals`; `List<T>` does not compare its items.
+- **Corrected behavior**: Assert a collection on its own (`Assert.Equal(expected, actual.Select(...))`) and the scalars in a tuple.
+- **Preventive skill change**: pending, outside this PR's scope: one line on collection assertions in `.agents/skills/backend-development/references/verification.md` (both copies), added to Drake's "Pending skill improvement" record once #293 merges.
+- **Verification**: TC-ROLEQ-005 split into a collection assertion and a scalar tuple; 24/24 pass, and its mutations fail as expected.
