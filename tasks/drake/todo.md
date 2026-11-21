@@ -62,6 +62,19 @@ description: Active plans and task records for Drake, Backend Developer.
 - [x] Role, commit-and-pr and verification reference changed; two lessons recorded; PR descriptions of backend#26 and #285 corrected
 - [ ] Josh confirms the one-phrase change to the approved `code-structure.md`; the owner merges
 
+## Copy the ready skills into .claude/skills
+
+- Owner: drake (accountable: ittikorn)
+- Created at: 2026-11-21T17:30:00+07:00
+- Started at: 2026-11-21T17:30:00+07:00
+- Status: In review
+- Owner request 2026-11-21: the Skill tool lists only `.claude/skills/`, so repo skills could not be loaded.
+
+- [x] Copy the nine `ready` skills (tracked files only, 114 files); placeholders not copied
+- [x] CI step: each copy equals `.agents/skills/<name>`, and every ready skill has a copy (drift and missing copy both caught locally)
+- [x] `.agents/README.md`: edit in `.agents/skills/`, copy in the same change
+- [ ] After merge, a new session confirms the Skill tool lists the skills
+
 ## Security Auditor review of authen (auth, token, reset)
 
 - Owner: drake (accountable: ittikorn)

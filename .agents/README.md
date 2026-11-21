@@ -58,6 +58,8 @@ This directory is the source of truth for repository-specific agent resources. R
 
 Skills marked `placeholder` are unavailable until designed. Design each `SKILL.md` before adding it to a workflow.
 
+`.claude/skills/` holds a copy of every `ready` skill so Claude Code's Skill tool can load it (owner request 2026-11-21). Edit the skill here in `.agents/skills/`, then copy the whole skill folder to `.claude/skills/` in the same change; CI fails when a copy differs or a ready skill has none. Placeholder skills are not copied.
+
 | Resource | Status | Load when |
 | --- | --- | --- |
 | `skills/data-modeling/SKILL.md` | ready | Adding or changing a table, column, constraint, index, migration, schema doc, or ER diagram |
