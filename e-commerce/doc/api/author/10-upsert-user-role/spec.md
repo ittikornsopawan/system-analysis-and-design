@@ -30,7 +30,7 @@ approved_at: 2026-11-16T09:24:57+07:00
 - The caller is the user of the verified access token.
 - **The user and the role must be ACTIVE only when the request gives the role**, that is an insert, or an update that sets `rowStatus` ACTIVE on a row that is not ACTIVE, otherwise 404 (E10005).
 - A user can have a role once among the rows that are not DELETED (409, E10003).
-- **The platform keeps at least one administrator.** After the whole request is applied there must be at least one ACTIVE `t_user_role` row of the ACTIVE role `PLATFORM_ADMIN` whose user is ACTIVE, otherwise 409 (E10006) and the request is ...
+- **The platform keeps at least one administrator.** After the whole request is applied there must be at least one ACTIVE `t_user_role` row of the ACTIVE role `PLATFORM_ADMIN` whose user is ACTIVE, otherwise 409 (E10006) and the request is rolled back. This covers deleting, archiving, locking or deactivating the last assignment, including when an administrator takes the role away from themselves. An administrator cannot skip this rule. The rule is checked on the state after the write.
 - HTTP status of the single upsert: Insert 201 Created, Update 200 Ok, Delete 204 No Content (no response body), Archive 200 Ok.
 - The order of the checks, the locks and every outcome is in the sequence diagram.
 

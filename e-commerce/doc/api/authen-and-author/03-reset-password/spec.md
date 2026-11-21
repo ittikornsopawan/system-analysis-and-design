@@ -29,7 +29,7 @@ approved_at: 2026-11-20T21:20:16+07:00
 - Governing decisions: owner-confirmed API review Q13, Q15 (approved by the product owner).
 - Public API: no `authorization` header.
 - **The answer is always 200 with the same message** (`If the email address is registered, a reset link has been sent.`) for valid business outcomes: unknown email, non-ACTIVE user, frequency refusal, or committed reset issuance.
-- Before the lookup, perform the same encryption and cryptographic preparation for every syntactically valid request: generate a cryptographically random 32-byte token, encode it as unpadded base64url, hash the exact encoded token with ...
+- Before the lookup, perform the same encryption and cryptographic preparation for every syntactically valid request: generate a cryptographically random 32-byte token, encode it as unpadded base64url, hash the exact encoded token with SHA-256 (32 bytes) as resetTokenHash. The database stores only the hash; never log/return the raw token, hash or email plaintext. Discard the unused in-memory secret when no row will be created. Apply the same configured response-latency policy to every 200 business outcome; do not deliberately return sooner for unknown/inactive/throttled accounts. Actual timing privacy needs runtime verification and is not proved by document checks.
 - A reset token is created only for an ACTIVE user.
 - Throttle: a user can ask at most 3 times per hour (configurable), measured by successful reset issuance rows created in the rolling window, whatever their status.
 - The order of the checks, the locks and every outcome is in the sequence diagram.
