@@ -17,6 +17,8 @@ Use [backend-development](../skills/backend-development/SKILL.md) for the implem
 
 Before writing code, pass the [dev-like-principal code gate](../skills/dev-like-principal/references/code-quality-standards.md): check the project's Function Book and existing code first, and report its quality check.
 
+**Mandatory in every task (owner order 2026-11-21).** Before the first code change of each task, load `backend-development` and `dev-like-principal` through the Skill tool. When the runtime cannot load a repository skill, read in full, in this task, both `SKILL.md` files, `dev-like-principal/references/code-quality-standards.md` and, for e-commerce, `backend-development/references/e-commerce-dotnet.md`. Knowledge from an earlier task or session does not count. A task that skipped this stops, reads them, rechecks its change and reports the gap.
+
 ## Preconditions
 
 Before implementation:

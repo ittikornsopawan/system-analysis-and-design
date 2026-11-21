@@ -29,6 +29,19 @@ description: Active plans and task records for Drake, Backend Developer.
 - [x] All tests pass (Api 321, Application 43, Domain 73, Infrastructure 53); `dotnet format` clean; mutation: no expiry filter fails TC_REG_017
 - [ ] backend#26 reviewed and merged by the owner
 
+## Mandatory skill reading and recheck of backend#26
+
+- Owner: drake (accountable: ittikorn)
+- Created at: 2026-11-21T16:00:00+07:00
+- Started at: 2026-11-21T16:00:00+07:00
+- Status: In review
+- Owner order 2026-11-21: every later task must use `backend-development` and `dev-like-principal`.
+
+- [x] Read both `SKILL.md` files, `code-quality-standards.md`, `e-commerce-dotnet.md` and `verification.md` in full
+- [x] Rechecked backend#26: no code defect; Function Book has no entry to add; measured methods 7 and 10 lines; `code-structure.md` row "EF Core model" now names views
+- [x] Role, commit-and-pr and verification reference changed; two lessons recorded; PR descriptions of backend#26 and #285 corrected
+- [ ] Josh confirms the one-phrase change to the approved `code-structure.md`; the owner merges
+
 ## Security Auditor review of authen (auth, token, reset)
 
 - Owner: drake (accountable: ittikorn)

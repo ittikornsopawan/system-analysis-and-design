@@ -27,7 +27,8 @@ Prefer observable interfaces to private methods, call-count assertions or unappr
 2. Write the smallest relevant test and run it against the pre-fix/pre-feature behavior. Record the expected behavioral failure. A missing SDK, syntax error or unavailable database is an environment/build failure, not the behavioral red evidence.
 3. Implement only enough of that behavior to make the test pass while preserving the approved contract and architecture.
 4. Rerun that test and the related regression tests. Add the next independent edge/failure case as the next slice.
-5. Keep requested behavior-preserving refactors outside feature/fix red-green cycles: prove the existing baseline, change structure, then prove the same observables. Do not bulk-write every test before learning from any implementation.
+5. Prove a test can fail with a mutation check: commit the real change first, mutate, run the test, then undo with `git restore <file>` (back to that commit) and rerun. `git restore`/`git checkout -- <file>` on an uncommitted change erases the change itself, not only the mutation.
+6. Keep requested behavior-preserving refactors outside feature/fix red-green cycles: prove the existing baseline, change structure, then prove the same observables. Do not bulk-write every test before learning from any implementation.
 
 For bug fixes, the reproducer must fail before the fix and pass after it. For SQL/HTTP guarantees, red/green evidence belongs at the real relevant boundary, not only in a mocked handler test.
 
