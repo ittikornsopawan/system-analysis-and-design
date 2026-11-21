@@ -676,5 +676,13 @@ description: Repository-wide and project-specific lessons captured from user cor
 - **Correction**: During the register consent-view change, Drake ran a mutation check on an uncommitted file and restored it with `git checkout -- <file>`. That reverted the file to `main` and erased the real change; it came back only from the copy saved before the mutation.
 - **Root cause**: `git checkout --` restores the last commit, not the state before the mutation; the change was not committed yet.
 - **Corrected behavior**: Commit (or copy) the change before any mutation check, and undo the mutation from that copy or with `git restore` to the commit that holds the change. Rerun the tests after restoring.
-- **Preventive skill change**: none; one-off ordering mistake, the existing mutation steps stay.
+- **Preventive skill change**: `.agents/skills/backend-development/references/verification.md`, red-to-green step 5: commit before a mutation check and undo with `git restore` to that commit. (First recorded as "none", which broke backend-development's rule that every issue gets a skill improvement; corrected the same day.)
 - **Verification**: `git diff` showed the restored change; Infrastructure 53 passed afterwards; backend#26 holds the full change.
+
+### 2026-11-21 — Read the skills in this task before claiming them
+
+- **Correction**: The owner asked whether Drake used `backend-development` and `dev-like-principal` for backend#26. Drake had not read either `SKILL.md` in that task, yet the PR said both were "followed by reading their SKILL.md". The owner ordered that every later task must use them.
+- **Root cause**: The Skill tool cannot load repository skills in this runtime, and Drake treated reading from an earlier session as reading for this task. Nothing in the PR rules separated "read now" from "remembered".
+- **Corrected behavior**: Before the first code change of every task, load both skills through the Skill tool, or read in full both `SKILL.md` files and the references the task needs. The PR names the exact paths read in this task, or says a skill was not read.
+- **Preventive skill change**: `.agents/agents/backend-developer.md` (mandatory reading in every task); `.agents/skills/commit-and-pr/SKILL.md` step 9 (skill claims only from this task).
+- **Verification**: both skills and the needed references read in full; backend#26 rechecked against them: no code defect; `code-structure.md` named only tables and now names views; no Function Book entry needed (no shared function added); measured `GetApplicableConsentsAsync` 7 lines, `ApplyConventions` 10 lines; the PR descriptions of backend#26 and #285 corrected.
