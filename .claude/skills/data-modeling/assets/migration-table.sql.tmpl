@@ -1,0 +1,34 @@
+-- Template for one table in e-commerce/db/migrations/up/NN-<schema>.schema.up.sql.
+-- Replace <...>, delete what the table does not need. Edit the CREATE TABLE itself when a column or a
+-- constraint changes later; the project is in the design phase, so never write ALTER TABLE.
+-- The down migration only needs DROP TABLE IF EXISTS <schema>.<table> CASCADE (it drops the indexes too).
+-- No comma before the closing parenthesis, that one breaks the whole migration.
+
+CREATE TABLE
+    IF NOT EXISTS <schema>.<table> (
+        id UUID NOT NULL DEFAULT GEN_RANDOM_UUID () PRIMARY KEY,
+        created_by VARCHAR(64) NOT NULL,
+        created_at TIMESTAMP WITHOUT TIME ZONE NOT NULL DEFAULT NOW (),
+        updated_by VARCHAR(64),
+        updated_at TIMESTAMP WITHOUT TIME ZONE,
+        row_status VARCHAR(32) NOT NULL DEFAULT 'ACTIVE' CHECK (
+            row_status IN (
+                'ACTIVE',
+                'INACTIVE',
+                'DELETED',
+                'LOCKED',
+                'ARCHIVED'
+            )
+        ),
+        -- parent row: CASCADE by default, RESTRICT when the row must keep history alive (orders, lots, shop types)
+        <parent>_id UUID NOT NULL REFERENCES <schema>.<parent_table> (id) ON DELETE CASCADE,
+        name VARCHAR(128) NOT NULL,
+        description VARCHAR(256),
+        -- a rule between columns of the same row is a named table level CHECK
+        CONSTRAINT ck_<table>_<rule> CHECK (<expression>)
+    );
+
+-- a value that must be unique but can be reused after a soft delete: partial unique index, never a plain UNIQUE
+CREATE UNIQUE INDEX IF NOT EXISTS uq_<table>_<columns> ON <schema>.<table> (<columns>)
+WHERE
+    row_status <> 'DELETED';

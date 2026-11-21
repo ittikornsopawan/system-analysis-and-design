@@ -1,0 +1,39 @@
+-- Tests for <schema>.<table> (<one line: the rules this file pins>).
+-- Save as e-commerce/db/tests/NN-<name>.test.sql. run_db_tests.sh runs it after every migration, in a
+-- throw-away PostgreSQL cluster, and everything is rolled back at the end.
+-- Foreign keys are switched off for the fixture rows (session_replication_role = replica) because these
+-- tests only check the constraints of this table, not its parents. Test a foreign key's ON DELETE rule
+-- through pg_constraint (confdeltype: 'r' = RESTRICT, 'c' = CASCADE) instead of inserting real parents.
+-- The file must FAIL against the old migration (RED) before you change the migration, then pass (GREEN).
+\set ON_ERROR_STOP on
+BEGIN;
+SET LOCAL session_replication_role = replica;
+
+-- test 1: <the rule in one sentence, e.g. the name is unique among rows that are not DELETED>
+DO $$
+DECLARE p UUID := '11111111-1111-4111-8111-111111111111';
+BEGIN
+    INSERT INTO <schema>.<table> (created_by, <parent>_id, name) VALUES ('test', p, 'A');
+    BEGIN
+        INSERT INTO <schema>.<table> (created_by, <parent>_id, name) VALUES ('test', p, 'A');
+        RAISE EXCEPTION 'FAIL: a duplicate name was accepted';
+    EXCEPTION WHEN unique_violation THEN NULL;  -- the expected error: the test passes only when it happens
+    END;
+    -- INACTIVE, LOCKED and ARCHIVED rows still hold the name, a DELETED row frees it, also more than once
+    UPDATE <schema>.<table> SET row_status = 'DELETED' WHERE name = 'A';
+    INSERT INTO <schema>.<table> (created_by, <parent>_id, name) VALUES ('test', p, 'A');
+    RAISE NOTICE 'PASS test 1: name unique among non deleted rows';
+END $$;
+
+-- test 2: <a CHECK: try a value on each side of the boundary>
+DO $$
+BEGIN
+    BEGIN
+        INSERT INTO <schema>.<table> (created_by, <parent>_id, name, <column>) VALUES ('test', '11111111-1111-4111-8111-111111111111', 'B', <bad value>);
+        RAISE EXCEPTION 'FAIL: <what was wrongly accepted>';
+    EXCEPTION WHEN check_violation THEN NULL;
+    END;
+    RAISE NOTICE 'PASS test 2: <rule>';
+END $$;
+
+ROLLBACK;

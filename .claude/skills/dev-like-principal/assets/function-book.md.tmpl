@@ -1,0 +1,28 @@
+---
+name: <Project> Function Book
+description: Central list of the <project> codebase's shared, reusable functions with purpose, parameters and usage. Read before writing any new function in <project>; update it in the same change that adds, changes or removes a shared function.
+source_component_revision: <git sha the entries were checked against>
+updated_on: YYYY-MM-DD
+---
+
+# <Project> Function Book
+
+Check this book and the code before writing a new function. Reuse a listed function when it fits. Extend one when it nearly fits, without breaking its current callers. Add a new entry when you create a shared function.
+
+The book lists only what other code is meant to call: shared helpers, value-object factories, domain policies, persistence and security helpers, and API extensions. It does not list handlers or private methods.
+
+## How to use an entry
+
+| Field | Meaning |
+| --- | --- |
+| Function | Signature as callers see it |
+| Location | File path from the component root |
+| Purpose | What it does and the business rule it carries |
+| Parameters / returns | Meaning of each input; what success and failure look like |
+| Use when / notes | When to call it, when not to, known limits |
+
+## <Layer or area, e.g. Shared — Results>
+
+| Function | Location | Purpose | Parameters / returns | Use when / notes |
+| --- | --- | --- | --- | --- |
+| `<signature>` | `<path>` | <one line> | <inputs → output> | <guidance> |

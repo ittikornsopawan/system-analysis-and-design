@@ -1,0 +1,86 @@
+---
+name: "<endpoint> API Test Cases"
+description: "Documented scenarios and expected results for <endpoint>; use for test planning and subsequent execution."
+---
+
+# <endpoint> API Test Cases
+
+## Source baseline and scope
+
+- Method/path: <exact endpoint>
+- Governing sources: <relative links and sections>
+- Source revision: <commit plus working-tree fingerprint when relevant>
+- Source approval: <approved with evidence / draft / in-review / missing>
+- Test design baseline: <approved-source / provisional>
+- Scope and exclusions: <requested operations; explicit exclusions with reasons>
+- Execution summary: Not run — this document records test design only.
+
+## Shared fixtures and observation prerequisites
+
+<Define safe synthetic principals, grants, rows, identifiers and concrete valid request defaults.
+State initial values, isolation/reset, clock precision, observation method and authorized future
+setup/cleanup. Mark any unavailable observation or failure-injection method explicitly.>
+
+## Coverage matrix
+
+| Obligation ID | Source rule/section | Required behavior or boundary | Case IDs | Design coverage / gap |
+| --- | --- | --- | --- | --- |
+| <ID> | <link and rule> | <one testable obligation> | <case anchors> | <designed / blocked with gap ID / excluded with reason> |
+
+## Detailed test cases
+
+### <TC-endpoint-NNN> — <scenario>
+
+- Source: <rule/section links and source revision>
+- Purpose: <observable guarantee>
+- Design readiness: <Ready / Blocked — exact gap ID and missing decision>
+- Execution status: Not run
+
+**Preconditions and test data**
+
+<Concrete initial state; valid prerequisites for all earlier checks; per-case fixture changes.
+Reference shared fixtures rather than relying on mutable state left by another case.>
+
+**Request/input**
+
+<Complete method/path, principal and required headers/body/query/path values, or an exact
+shared fixture plus explicit overrides. Preserve omitted versus null versus empty input.>
+
+**Steps**
+
+1. <Verify/reset initial state.>
+2. <Perform the request or coordinated requests at the defined timing/failure point.>
+3. <Observe response and required committed/rolled-back/external effects.>
+
+**Expected results**
+
+| Observation | Expected value or predicate | Source / evidence needed |
+| --- | --- | --- |
+| HTTP status | <exact specified value, or blocked decision> | <rule> |
+| bizCode | <specified value / absent / blocked; keep distinct from null> | <rule> |
+| Response | <required fields, exact values or generated-value predicates, forbidden fields> | <rule> |
+| Durable / external effects | <before/after values, retained effects, transaction outcome or justified N/A> | <rule and observation method/prerequisite> |
+
+**Cleanup:** <restore only this fixture's state; execution authorization is separate>
+
+**Actual result and evidence:** None — Not run.
+
+<Repeat the detailed-case block for every case in the matrix. Preserve stable IDs and source
+revision history. A materially revised case begins Not run and links superseded execution evidence.>
+
+## Open gaps and decisions
+
+| Gap ID | Conflicting/missing sources | Affected obligations/cases | Missing decision or prerequisite | Status / decision reference |
+| --- | --- | --- | --- | --- |
+| <ID or None> | <exact evidence> | <IDs> | <question or observation gap> | <pending / resolved with recorded approval> |
+
+## Document verification and limitations
+
+<Record source-to-case and case-to-source reconciliation, branch/fixture/expected-value review,
+ID/link checks, design gaps and exclusions. Distinguish authored cases from runtime evidence;
+list unexecuted or unavailable checks and what they leave unverified.>
+
+## Revision and execution history
+
+<Record case/source revisions and preserved links to any historical actual results. Keep prior
+execution evidence tied to the exact old case and source; new design does not inherit Pass.>
