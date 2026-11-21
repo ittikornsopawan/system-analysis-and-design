@@ -686,3 +686,11 @@ description: Repository-wide and project-specific lessons captured from user cor
 - **Corrected behavior**: Before the first code change of every task, load both skills through the Skill tool, or read in full both `SKILL.md` files and the references the task needs. The PR names the exact paths read in this task, or says a skill was not read.
 - **Preventive skill change**: `.agents/agents/backend-developer.md` (mandatory reading in every task); `.agents/skills/commit-and-pr/SKILL.md` step 9 (skill claims only from this task).
 - **Verification**: both skills and the needed references read in full; backend#26 rechecked against them: no code defect; `code-structure.md` named only tables and now names views; no Function Book entry needed (no shared function added); measured `GetApplicableConsentsAsync` 7 lines, `ApplyConventions` 10 lines; the PR descriptions of backend#26 and #285 corrected.
+
+### 2026-11-21 — A lock-hold test must hold a row the request locks
+
+- **Correction**: The first run of TC-RBATCH-015 expected 408 while another session held role B, but the batch only targeted role A, so it answered 200.
+- **Root cause**: The fixture was copied from a two-role step and the held id was not checked against the request's target ids.
+- **Corrected behavior**: For every lock-wait case, name the exact row the request locks and hold that row; assert the timeout and that nothing changed.
+- **Preventive skill change**: pending, outside this assignment's scope: add "the held row is one the request locks" to the Concurrency row of `.agents/skills/api-test-case-creator/references/case-design.md`.
+- **Verification**: TC-RBATCH-015 corrected and passing; removing the target `ForUpdate()` makes it fail.

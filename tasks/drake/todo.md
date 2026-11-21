@@ -19,7 +19,7 @@ description: Active plans and task records for Drake, Backend Developer.
 
 - [x] 01 upsert role: backend#24 merged 2026-11-20, test cases in Showcase #270 merged; Api 321, Application 43, Domain 73, Infrastructure 53 passed
 - [x] Spec defect found while reading 02: nine rule lines cut with "..." (cd3edbe); restore in #287, checker in #288
-- [ ] 02 upsert role batch (`POST v1/author/role/upsert/batch`): shared `RoleWriter` from 01, sorted target lock, `Error.At` position prefix, batch body reader
+- [x] 02 upsert role batch (`POST v1/author/role/upsert/batch`): shared `RoleWriter`/`RoleRules` from 01, sorted target lock, `Error.At`, batch body reader; 16 cases, 34 tests pass; in review (backend PR and Showcase PR)
 - [ ] 03 inquiry role
 - [ ] 04 upsert permission
 - [ ] 05 upsert permission batch
