@@ -670,3 +670,11 @@ description: Repository-wide and project-specific lessons captured from user cor
 - **Corrected behavior**: Before saying a PR is ready, read `state`, `mergeable`, `statusCheckRollup` and `headRefOid`; ready means OPEN, MERGEABLE, all checks passed and head = local HEAD. Anything else is reported as blocked, with the cause.
 - **Preventive skill change**: `.agents/skills/commit-and-pr/SKILL.md`, "After the PR exists": the ready condition above.
 - **Verification**: the diagram-checks PR that carries this entry was reported only after that condition held (see its Verification section).
+
+### 2026-11-21 — Restore a mutation from a copy, not with git checkout
+
+- **Correction**: During the register consent-view change, Drake ran a mutation check on an uncommitted file and restored it with `git checkout -- <file>`. That reverted the file to `main` and erased the real change; it came back only from the copy saved before the mutation.
+- **Root cause**: `git checkout --` restores the last commit, not the state before the mutation; the change was not committed yet.
+- **Corrected behavior**: Commit (or copy) the change before any mutation check, and undo the mutation from that copy or with `git restore` to the commit that holds the change. Rerun the tests after restoring.
+- **Preventive skill change**: none; one-off ordering mistake, the existing mutation steps stay.
+- **Verification**: `git diff` showed the restored change; Infrastructure 53 passed afterwards; backend#26 holds the full change.
