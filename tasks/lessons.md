@@ -742,3 +742,10 @@ description: Repository-wide and project-specific lessons captured from user cor
 - **Corrected behavior**: An `if` with `continue` before the `out` call.
 - **Preventive skill change**: `dev-like-principal/references/coding-guidelines.md` (both copies): a short section on it.
 - **Verification**: the build passes with 0 warnings; spec 02's 34 tests pass on the shared reader.
+### 2026-11-21 — Do not compare a list inside a tuple in an xUnit assertion
+
+- **Correction**: The first run of TC-ROLEQ-005 failed with identical expected and actual values: `Assert.Equal((list, 2L, ...), (list, 2L, ...))` compares the `List` inside the tuple by reference.
+- **Root cause**: A tuple's `Equals` uses each element's `Equals`; `List<T>` does not compare its items.
+- **Corrected behavior**: Assert a collection on its own (`Assert.Equal(expected, actual.Select(...))`) and the scalars in a tuple.
+- **Preventive skill change**: `.agents/skills/backend-development/references/verification.md` (both copies), made in #295 (author 04 test cases) because this PR's scope has no skill file.
+- **Verification**: TC-ROLEQ-005 split into a collection assertion and a scalar tuple; 24/24 pass, and its mutations fail as expected.
