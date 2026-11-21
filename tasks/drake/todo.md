@@ -23,8 +23,8 @@ description: Active plans and task records for Drake, Backend Developer.
 - [x] 03 inquiry role: backend#28 merged; test cases in #294
 - [x] 04 upsert permission: backend#29 and #295 merged
 - [x] 05 upsert permission batch: shared `PermissionWriter`/`PermissionRules`/`CurrentItem`; 12 cases, 28 tests; backend#30 and #296 merged
-- [x] 06 inquiry permission: shared `MasterInquiryRules`/`MasterFilter`/`MasterQueryKeys`; 12 cases, 24 tests; in review (backend#31 and the Showcase PR)
-- [ ] 07 upsert scope
+- [x] 06 inquiry permission: shared `MasterInquiryRules`/`MasterFilter`/`MasterQueryKeys`; 12 cases, 24 tests; backend#31 and #297 merged
+- [x] 07 upsert scope: `MasterRules` generalised (code field, texts), `UpperCode`; 12 cases, 23 tests; in review (backend#32 and the Showcase PR)
 - [ ] 08 upsert scope batch
 - [ ] 09 inquiry scope
 - [ ] 10 upsert user role
