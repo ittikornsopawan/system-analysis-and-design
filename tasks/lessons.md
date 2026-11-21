@@ -710,3 +710,11 @@ description: Repository-wide and project-specific lessons captured from user cor
 - **Corrected behavior**: Read `commit-and-pr` in full before each delivery; stage by name and check `git diff --cached --stat`; read the PR state once after publishing and right before each push. The commits already pushed were checked: preflight's scope check and the PR diffs hold only the intended files.
 - **Preventive skill change**: `.agents/skills/commit-and-pr/SKILL.md` step 4 and "After the PR exists" name the two habits (separate PR, outside #289's scope).
 - **Verification**: #289 head `939f78c` equals local HEAD before this commit; its diff against `origin/main` lists only the files named in the PR body.
+
+### 2026-11-21 — Run every CI step locally for a change outside the spec folders
+
+- **Correction**: #291 (copy the ready skills into `.claude/skills/`) failed CI twice over: `md-frontmatter` refused the copied eval files of dev-like-principal (exempted only under `.agents/skills/`), and the new copy check met the `__pycache__` that CI's tooling tests write under `.agents/skills/`.
+- **Root cause**: The PR had no spec, so Drake ran preflight without `--run-checks` and never ran the CI steps; CI checks the whole repository, not only the spec folders. The copy check was tested only in a clean checkout.
+- **Corrected behavior**: `evals/` is not copied and the copy check skips `evals` and `__pycache__` (fix in #291); every CI step was then run locally, with a `__pycache__` present, before the push.
+- **Preventive skill change**: `.agents/skills/commit-and-pr/SKILL.md` step 3 (and its copy in `.claude/skills/`): a change that adds, copies or moves files outside the spec folders runs every step of `.github/workflows/checks.yml` locally before the PR.
+- **Verification**: #291's second CI run passed and it merged at `7807c5c`; this PR's change was itself checked by running every CI step locally.
