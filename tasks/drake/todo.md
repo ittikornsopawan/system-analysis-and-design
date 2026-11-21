@@ -22,8 +22,8 @@ description: Active plans and task records for Drake, Backend Developer.
 - [x] 02 upsert role batch (`POST v1/author/role/upsert/batch`): shared `RoleWriter`/`RoleRules` from 01, sorted target lock, `Error.At`, batch body reader; 16 cases, 34 tests pass; in review (backend PR and Showcase PR)
 - [x] 03 inquiry role: backend#28 merged; test cases in #294
 - [x] 04 upsert permission: backend#29 and #295 merged
-- [x] 05 upsert permission batch: shared `PermissionWriter`/`PermissionRules`/`CurrentItem`; 12 cases, 28 tests; in review (backend#30 and the Showcase PR)
-- [ ] 06 inquiry permission
+- [x] 05 upsert permission batch: shared `PermissionWriter`/`PermissionRules`/`CurrentItem`; 12 cases, 28 tests; backend#30 and #296 merged
+- [x] 06 inquiry permission: shared `MasterInquiryRules`/`MasterFilter`/`MasterQueryKeys`; 12 cases, 24 tests; in review (backend#31 and the Showcase PR)
 - [ ] 07 upsert scope
 - [ ] 08 upsert scope batch
 - [ ] 09 inquiry scope
