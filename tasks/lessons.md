@@ -726,3 +726,11 @@ description: Repository-wide and project-specific lessons captured from user cor
 - **Corrected behavior**: Invoke each skill before its step, and write the Skills line last, listing only the Skill calls or file reads made in the task.
 - **Preventive skill change**: pending, outside this PR's scope (`tasks/`): add "write the Skills line last, from the calls made" to step 9 of `commit-and-pr` (both copies) in Drake's next Showcase PR that may edit skills.
 - **Verification**: #293's description corrected; its steps (stage by name, base merge, every CI step) were rechecked against the invoked skill text and match.
+
+### 2026-11-21 — Do not compare a list inside a tuple in an xUnit assertion
+
+- **Correction**: The first run of TC-ROLEQ-005 failed with identical expected and actual values: `Assert.Equal((list, 2L, ...), (list, 2L, ...))` compares the `List` inside the tuple by reference.
+- **Root cause**: A tuple's `Equals` uses each element's `Equals`; `List<T>` does not compare its items.
+- **Corrected behavior**: Assert a collection on its own (`Assert.Equal(expected, actual.Select(...))`) and the scalars in a tuple.
+- **Preventive skill change**: `.agents/skills/backend-development/references/verification.md` (both copies), made in #295 (author 04 test cases) because this PR's scope has no skill file.
+- **Verification**: TC-ROLEQ-005 split into a collection assertion and a scalar tuple; 24/24 pass, and its mutations fail as expected.
