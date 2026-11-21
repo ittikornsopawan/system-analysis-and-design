@@ -9,7 +9,7 @@ description: "Documented scenarios and expected results for POST v1/author/role/
 
 - Method/path: `POST v1/author/role/upsert/batch`
 - Governing sources: [spec.md](spec.md) (body, rules, response examples, Database Relations), [sequence.wsd](sequence.wsd) (execution order, lock order, request-order notes), [01 test cases](../01-upsert-role/test-cases.md) for the single-role rules, [api-conventions.md](../../../../../.agents/skills/api-contract-design/references/api-conventions.md) (Batch, validation messages)
-- Source revision: Showcase `main` at the commit that adds this file; `spec.md` and `sequence.wsd` last changed in `b533d83`. Three rule lines of `spec.md` were cut with "..." (restored in #287); the full rules are read from `sequence.wsd`, which already holds them.
+- Source revision: Showcase `main` at the commit that adds this file; `spec.md` and `sequence.wsd` last changed in `b533d83`. Three rule lines of `spec.md` were cut with "..." until #287 restored them; the full rules match `sequence.wsd`.
 - Source approval: approved (`approved_by: Ittikorn`, `approved_at: 2026-11-16T09:24:57+07:00`); owner-confirmed API review Q2/Q4/Q7/Q10/Q13/Q15
 - Test design baseline: approved-source, except gap G1 (message of a non-object item, by convention)
 - Scope and exclusions: TLS excluded; no rate limit in the spec. The guarded UPDATE's zero-row 404 is not reachable from HTTP while the target is locked by this transaction; it stays a defensive branch (see R17).

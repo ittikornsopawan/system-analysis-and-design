@@ -35,7 +35,7 @@ description: Active plans and task records for Drake, Backend Developer.
 - [ ] 15 upsert user permission
 - [ ] 16 inquiry user permission
 - [ ] 17 check permission
-- [ ] Add `no-cut-rules` to the CI document checks once #287 is merged
+- [x] Add `no-cut-rules` to the CI document checks once #287 is merged (#287 and #288 merged; added in #289)
 
 ## Register reads the applicable consents from the consent view
 
