@@ -719,6 +719,14 @@ description: Repository-wide and project-specific lessons captured from user cor
 - **Preventive skill change**: `.agents/skills/commit-and-pr/SKILL.md` step 3 (and its copy in `.claude/skills/`): a change that adds, copies or moves files outside the spec folders runs every step of `.github/workflows/checks.yml` locally before the PR.
 - **Verification**: #291's second CI run passed and it merged at `7807c5c`; this PR's change was itself checked by running every CI step locally.
 
+### 2026-11-21 — Write the Skills line from what ran, after it ran
+
+- **Correction**: #293's first description said `commit-and-pr` and `agent-workspace` were "invoked through the Skill tool"; neither was invoked in that task. `commit-and-pr` was invoked right after the PR opened and the line was corrected.
+- **Root cause**: The Skills line was written from the plan, now that the Skill tool can load the repo skills, instead of from the calls actually made.
+- **Corrected behavior**: Invoke each skill before its step, and write the Skills line last, listing only the Skill calls or file reads made in the task.
+- **Preventive skill change**: pending, outside this PR's scope (`tasks/`): add "write the Skills line last, from the calls made" to step 9 of `commit-and-pr` (both copies) in Drake's next Showcase PR that may edit skills.
+- **Verification**: #293's description corrected; its steps (stage by name, base merge, every CI step) were rechecked against the invoked skill text and match.
+
 ### 2026-11-21 — Do not compare a list inside a tuple in an xUnit assertion
 
 - **Correction**: The first run of TC-ROLEQ-005 failed with identical expected and actual values: `Assert.Equal((list, 2L, ...), (list, 2L, ...))` compares the `List` inside the tuple by reference.

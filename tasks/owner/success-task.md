@@ -5,6 +5,62 @@ description: Verified completed task records directly owned by the repository ow
 
 # Owner Completed Tasks
 
+## Add code quality standards and the Function Book to `dev-like-principal`
+
+- Owner: ittikorn
+- Created at: 2026-11-18T19:30:00+07:00
+- Started at: 2026-11-18T19:30:00+07:00
+- Status: Complete
+- Completed at: 2026-11-20T07:41:21+07:00
+
+- [x] Write `references/code-quality-standards.md` (Function Book reuse, formatting, short functions, comments, class/domain separation, before-coding steps, before-delivery check) and `assets/function-book.md.tmpl`
+- [x] Seed `e-commerce/doc/function-book.md` from component revision `648226c`
+- [x] Make `dev-like-principal` the code gate: `SKILL.md`, review checklist, coding guidelines
+- [x] Route every code-writing skill through it: backend-development, data-modeling, api-contract-design, diagram-creator; plus `rules/global.md`, backend-developer and code-reviewer roles, e-commerce knowledge, `.agents/README.md`
+- [x] Eval `code-gate-newsletter-subscription`: current backend-development (with gate) vs the HEAD snapshot (without)
+- [x] Update the test report
+- [x] Owner decided the email rule (2026-11-18): the `EmailAddress` rule governs, with the dot required in the domain; validity only, no trimming or lower-casing. Recorded in api-conventions "Email address", spec 01-register (approval metadata updated), register TC-REG-006 and reset TC-RESET-002 (new inputs Not run), and the Function Book
+- [x] Drake (after his current create-new-password PR): make `EmailAddressFormat.IsValid` the single rule as written in api-conventions (one `@`, non-empty local part, `.` in the domain, ≤ 254, plain address with no spaces/display name/angle brackets); have `EmailAddress.Create` call it; test-first with the new TC-REG-006 and TC-RESET-002 inputs; then remove the pending note from the Function Book
+- [x] Eval tool-format files exempted from name/description by owner decision; checker, rule and preflight updated, with mutations verified
+- [x] Owner/Josh review the PR
+
+Evidence: `quick_validate` → "Skill is valid!"; 10/10 referenced files exist; code-gate eval: old_skill 5/8, with gate 7/8 (iteration 2), 8/8 after the length-rule fix (iteration 3); report section 6 of `docs/handoff/2026-11-18-dev-like-principal-test-report.md`; lesson in `tasks/lessons.md`.
+
+Evidence: #247 merged (2026-11-18T19:04:52+07:00); Drake's email-rule item in e-commerce-backend#17, merged (2026-11-20T07:41:21+07:00), with the passing cases recorded in #254; the Function Book has no pending note left. Closed by Drake on the owner's request of 2026-11-21 ("ปิด record งานจบแล้วให้ทุกคน").
+
+## Create the `dev-like-principal` skill
+
+- Owner: ittikorn
+- Created at: 2026-11-18T14:04:00+07:00
+- Started at: 2026-11-18T14:04:00+07:00
+- Status: Complete
+- Completed at: 2026-11-18T19:04:52+07:00
+
+- [x] Write `.agents/skills/dev-like-principal/SKILL.md` and its references/assets (decision framework, architecture review, .NET coding guidelines, review checklist, anti-patterns, verification, worked examples, ADR template)
+- [x] Register the skill in `.agents/README.md`
+- [x] Validate structure (frontmatter, links, line counts) with the skill-creator validator
+- [x] Run three eval cases (feature development, architecture design, code review) with and without the skill and grade them
+- [x] Write the test report in `docs/handoff/` with sample outputs
+- [x] Delivered for review in the dev-like-principal PR
+
+Evidence: `quick_validate` → "Skill is valid!"; 8/8 referenced files exist; eval with skill 22/22, without 19/22 (`docs/handoff/2026-11-18-dev-like-principal-test-report.md`).
+
+Evidence: delivered in #247, merged (2026-11-18T19:04:52+07:00); the skill has been in use since (Drake's PRs report its quality check). Owner feedback not recorded separately; the owner closed the record. Closed by Drake on the owner's request of 2026-11-21 ("ปิด record งานจบแล้วให้ทุกคน").
+
+## Register Drake as Backend Developer
+
+- Owner: ittikorn (accountable); executed by Drake
+- Created at: 2026-11-18T00:00:00+07:00
+- Status: Complete
+- Completed at: 2026-11-18T08:42:02+07:00
+
+- [x] Add `drake` to `.agents/team/agents.yaml` (role `backend-developer.md`, reports to ittikorn, no capabilities) and to the registry test
+- [x] `python3 -m unittest discover -s .agents/skills/agent-workspace/tests` passes (27 tests)
+- [x] Owner approves and merges the registry PR; authority applies only after merge into `origin/main`
+- [x] Then prepare `.workspace/drake` and start the handoff work (`docs/handoff/2026-11-17-dev-handoff.md`)
+
+Evidence: #232 merged (2026-11-18T08:42:02+07:00); `.workspace/drake` prepared afterwards and the handoff work (authen 01-10) delivered in e-commerce-backend#2-#22. Closed by Drake on the owner's request of 2026-11-21 ("ปิด record งานจบแล้วให้ทุกคน").
+
 ## repository-wide: Define per-agent task tracking
 
 Owner: owner
@@ -112,7 +168,6 @@ Owner decisions from round 1:
 Round 2 confirmed through the question UI: Q4 “ใช่ เปลี่ยนเป็น backend-development (แนะนำ)” and Q5 “ใช่ ใช้ test-first ตามที่เสนอ (แนะนำ)”. These confirmations authorize the proposed skill design; they do not approve any production feature, new library or architecture change. Keep the existing .NET role specialized and connect it to the generic skill with the .NET project reference.
 
 Discovery evidence at the start of this task: The existing backend-developer role was ready, but the skill was a placeholder. The manifest-pinned child checkout is clean at `d8255183cba54d0c2b218607456b895a70df32f0`, with the exact declared origin. Read-only source inspection found .NET10, five production layers, custom CQRS, Dapper/Npgsql, exception-based UnitOfWork and Domain/Application tests using fakes; no new builds/tests or remote-reachability checks were performed. Login/refresh specs remain in-review, the code-structure guide remains draft and the OpenAPI paths are empty. These are evidence for readiness/consistency gates, not approval to implement those contracts. HTTP/Result failure alone cannot determine rollback: branch-specific retained effects must come from the approved spec.
-
 
 Verification: Eight authored Markdown frontmatters, local links/anchors, fences and registry paths passed static checks; skill naming/description/scaffold checks passed. Scoped delivery preflight reports nine task paths (one deleted placeholder, four new skill/reference files) with no blockers. PyYAML is unavailable, so Ruby YAML parsing and direct metadata/reference checks were used without claiming the original Python validator ran. No production component code, schema, API contract, dependency or architecture changed.
 
@@ -710,7 +765,6 @@ Queue after login: refresh, then the remaining original 30 APIs and the addition
 
 Login verification evidence: the new login-flow check rejected the old files before correction. Final mutation run caught 56/56 deliberate faults (the first 53-case run caught 48/53; selectors and projection/threshold checks were tightened before rerunning). The SQL and sequence now contain 15 exact operations and seven outcome paths. The delivery preflight ran 38/38 documentation checks, audited 53 tables with 0 findings, ran database tests with ALL PASSED, and found no blockers. PostgreSQL verification executed the specification's exact queries against adversarial role/direct-scope fixtures, empty arrays and ambiguous identifiers, proved token/attempt rollback, and used two connections to verify serialized counting. No backend or published OpenAPI was changed; the detailed login and revised WP4/WP5 documents remain in-review, while the separate owner-decision record is approved. The initial delivery did not render PlantUML; the paired-review follow-up below now records real rendering and visible-SQL verification.
 
-
 ### Login PR #23 — paired sequence/spec review follow-up
 
 Status: Paired-review artifacts verified and ready for the existing PR update, resumed through agent-workspace with the original login assignment after the owner's 2026-11-07 correction. GitHub reported the PR OPEN when verified; no next API assignment has started.
@@ -723,9 +777,7 @@ Status: Paired-review artifacts verified and ready for the existing PR update, r
 - [x] Render SVG/PNG, inspect the complete diagram and critical SQL/branch regions, and run paired source/flow/rendered-text checks.
 - [x] Prepare the existing PR update with the observed before/after evidence; verify final delivery through GitHub and release the session lock.
 
-
 Paired-review evidence: PlantUML -syntax reports SEQUENCE (19 participants); SVG and PNG were generated and visually inspected. The original SVG is rejected for missing 15/113 SQL lines; the corrected SVG has 113/113 visible SQL lines. Exact decoded SQL parity passes for the 18 existing source pairs, and login-flow verifies the seven outcomes plus all query requests/results, parameter mappings and four success fields. Mutation testing caught 67/67 faults. The complete preflight reran all 38 documentation commands, audited 53 tables with 0 findings and passed database tests; its first attempt also flagged an extra blank line at the end of this task file, which was removed before final delivery.
-
 
 PR #23 integration: origin/main advanced to 01a5e41 with the already merged Jinny registration (#22) and administrator-write spec retrofit (#20). Reconcile this base into Peter's existing branch without force-pushing; preserve both login-flow and admin-write-spec in the checker. Verify the PR diff against the current main contains only Peter's recorded assignment paths, rerun all current checks and rendered SQL verification, then push the reconciliation commit and release the session lock. Imported main changes are base history, not additional APIs authored in this PR.
 
@@ -995,7 +1047,6 @@ Scope: authen-and-author/09-upsert-user-address plus checker, shared confirmed-d
 - [x] Add exact SQL/path/semantic/render checks: 66/66 mutations caught, including old checker Delete exception; synchronized wrong guards, clear-after-insert and Q21-after-BEGIN ordering, original sequence, whitespace and real renderer omission rejected. Nine exact SQL definitions passed UTC PostgreSQL reference Application/default logic, quota and credential lock waits confirmed via pg_stat_activity, rollback/default promotion/soft-history/ownership fixtures. Diagram inspected with nine participants and 136/136 visible SQL lines including reused blocks; no backend/encryption-runtime claim.
 - [x] Run pre-integration checkers (51/51), audit (53 tables/0 findings), database suite (ALL PASSED), skeleton tests (12/12), and authorized preflight (five paths/no blockers).
 - [x] Integrate latest main including inquiry #60 and architecture #61, rerun all combined checks, deliver address API PR #62 and continue from main; #62 is now verified merged.
-
 
 Integration finding: GitHub merge commit 87162eb for inquiry #60 re-added its completed API 08 token/timeout exemption (verified against its first parent b1c5c90). The full merged check rejects it. Remove only that stale checker entry; preserve the API 08 artifacts and every imported checker/function. This is the cause of the main baseline regression, not permission to weaken the legacy check or modify another endpoint.
 

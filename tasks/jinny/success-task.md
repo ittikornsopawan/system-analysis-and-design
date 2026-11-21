@@ -5,6 +5,24 @@ description: Verified completed task records of the Diagram Designer Jinny, move
 
 # Jinny Completed Tasks
 
+## repository: CI runs the diagram generator checks
+
+Owner: jinny
+Status: Complete
+Completed at: 2026-11-21T13:48:07+07:00
+Created at: 2026-11-20T21:48:23+07:00
+Started at: 2026-11-20T21:48:23+07:00
+
+Authority: Josh (SA Lead) after #276 was closed, `authorized_by: ittikorn`, delivery `open-pr`. Scope: `.github/workflows/checks.yml`, `e-commerce/diagram/domain/domain-model-verification.md`, `tasks/jinny`, `tasks/lessons.md`, `.agents/skills/commit-and-pr`.
+
+- [x] Prepare from `main` `099f3c7` (after #283); baseline: domain and layered `--check` PASS.
+- [x] Add the step "Diagram generators (--check)" to the rewritten `checks.yml`.
+- [x] Re-add the verification record (cause `3c740fa`, refresh by #283) to `domain-model-verification.md`.
+- [x] Record the owner's correction (hand off only a mergeable PR with green CI) in `tasks/lessons.md` and `commit-and-pr`.
+- [x] Open the PR; report it ready only when it is OPEN, MERGEABLE, CI green and `headRefOid` = local HEAD; close after merge.
+
+Evidence: #284 merged (2026-11-21T13:48:07+07:00) with CI green; the step runs on main. Closed by Drake on the owner's request of 2026-11-21 ("ปิด record งานจบแล้วให้ทุกคน").
+
 ## e-commerce: remove the dead first-scaffold diagram content
 
 Owner: jinny
