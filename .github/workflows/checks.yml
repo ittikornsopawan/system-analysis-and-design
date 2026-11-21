@@ -48,6 +48,13 @@ jobs:
             python3 e-commerce/db/tests/check_docs.py "$c"
           done
 
+      # Diagrams equal their generator sources and the domain inventory equals the migrations; no draw.io needed.
+      - name: Diagram generators (--check)
+        if: ${{ !cancelled() }}
+        run: |
+          python3 -B e-commerce/scripts/diagrams/generate_domain_diagrams.py --check
+          python3 -B e-commerce/scripts/diagrams/generate_layered_diagrams.py --check
+
       - name: Tooling tests
         if: ${{ !cancelled() }}
         run: |
