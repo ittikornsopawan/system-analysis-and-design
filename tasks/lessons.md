@@ -686,3 +686,11 @@ description: Repository-wide and project-specific lessons captured from user cor
 - **Corrected behavior**: Before the first code change of every task, load both skills through the Skill tool, or read in full both `SKILL.md` files and the references the task needs. The PR names the exact paths read in this task, or says a skill was not read.
 - **Preventive skill change**: `.agents/agents/backend-developer.md` (mandatory reading in every task); `.agents/skills/commit-and-pr/SKILL.md` step 9 (skill claims only from this task).
 - **Verification**: both skills and the needed references read in full; backend#26 rechecked against them: no code defect; `code-structure.md` named only tables and now names views; no Function Book entry needed (no shared function added); measured `GetApplicableConsentsAsync` 7 lines, `ApplyConventions` 10 lines; the PR descriptions of backend#26 and #285 corrected.
+
+### 2026-11-21 — Nine spec rule lines were cut with a literal "..."
+
+- **Correction**: While reading author 02 for implementation, Drake found rule bullets ending in "..." in authen 02/03 and author 01/02/05/08/10 `spec.md`. Commit `cd3edbe` (2026-11-14, "align the author specs to the API template") shortened them; the specs were approved afterwards with the cut text.
+- **Root cause**: The template alignment shortened long bullets for display and nothing checked that a rule was complete; the full rules stayed only in each `sequence.wsd` note.
+- **Corrected behavior**: Each line restored from its last full version in git history (markdown links reduced to their text, as the template does). Every restored text already appears in that spec's approved `sequence.wsd`, so no behavior changes.
+- **Preventive skill change**: delivered in the follow-up PR (outside this PR's assignment scope): `check_docs.py no-cut-rules` and a readiness line in `.agents/skills/backend-development/references/spec-and-clarification.md`.
+- **Verification**: `no-cut-rules` fails on `main` (author 01 line 34 put back) and passes on the branch; all nine restored texts found in their sequence diagrams.

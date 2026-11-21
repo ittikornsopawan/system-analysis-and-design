@@ -27,7 +27,7 @@ approved_at: 2026-11-16T09:24:57+07:00
 | PRODUCTION     | https://www.domain.com/api          |
 
 - Governing decisions: owner-confirmed API review Q22/Q23 (approved by the product owner).
-- Every permission follows the rules of the single upsert: name is the permission code: lower-case letters, DELETED is final, delete and archive are rejected while a role (`author.t_role_permission`) or a user (`author.t_user_permission`) ...
+- Every permission follows the rules of the single upsert: name is the permission code: lower-case letters, DELETED is final, delete and archive are rejected while a role (`author.t_role_permission`) or a user (`author.t_user_permission`) that is not DELETED still holds it.
 - The permissions are processed in the request order in one transaction, so the checks of an item see the changes of the items before it.
 - `scopes` lists the scopes the permission can have (`author.t_permission_scope`).
 - Permission: only a platform administrator from the verified JWT roles claim can call this API; exact case-sensitive PLATFORM_ADMIN is required.

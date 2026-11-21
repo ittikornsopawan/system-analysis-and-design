@@ -27,11 +27,11 @@ approved_at: 2026-11-16T09:24:57+07:00
 | PRODUCTION     | https://www.domain.com/api          |
 
 - Governing decisions: owner-confirmed API review Q2/Q4/Q7/Q10/Q13/Q15 (approved by the product owner).
-- Every role follows the rules of the single upsert: name is the role code: capital letters, DELETED is final, delete and archive are rejected while a user (`author.t_user_role`) or a permission (`author.t_role_permission`) that is not ...
+- Every role follows the rules of the single upsert: name is the role code: capital letters, DELETED is final, delete and archive are rejected while a user (`author.t_user_role`) or a permission (`author.t_role_permission`) that is not DELETED still uses it.
 - The roles are processed in the request order in one transaction, so the checks of an item see the changes of the items before it.
-- **`PLATFORM_ADMIN` is the system role.** It cannot be renamed, changed, deleted, archived, locked or set INACTIVE through this API: any request that names it by `id` is rejected with 409 (E10006) `System role cannot be changed.` Giving ...
+- **`PLATFORM_ADMIN` is the system role.** It cannot be renamed, changed, deleted, archived, locked or set INACTIVE through this API: any request that names it by `id` is rejected with 409 (E10006) `System role cannot be changed.` Giving another role the name `PLATFORM_ADMIN` is a duplicate name (409, E10003). The role is created by the seed, see `e-commerce/db/seed/author.seed.sql`.
 - Permission: only a platform administrator from the verified JWT roles claim can call this API; require exact case-sensitive PLATFORM_ADMIN.
-- Validate the whole request before SQL: exactly one JSON object with only roles, no query keys, correct JSON content type and mandatory UTC timestamp; roles is an array of 1..100 non-null objects with only id/name/description/rowStatus and ...
+- Validate the whole request before SQL: exactly one JSON object with only roles, no query keys, correct JSON content type and mandatory UTC timestamp; roles is an array of 1..100 non-null objects with only id/name/description/rowStatus and no repeated JSON keys. Process item validation in input order; required name/description are non-null nonblank strings (max 64/256), name matches ^[A-Z][A-Z0-9_]{0,63}$, and values are not trimmed/case-normalized. id is optional only by omission; supplied id must be a non-null UUID. rowStatus defaults to ACTIVE only when omitted, otherwise ACTIVE/INACTIVE/DELETED/LOCKED/ARCHIVED; insert-DELETED is 400. Validate required fields even for delete/archive. Generate requestId if omitted.
 - The order of the checks, the locks and every outcome is in the sequence diagram.
 
 ---
