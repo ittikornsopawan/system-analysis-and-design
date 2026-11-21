@@ -7,15 +7,17 @@ description: Active plans and task records of the Diagram Designer Jinny, resolv
 
 Completed records are in `success-task.md`.
 
-## e-commerce: remove the dead first-scaffold diagram content
+## repository: CI runs the diagram generator checks
 
 Owner: jinny
 Status: In review
-Created at: 2026-11-20T15:48:12+07:00
-Started at: 2026-11-20T15:48:12+07:00
+Created at: 2026-11-20T21:48:23+07:00
+Started at: 2026-11-20T21:48:23+07:00
 
-Authority: Josh (SA Lead) review of #269, option (b); `authorized_by: ittikorn`, delivery `open-pr`. Scope: `diagram_content.py`, `generate_diagrams.py`, `tasks/jinny`.
+Authority: Josh (SA Lead) after #276 was closed, `authorized_by: ittikorn`, delivery `open-pr`. Scope: `.github/workflows/checks.yml`, `e-commerce/diagram/domain/domain-model-verification.md`, `tasks/jinny`, `tasks/lessons.md`, `.agents/skills/commit-and-pr`.
 
-- [x] Delete the unused `ARCHITECTURE`/`REPOSITORY`/`SYSTEM` content and `DIAGRAMS` (Josh approved the last two in review), `verify_evidence()` (pinned 2 test projects / 5 refs) and the unreachable tail of `generate_diagrams.main`, with the imports only they used. Evidence: `git grep` finds no other user of `verify_evidence`, `PROJECT` or `DIAGRAMS` outside the deleted code.
-- [x] Run the generators and every `check_docs.py` sub-command. Evidence: layered `--check` PASS, `generate_diagrams.py --check` PASS, check_docs 73/73. `generate_domain_diagrams.py --check` fails with "DB evidence drift" on `origin/main` `ed93259` too (pre-existing, reported to Josh).
-- [ ] Open the PR and send it to Josh; close after review and merge.
+- [x] Prepare from `main` `099f3c7` (after #283); baseline: domain and layered `--check` PASS.
+- [x] Add the step "Diagram generators (--check)" to the rewritten `checks.yml`.
+- [x] Re-add the verification record (cause `3c740fa`, refresh by #283) to `domain-model-verification.md`.
+- [x] Record the owner's correction (hand off only a mergeable PR with green CI) in `tasks/lessons.md` and `commit-and-pr`.
+- [ ] Open the PR; report it ready only when it is OPEN, MERGEABLE, CI green and `headRefOid` = local HEAD; close after merge.

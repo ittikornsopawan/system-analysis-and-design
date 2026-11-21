@@ -81,3 +81,16 @@ PASS domain source coverage: 54/54 tables; 76/76 FK columns; schema documentatio
 All 4 views were re-exported with draw.io Desktop and finalized (2378×1682, editable source embedded), because the source footer of every view now reads 54/76. The 4 PNGs were viewed: the identity view shows the new group with no overlap and readable cardinalities; the overview shows "Shared reference & keys" and 54/76; merchandising and commerce changed only in the footer.
 
 Approval: `domain-model.md` and `domain-identity-model.md` changed in body, so they went back to `in-review`. `domain-merchandising-model.md` and `domain-commerce-model.md` keep their approval (only the baseline-commit line changed).
+
+## Evidence refresh: `ix_m_parameter_parent_id` and `consent.v_applicable_consent` — 2026-11-20
+
+`--check` failed on `main` with "DB evidence drift". The cause was `3c740fa` ("index parent_id", via #252), which added the non-unique `CREATE INDEX IF NOT EXISTS ix_m_parameter_parent_id ON public.m_parameter (parent_id);` to `00-common.schema.up.sql` and `doc/schema/public/m_parameter.md`. #279 later added the view `consent.v_applicable_consent` and changed `audit_readme(tables)` to `audit_readme(tables, views)`, which made the generator crash.
+
+#283 passed the views to `audit_readme`, then refreshed the inventory (`source_commit` `37ea6b9c535e77018420e7d811c5acd7afd88020`, 66 source files). A lookup index and a read view add no concept, field, association or cardinality, so HTML, draw.io and PNG of all 4 views are unchanged and the companions changed only in their baseline-commit line (approvals kept). The first refresh in #275 did not reach `main`.
+
+```text
+python3 -B e-commerce/scripts/diagrams/generate_domain_diagrams.py --check
+PASS domain source coverage: 54/54 tables; 76/76 FK columns; schema documentation comparison 0 findings
+```
+
+The drift stayed on `main` because CI ran no diagram generator. `checks.yml` now runs the domain and layered generator `--check`.

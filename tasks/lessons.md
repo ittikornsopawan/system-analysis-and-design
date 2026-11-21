@@ -662,3 +662,11 @@ description: Repository-wide and project-specific lessons captured from user cor
 - **Corrected behavior**: Run `gh pr view <n> --json state` right before every push of a review fix and before editing a PR description. If it is `MERGED`, open a new PR for the commits that are not in the base, name them in its description, and restore the old description to what actually merged.
 - **Preventive skill change**: `.agents/skills/commit-and-pr/SKILL.md`, "After the PR exists": a state check before each review-fix push.
 - **Verification**: `git merge-base --is-ancestor 60ab945 origin/main` failed (not in main); the commit is carried in a new PR, and #272's description was restored to the merged content.
+
+### 2026-11-20 — Hand off a PR only when it is mergeable and CI is green
+
+- **Correction**: The owner asked whether Jinny had used `commit-and-pr`, because the skill requires a PR to be mergeable before it is sent. Jinny sent #276 to Josh knowing CI would fail (the base had a broken check), and did not re-read mergeability for #274 and #275 before reporting; Josh, not Jinny, found #275 CONFLICTING.
+- **Root cause**: Step 9's "read remote mergeability once" was treated as optional, and a red CI caused by the base was reported as "ready, waiting for main" instead of "blocked".
+- **Corrected behavior**: Before saying a PR is ready, read `state`, `mergeable`, `statusCheckRollup` and `headRefOid`; ready means OPEN, MERGEABLE, all checks passed and head = local HEAD. Anything else is reported as blocked, with the cause.
+- **Preventive skill change**: `.agents/skills/commit-and-pr/SKILL.md`, "After the PR exists": the ready condition above.
+- **Verification**: the diagram-checks PR that carries this entry was reported only after that condition held (see its Verification section).
