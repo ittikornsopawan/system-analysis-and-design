@@ -726,3 +726,19 @@ description: Repository-wide and project-specific lessons captured from user cor
 - **Corrected behavior**: Invoke each skill before its step, and write the Skills line last, listing only the Skill calls or file reads made in the task.
 - **Preventive skill change**: pending, outside this PR's scope (`tasks/`): add "write the Skills line last, from the calls made" to step 9 of `commit-and-pr` (both copies) in Drake's next Showcase PR that may edit skills.
 - **Verification**: #293's description corrected; its steps (stage by name, base merge, every CI step) were rechecked against the invoked skill text and match.
+
+### 2026-11-21 — A FOR UPDATE holder does not prove a FOR UPDATE lock
+
+- **Correction**: TC-PERM-016 first held the permission and the scope rows FOR UPDATE and expected 408; removing the API's own `ForUpdate()` still passed, because the later UPDATE and the foreign-key check block on a FOR UPDATE holder anyway. The same trap hit TC-ROLE-013 (author 01) on 2026-11-20.
+- **Root cause**: The lock case was written from the lock being held, not from the mutation that removes it; a holder mode that also blocks the later steps cannot tell the two apart.
+- **Corrected behavior**: Hold the row FOR SHARE (it conflicts with FOR UPDATE, not with a foreign-key KEY SHARE) and send a request that stops before any write (403 or 409). With the lock it waits (408); without it it answers.
+- **Preventive skill change**: `api-test-case-creator/references/case-design.md` Concurrency row and `backend-development/references/verification.md` (both copies): the holder mode and the request that stops before writes.
+- **Verification**: removing the permission or the scope `ForUpdate()` now fails TC-PERM-016.
+
+### 2026-11-21 — An `out var` in a ternary branch is not assigned (CS0165), twice
+
+- **Correction**: Moving the array reader into `JsonBody.TryReadItems` hit CS0165 again; author 02 hit it on 2026-11-21 in the same reader.
+- **Root cause**: `cond ? TryRead(x, out var item) : other` assigns `item` on one branch only.
+- **Corrected behavior**: An `if` with `continue` before the `out` call.
+- **Preventive skill change**: `dev-like-principal/references/coding-guidelines.md` (both copies): a short section on it.
+- **Verification**: the build passes with 0 warnings; spec 02's 34 tests pass on the shared reader.

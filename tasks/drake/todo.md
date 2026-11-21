@@ -20,8 +20,8 @@ description: Active plans and task records for Drake, Backend Developer.
 - [x] 01 upsert role: backend#24 merged 2026-11-20, test cases in Showcase #270 merged; Api 321, Application 43, Domain 73, Infrastructure 53 passed
 - [x] Spec defect found while reading 02: nine rule lines cut with "..." (cd3edbe); restore in #287, checker in #288
 - [x] 02 upsert role batch (`POST v1/author/role/upsert/batch`): shared `RoleWriter`/`RoleRules` from 01, sorted target lock, `Error.At`, batch body reader; 16 cases, 34 tests pass; in review (backend PR and Showcase PR)
-- [ ] 03 inquiry role
-- [ ] 04 upsert permission
+- [x] 03 inquiry role: backend#28 merged; test cases in #294
+- [x] 04 upsert permission: shared `MasterRules`, `JsonBody.TryReadItems`; 17 cases, 35 tests; in review (backend#29 and the Showcase PR)
 - [ ] 05 upsert permission batch
 - [ ] 06 inquiry permission
 - [ ] 07 upsert scope
@@ -41,10 +41,12 @@ description: Active plans and task records for Drake, Backend Developer.
 
 - Owner: drake (accountable: ittikorn)
 - Created at: 2026-11-21T17:50:00+07:00
-- Status: Pending
+- Status: In review (author 04 Showcase PR)
 
-- [ ] `commit-and-pr` step 9 (both copies): write the Skills line last, from the Skill calls and reads actually made (lesson 2026-11-21)
-- [ ] `api-test-case-creator` `references/case-design.md` Concurrency row (both copies): the held row must be one the request locks (lesson 2026-11-21)
+- [x] `commit-and-pr` step 9 (both copies): write the Skills line last, from the Skill calls and reads actually made (lesson 2026-11-21)
+- [x] `api-test-case-creator` `references/case-design.md` Concurrency row (both copies): the held row must be one the request locks, in a mode that conflicts only with the API's lock (lessons 2026-11-21)
+- [x] `backend-development/references/verification.md` (both copies): collection assertions and lock proofs (lessons 2026-11-21)
+- [x] `dev-like-principal/references/coding-guidelines.md` (both copies): `out var` in a ternary (lesson 2026-11-21)
 
 ## Security Auditor review of authen (auth, token, reset)
 
