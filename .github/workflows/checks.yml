@@ -40,11 +40,11 @@ jobs:
         run: python3 e-commerce/db/tests/audit_all.py
 
       # One bizCode per HTTP status, sequence SQL equal to spec SQL, schema docs and ER equal to the migrations,
-      # frontmatter on every document.
+      # frontmatter on every document, no spec rule line cut with "...".
       - name: Codes, SQL parity, schema and ER
         if: ${{ !cancelled() }}
         run: |
-          for c in biz-codes status-codes api-sequence-spec schema er md-frontmatter; do
+          for c in biz-codes status-codes api-sequence-spec schema er md-frontmatter no-cut-rules; do
             python3 e-commerce/db/tests/check_docs.py "$c"
           done
 

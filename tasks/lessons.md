@@ -694,3 +694,19 @@ description: Repository-wide and project-specific lessons captured from user cor
 - **Corrected behavior**: Each line restored from its last full version in git history (markdown links reduced to their text, as the template does). Every restored text already appears in that spec's approved `sequence.wsd`, so no behavior changes.
 - **Preventive skill change**: delivered in the follow-up PR (outside this PR's assignment scope): `check_docs.py no-cut-rules` and a readiness line in `.agents/skills/backend-development/references/spec-and-clarification.md`.
 - **Verification**: `no-cut-rules` fails on `main` (author 01 line 34 put back) and passes on the branch; all nine restored texts found in their sequence diagrams.
+
+### 2026-11-21 — A lock-hold test must hold a row the request locks
+
+- **Correction**: The first run of TC-RBATCH-015 expected 408 while another session held role B, but the batch only targeted role A, so it answered 200.
+- **Root cause**: The fixture was copied from a two-role step and the held id was not checked against the request's target ids.
+- **Corrected behavior**: For every lock-wait case, name the exact row the request locks and hold that row; assert the timeout and that nothing changed.
+- **Preventive skill change**: pending, outside this assignment's scope: add "the held row is one the request locks" to the Concurrency row of `.agents/skills/api-test-case-creator/references/case-design.md`.
+- **Verification**: TC-RBATCH-015 corrected and passing; removing the target `ForUpdate()` makes it fail.
+
+### 2026-11-21 — Follow commit-and-pr as written, not from memory
+
+- **Correction**: The owner asked whether the required skills were used. For author 02 and the #289 conflict fix, Drake had read `backend-development`, `dev-like-principal` and `api-test-case-creator` in full, but followed `commit-and-pr` from memory, and broke three of its rules: `git add -A` in every commit (step 4), an `until … sleep` loop waiting for CI (After the PR exists: do not poll), and no state read right before pushing the review fix.
+- **Root cause**: `commit-and-pr` was treated as known, so it was not read in the task; the scripted `git add -A && git commit` chains and the wait loop came from habit.
+- **Corrected behavior**: Read `commit-and-pr` in full before each delivery; stage by name and check `git diff --cached --stat`; read the PR state once after publishing and right before each push. The commits already pushed were checked: preflight's scope check and the PR diffs hold only the intended files.
+- **Preventive skill change**: `.agents/skills/commit-and-pr/SKILL.md` step 4 and "After the PR exists" name the two habits (separate PR, outside #289's scope).
+- **Verification**: #289 head `939f78c` equals local HEAD before this commit; its diff against `origin/main` lists only the files named in the PR body.
