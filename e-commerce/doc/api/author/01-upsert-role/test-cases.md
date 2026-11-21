@@ -101,7 +101,7 @@ description: "Documented scenarios and expected results for POST v1/author/role/
 
 - Source: R10. Design readiness: Ready. Execution status: Pass (automated).
 
-**Request:** for a role with status ACTIVE, INACTIVE, LOCKED and ARCHIVED: an insert with its name, and an update of another role to its name; then an update that keeps a role's own name. **Expected:** 409 E10003 "Role name already exists." for each conflict; 200 for keeping the own name.
+**Request:** for a role with status ACTIVE, INACTIVE, LOCKED and ARCHIVED: an insert with its name, and an update of another role to its name; then an update that keeps a role's own name; then a role in use by a user archived under a taken name. **Expected:** 409 E10003 "Role name already exists." for each conflict, including the last one (the name check comes before the in-use check); 200 for keeping the own name.
 
 ### TC-ROLE-011 — In use blocks archive and delete
 
@@ -141,3 +141,4 @@ description: "Documented scenarios and expected results for POST v1/author/role/
 ## Revision and execution history
 
 - 2026-11-20: first version (Drake), executed by the automated tests of e-commerce-backend on branch `feat/drake-author-01-upsert-role`: `UpsertRoleApiTests` (HTTP + real PostgreSQL 17, 31 tests including the 17 validation rows) and `JwtVerificationTests` (roles claim shape). Result: every case passes (`dotnet test`: Api 321, Application 43, Domain 73, Infrastructure 53, 0 failed). Mutation checks: removing the target `ForUpdate()` fails TC-ROLE-013; removing the system-role check fails TC-ROLE-009; removing the in-use check, or only its permission-binding half, fails TC-ROLE-011; removing the `uq_m_role_name` mapping fails TC-ROLE-012; accepting a malformed roles claim fails TC-ROLE-006; accepting repeated keys fails TC-ROLE-004. The first versions of TC-ROLE-012 and 013 let the 23505 and lock mutations survive (one caller queued the race; the UPDATE blocked anyway) and were strengthened before this run.
+- 2026-11-21: TC-ROLE-010 gained the in-use role archived under a taken name. Removing the update-path name precheck survived the first version, because `uq_m_role_name` answers the same 409; pairing it with the later in-use check makes the order observable. The insert-path precheck stays unobservable (nothing runs between it and the INSERT). Executed on e-commerce-backend `12eb6e8`: `UpsertRoleApiTests` 32 tests pass; the mutation now fails TC-ROLE-010.
