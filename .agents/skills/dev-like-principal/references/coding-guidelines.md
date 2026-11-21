@@ -20,6 +20,10 @@ The owner's mandatory standards (Function Book, formatting, short functions, com
 
 ## C#/.NET practices with examples
 
+### `out var` needs a statement, not a ternary branch
+
+`cond ? TryRead(x, out var item) : other` leaves `item` unassigned on the other branch (CS0165). Use an `if` with an early `continue` or `return` before the `out` call.
+
 ### Async all the way, with cancellation
 
 ```csharp

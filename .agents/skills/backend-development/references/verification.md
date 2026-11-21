@@ -19,6 +19,8 @@ Derive expected outcomes from the approved spec, a worked example or an independ
 
 Use the project's existing test tools first. Discover DB/runtime/test commands and prerequisites from its configuration; do not substitute SQLite for a PostgreSQL guarantee or install a new test framework/dependency outside approved scope. Use isolated test databases, deterministic fixtures, independent connections where required and cleanup owned by the test. Do not use production data or shared environments to manufacture evidence.
 
+Assert a collection on its own, never inside a tuple: tuple equality compares a `List` by reference, so equal values still fail. Prove a lock with a holder that conflicts only with that lock (see the Concurrency row of api-test-case-creator's case design) and a mutation that removes it.
+
 Prefer observable interfaces to private methods, call-count assertions or unapproved side channels. If persistence itself is the agreed seam, integration assertions may inspect that adapter's declared read/write outcomes; say explicitly what is being verified. Time/randomness/provider boundaries may be controlled without claiming to have tested the real provider. Do not invent a coverage percentage, benchmark target or load-test requirement.
 
 ## One red-to-green slice
