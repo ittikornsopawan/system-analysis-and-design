@@ -21,8 +21,8 @@ description: Active plans and task records for Drake, Backend Developer.
 - [x] Spec defect found while reading 02: nine rule lines cut with "..." (cd3edbe); restore in #287, checker in #288
 - [x] 02 upsert role batch (`POST v1/author/role/upsert/batch`): shared `RoleWriter`/`RoleRules` from 01, sorted target lock, `Error.At`, batch body reader; 16 cases, 34 tests pass; in review (backend PR and Showcase PR)
 - [x] 03 inquiry role: backend#28 merged; test cases in #294
-- [x] 04 upsert permission: shared `MasterRules`, `JsonBody.TryReadItems`; 17 cases, 35 tests; in review (backend#29 and the Showcase PR)
-- [ ] 05 upsert permission batch
+- [x] 04 upsert permission: backend#29 and #295 merged
+- [x] 05 upsert permission batch: shared `PermissionWriter`/`PermissionRules`/`CurrentItem`; 12 cases, 28 tests; in review (backend#30 and the Showcase PR)
 - [ ] 06 inquiry permission
 - [ ] 07 upsert scope
 - [ ] 08 upsert scope batch

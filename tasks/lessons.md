@@ -749,3 +749,11 @@ description: Repository-wide and project-specific lessons captured from user cor
 - **Corrected behavior**: Assert a collection on its own (`Assert.Equal(expected, actual.Select(...))`) and the scalars in a tuple.
 - **Preventive skill change**: `.agents/skills/backend-development/references/verification.md` (both copies), made in #295 (author 04 test cases) because this PR's scope has no skill file.
 - **Verification**: TC-ROLEQ-005 split into a collection assertion and a scalar tuple; 24/24 pass, and its mutations fail as expected.
+
+### 2026-11-21 — A check with a same-answer backstop needs a paired conflict to be tested
+
+- **Correction**: Mutations on author 05 survived for three checks: the link ownership compare (the guarded link UPDATE then gives the same 404) and the update-path name prechecks of the permission and role writers (the unique index then gives the same 409). The role one had passed review in author 01 and 02 without being observable.
+- **Root cause**: Each case tested the check alone, so the backstop produced the same response and hid the missing check.
+- **Corrected behavior**: Pair the check with a later, different conflict in the same request, so the order shows which check answered: TC-PBATCH-007 (foreign link plus a taken name), TC-PERM-008 and TC-ROLE-010 (an in-use row archived under a taken name). Say plainly when nothing can observe a check (the insert-path name prechecks, the lock id order).
+- **Preventive skill change**: `.agents/skills/backend-development/references/verification.md` (both copies): a check with a same-answer backstop needs a paired conflict.
+- **Verification**: each of the three mutations now fails its case; backend `12eb6e8` passes 611 tests.

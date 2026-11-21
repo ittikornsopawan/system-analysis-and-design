@@ -114,7 +114,7 @@ description: "Documented scenarios and expected results for POST v1/author/permi
 
 - Source: R08. Design readiness: Ready. Execution status: Pass (automated).
 
-**Steps:** an ARCHIVED permission holds N: insert N → 409 E10003 "Permission name already exists."; renaming another to N → 409; that permission keeping its own name → 200; a DELETED permission's name → 201.
+**Steps:** an ARCHIVED permission holds N: insert N → 409 E10003 "Permission name already exists."; renaming another to N → 409; that permission keeping its own name → 200; a granted permission archived under N → 409 "Permission name already exists." (the name check comes before the grant check); a DELETED permission's name → 201.
 
 ### TC-PERM-009 — Grants block delete and archive
 
@@ -173,3 +173,4 @@ description: "Documented scenarios and expected results for POST v1/author/permi
 ## Revision and execution history
 
 - 2026-11-21: first version (Drake), executed by the automated tests of e-commerce-backend on branch `feat/drake-author-04-upsert-permission` (`6a1c93e`, after merging spec 03): `UpsertPermissionApiTests` (HTTP + real PostgreSQL 17, 35 tests including 18 validation rows). Result: every case passes (`dotnet test`: Api 414, Application 43, Domain 73, Infrastructure 53, 0 failed). Mutation checks, each failing its case: no 403 (005), no master check and no Q23 exception (006), scope change allowed and foreign link allowed (007), no grant check (009), no link precheck (010), no link in-use (011), no Q24 (012), no Q22 (013), no `uq_m_permission_name` mapping (014), a DELETED link reserving its scope (003), no scope lock and no permission lock (016). The first TC-PERM-016 held rows FOR UPDATE only, so removing either lock survived; the FOR SHARE steps were added before this run.
+- 2026-11-21: TC-PERM-008 gained the granted permission archived under a taken name, so removing the update-path name precheck now fails it (before, `uq_m_permission_name` answered the same 409). The shared `PermissionWriter` (backend `12eb6e8`) runs these cases unchanged: `UpsertPermissionApiTests` 35 tests pass.

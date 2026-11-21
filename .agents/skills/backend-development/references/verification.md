@@ -21,6 +21,8 @@ Use the project's existing test tools first. Discover DB/runtime/test commands a
 
 Assert a collection on its own, never inside a tuple: tuple equality compares a `List` by reference, so equal values still fail. Prove a lock with a holder that conflicts only with that lock (see the Concurrency row of api-test-case-creator's case design) and a mutation that removes it.
 
+A check with a backstop that answers the same way (a name precheck before a unique index, an ownership check before a guarded UPDATE) survives its mutation unless the case pairs it with a later, different conflict, so the order of the checks shows; say plainly when nothing can observe it.
+
 Prefer observable interfaces to private methods, call-count assertions or unapproved side channels. If persistence itself is the agreed seam, integration assertions may inspect that adapter's declared read/write outcomes; say explicitly what is being verified. Time/randomness/provider boundaries may be controlled without claiming to have tested the real provider. Do not invent a coverage percentage, benchmark target or load-test requirement.
 
 ## One red-to-green slice
