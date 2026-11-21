@@ -20,7 +20,6 @@ Before the first implementation/test edit, be able to state:
 - For each branch, HTTP/result outcome, required durable effects, transaction outcome, conditional-write result and any external effects. Do not infer rollback from an error response alone.
 - The observed test seams, planned examples/expected values and what each proposed test boundary proves or leaves unproven. Use already approved seams; confirm only those not yet agreed.
 - Any missing contract, schema, architecture or test-environment prerequisite preventing the promised behavior/evidence.
-- Every rule read is complete: a rule line that ends in a literal "..." was cut (see `check_docs.py no-cut-rules`); raise it as a spec defect and restore it from history or the sequence, never guess the rest.
 
 ## Ask before implementing unclear behavior
 

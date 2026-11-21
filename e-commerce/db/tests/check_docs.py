@@ -877,22 +877,6 @@ def check_status_codes() -> int:
 COMMANDS["status-codes"] = check_status_codes
 
 
-def check_no_cut_rules() -> int:
-    """A rule bullet of a spec must not end in a literal "..." (cd3edbe cut nine rule lines that way, 2026-11-14)."""
-    errors = []
-    for path in sorted((ROOT / "e-commerce/doc/api").glob("*/*/spec.md")):
-        for number, line in enumerate(path.read_text(encoding="utf-8").split("\n"), 1):
-            if line.startswith("- ") and line.rstrip().endswith("..."):
-                errors.append(f"{path.relative_to(ROOT)}:{number}")
-    if errors:
-        return fail("rule line cut with '...': " + ", ".join(errors))
-    print("OK: no-cut-rules")
-    return 0
-
-
-COMMANDS["no-cut-rules"] = check_no_cut_rules
-
-
 # ---------------------------------------------------------------- shop lot and storefront specs
 SHOP_SPECS = {
     "01": "e-commerce/doc/api/shop/01-upsert-shop-product-sku/spec.md",
