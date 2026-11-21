@@ -5,7 +5,9 @@ description: Every task that is still open across the owner, Josh, Tommy, Marry,
 
 # Pending tasks
 
-Checked on 2026-11-17 against `main` and the pull requests on GitHub: no task and no pull request is open.
+Checked on 2026-11-21 against `main` and the pull requests on GitHub (Drake, on the owner's request): no pull request is open, and every finished record of the owner, Josh, Jinny and Drake is closed. Open work: Drake, author 03-17 (15 APIs) and the Security Auditor review of authen (`tasks/drake/todo.md`). Not yet assigned: the backend still uses the old `encryptedKey` field transport, while #280 changed specs 01-04 to per-field RSA-OAEP.
+
+The groups below are the check of 2026-11-17, kept as history.
 
 | Group                                           | Tasks  |
 | ----------------------------------------------- | ------ |

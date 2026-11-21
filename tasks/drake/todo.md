@@ -37,46 +37,14 @@ description: Active plans and task records for Drake, Backend Developer.
 - [ ] 17 check permission
 - [x] Add `no-cut-rules` to the CI document checks once #287 is merged (#287 and #288 merged; added in #289)
 
-## Register reads the applicable consents from the consent view
+## Pending skill improvement
 
 - Owner: drake (accountable: ittikorn)
-- Created at: 2026-11-21T15:00:00+07:00
-- Started at: 2026-11-21T15:00:00+07:00
-- Status: In review
-- Governing spec: `e-commerce/doc/api/authen-and-author/01-register` (approved; already names `consent.v_applicable_consent` and its LINQ since Showcase #279)
+- Created at: 2026-11-21T17:50:00+07:00
+- Status: Pending
 
-- [x] `GetApplicableConsentsAsync` reads `db.ApplicableConsents` (keyless view mapping); the `m_consent_type` query and the unused table records removed
-- [x] All tests pass (Api 321, Application 43, Domain 73, Infrastructure 53); `dotnet format` clean; mutation: no expiry filter fails TC_REG_017
-- [ ] backend#26 reviewed and merged by the owner
-
-## Mandatory skill reading and recheck of backend#26
-
-- Owner: drake (accountable: ittikorn)
-- Created at: 2026-11-21T16:00:00+07:00
-- Started at: 2026-11-21T16:00:00+07:00
-- Status: In review
-- Owner order 2026-11-21: every later task must use `backend-development` and `dev-like-principal`.
-
-- [x] Read both `SKILL.md` files, `code-quality-standards.md`, `e-commerce-dotnet.md` and `verification.md` in full
-- [x] Rechecked backend#26: no code defect; Function Book has no entry to add; measured methods 7 and 10 lines; `code-structure.md` row "EF Core model" now names views
-- [x] Role, commit-and-pr and verification reference changed; two lessons recorded; PR descriptions of backend#26 and #285 corrected
-- [ ] Josh confirms the one-phrase change to the approved `code-structure.md`; the owner merges
-
-## Copy the ready skills into .claude/skills
-
-- Owner: drake (accountable: ittikorn)
-- Created at: 2026-11-21T17:30:00+07:00
-- Started at: 2026-11-21T17:30:00+07:00
-- Status: In review
-- Owner request 2026-11-21: the Skill tool lists only `.claude/skills/`, so repo skills could not be loaded.
-
-- [x] Copy the nine `ready` skills (tracked files only, 114 files); placeholders not copied
-- [x] CI step: each copy equals `.agents/skills/<name>`, and every ready skill has a copy (drift and missing copy both caught locally)
-- [x] `.agents/README.md`: edit in `.agents/skills/`, copy in the same change
-- [x] CI fix: the first run failed (eval copies lacked frontmatter, exempted only under `.agents/skills/`; CI's `__pycache__` broke `diff -r`); `evals/` not copied, the diff skips `evals` and `__pycache__`; every CI step rerun locally
-- [x] #291 merged (`7807c5c`, CI green)
-- [x] Follow-up PR: lesson and commit-and-pr change (run every CI step locally before a PR that adds files outside the spec folders), both copies of the skill
-- [ ] After merge, a new session confirms the Skill tool lists the skills
+- [ ] `commit-and-pr` step 9 (both copies): write the Skills line last, from the Skill calls and reads actually made (lesson 2026-11-21)
+- [ ] `api-test-case-creator` `references/case-design.md` Concurrency row (both copies): the held row must be one the request locks (lesson 2026-11-21)
 
 ## Security Auditor review of authen (auth, token, reset)
 
