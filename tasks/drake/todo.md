@@ -24,17 +24,12 @@ description: Active plans and task records for Drake, Backend Developer.
 - [x] 04 upsert permission: backend#29 and #295 merged
 - [x] 05 upsert permission batch: shared `PermissionWriter`/`PermissionRules`/`CurrentItem`; 12 cases, 28 tests; backend#30 and #296 merged
 - [x] 06 inquiry permission: shared `MasterInquiryRules`/`MasterFilter`/`MasterQueryKeys`; 12 cases, 24 tests; backend#31 and #297 merged
-- [x] 07 upsert scope: `MasterRules` generalised (code field, texts), `UpperCode`; 12 cases, 23 tests; in review (backend#32 and the Showcase PR)
-- [ ] 08 upsert scope batch
-- [ ] 09 inquiry scope
-- [ ] 10 upsert user role
-- [ ] 11 inquiry user role
-- [ ] 12 me
-- [ ] 13 upsert role permission
-- [ ] 14 inquiry role permission
-- [ ] 15 upsert user permission
-- [ ] 16 inquiry user permission
-- [ ] 17 check permission
+- [x] 07 upsert scope: `MasterRules` generalised (code field, texts), `UpperCode`; 12 cases, 23 tests
+- [x] 07 merged: backend#32 and Showcase #298
+- [x] 08-17 in one backend PR at the owner's request on 2026-11-22 ("ทำให้ครบตั้งแต่ 08-17 แล้วทำมาเป็น pr เดียว"): e-commerce-backend#33, one commit per API and five refactor commits for the logic that gained a second caller; full run Api 643, Application 43, Domain 73, Infrastructure 53 passed; in review
+  - 08 upsert scope batch (`ScopeWriter`, `ScopeRules`), 09 inquiry scope, 10 upsert user role (last-administrator rule), 11 inquiry user role, 12 me, 13 upsert role permission, 14 inquiry role permission, 15 upsert user permission, 16 inquiry user permission, 17 check permission (token claims only)
+  - Test cases for 08-17, Function Book entries and lessons in the Showcase PR of branch `test/drake-author-08-17-test-cases`; in review
+- [ ] After both PRs merge: advance `e-commerce/REPOS.md` to the merged backend revision and move this record to `success-task.md`
 - [x] Add `no-cut-rules` to the CI document checks once #287 is merged (#287 and #288 merged; added in #289)
 
 ## Pending skill improvement
