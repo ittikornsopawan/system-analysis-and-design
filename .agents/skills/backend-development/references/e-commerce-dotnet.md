@@ -66,6 +66,8 @@ These are instructional branch shapes, not approval of the current in-review Log
 
 Time columns are `TIMESTAMP WITHOUT TIME ZONE` holding UTC. Npgsql sends a UTC `DateTime` as `timestamptz`, which PostgreSQL converts with the session time zone, so every connection must run with `Timezone=UTC` (`EcommerceDbContext.UtcSession`, also used by the `NpgsqlDataSource`); otherwise each stored time shifts by the server offset. A test that writes a time and reads it back must open its connections the same way, or it hides the shift.
 
+EF Core cannot translate an `ORDER BY` on members of a positional record built in the LINQ `select` (`select new Row(a.X, b.Y)` then `.OrderBy(r => r.Y)`): the query fails at runtime with a 500, not at build time. Project a private class with `init` members (`select new Joined { X = a.X, Y = b.Y }`), order and page that, then map to the record after `ToListAsync` (author 11, 14 and 16 repositories). Run the list query through a real database test before trusting it.
+
 ## Evidence and baseline limits
 
 Inspect test-project references before relying on a passing suite. The inspected Domain/Application tests use in-memory repositories, fake hashing/token generation and a fake UnitOfWork; they do not prove SQL correctness, real rollback, middleware authorization or cross-request token consumption. A model's consume-once guard on one object does not make two DB requests atomic. Add the relevant real database/framework evidence under the generic verification reference.

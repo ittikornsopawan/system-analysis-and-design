@@ -757,3 +757,19 @@ description: Repository-wide and project-specific lessons captured from user cor
 - **Corrected behavior**: Pair the check with a later, different conflict in the same request, so the order shows which check answered: TC-PBATCH-007 (foreign link plus a taken name), TC-PERM-008 and TC-ROLE-010 (an in-use row archived under a taken name). Say plainly when nothing can observe a check (the insert-path name prechecks, the lock id order).
 - **Preventive skill change**: `.agents/skills/backend-development/references/verification.md` (both copies): a check with a same-answer backstop needs a paired conflict.
 - **Verification**: each of the three mutations now fails its case; backend `12eb6e8` passes 611 tests.
+
+### 2026-11-22 — EF Core cannot order by members of a positional record projection
+
+- **Correction**: The first run of the author 11 inquiry answered 500: the repository projected `select new UserRoleListRow(...)` and then called `.OrderBy(r => r.RoleName)`, which EF Core cannot translate. The build passed; only the real database test showed it.
+- **Root cause**: EF Core translates member access on a constructor-built record only after materialisation; an `ORDER BY` before `ToListAsync` cannot reach its members.
+- **Corrected behavior**: Project a private class with `init` members, order and page it in SQL, then map to the record (the 11, 14 and 16 repositories).
+- **Preventive skill change**: `backend-development/references/e-commerce-dotnet.md` (both copies), section "SQL and transaction translation".
+- **Verification**: author 11, 14 and 16 list tests pass through PostgreSQL 17 (backend PR e-commerce-backend#33, full run Api 643 passed).
+
+### 2026-11-22 — A list inside a tuple assertion, a second time
+
+- **Correction**: The first run of TC-ME-002 compared the token roles inside a tuple and failed with equal values; TC-ROLEQ-005 hit the same on 2026-11-21 although `verification.md` already said so.
+- **Root cause**: The rule was in the reference but nothing made the author check a new test against it before running it.
+- **Corrected behavior**: The roles are asserted on their own and the scalars in a tuple.
+- **Preventive skill change**: `backend-development/references/verification.md` (both copies): before running a new test, search for `Assert.Equal((` and check that no tuple element is a list, array or record holding one.
+- **Verification**: that search over every test file changed in e-commerce-backend#33 finds only scalar tuples (counts, totals, statuses).
