@@ -19,7 +19,7 @@ Derive expected outcomes from the approved spec, a worked example or an independ
 
 Use the project's existing test tools first. Discover DB/runtime/test commands and prerequisites from its configuration; do not substitute SQLite for a PostgreSQL guarantee or install a new test framework/dependency outside approved scope. Use isolated test databases, deterministic fixtures, independent connections where required and cleanup owned by the test. Do not use production data or shared environments to manufacture evidence.
 
-Assert a collection on its own, never inside a tuple: tuple equality compares a `List` by reference, so equal values still fail. Prove a lock with a holder that conflicts only with that lock (see the Concurrency row of api-test-case-creator's case design) and a mutation that removes it.
+Assert a collection on its own, never inside a tuple: tuple equality compares a `List` by reference, so equal values still fail. Before running a new test, search it for `Assert.Equal((` and check that no element of the tuple is a list, array or record holding one (this slip happened twice: TC-ROLEQ-005, TC-ME-002). Prove a lock with a holder that conflicts only with that lock (see the Concurrency row of api-test-case-creator's case design) and a mutation that removes it.
 
 A check with a backstop that answers the same way (a name precheck before a unique index, an ownership check before a guarded UPDATE) survives its mutation unless the case pairs it with a later, different conflict, so the order of the checks shows; say plainly when nothing can observe it.
 
