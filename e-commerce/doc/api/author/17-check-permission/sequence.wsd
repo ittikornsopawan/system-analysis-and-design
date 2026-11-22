@@ -54,7 +54,7 @@ note over app, infra
     400 E10001 before SQL. Generate requestId if omitted.
     Missing/malformed Bearer credentials or a failed JWT signature/issuer/audience/expiry/UUID sub validation
     return the same 401 E10002 `Invalid or expired access token.` before SQL. Validate the claims of the payload
-    defined by [login](../../authen-and-author/02-login/spec.md#claim-resolution-and-payload) (owner-confirmed
+    defined by [login](../../authen-and-author/02-login/spec.md#example-jwt-payload) (owner-confirmed
     2026-11-13): `roles`, `permissions` and `scopes` must each be an array of unique non-empty strings, including
     explicit []. A missing or malformed claim makes the credential invalid (401); never replace it with an empty
     list or recover privileges from the database.

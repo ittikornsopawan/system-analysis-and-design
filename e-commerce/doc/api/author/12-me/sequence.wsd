@@ -51,7 +51,7 @@ note over app, infra
     signature/issuer/audience/expiry/sub/role-claim validation return the same 401 E10002 `Invalid or expired
     access token.` before SQL.
     Validate the `roles` claim of the payload defined by
-    [login](../../authen-and-author/02-login/spec.md#claim-resolution-and-payload) (owner-confirmed 2026-11-13):
+    [login](../../authen-and-author/02-login/spec.md#example-jwt-payload) (owner-confirmed 2026-11-13):
     roles must be an array of unique non-empty strings, including explicit [] for no roles. Missing/non-array
     roles, non-string or duplicate entries make the credential invalid (401); never silently replace malformed
     claims with an empty list or recover privileges from the database. The other claims (`user`, `permissions`,
